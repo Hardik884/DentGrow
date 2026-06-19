@@ -8,23 +8,20 @@ import { RecordPaymentSchema, type RecordPaymentInput, PaymentMethod } from "@/t
 import { recordPayment } from "@/actions/payments";
 import { PAYMENT_METHOD_LABELS } from "@/lib/utils";
 import { PatientSearch } from "@/components/shared/PatientSearch";
+import { PatientAvatar } from "@/components/shared/PatientAvatar";
+import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@/components/ui/button";
+import { Field } from "@/components/ui/field";
 
 interface PaymentFormProps {
-  /** Pre-fill patient — bypasses search */
   patientId?: string;
   patientName?: string;
   appointmentId?: string;
-  /** Called after successful save; if omitted, router.back() is used */
   onSuccess?: () => void;
 }
 
-/**
- * PaymentForm
- *
- * Record payment form — dentist + receptionist roles.
- * Uses react-hook-form + RecordPaymentSchema (Zod).
- * Submits to actions/payments.ts → recordPayment()
- */
 export function PaymentForm({
   patientId: initialPatientId,
   patientName: initialPatientName,
@@ -66,12 +63,10 @@ export function PaymentForm({
     setServerError(null);
     startTransition(async () => {
       const result = await recordPayment(values);
-
       if (result.error) {
         setServerError(result.error);
         return;
       }
-
       if (onSuccess) {
         onSuccess();
       } else {
@@ -82,133 +77,106 @@ export function PaymentForm({
   }
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-      <div className="bg-white border rounded-lg p-6 space-y-5">
-        <h2 className="font-semibold text-gray-900">Record Payment</h2>
-
-        {/* Patient selector */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Patient <span className="text-red-500">*</span>
-          </label>
-
-          {selectedPatientId ? (
-            <div className="flex items-center gap-3">
-              <div className="flex-1 px-3 py-2 border rounded-md bg-gray-50 text-sm text-gray-900">
-                {selectedPatientName || selectedPatientId}
-              </div>
-              {!initialPatientId && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSelectedPatientId("");
-                    setSelectedPatientName("");
-                    setValue("patient_id", "");
-                  }}
-                  className="text-xs text-gray-500 hover:text-gray-700 underline"
-                >
-                  Change
-                </button>
-              )}
-            </div>
-          ) : (
-            <PatientSearch
-              onSelect={(patient) => handlePatientSelect(patient.id, patient.name)}
-              placeholder="Search patient by name or phone..."
-            />
-          )}
-          <input type="hidden" {...register("patient_id")} value={selectedPatientId} />
-          {errors.patient_id && (
-            <p className="mt-1 text-xs text-red-600">{errors.patient_id.message}</p>
-          )}
+    <form onSubmit={handleSubmit(onSubmit)}>
+      {serverError && (
+        <div className="mb-4 rounded-lg bg-[#FEF2F2] border border-[#FECACA] px-4 py-3 text-xs text-[#DC2626]">
+          {serverError}
         </div>
+      )}
 
-        {/* Amount + Method row */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Amount (₹) <span className="text-red-500">*</span>
+      <div className="bg-white border border-[#E4E4E7] rounded-xl overflow-hidden divide-y divide-[#F4F4F5]">
+        <div className="px-6 py-5 space-y-4">
+          <h2 className="text-sm font-semibold text-[#09090B]">Record Payment</h2>
+
+          {/* Patient */}
+          <div className="space-y-1.5">
+            <label className="block text-sm font-medium text-[#09090B]">
+              Patient <span className="text-[#DC2626]" aria-hidden>*</span>
             </label>
-            <input
-              type="number"
-              min={0.01}
-              step="0.01"
-              {...register("amount", { valueAsNumber: true })}
-              placeholder="0.00"
-              className="w-full px-3 py-2 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-            {errors.amount && (
-              <p className="mt-1 text-xs text-red-600">{errors.amount.message}</p>
+            {selectedPatientId ? (
+              <div className="flex items-center gap-3">
+                <div className="flex-1 flex items-center gap-3 px-3 py-2 bg-[#F4F4F5] border border-[#E4E4E7] rounded-lg">
+                  <PatientAvatar name={selectedPatientName || "P"} size="sm" />
+                  <span className="text-sm font-medium text-[#09090B]">
+                    {selectedPatientName || selectedPatientId}
+                  </span>
+                </div>
+                {!initialPatientId && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    type="button"
+                    onClick={() => {
+                      setSelectedPatientId("");
+                      setSelectedPatientName("");
+                      setValue("patient_id", "");
+                    }}
+                  >
+                    Change
+                  </Button>
+                )}
+              </div>
+            ) : (
+              <PatientSearch
+                onSelect={(patient) => handlePatientSelect(patient.id, patient.name)}
+                placeholder="Search patient by name or phone…"
+              />
+            )}
+            <input type="hidden" {...register("patient_id")} value={selectedPatientId} />
+            {errors.patient_id && (
+              <p className="text-xs text-[#DC2626]" role="alert">{errors.patient_id.message}</p>
             )}
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Payment Method <span className="text-red-500">*</span>
-            </label>
-            <select
-              {...register("method")}
-              className="w-full px-3 py-2 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              {Object.values(PaymentMethod).map((m) => (
-                <option key={m} value={m}>
-                  {PAYMENT_METHOD_LABELS[m]}
-                </option>
-              ))}
-            </select>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Field label="Amount (₹)" htmlFor="amount" required error={(errors as Record<string, {message?: string}>).amount?.message}>
+              <Input
+                id="amount"
+                type="number"
+                min={0.01}
+                step="0.01"
+                {...register("amount", { valueAsNumber: true })}
+                placeholder="0.00"
+                hasError={!!(errors as Record<string, unknown>).amount}
+              />
+            </Field>
+
+            <Field label="Payment Method" htmlFor="method" required>
+              <Select id="method" {...register("method")}>
+                {Object.values(PaymentMethod).map((m) => (
+                  <option key={m} value={m}>{PAYMENT_METHOD_LABELS[m]}</option>
+                ))}
+              </Select>
+            </Field>
           </div>
+
+          <Field label="Payment Date" htmlFor="payment-date" required error={(errors as Record<string, {message?: string}>).payment_date?.message}>
+            <Input
+              id="payment-date"
+              type="date"
+              {...register("payment_date")}
+              hasError={!!(errors as Record<string, unknown>).payment_date}
+            />
+          </Field>
+
+          <Field label="Notes" htmlFor="notes" hint="Optional — partial payment details, etc.">
+            <Textarea
+              id="notes"
+              {...register("notes")}
+              rows={2}
+              placeholder="e.g. Partial payment for root canal treatment…"
+            />
+          </Field>
         </div>
 
-        {/* Payment Date */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Payment Date <span className="text-red-500">*</span>
-          </label>
-          <input
-            type="date"
-            {...register("payment_date")}
-            className="w-full px-3 py-2 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-          {errors.payment_date && (
-            <p className="mt-1 text-xs text-red-600">{errors.payment_date.message}</p>
-          )}
+        <div className="px-6 py-4 bg-[#FAFAFA] flex items-center justify-end gap-3">
+          <Button variant="outline" size="sm" type="button" onClick={() => router.back()}>
+            Cancel
+          </Button>
+          <Button type="submit" size="sm" isLoading={isPending}>
+            {isPending ? "Recording…" : "Record Payment"}
+          </Button>
         </div>
-
-        {/* Notes */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Notes <span className="text-gray-400 text-xs">(optional)</span>
-          </label>
-          <textarea
-            {...register("notes")}
-            rows={2}
-            placeholder="e.g. Partial payment for root canal treatment..."
-            className="w-full px-3 py-2 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-y"
-          />
-        </div>
-
-        {serverError && (
-          <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-md px-3 py-2">
-            {serverError}
-          </p>
-        )}
-      </div>
-
-      <div className="flex items-center gap-3">
-        <button
-          type="submit"
-          disabled={isPending}
-          className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-        >
-          {isPending ? "Recording..." : "Record Payment"}
-        </button>
-        <button
-          type="button"
-          onClick={() => router.back()}
-          className="px-4 py-2 text-sm font-medium border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
-        >
-          Cancel
-        </button>
       </div>
     </form>
   );

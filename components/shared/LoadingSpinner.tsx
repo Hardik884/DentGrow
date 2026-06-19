@@ -7,22 +7,12 @@ interface LoadingSpinnerProps {
 }
 
 const SIZE_CLASSES = {
-  sm: "w-4 h-4 border-2",
-  md: "w-6 h-6 border-2",
-  lg: "w-10 h-10 border-4",
+  sm: "w-3.5 h-3.5 border-[1.5px]",
+  md: "w-5 h-5 border-2",
+  lg: "w-8 h-8 border-2",
 };
 
-/**
- * LoadingSpinner
- *
- * Standard loading state indicator.
- * Used in all async sections while data is fetching.
- */
-export function LoadingSpinner({
-  size = "md",
-  className,
-  label = "Loading…",
-}: LoadingSpinnerProps) {
+export function LoadingSpinner({ size = "md", className, label = "Loading…" }: LoadingSpinnerProps) {
   return (
     <div
       className={cn("flex items-center justify-center", className)}
@@ -31,7 +21,7 @@ export function LoadingSpinner({
     >
       <div
         className={cn(
-          "rounded-full border-gray-300 border-t-blue-600 animate-spin",
+          "rounded-full border-[#E4E4E7] border-t-[#18181B] animate-spin",
           SIZE_CLASSES[size]
         )}
       />

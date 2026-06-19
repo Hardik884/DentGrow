@@ -1,7 +1,9 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { createClient } from "@supabase/supabase-js";
 import { createServerClient } from "@/lib/supabase/server";
+import { getTodayInTimezone } from "@/lib/utils";
 import type { ActionResult, QueueEntry, QueueEntryWithPatient } from "@/types";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -39,7 +41,78 @@ async function resolveSession(): Promise<{
   return { db, profile: (data as ResolvedProfile | null) ?? null };
 }
 
-const today = () => new Date().toISOString().split("T")[0];
+// =============================================================================
+// resolveClinicForPortal — for patient role, resolve clinic_id from portal link
+// =============================================================================
+
+async function resolveClinicForPortalUser(
+  db: DbClient,
+  userId: string
+): Promise<{ patientId: string; clinicId: string } | null> {
+  const { data } = await db
+    .from("patient_portal_links")
+    .select("patient_id, patients!inner(clinic_id)")
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (!data) return null;
+
+  const row = data as {
+    patient_id: string;
+    patients: { clinic_id: string } | { clinic_id: string }[] | null;
+  };
+
+  const clinicId = Array.isArray(row.patients)
+    ? row.patients[0]?.clinic_id
+    : row.patients?.clinic_id;
+
+  if (!clinicId) return null;
+  return { patientId: row.patient_id, clinicId };
+}
+
+// =============================================================================
+// getClinicTimezone — fetches clinic_settings.timezone or returns UTC
+// =============================================================================
+
+async function getClinicTimezone(
+  db: DbClient,
+  clinicId: string
+): Promise<string> {
+  if (!clinicId) return "UTC";
+  const { data } = await db
+    .from("clinic_settings")
+    .select("timezone")
+    .eq("clinic_id", clinicId)
+    .maybeSingle();
+  return (data as { timezone?: string } | null)?.timezone ?? "UTC";
+}
+
+/**
+ * todayForClinic — today's date (YYYY-MM-DD) in the clinic's local calendar.
+ * Use this for queue_date inserts/queries instead of new Date().toISOString().split('T')[0]
+ * which uses UTC and is wrong for clinics in non-UTC timezones.
+ */
+async function todayForClinic(
+  db: DbClient,
+  clinicId: string
+): Promise<string> {
+  const tz = await getClinicTimezone(db, clinicId);
+  return getTodayInTimezone(tz);
+}
+
+/**
+ * getServiceClient — service-role client used for queue position aggregation
+ * for portal patients. RLS limits patient role to seeing only their own queue
+ * row, so we cannot count "patients ahead" from the user session client.
+ *
+ * Reads only — never used to mutate data on behalf of a patient.
+ */
+function getServiceClient() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+}
 
 // =============================================================================
 // checkInPatient — creates queue_entries row
@@ -97,12 +170,15 @@ export async function checkInPatient(
       return { data: null, error: "Patient is already in the queue." };
     }
 
+    // Compute today's date in clinic timezone (NOT UTC).
+    const qDate = await todayForClinic(db, profile.clinic_id);
+
     // Get next position: MAX(position) + 1 for today's queue at this clinic
     const { data: posData } = await db
       .from("queue_entries")
       .select("position")
       .eq("clinic_id", profile.clinic_id)
-      .eq("queue_date", today())
+      .eq("queue_date", qDate)
       .order("position", { ascending: false })
       .limit(1)
       .maybeSingle();
@@ -119,7 +195,7 @@ export async function checkInPatient(
         position: nextPosition,
         status: "waiting",
         checked_in_at: new Date().toISOString(),
-        queue_date: today(),
+        queue_date: qDate,
       })
       .select()
       .single();
@@ -164,7 +240,7 @@ export async function advanceQueue(): Promise<ActionResult<null>> {
     }
 
     const cid = profile.clinic_id;
-    const qDate = today();
+    const qDate = await todayForClinic(db, cid);
 
     // Find current in_progress entry
     const { data: currentData } = await db
@@ -274,7 +350,7 @@ export async function skipPatient(
     }
 
     const cid = profile.clinic_id;
-    const qDate = today();
+    const qDate = await todayForClinic(db, cid);
 
     // Verify the entry exists and belongs to this clinic
     const { data: entryData } = await db
@@ -349,6 +425,10 @@ export async function skipPatient(
 
 // =============================================================================
 // getTodayQueue — full queue for today, scoped to clinic
+//
+// Staff (dentist + receptionist): full clinic queue for today.
+// Patient (portal): receives a single-entry array containing only their own
+//                   queue row (or empty if not checked in).
 // Joins patient name + appointment duration for wait-time calculation
 // =============================================================================
 
@@ -356,28 +436,75 @@ export async function getTodayQueue(): Promise<
   ActionResult<QueueEntryWithPatient[]>
 > {
   try {
-    const { db, profile } = await resolveSession();
-    if (!profile) return { data: null, error: "Unauthorized" };
+    const supabase = await createServerClient();
+    const db: DbClient = supabase;
 
-    if (profile.role === "patient") {
-      return { data: null, error: "Forbidden" };
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return { data: null, error: "Unauthorized" };
+
+    // Try to resolve as staff first
+    const { data: profileData } = await db
+      .from("profiles")
+      .select("id, clinic_id, role")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    const profile = profileData as ResolvedProfile | null;
+
+    // Staff path
+    if (profile && (profile.role === "dentist" || profile.role === "receptionist")) {
+      const qDate = await todayForClinic(db, profile.clinic_id);
+      const { data, error } = await db
+        .from("queue_entries")
+        .select(
+          "*, patient:patients(id, name), appointment:appointments(duration_minutes)"
+        )
+        .eq("clinic_id", profile.clinic_id)
+        .eq("queue_date", qDate)
+        .order("position", { ascending: true });
+
+      if (error) {
+        console.error("[getTodayQueue]", error);
+        return { data: null, error: "Failed to fetch queue." };
+      }
+
+      const entries = (data ?? []).map(
+        (row: {
+          appointment: { duration_minutes: number } | null;
+          [key: string]: unknown;
+        }) => ({
+          ...row,
+          duration_minutes: row.appointment?.duration_minutes ?? 30,
+        })
+      );
+
+      return { data: entries as QueueEntryWithPatient[], error: null };
     }
 
+    // Patient portal path: return only the patient's own entry (if any)
+    const link = await resolveClinicForPortalUser(db, user.id);
+    if (!link) {
+      // No portal link — return empty (silent, not an error)
+      return { data: [], error: null };
+    }
+
+    const qDate = await todayForClinic(db, link.clinicId);
     const { data, error } = await db
       .from("queue_entries")
       .select(
         "*, patient:patients(id, name), appointment:appointments(duration_minutes)"
       )
-      .eq("clinic_id", profile.clinic_id)
-      .eq("queue_date", today())
+      .eq("patient_id", link.patientId)
+      .eq("queue_date", qDate)
       .order("position", { ascending: true });
 
     if (error) {
-      console.error("[getTodayQueue]", error);
+      console.error("[getTodayQueue patient]", error);
       return { data: null, error: "Failed to fetch queue." };
     }
 
-    // Flatten the nested appointment.duration_minutes into the entry
     const entries = (data ?? []).map(
       (row: {
         appointment: { duration_minutes: number } | null;
@@ -397,7 +524,10 @@ export async function getTodayQueue(): Promise<
 
 // =============================================================================
 // getQueueStatus — patient portal: position, patients ahead, estimated wait
-// Uses appointment-specific durations for accurate wait time calculation
+//
+// Always uses a service-role read for the "patients ahead" aggregation so we
+// get an accurate count regardless of role-based RLS visibility. The lookup is
+// strictly scoped to the patient's clinic and is read-only.
 // =============================================================================
 
 export async function getQueueStatus(patientId: string): Promise<
@@ -409,110 +539,150 @@ export async function getQueueStatus(patientId: string): Promise<
     myStatus: string | null;
   }>
 > {
+  const empty = {
+    position: null,
+    patientsAhead: 0,
+    estimatedWaitMinutes: 0,
+    currentQueueNumber: null,
+    myStatus: null,
+  };
+
   try {
     if (!patientId) {
-      return {
-        data: { position: null, patientsAhead: 0, estimatedWaitMinutes: 0, currentQueueNumber: null, myStatus: null },
-        error: null,
-      };
+      return { data: empty, error: null };
     }
 
-    const { db, profile } = await resolveSession();
-    if (!profile) return { data: null, error: "Unauthorized" };
+    const supabase = await createServerClient();
+    const db: DbClient = supabase;
 
-    const qDate = today();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return { data: null, error: "Unauthorized" };
+
+    // Resolve the caller's role and clinic
+    const { data: profileData } = await db
+      .from("profiles")
+      .select("id, clinic_id, role")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    const profile = profileData as ResolvedProfile | null;
+
+    let clinicId: string | null = null;
+    let isPortalSelf = false;
+
+    if (profile && (profile.role === "dentist" || profile.role === "receptionist")) {
+      clinicId = profile.clinic_id;
+    } else {
+      // Portal path — verify the caller owns this patient_id
+      const link = await resolveClinicForPortalUser(db, user.id);
+      if (!link) return { data: empty, error: null };
+      if (link.patientId !== patientId) {
+        return { data: null, error: "Forbidden" };
+      }
+      clinicId = link.clinicId;
+      isPortalSelf = true;
+    }
+
+    if (!clinicId) return { data: empty, error: null };
+
+    // Use the service-role client for queue aggregation. RLS would otherwise
+    // hide other patients' rows from a portal user, breaking the count.
+    const service = getServiceClient();
+    const qDate = getTodayInTimezone(await getClinicTimezone(db, clinicId));
 
     // Find this patient's queue entry for today
-    const { data: myEntryData } = await db
+    const { data: myEntryData } = await service
       .from("queue_entries")
       .select("id, position, status")
+      .eq("clinic_id", clinicId)
       .eq("patient_id", patientId)
       .eq("queue_date", qDate)
       .maybeSingle();
 
     if (!myEntryData) {
+      // Not in the queue yet
+      const { data: currentData } = await service
+        .from("queue_entries")
+        .select("position")
+        .eq("clinic_id", clinicId)
+        .eq("queue_date", qDate)
+        .eq("status", "in_progress")
+        .maybeSingle();
+
       return {
         data: {
-          position: null,
-          patientsAhead: 0,
-          estimatedWaitMinutes: 0,
-          currentQueueNumber: null,
-          myStatus: null,
+          ...empty,
+          currentQueueNumber:
+            (currentData as { position: number } | null)?.position ?? null,
         },
         error: null,
       };
     }
 
-    const myEntry = myEntryData as { id: string; position: number; status: string };
+    const myEntry = myEntryData as {
+      id: string;
+      position: number;
+      status: string;
+    };
 
-    // Get all waiting entries ahead of this patient WITH appointment durations
-    const { data: aheadData } = await db
+    // Count waiting entries with lower position than the patient's
+    const { data: aheadEntries } = await service
       .from("queue_entries")
-      .select(
-        "id, position, appointment:appointments(duration_minutes)"
-      )
-      .eq("patient_id", patientId) // RLS: patient only sees their own, so this is effectively ignored
-      // Actually for the broader query we need staff-level access or a different approach.
-      // Since this is called from both portal (patient RLS) and potentially staff context,
-      // we scope by queue_date and status:
+      .select("id, position, appointments(duration_minutes)")
+      .eq("clinic_id", clinicId)
       .eq("queue_date", qDate)
       .eq("status", "waiting")
-      .lt("position", myEntry.position)
-      .order("position", { ascending: true });
+      .lt("position", myEntry.position);
 
-    // For portal users (patient role), RLS on queue_entries only lets them see their own row.
-    // We compute estimated wait from clinic_settings.average_appointment_duration as fallback.
-    // For staff querying on behalf of patient, use appointment durations.
+    const ahead = (aheadEntries ?? []) as Array<{
+      position: number;
+      appointments:
+        | { duration_minutes: number }
+        | { duration_minutes: number }[]
+        | null;
+    }>;
+
+    const patientsAhead = ahead.length;
+
+    // Compute estimated wait — sum of appointment durations for entries ahead.
+    // Fallback to clinic average if a specific duration is missing.
     let estimatedWaitMinutes = 0;
-    let patientsAhead = 0;
+    if (ahead.length > 0) {
+      estimatedWaitMinutes = ahead.reduce((sum, e) => {
+        const dur = Array.isArray(e.appointments)
+          ? e.appointments[0]?.duration_minutes
+          : e.appointments?.duration_minutes;
+        return sum + (dur ?? 30);
+      }, 0);
+    }
 
-    if (profile.role !== "patient") {
-      // Staff context — can see all entries
-      const aheadEntries = (aheadData ?? []) as {
-        position: number;
-        appointment: { duration_minutes: number } | null;
-      }[];
-      patientsAhead = aheadEntries.length;
-      estimatedWaitMinutes = aheadEntries.reduce(
-        (sum, e) => sum + (e.appointment?.duration_minutes ?? 30),
-        0
-      );
-    } else {
-      // Patient context — RLS limits visibility; use clinic average as fallback
-      // Fetch clinic_settings.average_appointment_duration
-      const { data: settingsData } = await db
+    if (estimatedWaitMinutes === 0 && patientsAhead > 0) {
+      const { data: settingsData } = await service
         .from("clinic_settings")
         .select("average_appointment_duration")
+        .eq("clinic_id", clinicId)
         .maybeSingle();
-
-      // For patients: fetch the count of waiting entries with lower position
-      // (we can at least get a count from RLS-limited data)
-      const avgDuration =
+      const avg =
         (settingsData as { average_appointment_duration?: number } | null)
           ?.average_appointment_duration ?? 30;
-
-      // Count entries ahead (limited by RLS, so we approximate)
-      const { count } = await db
-        .from("queue_entries")
-        .select("id", { count: "exact", head: true })
-        .eq("queue_date", qDate)
-        .eq("status", "waiting")
-        .lt("position", myEntry.position);
-
-      patientsAhead = count ?? 0;
-      estimatedWaitMinutes = patientsAhead * avgDuration;
+      estimatedWaitMinutes = patientsAhead * avg;
     }
 
     // Find current in_progress entry number
-    const { data: currentData } = await db
+    const { data: currentData } = await service
       .from("queue_entries")
       .select("position")
+      .eq("clinic_id", clinicId)
       .eq("queue_date", qDate)
       .eq("status", "in_progress")
       .maybeSingle();
 
     const currentQueueNumber =
       (currentData as { position: number } | null)?.position ?? null;
+
+    void isPortalSelf;
 
     return {
       data: {
@@ -552,8 +722,8 @@ export async function getQueueMetrics(): Promise<
       return { data: null, error: "Forbidden" };
     }
 
-    const qDate = today();
     const cid = profile.clinic_id;
+    const qDate = await todayForClinic(db, cid);
 
     const { data: entries } = await db
       .from("queue_entries")

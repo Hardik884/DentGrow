@@ -7,17 +7,22 @@ interface PatientAvatarProps {
 }
 
 const SIZE_CLASSES = {
-  sm: "w-8 h-8 text-xs",
-  md: "w-10 h-10 text-sm",
-  lg: "w-14 h-14 text-base",
+  sm: "w-7 h-7 text-xs",
+  md: "w-9 h-9 text-sm",
+  lg: "w-12 h-12 text-base",
 };
 
-/**
- * PatientAvatar
- *
- * Initials-based avatar for patients.
- * No photo upload in MVP — initials from name only.
- */
+// Neutral palette — no bright colors, consistent with the design system
+const PALETTES = [
+  "bg-[#F4F4F5] text-[#52525B]",
+  "bg-[#EFF6FF] text-[#2563EB]",
+  "bg-[#F0FDF4] text-[#16A34A]",
+  "bg-[#FEFCE8] text-[#A16207]",
+  "bg-[#FEF2F2] text-[#B91C1C]",
+  "bg-[#F5F3FF] text-[#6D28D9]",
+  "bg-[#FFF7ED] text-[#C2410C]",
+];
+
 export function PatientAvatar({ name, size = "md", className }: PatientAvatarProps) {
   const initials = name
     .split(" ")
@@ -25,20 +30,21 @@ export function PatientAvatar({ name, size = "md", className }: PatientAvatarPro
     .map((part) => part[0]?.toUpperCase() ?? "")
     .join("");
 
-  // Deterministic colour from name (hash → hue)
-  const hue = name
-    .split("")
-    .reduce((acc, char) => acc + char.charCodeAt(0), 0) % 360;
+  // Deterministic palette selection from name
+  const idx =
+    name.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0) % PALETTES.length;
+  const palette = PALETTES[idx]!;
 
   return (
     <div
       className={cn(
-        "rounded-full flex items-center justify-center font-medium text-white shrink-0",
+        "rounded-full flex items-center justify-center font-medium shrink-0",
         SIZE_CLASSES[size],
+        palette,
         className
       )}
-      style={{ backgroundColor: `hsl(${hue}, 50%, 45%)` }}
       aria-label={name}
+      role="img"
     >
       {initials}
     </div>

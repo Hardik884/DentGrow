@@ -4,42 +4,27 @@ interface MetricCardProps {
   label: string;
   value: string | number;
   sub?: string;
-  accent?: "default" | "green" | "red" | "blue" | "amber";
+  trend?: { value: string; positive: boolean };
+  /** @deprecated Use the neutral design instead — accent is ignored in the new design. */
+  accent?: string;
   className?: string;
 }
 
-const ACCENT_CLASSES: Record<string, string> = {
-  default: "bg-white border",
-  green:   "bg-green-50 border border-green-200",
-  red:     "bg-red-50 border border-red-200",
-  blue:    "bg-blue-50 border border-blue-200",
-  amber:   "bg-amber-50 border border-amber-200",
-};
-
-const VALUE_CLASSES: Record<string, string> = {
-  default: "text-gray-900",
-  green:   "text-green-700",
-  red:     "text-red-700",
-  blue:    "text-blue-700",
-  amber:   "text-amber-700",
-};
-
 /**
  * MetricCard — single KPI card for analytics dashboards.
- * Server component — no interactivity needed.
+ * Neutral, clean — no colored backgrounds.
  */
-export function MetricCard({
-  label,
-  value,
-  sub,
-  accent = "default",
-  className,
-}: MetricCardProps) {
+export function MetricCard({ label, value, sub, trend, className }: MetricCardProps) {
   return (
-    <div className={cn("rounded-lg p-4", ACCENT_CLASSES[accent], className)}>
-      <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">{label}</p>
-      <p className={cn("text-2xl font-bold mt-1", VALUE_CLASSES[accent])}>{value}</p>
-      {sub && <p className="text-xs text-gray-400 mt-0.5">{sub}</p>}
+    <div className={cn("bg-white border border-[#E4E4E7] rounded-xl p-5", className)}>
+      <p className="text-xs font-medium text-[#71717A] tracking-wide">{label}</p>
+      <p className="text-2xl font-semibold text-[#09090B] tracking-tight mt-2">{value}</p>
+      {sub && <p className="text-xs text-[#A1A1AA] mt-1">{sub}</p>}
+      {trend && (
+        <p className={cn("text-xs mt-1 font-medium", trend.positive ? "text-[#16A34A]" : "text-[#DC2626]")}>
+          {trend.positive ? "↑" : "↓"} {trend.value}
+        </p>
+      )}
     </div>
   );
 }

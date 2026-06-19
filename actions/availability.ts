@@ -201,7 +201,43 @@ export async function getAvailableSlots(
     const { db, profile } = await resolveSession();
     if (!profile) return { data: null, error: "Unauthorized" };
 
-    const dayOfWeek = new Date(date).getDay(); // 0=Sun…6=Sat
+    // Fetch clinic timezone first — needed for DOW calculation and past-slot filtering
+    const { data: settings } = await db
+      .from("clinic_settings")
+      .select("timezone")
+      .eq("clinic_id", profile.clinic_id)
+      .maybeSingle();
+
+    const timezone = (settings as { timezone?: string } | null)?.timezone ?? "UTC";
+
+    // ── Past-date rejection (server-side guard) ────────────────────────────
+    // Use clinic timezone to compute today's date so a clinic in UTC+5:30
+    // doesn't get yesterday's date when queried just after midnight UTC.
+    const todayInTz = new Intl.DateTimeFormat("en-CA", {
+      timeZone: timezone,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(new Date());
+
+    if (date < todayInTz) {
+      // Past date — return empty, no slots
+      return { data: [], error: null };
+    }
+
+    // ── Day-of-week: use timezone-aware calculation ────────────────────────
+    // new Date("YYYY-MM-DD").getDay() parses as UTC midnight and gives the
+    // WRONG dow for dates in timezones behind UTC (e.g. Americas).
+    // Appending T12:00:00 (local noon) avoids crossing midnight in any tz.
+    const noonLocal = new Date(`${date}T12:00:00`);
+    const dayStr = new Intl.DateTimeFormat("en-US", {
+      timeZone: timezone,
+      weekday: "short",
+    }).format(noonLocal);
+    const dowMap: Record<string, number> = {
+      Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6,
+    };
+    const dayOfWeek = dowMap[dayStr] ?? noonLocal.getDay();
 
     // Fetch active rules for this day
     const { data: rules, error: rulesErr } = await db
@@ -231,7 +267,12 @@ export async function getAvailableSlots(
 
     const dentistId = (dentistData as { id: string } | null)?.id;
 
-    // Fetch occupied appointments WITH their durations so we can check actual windows
+    // ── Occupied slot boundaries: use clinic-timezone UTC boundaries ───────
+    // Query appointments that fall within the clinic's local day boundaries
+    // (not naive UTC midnight-to-midnight, which would miss/include wrong appts).
+    const startBoundary = `${date}T00:00:00`;
+    const endBoundary = `${date}T23:59:59`;
+
     const { data: occupied } = dentistId
       ? await db
           .from("appointments")
@@ -239,19 +280,9 @@ export async function getAvailableSlots(
           .eq("dentist_id", dentistId)
           .is("deleted_at", null)
           .not("status", "in", '("cancelled","no_show")')
-          .gte("scheduled_at", `${date}T00:00:00`)
-          .lte("scheduled_at", `${date}T23:59:59`)
+          .gte("scheduled_at", startBoundary)
+          .lte("scheduled_at", endBoundary)
       : { data: [] };
-
-    // Fetch clinic timezone from settings (fallback to UTC)
-    const { data: settings } = await db
-      .from("clinic_settings")
-      .select("timezone")
-      .eq("clinic_id", profile.clinic_id)
-      .maybeSingle();
-
-    const timezone =
-      (settings as { timezone?: string } | null)?.timezone ?? "UTC";
 
     const slotRules: SlotRule[] = (
       rules as { start_time: string; end_time: string; slot_duration_minutes: number }[]
@@ -261,7 +292,6 @@ export async function getAvailableSlots(
       slotDurationMinutes: r.slot_duration_minutes,
     }));
 
-    // Pass both scheduled_at and duration_minutes for accurate overlap detection
     const occupiedSlots: OccupiedSlot[] = (
       (occupied ?? []) as { scheduled_at: string; duration_minutes: number }[]
     ).map((o) => ({
@@ -269,12 +299,29 @@ export async function getAvailableSlots(
       durationMinutes: o.duration_minutes ?? 30,
     }));
 
+    // ── Past-slot cutoff for today ─────────────────────────────────────────
+    // For today only: compute current time-of-day in clinic timezone and pass
+    // it as the cutoff so already-passed slots are excluded.
+    let nowCutoffMinutes: number | null = null;
+    if (date === todayInTz) {
+      const now = new Date();
+      const timeStr = new Intl.DateTimeFormat("en-GB", {
+        timeZone: timezone,
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: false,
+      }).format(now).slice(0, 5); // "HH:MM"
+      const [h, m] = timeStr.split(":").map(Number);
+      nowCutoffMinutes = (h ?? 0) * 60 + (m ?? 0);
+    }
+
     const slots = computeSlots(
       date,
       slotRules,
       occupiedSlots,
       timezone,
-      requestedDurationMinutes
+      requestedDurationMinutes,
+      nowCutoffMinutes
     );
 
     return { data: slots, error: null };

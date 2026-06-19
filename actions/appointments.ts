@@ -20,6 +20,7 @@ import {
   type AvailabilityRule as SlotRule,
   type OccupiedSlot,
 } from "@/lib/scheduling/slots";
+import { zonedDateToUTC } from "@/lib/utils";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type DbClient = any;
@@ -144,12 +145,31 @@ export async function createAppointment(
       return { data: null, error: "Patient not found." };
     }
 
+    // ── Validate slot against availability rules ───────────────────────────
+    const requestedDate = parsed.data.scheduled_at.split("T")[0];
+
+    // Fetch clinic timezone so slot validation uses the same zone as the UI
+    const { data: settingsData } = await db
+      .from("clinic_settings")
+      .select("timezone")
+      .eq("clinic_id", profile.clinic_id)
+      .maybeSingle();
+    const clinicTimezone = (settingsData as { timezone?: string } | null)?.timezone ?? "UTC";
+
+    // ── Convert local slot string to UTC now that we have the timezone ─────
+    // Slots from getAvailableSlots() are "YYYY-MM-DDTHH:MM:00" — wall-clock
+    // local time with no timezone offset. PostgreSQL's timestamptz column
+    // interprets a bare datetime string as UTC, which would cause a +5:30
+    // shift for Asia/Kolkata clinics. Convert here before any DB comparison.
+    const scheduledAtUtc = zonedDateToUTC(parsed.data.scheduled_at, clinicTimezone).toISOString();
+
     // ── Double-booking check (unique index: dentist_id + scheduled_at) ─────
+    // Compare against the UTC value that will actually be stored.
     const { data: existingSlot } = await db
       .from("appointments")
       .select("id")
       .eq("dentist_id", dentistId)
-      .eq("scheduled_at", parsed.data.scheduled_at)
+      .eq("scheduled_at", scheduledAtUtc)
       .is("deleted_at", null)
       .not("status", "in", '("cancelled","no_show")')
       .maybeSingle();
@@ -160,10 +180,30 @@ export async function createAppointment(
         error: "This time slot is already booked. Please choose another.",
       };
     }
+    // ── Past-date rejection (server-side guard) ────────────────────────────
+    // Compute today in the clinic's local timezone to avoid UTC midnight shift.
+    const todayInTz = new Intl.DateTimeFormat("en-CA", {
+      timeZone: clinicTimezone,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(new Date());
 
-    // ── Validate slot against availability rules ───────────────────────────
-    const requestedDate = parsed.data.scheduled_at.split("T")[0];
-    const requestedDow = new Date(requestedDate).getDay(); // 0=Sun…6=Sat
+    if (requestedDate < todayInTz) {
+      return { data: null, error: "Cannot create an appointment in the past." };
+    }
+
+    // ── DOW: use timezone-aware calculation ───────────────────────────────
+    // new Date("YYYY-MM-DD").getDay() is midnight UTC → wrong DOW for tz behind UTC.
+    const noonLocal = new Date(`${requestedDate}T12:00:00`);
+    const dowStr = new Intl.DateTimeFormat("en-US", {
+      timeZone: clinicTimezone,
+      weekday: "short",
+    }).format(noonLocal);
+    const dowMap: Record<string, number> = {
+      Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6,
+    };
+    const requestedDow = dowMap[dowStr] ?? noonLocal.getDay();
 
     const { data: rules } = await db
       .from("availability_rules")
@@ -201,7 +241,7 @@ export async function createAppointment(
     }));
 
     const requestedDuration = parsed.data.duration_minutes ?? 30;
-    const availableSlots = computeSlots(requestedDate, slotRules, occupiedSlots, "UTC", requestedDuration);
+    const availableSlots = computeSlots(requestedDate, slotRules, occupiedSlots, clinicTimezone, requestedDuration);
 
     // Normalise the requested slot to match the format returned by computeSlots
     const requestedSlotNorm = parsed.data.scheduled_at.slice(0, 16) + ":00"; // YYYY-MM-DDTHH:MM:00
@@ -216,6 +256,9 @@ export async function createAppointment(
       };
     }
 
+    // ── Convert local slot string to UTC before inserting ──────────────────
+    // (Already computed above as scheduledAtUtc — see UTC conversion note.)
+
     // ── Insert appointment ─────────────────────────────────────────────────
     const { data: appointment, error: insertErr } = await db
       .from("appointments")
@@ -223,7 +266,7 @@ export async function createAppointment(
         clinic_id: profile.clinic_id,
         patient_id: parsed.data.patient_id,
         dentist_id: dentistId,
-        scheduled_at: parsed.data.scheduled_at,
+        scheduled_at: scheduledAtUtc,
         duration_minutes: parsed.data.duration_minutes ?? 30,
         source: parsed.data.source,
         notes: parsed.data.notes ?? null,
@@ -244,7 +287,7 @@ export async function createAppointment(
       action: "created",
       old_value: null,
       new_value: {
-        scheduled_at: parsed.data.scheduled_at,
+        scheduled_at: scheduledAtUtc,
         status: "scheduled",
         source: parsed.data.source,
       },
@@ -278,9 +321,29 @@ export async function updateAppointmentStatus(
     const { db, profile } = await resolveSession();
     if (!profile) return { data: null, error: "Unauthorized" };
 
-    // Only dentist can advance status (receptionist can check-in via queue action)
-    if (profile.role !== "dentist") {
-      return { data: null, error: "Forbidden: only dentists can update appointment status." };
+    // Both staff roles can transition appointments. The role-allowed list
+    // restricts what each can do:
+    //   - dentist: full lifecycle including completing appointments.
+    //   - receptionist: scheduled → checked_in / cancelled / no_show only.
+    //                   Cannot mark in_progress or completed (those are
+    //                   driven by queue advancement).
+    if (profile.role !== "dentist" && profile.role !== "receptionist") {
+      return { data: null, error: "Forbidden" };
+    }
+
+    const RECEPTIONIST_ALLOWED_TARGETS: AppointmentStatus[] = [
+      "checked_in",
+      "cancelled",
+      "no_show",
+    ];
+    if (
+      profile.role === "receptionist" &&
+      !RECEPTIONIST_ALLOWED_TARGETS.includes(parsed.data.new_status as AppointmentStatus)
+    ) {
+      return {
+        data: null,
+        error: "Receptionists cannot set this status. Ask the dentist to advance the appointment.",
+      };
     }
 
     // Fetch current appointment
@@ -317,15 +380,6 @@ export async function updateAppointmentStatus(
 
     // ── On completed: update patient total_visits + last_visit ────────────
     if (newStatus === "completed") {
-      await db
-        .from("patients")
-        .update({
-          total_visits: currentAppt.patient_id, // placeholder — raw SQL below
-        })
-        .eq("id", currentAppt.patient_id);
-
-      // Use rpc or a direct SQL increment via Supabase
-      // We'll use the Supabase rpc pattern for atomic increment
       const { data: patientData } = await db
         .from("patients")
         .select("total_visits")
@@ -423,7 +477,42 @@ export async function rescheduleAppointment(
     }
 
     const newDate = parsed.data.new_scheduled_at.split("T")[0];
-    const newDow = new Date(newDate).getDay();
+
+    // Fetch clinic timezone for consistent slot validation
+    const { data: settingsData } = await db
+      .from("clinic_settings")
+      .select("timezone")
+      .eq("clinic_id", profile.clinic_id)
+      .maybeSingle();
+    const clinicTimezone = (settingsData as { timezone?: string } | null)?.timezone ?? "UTC";
+
+    // ── Convert local slot string to UTC ───────────────────────────────────
+    // Slots from getAvailableSlots() are wall-clock local strings with no
+    // offset. Convert to UTC before storing to prevent the +5:30 shift.
+    const newScheduledAtUtc = zonedDateToUTC(parsed.data.new_scheduled_at, clinicTimezone).toISOString();
+
+    // ── Past-date rejection (server-side guard) ────────────────────────────
+    const todayInTz = new Intl.DateTimeFormat("en-CA", {
+      timeZone: clinicTimezone,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(new Date());
+
+    if (newDate < todayInTz) {
+      return { data: null, error: "Cannot reschedule to a past date." };
+    }
+
+    // ── DOW: use timezone-aware calculation ───────────────────────────────
+    const noonLocal = new Date(`${newDate}T12:00:00`);
+    const dowStr = new Intl.DateTimeFormat("en-US", {
+      timeZone: clinicTimezone,
+      weekday: "short",
+    }).format(noonLocal);
+    const dowMap: Record<string, number> = {
+      Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6,
+    };
+    const newDow = dowMap[dowStr] ?? noonLocal.getDay();
 
     // Validate new slot availability
     const { data: rules } = await db
@@ -460,7 +549,7 @@ export async function rescheduleAppointment(
     }));
 
     const rescheduleDuration = currentAppt.duration_minutes ?? 30;
-    const available = computeSlots(newDate, slotRules, occupiedSlots, "UTC", rescheduleDuration);
+    const available = computeSlots(newDate, slotRules, occupiedSlots, clinicTimezone, rescheduleDuration);
     const isAvailable = available.some(
       (s) => s.slice(0, 16) === parsed.data.new_scheduled_at.slice(0, 16)
     );
@@ -477,7 +566,7 @@ export async function rescheduleAppointment(
     const { data: updated, error: updateErr } = await db
       .from("appointments")
       .update({
-        scheduled_at: parsed.data.new_scheduled_at,
+        scheduled_at: newScheduledAtUtc,
         updated_at: new Date().toISOString(),
       })
       .eq("id", parsed.data.appointment_id)
@@ -494,7 +583,7 @@ export async function rescheduleAppointment(
       appointment_id: parsed.data.appointment_id,
       action: "rescheduled",
       old_value: { scheduled_at: oldScheduledAt },
-      new_value: { scheduled_at: parsed.data.new_scheduled_at },
+      new_value: { scheduled_at: newScheduledAtUtc },
       performed_by: profile.id,
     });
 
@@ -582,15 +671,64 @@ export async function getAppointmentsToday(): Promise<
     const { db, profile } = await resolveSession();
     if (!profile) return { data: null, error: "Unauthorized" };
 
-    const today = new Date().toISOString().split("T")[0];
+    // Fetch clinic timezone so "today" is computed in the clinic's local calendar,
+    // not UTC midnight. A clinic in Asia/Kolkata (UTC+5:30) would otherwise miss
+    // appointments booked for 00:00–05:30 local time (which are yesterday UTC).
+    const { data: settings } = await db
+      .from("clinic_settings")
+      .select("timezone")
+      .eq("clinic_id", profile.clinic_id)
+      .maybeSingle();
+    const timezone = (settings as { timezone?: string } | null)?.timezone ?? "UTC";
+
+    // Compute today's date in the clinic timezone
+    const todayInTz = new Intl.DateTimeFormat("en-CA", {
+      timeZone: timezone,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(new Date()); // en-CA locale returns YYYY-MM-DD
+
+    // Build UTC boundaries for the clinic's local day:
+    // midnight local → UTC, and end-of-day local → UTC.
+    // We use a simple but correct approach: interpret the local date string
+    // as midnight in the clinic timezone.
+    const localMidnight = `${todayInTz}T00:00:00`;
+    const localEndOfDay = `${todayInTz}T23:59:59`;
+
+    // Get UTC offsets by asking Intl what UTC time the local midnight corresponds to.
+    // Strategy: create a Date for the local midnight as if it were UTC, then find
+    // the real UTC time by checking what Intl says that moment is in the clinic tz.
+    function localToUTC(localDatetime: string, tz: string): string {
+      // Use a two-pass method: assume UTC, check offset, adjust.
+      const assumed = new Date(localDatetime + "Z");
+      const displayed = new Intl.DateTimeFormat("en-CA", {
+        timeZone: tz,
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        hour12: false,
+      }).format(assumed);
+      // displayed = "YYYY-MM-DD, HH:MM:SS"
+      const cleaned = displayed.replace(", ", "T");
+      const displayedDate = new Date(cleaned + "Z");
+      const diff = assumed.getTime() - displayedDate.getTime();
+      return new Date(new Date(localDatetime + "Z").getTime() + diff).toISOString();
+    }
+
+    const startUtc = localToUTC(localMidnight, timezone);
+    const endUtc = localToUTC(localEndOfDay, timezone);
 
     const { data, error } = await db
       .from("appointments")
       .select("*, patient:patients(id, name, phone)")
       .eq("clinic_id", profile.clinic_id)
       .is("deleted_at", null)
-      .gte("scheduled_at", `${today}T00:00:00`)
-      .lte("scheduled_at", `${today}T23:59:59`)
+      .gte("scheduled_at", startUtc)
+      .lte("scheduled_at", endUtc)
       .order("scheduled_at", { ascending: true });
 
     if (error) {

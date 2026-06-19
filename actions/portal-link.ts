@@ -12,6 +12,24 @@ import {
 } from "@/types";
 
 /**
+ * isNextRedirectError — recognises errors thrown by Next.js redirect()/notFound().
+ *
+ * Next 15 no longer exports isRedirectError from next/navigation, but the
+ * thrown error still carries a `digest` string starting with "NEXT_REDIRECT".
+ * We catch and rethrow these so Next.js can perform the redirect.
+ */
+function isNextRedirectError(err: unknown): boolean {
+  return (
+    !!err &&
+    typeof err === "object" &&
+    "digest" in err &&
+    typeof (err as { digest: unknown }).digest === "string" &&
+    ((err as { digest: string }).digest.startsWith("NEXT_REDIRECT") ||
+      (err as { digest: string }).digest.startsWith("NEXT_NOT_FOUND"))
+  );
+}
+
+/**
  * Portal Link Server Actions
  *
  * Manages the optional link between a Supabase Auth account and a patient record.
@@ -124,10 +142,7 @@ export async function linkPortalAccount(
     return { data: null, error: null };
   } catch (err) {
     // next/navigation redirect throws — rethrow so Next.js handles it
-    if (
-      err instanceof Error &&
-      err.message === "NEXT_REDIRECT"
-    ) {
+    if (isNextRedirectError(err)) {
       throw err;
     }
     console.error("[linkPortalAccount] unexpected:", err);
@@ -280,34 +295,16 @@ export async function getPortalProfile(): Promise<
 // updatePortalProfile — patient can update allowed demographic fields only.
 // Clinical fields (notes) and system fields (total_visits, last_visit) are
 // never exposed or updatable from this action.
+//
+// Note: this file uses "use server" so only async functions may be exported.
+// The PORTAL_UPDATABLE_FIELDS constant and UpdatePortalProfileSchema/Input
+// type live in lib/portal-profile.ts so they can be imported by consumers.
 // =============================================================================
 
-export const PORTAL_UPDATABLE_FIELDS = [
-  "phone",
-  "address",
-  "emergency_contact_name",
-  "emergency_contact_phone",
-] as const;
-
-import { z } from "zod";
-
-const phoneRegex = /^[+]?[\d\s\-().]{7,15}$/;
-
-export const UpdatePortalProfileSchema = z.object({
-  phone: z
-    .string()
-    .regex(phoneRegex, "Invalid phone number format")
-    .optional()
-    .or(z.literal("")),
-  address: z.string().max(500).optional(),
-  emergency_contact_name: z.string().max(100).optional(),
-  emergency_contact_phone: z
-    .string()
-    .regex(phoneRegex, "Invalid emergency contact phone")
-    .optional()
-    .or(z.literal("")),
-});
-export type UpdatePortalProfileInput = z.infer<typeof UpdatePortalProfileSchema>;
+import {
+  UpdatePortalProfileSchema,
+  type UpdatePortalProfileInput,
+} from "@/lib/portal-profile";
 
 export async function updatePortalProfile(
   input: unknown

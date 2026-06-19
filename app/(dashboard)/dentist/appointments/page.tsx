@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { createServerClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/layouts/PageHeader";
 import { AppointmentStatusBadge } from "@/components/shared/AppointmentStatusBadge";
 import { getAppointments } from "@/actions/appointments";
-import { formatDateTime, APPOINTMENT_SOURCE_LABELS } from "@/lib/utils";
+import { formatDateTimeInTimezone, APPOINTMENT_SOURCE_LABELS } from "@/lib/utils";
 import type { AppointmentStatus } from "@/types";
 
 export const metadata: Metadata = {
@@ -41,6 +42,37 @@ export default async function DentistAppointmentsPage({ searchParams }: Props) {
   const page = Math.max(1, parseInt(params.page ?? "1", 10) || 1);
   const limit = 20;
 
+  // Fetch clinic timezone for correct date display
+  const supabase = await createServerClient();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const db: any = supabase;
+  const { data: { user } } = await supabase.auth.getUser();
+
+  let clinicTimezone = "UTC";
+  let today = new Date().toISOString().split("T")[0];
+  if (user) {
+    const { data: profile } = await db
+      .from("profiles")
+      .select("clinic_id")
+      .eq("id", user.id)
+      .single();
+    const clinicId = (profile as { clinic_id: string } | null)?.clinic_id;
+    if (clinicId) {
+      const { data: settings } = await db
+        .from("clinic_settings")
+        .select("timezone")
+        .eq("clinic_id", clinicId)
+        .maybeSingle();
+      clinicTimezone = (settings as { timezone?: string } | null)?.timezone ?? "UTC";
+      today = new Intl.DateTimeFormat("en-CA", {
+        timeZone: clinicTimezone,
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+      }).format(new Date());
+    }
+  }
+
   const result = await getAppointments({
     status: params.status as AppointmentStatus | undefined,
     dateFrom: params.dateFrom,
@@ -60,8 +92,6 @@ export default async function DentistAppointmentsPage({ searchParams }: Props) {
     sp.set("page", String(p));
     return `?${sp.toString()}`;
   }
-
-  const today = new Date().toISOString().split("T")[0];
 
   return (
     <div className="p-6 space-y-6">
@@ -172,7 +202,7 @@ export default async function DentistAppointmentsPage({ searchParams }: Props) {
                       </Link>
                     </td>
                     <td className="px-4 py-3 text-gray-600">
-                      {formatDateTime(appt.scheduled_at)}
+                      {formatDateTimeInTimezone(appt.scheduled_at, clinicTimezone)}
                     </td>
                     <td className="px-4 py-3 text-gray-600">
                       {appt.duration_minutes} min
@@ -228,3 +258,4 @@ export default async function DentistAppointmentsPage({ searchParams }: Props) {
     </div>
   );
 }
+

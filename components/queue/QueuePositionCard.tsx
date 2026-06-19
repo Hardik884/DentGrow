@@ -1,118 +1,132 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useQueue } from "@/hooks/useQueue";
+import { getQueueStatus } from "@/actions/queue";
 import type { QueueEntryWithPatient } from "@/types";
+
+interface QueueStatus {
+  position: number | null;
+  patientsAhead: number;
+  estimatedWaitMinutes: number;
+  currentQueueNumber: number | null;
+  myStatus: string | null;
+}
 
 interface QueuePositionCardProps {
   patientId?: string;
   initialQueue?: QueueEntryWithPatient[];
   clinicId?: string;
-  /** Fallback average duration if appointment-specific durations are unavailable */
   averageAppointmentDuration?: number;
+  initialStatus?: QueueStatus;
 }
 
-/**
- * QueuePositionCard
- *
- * Patient portal — live queue position display.
- *
- * Shows:
- * - Patient's queue number
- * - Patients ahead count
- * - Estimated wait time = SUM of duration_minutes for all patients ahead
- *   (falls back to patientsAhead × averageAppointmentDuration if durations unavailable)
- * - Which queue number is currently being seen
- *
- * Realtime: re-renders automatically via useQueue hook on any queue change.
- * RLS: patient only receives their own entry from Realtime; position count
- *      comes from the initialQueue passed from the server component.
- */
+const EMPTY_STATUS: QueueStatus = {
+  position: null,
+  patientsAhead: 0,
+  estimatedWaitMinutes: 0,
+  currentQueueNumber: null,
+  myStatus: null,
+};
+
 export function QueuePositionCard({
   patientId,
   initialQueue = [],
   clinicId = "",
   averageAppointmentDuration = 30,
+  initialStatus,
 }: QueuePositionCardProps) {
   const { queue } = useQueue({ clinicId, initialQueue });
+  const [status, setStatus] = useState<QueueStatus>(initialStatus ?? EMPTY_STATUS);
+
+  useEffect(() => {
+    if (!patientId) return;
+    let cancelled = false;
+    void (async () => {
+      const result = await getQueueStatus(patientId);
+      if (!cancelled && result.data) setStatus(result.data);
+    })();
+    return () => { cancelled = true; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [queue.length, queue.find((e) => e.patient_id === patientId)?.status, patientId]);
 
   const myEntry = queue.find((e) => e.patient_id === patientId);
-  const inProgressEntry = queue.find((e) => e.status === "in_progress");
 
-  if (!myEntry) {
+  if (!myEntry && status.position == null) {
     return (
-      <div className="bg-white border rounded-lg p-6 text-center space-y-2">
-        <p className="text-gray-500 text-sm">
-          You are not currently in the queue.
-        </p>
-        <p className="text-xs text-gray-400">
+      <div className="bg-white border border-[#E4E4E7] rounded-xl p-8 text-center space-y-2">
+        <div className="h-12 w-12 rounded-full bg-[#F4F4F5] flex items-center justify-center mx-auto mb-4">
+          <svg className="h-5 w-5 text-[#A1A1AA]" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden>
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0" />
+          </svg>
+        </div>
+        <p className="text-sm font-medium text-[#09090B]">Not in queue</p>
+        <p className="text-xs text-[#71717A]">
           Check in with the receptionist when you arrive.
         </p>
       </div>
     );
   }
 
-  const entriesAhead = queue.filter(
-    (e) => e.status === "waiting" && e.position < myEntry.position
-  );
+  const position = myEntry?.position ?? status.position ?? 0;
+  const myStatus = myEntry?.status ?? status.myStatus;
+  const isBeingSeen = myStatus === "in_progress";
 
-  const patientsAhead = entriesAhead.length;
+  let patientsAhead = status.patientsAhead;
+  let estimatedWait = status.estimatedWaitMinutes;
 
-  // Use appointment-specific durations for accurate wait time
-  const estimatedWait =
-    entriesAhead.length > 0
-      ? entriesAhead.reduce(
-          (sum, e) => sum + (e.duration_minutes ?? averageAppointmentDuration),
-          0
-        )
-      : patientsAhead * averageAppointmentDuration;
-
-  const isBeingSeen = myEntry.status === "in_progress";
+  if (patientsAhead === 0 && !isBeingSeen && status.position == null) {
+    const entriesAhead = myEntry
+      ? queue.filter((e) => e.status === "waiting" && e.position < myEntry.position)
+      : [];
+    patientsAhead = entriesAhead.length;
+    estimatedWait = entriesAhead.length > 0
+      ? entriesAhead.reduce((sum, e) => sum + (e.duration_minutes ?? averageAppointmentDuration), 0)
+      : 0;
+  }
 
   if (isBeingSeen) {
     return (
-      <div className="bg-green-50 border border-green-200 rounded-xl p-6 text-center space-y-2">
-        <p className="text-green-600 text-sm font-semibold uppercase tracking-wide">
-          It&apos;s Your Turn!
-        </p>
-        <p className="text-4xl font-bold text-green-700">#{myEntry.position}</p>
-        <p className="text-green-600 text-sm">Please proceed to the chair.</p>
+      <div className="bg-[#F0FDF4] border border-[#BBF7D0] rounded-xl p-8 text-center space-y-3">
+        <div className="h-12 w-12 rounded-full bg-[#16A34A] flex items-center justify-center mx-auto">
+          <svg className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden>
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+          </svg>
+        </div>
+        <p className="text-xs font-semibold text-[#16A34A] uppercase tracking-wider">It&apos;s Your Turn</p>
+        <p className="text-5xl font-semibold text-[#09090B] tabular-nums">#{position}</p>
+        <p className="text-sm text-[#71717A]">Please proceed to the dental chair.</p>
       </div>
     );
   }
 
   return (
-    <div className="bg-blue-50 border border-blue-200 rounded-xl p-6 text-center space-y-4">
-      <p className="text-blue-600 text-sm font-semibold uppercase tracking-wide">
-        Your Queue Number
-      </p>
-      <p className="text-5xl font-bold text-blue-700 tabular-nums">
-        #{myEntry.position}
-      </p>
-
-      <div className="grid grid-cols-3 gap-4 pt-2 border-t border-blue-200">
-        <div>
-          <p className="text-2xl font-bold text-blue-700">{patientsAhead}</p>
-          <p className="text-xs text-blue-500 mt-0.5">ahead of you</p>
-        </div>
-        <div>
-          <p className="text-2xl font-bold text-blue-700">
-            ~{estimatedWait}
-          </p>
-          <p className="text-xs text-blue-500 mt-0.5">min wait</p>
-        </div>
-        <div>
-          <p className="text-2xl font-bold text-blue-700">
-            {inProgressEntry ? `#${inProgressEntry.position}` : "—"}
-          </p>
-          <p className="text-xs text-blue-500 mt-0.5">now seeing</p>
-        </div>
+    <div className="bg-white border border-[#E4E4E7] rounded-xl overflow-hidden">
+      <div className="px-6 py-8 text-center space-y-3 border-b border-[#E4E4E7]">
+        <p className="text-xs font-semibold text-[#71717A] uppercase tracking-wider">Your Queue Number</p>
+        <p className="text-6xl font-semibold text-[#09090B] tabular-nums">#{position}</p>
+        {patientsAhead === 0 && (
+          <p className="text-sm font-medium text-[#16A34A]">You&apos;re next — please be ready!</p>
+        )}
       </div>
 
-      {patientsAhead === 0 && (
-        <p className="text-sm text-blue-600 font-medium">
-          You&apos;re next! Please be ready.
-        </p>
-      )}
+      <div className="grid grid-cols-3 divide-x divide-[#F4F4F5]">
+        <StatCell value={String(patientsAhead)} label="Ahead of you" />
+        <StatCell value={`~${estimatedWait}m`} label="Est. wait" />
+        <StatCell
+          value={status.currentQueueNumber !== null ? `#${status.currentQueueNumber}` : "—"}
+          label="Now seeing"
+        />
+      </div>
+    </div>
+  );
+}
+
+function StatCell({ value, label }: { value: string; label: string }) {
+  return (
+    <div className="px-4 py-4 text-center">
+      <p className="text-xl font-semibold text-[#09090B] tabular-nums">{value}</p>
+      <p className="text-xs text-[#71717A] mt-0.5">{label}</p>
     </div>
   );
 }

@@ -2,22 +2,19 @@ import type { Metadata } from "next";
 import { PageHeader } from "@/components/layouts/PageHeader";
 import { PatientListTable } from "@/components/shared/PatientListTable";
 import { getPatients } from "@/actions/patients";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Plus, Search, X } from "lucide-react";
+import Link from "next/link";
 
 export const metadata: Metadata = {
-  title: "Patients — DentGrow",
+  title: "Patients",
 };
 
 interface Props {
   searchParams: Promise<{ page?: string; search?: string }>;
 }
 
-/**
- * /dentist/patients
- *
- * Server Component — paginated patient list with search.
- * Full CRUD access for dentist role.
- * search and page are read from URL search params (Next.js 15 async searchParams).
- */
 export default async function DentistPatientsPage({ searchParams }: Props) {
   const { page: pageParam, search } = await searchParams;
 
@@ -28,42 +25,42 @@ export default async function DentistPatientsPage({ searchParams }: Props) {
   const { patients, total } = result.data ?? { patients: [], total: 0 };
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-6 max-w-screen-xl">
       <PageHeader
         title="Patients"
-        action={{ label: "+ New Patient", href: "/dentist/patients/new" }}
+        description={`${total} patient${total !== 1 ? "s" : ""} in total`}
+        action={{ label: "Add Patient", href: "/dentist/patients/new", icon: <Plus className="h-3.5 w-3.5" /> }}
       />
 
       {/* Search bar */}
-      <form method="GET" className="flex gap-2">
-        <input
-          type="search"
-          name="search"
-          defaultValue={search}
-          placeholder="Search by name or phone…"
-          className="flex-1 max-w-sm px-4 py-2 text-sm border border-gray-300 rounded-md
-                     shadow-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
-          aria-label="Search patients"
-        />
-        <button
-          type="submit"
-          className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 transition-colors"
-        >
+      <form method="GET" className="flex gap-2 mb-5">
+        <div className="relative flex-1 max-w-sm">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#A1A1AA]" aria-hidden />
+          <Input
+            type="search"
+            name="search"
+            defaultValue={search}
+            placeholder="Search by name or phone…"
+            aria-label="Search patients"
+            className="pl-9"
+          />
+        </div>
+        <Button type="submit" variant="secondary" size="sm">
+          <Search className="h-3.5 w-3.5" aria-hidden />
           Search
-        </button>
+        </Button>
         {search && (
-          <a
-            href="/dentist/patients"
-            className="px-4 py-2 text-sm font-medium text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
-          >
-            Clear
-          </a>
+          <Button variant="ghost" size="sm" asChild>
+            <Link href="/dentist/patients">
+              <X className="h-3.5 w-3.5" aria-hidden />
+              Clear
+            </Link>
+          </Button>
         )}
       </form>
 
-      {/* Results count */}
       {search && (
-        <p className="text-sm text-gray-500">
+        <p className="text-xs text-[#71717A] mb-3">
           {total} result{total !== 1 ? "s" : ""} for &ldquo;{search}&rdquo;
         </p>
       )}
@@ -79,3 +76,4 @@ export default async function DentistPatientsPage({ searchParams }: Props) {
     </div>
   );
 }
+

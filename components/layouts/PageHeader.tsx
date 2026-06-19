@@ -1,44 +1,60 @@
 import Link from "next/link";
+import { ChevronLeft } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 interface PageAction {
   label: string;
   href: string;
+  icon?: React.ReactNode;
 }
 
 interface PageHeaderProps {
   title: string;
+  description?: string;
   backHref?: string;
   action?: PageAction;
+  /** Slot for custom right-side content (filters, extra buttons, etc.) */
+  children?: React.ReactNode;
 }
 
 /**
  * PageHeader
  *
- * Standard page title bar with optional back link and primary action button.
- * Used at the top of every dashboard page.
+ * Consistent page title area across all dashboard pages.
+ * Supports: back navigation, description text, primary action button, and
+ * an optional children slot for custom right-side elements (date pickers, etc.)
  */
-export function PageHeader({ title, backHref, action }: PageHeaderProps) {
+export function PageHeader({ title, description, backHref, action, children }: PageHeaderProps) {
   return (
-    <div className="flex items-center justify-between">
-      <div className="flex items-center gap-3">
+    <div className="flex items-start justify-between gap-4 mb-6">
+      <div className="space-y-0.5">
         {backHref && (
           <Link
             href={backHref}
-            className="text-gray-500 hover:text-gray-700 text-sm"
+            className="inline-flex items-center gap-1 text-xs text-[#71717A] hover:text-[#09090B] transition-colors mb-1"
           >
-            ← Back
+            <ChevronLeft className="h-3 w-3" aria-hidden />
+            Back
           </Link>
         )}
-        <h1 className="text-2xl font-semibold text-gray-900">{title}</h1>
+        <h1 className="text-xl font-semibold text-[#09090B] tracking-tight">{title}</h1>
+        {description && (
+          <p className="text-sm text-[#71717A]">{description}</p>
+        )}
       </div>
 
-      {action && (
-        <Link
-          href={action.href}
-          className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 transition-colors"
-        >
-          {action.label}
-        </Link>
+      {(action || children) && (
+        <div className="flex items-center gap-2 shrink-0 mt-0.5">
+          {children}
+          {action && (
+            <Button asChild size="sm">
+              <Link href={action.href}>
+                {action.icon && <span aria-hidden>{action.icon}</span>}
+                {action.label}
+              </Link>
+            </Button>
+          )}
+        </div>
       )}
     </div>
   );

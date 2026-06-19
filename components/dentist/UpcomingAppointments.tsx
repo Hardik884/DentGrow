@@ -1,11 +1,10 @@
 import { getAppointmentsToday } from "@/actions/appointments";
 import { AppointmentCard } from "@/components/shared/AppointmentCard";
+import { EmptyState } from "@/components/ui/empty-state";
+import { CalendarDays } from "lucide-react";
 
 /**
- * UpcomingAppointments
- *
- * Server Component — list of upcoming appointments for the dentist dashboard.
- * Shows appointments with status = 'scheduled' or 'checked_in', ordered by time.
+ * UpcomingAppointments — upcoming appointments for the dentist dashboard.
  */
 export async function UpcomingAppointments() {
   const result = await getAppointmentsToday();
@@ -14,13 +13,24 @@ export async function UpcomingAppointments() {
   );
 
   return (
-    <div className="bg-white border rounded-lg p-4">
-      <h2 className="font-semibold text-gray-900 mb-3">Upcoming Appointments</h2>
+    <div className="bg-white border border-[#E4E4E7] rounded-xl overflow-hidden">
+      <div className="px-5 py-4 border-b border-[#E4E4E7] flex items-center justify-between">
+        <div>
+          <h2 className="text-sm font-semibold text-[#09090B]">Upcoming Today</h2>
+          <p className="text-xs text-[#71717A] mt-0.5">
+            {appointments.length} appointment{appointments.length !== 1 ? "s" : ""} remaining
+          </p>
+        </div>
+      </div>
 
       {appointments.length === 0 ? (
-        <p className="text-sm text-gray-500">No upcoming appointments today.</p>
+        <EmptyState
+          icon={<CalendarDays className="h-5 w-5" aria-hidden />}
+          title="All clear"
+          description="No upcoming appointments for today."
+        />
       ) : (
-        <div className="space-y-3">
+        <div className="divide-y divide-[#F4F4F5]">
           {appointments.map((appointment) => (
             <AppointmentCard key={appointment.id} appointment={appointment} />
           ))}

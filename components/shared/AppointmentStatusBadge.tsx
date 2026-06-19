@@ -7,29 +7,20 @@ interface AppointmentStatusBadgeProps {
 }
 
 const VARIANT_CLASSES = {
-  default: "bg-gray-100 text-gray-700",
-  success: "bg-green-100 text-green-700",
-  warning: "bg-amber-100 text-amber-700",
-  info:    "bg-blue-100 text-blue-700",
-  error:   "bg-red-100 text-red-700",
+  default: "bg-[#F4F4F5] text-[#71717A]",
+  success: "bg-[#F0FDF4] text-[#16A34A] border border-[#BBF7D0]",
+  warning: "bg-[#FEFCE8] text-[#CA8A04] border border-[#FEF08A]",
+  info:    "bg-[#EFF6FF] text-[#2563EB] border border-[#BFDBFE]",
+  error:   "bg-[#FEF2F2] text-[#DC2626] border border-[#FECACA]",
 } as const;
 
-/**
- * AppointmentStatusBadge
- *
- * Color-coded status badge for all appointment_status enum values.
- * Used across all role views wherever an appointment status is displayed.
- */
-export function AppointmentStatusBadge({
-  status,
-  className,
-}: AppointmentStatusBadgeProps) {
+export function AppointmentStatusBadge({ status, className }: AppointmentStatusBadgeProps) {
   const variant = getAppointmentStatusVariant(status);
 
   return (
     <span
       className={cn(
-        "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium",
+        "inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium leading-none",
         VARIANT_CLASSES[variant],
         className
       )}

@@ -26,3 +26,4 @@ export default async function NewPaymentPage({ searchParams }: Props) {
     </div>
   );
 }
+

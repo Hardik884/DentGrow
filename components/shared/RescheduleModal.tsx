@@ -5,32 +5,30 @@ import { useRouter } from "next/navigation";
 import { rescheduleAppointment } from "@/actions/appointments";
 import { getAvailableSlots } from "@/actions/availability";
 import { cn, formatTime } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Field } from "@/components/ui/field";
+import { LoadingSpinner } from "./LoadingSpinner";
+import { Clock } from "lucide-react";
 
 interface RescheduleModalProps {
   appointmentId: string;
   currentScheduledAt: string;
   onClose: () => void;
+  clinicToday?: string;
 }
 
-/**
- * RescheduleModal
- *
- * Date + slot picker modal for rescheduling an appointment.
- * Calls: actions/appointments.ts → rescheduleAppointment()
- * Writes appointment_history row (action: 'rescheduled') server-side.
- */
 export function RescheduleModal({
   appointmentId,
   currentScheduledAt,
   onClose,
+  clinicToday,
 }: RescheduleModalProps) {
   const router = useRouter();
-  const today = new Date().toISOString().split("T")[0];
-  const currentDate = currentScheduledAt.split("T")[0];
+  const today = clinicToday ?? new Date().toISOString().split("T")[0];
+  const currentDate = currentScheduledAt.slice(0, 10);
 
-  const [selectedDate, setSelectedDate] = useState(
-    currentDate >= today ? currentDate : today
-  );
+  const [selectedDate, setSelectedDate] = useState(currentDate >= today ? currentDate : today);
   const [slots, setSlots] = useState<string[]>([]);
   const [slotsLoading, setSlotsLoading] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
@@ -53,66 +51,53 @@ export function RescheduleModal({
     if (!selectedSlot) return;
     setIsSubmitting(true);
     setError(null);
-
-    const result = await rescheduleAppointment({
-      appointment_id: appointmentId,
-      new_scheduled_at: selectedSlot,
-    });
-
-    if (result.error) {
-      setError(result.error);
-      setIsSubmitting(false);
-      return;
-    }
-
+    const result = await rescheduleAppointment({ appointment_id: appointmentId, new_scheduled_at: selectedSlot });
+    if (result.error) { setError(result.error); setIsSubmitting(false); return; }
     router.refresh();
     onClose();
   }
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
       role="dialog"
       aria-modal="true"
       aria-labelledby="reschedule-title"
     >
-      <div
-        className="absolute inset-0 bg-black/50"
-        onClick={onClose}
-        aria-hidden="true"
-      />
-      <div className="relative bg-white rounded-lg shadow-xl w-full max-w-md mx-4 p-6 space-y-4">
-        <h2 id="reschedule-title" className="text-lg font-semibold text-gray-900">
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px]" onClick={onClose} aria-hidden />
+      <div className="relative bg-white rounded-xl border border-[#E4E4E7] shadow-2xl w-full max-w-md p-6 space-y-5 animate-fade-in-up">
+        <h2 id="reschedule-title" className="text-base font-semibold text-[#09090B]">
           Reschedule Appointment
         </h2>
 
         {error && (
-          <div className="px-4 py-3 bg-red-50 border border-red-200 text-sm text-red-700 rounded-md" role="alert">
+          <div className="rounded-lg bg-[#FEF2F2] border border-[#FECACA] px-4 py-3 text-xs text-[#DC2626]" role="alert">
             {error}
           </div>
         )}
 
-      {/* Date picker */}
-      <div className="space-y-1">
-        <label htmlFor="reschedule-date" className="text-sm font-medium text-gray-700">New Date</label>
-        <input
-          id="reschedule-date"
-          type="date"
-          value={selectedDate}
-          min={today}
-          onChange={(e) => setSelectedDate(e.target.value)}
-          className="px-3 py-2 text-sm border border-gray-300 rounded-md outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 w-full"
-        />
-      </div>
+        <Field label="New Date" htmlFor="reschedule-date">
+          <Input
+            id="reschedule-date"
+            type="date"
+            value={selectedDate}
+            min={today}
+            onChange={(e) => setSelectedDate(e.target.value)}
+          />
+        </Field>
 
-        {/* Slots */}
         {slotsLoading ? (
-          <p className="text-sm text-gray-500">Loading slots…</p>
+          <div className="flex items-center gap-2 text-sm text-[#71717A]">
+            <LoadingSpinner size="sm" />
+            Loading slots…
+          </div>
         ) : slots.length === 0 ? (
-          <p className="text-sm text-gray-500">No slots available on this date.</p>
+          <div className="rounded-lg bg-[#FAFAFA] border border-[#E4E4E7] p-4 text-center">
+            <p className="text-sm text-[#71717A]">No slots available on this date.</p>
+          </div>
         ) : (
           <div className="space-y-2">
-            <p className="text-sm font-medium text-gray-700">Select Time</p>
+            <p className="text-sm font-medium text-[#09090B]">Select Time</p>
             <div className="grid grid-cols-3 gap-2 max-h-44 overflow-y-auto">
               {slots.map((slot) => {
                 const timePart = slot.split("T")[1]?.slice(0, 5) ?? "";
@@ -122,12 +107,13 @@ export function RescheduleModal({
                     type="button"
                     onClick={() => setSelectedSlot(slot)}
                     className={cn(
-                      "py-2 text-sm rounded-md border transition-colors",
+                      "flex items-center justify-center gap-1 py-2 text-xs rounded-lg border transition-all",
                       selectedSlot === slot
-                        ? "border-blue-600 bg-blue-600 text-white font-semibold"
-                        : "border-gray-200 text-gray-700 hover:border-blue-300 hover:bg-blue-50"
+                        ? "border-[#18181B] bg-[#18181B] text-white font-medium"
+                        : "border-[#E4E4E7] text-[#09090B] hover:border-[#D4D4D8] hover:bg-[#FAFAFA]"
                     )}
                   >
+                    <Clock className="h-3 w-3 opacity-60" aria-hidden />
                     {formatTime(`${timePart}:00`)}
                   </button>
                 );
@@ -136,23 +122,18 @@ export function RescheduleModal({
           </div>
         )}
 
-        <div className="flex justify-end gap-3 pt-2">
-          <button
-            type="button"
-            onClick={onClose}
-            disabled={isSubmitting}
-            className="px-4 py-2 text-sm font-medium text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50"
-          >
+        <div className="flex justify-end gap-2 pt-1">
+          <Button variant="outline" size="sm" onClick={onClose} disabled={isSubmitting}>
             Cancel
-          </button>
-          <button
-            type="button"
+          </Button>
+          <Button
+            size="sm"
             onClick={handleConfirm}
             disabled={!selectedSlot || isSubmitting}
-            className="px-4 py-2 text-sm font-semibold text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50"
+            isLoading={isSubmitting}
           >
             {isSubmitting ? "Rescheduling…" : "Confirm"}
-          </button>
+          </Button>
         </div>
       </div>
     </div>

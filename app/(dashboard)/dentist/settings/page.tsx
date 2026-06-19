@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { PageHeader } from "@/components/layouts/PageHeader";
+import { ClinicSettingsForm } from "@/components/dentist/ClinicSettingsForm";
+import { getClinicSettings } from "@/actions/clinic-settings";
 
 export const metadata: Metadata = {
   title: "Clinic Settings — DentGrow",
@@ -12,13 +14,16 @@ export const metadata: Metadata = {
  * Submits to actions/clinic-settings.ts → updateClinicSettings()
  */
 export default async function ClinicSettingsPage() {
+  const { data: settings } = await getClinicSettings();
+
   return (
     <div className="p-6 space-y-6">
       <PageHeader
         title="Clinic Settings"
         action={{ label: "Availability Rules", href: "/dentist/settings/availability" }}
       />
-      {/* TODO: ClinicSettingsForm (react-hook-form + UpdateClinicSettingsSchema) */}
+      <ClinicSettingsForm initialSettings={settings} />
     </div>
   );
 }
+

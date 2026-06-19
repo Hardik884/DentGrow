@@ -7,3 +7,4 @@ import { redirect } from "next/navigation";
 export default function AppointmentAnalyticsPage() {
   redirect("/dentist/analytics");
 }
+

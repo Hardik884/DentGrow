@@ -2,55 +2,81 @@
 
 import { useQueue } from "@/hooks/useQueue";
 import { PatientAvatar } from "@/components/shared/PatientAvatar";
+import { Separator } from "@/components/ui/separator";
+import { ArrowRight } from "lucide-react";
+import Link from "next/link";
 import type { QueueEntryWithPatient } from "@/types";
 
 interface QueueWidgetProps {
   initialQueue?: QueueEntryWithPatient[];
   clinicId?: string;
+  /** Role-prefixed href for "View all" link */
+  queueHref?: string;
 }
 
-/**
- * QueueWidget
- *
- * Compact queue widget for staff dashboards.
- * Shows: current patient (in_progress) + next patient (first waiting).
- * Realtime via useQueue hook.
- */
-export function QueueWidget({ initialQueue = [], clinicId = "" }: QueueWidgetProps) {
+export function QueueWidget({ initialQueue = [], clinicId = "", queueHref }: QueueWidgetProps) {
   const { queue } = useQueue({ clinicId, initialQueue });
 
   const current = queue.find((e) => e.status === "in_progress");
   const next = queue.filter((e) => e.status === "waiting")[0];
+  const waitingCount = queue.filter((e) => e.status === "waiting").length;
 
   return (
-    <div className="bg-white border rounded-lg p-4 space-y-3">
-      <h2 className="font-semibold text-gray-900 text-sm">Live Queue</h2>
+    <div className="bg-white border border-[#E4E4E7] rounded-xl overflow-hidden">
+      <div className="px-5 py-3.5 border-b border-[#E4E4E7] flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <div className="h-2 w-2 rounded-full bg-[#16A34A] animate-pulse" />
+          <h2 className="text-sm font-semibold text-[#09090B]">Live Queue</h2>
+        </div>
+        {waitingCount > 0 && (
+          <span className="text-xs text-[#71717A]">{waitingCount} waiting</span>
+        )}
+      </div>
 
-      <div className="space-y-2">
-        <div>
-          <p className="text-xs text-gray-400 uppercase tracking-wide">Now</p>
+      <div className="px-5 py-4 space-y-4">
+        {/* Now seeing */}
+        <div className="space-y-1.5">
+          <p className="text-xs font-medium text-[#71717A] uppercase tracking-wider">Now Seeing</p>
           {current ? (
-            <div className="flex items-center gap-2 mt-1">
+            <div className="flex items-center gap-2.5">
               <PatientAvatar name={current.patient.name} size="sm" />
-              <span className="text-sm font-medium">{current.patient.name}</span>
+              <div>
+                <p className="text-sm font-medium text-[#09090B]">{current.patient.name}</p>
+                <p className="text-xs text-[#71717A]">{current.duration_minutes ?? 30} min appt</p>
+              </div>
             </div>
           ) : (
-            <p className="text-sm text-gray-400 mt-1">—</p>
+            <p className="text-sm text-[#A1A1AA]">No one being seen</p>
           )}
         </div>
 
-        <div>
-          <p className="text-xs text-gray-400 uppercase tracking-wide">Next</p>
+        <Separator />
+
+        {/* Next up */}
+        <div className="space-y-1.5">
+          <p className="text-xs font-medium text-[#71717A] uppercase tracking-wider">Up Next</p>
           {next ? (
-            <div className="flex items-center gap-2 mt-1">
+            <div className="flex items-center gap-2.5">
               <PatientAvatar name={next.patient.name} size="sm" />
-              <span className="text-sm text-gray-600">{next.patient.name}</span>
+              <p className="text-sm text-[#71717A]">{next.patient.name}</p>
             </div>
           ) : (
-            <p className="text-sm text-gray-400 mt-1">—</p>
+            <p className="text-sm text-[#A1A1AA]">Queue is empty</p>
           )}
         </div>
       </div>
+
+      {queueHref && (
+        <div className="px-5 py-3 border-t border-[#F4F4F5]">
+          <Link
+            href={queueHref}
+            className="flex items-center justify-between text-xs font-medium text-[#71717A] hover:text-[#09090B] transition-colors"
+          >
+            View full queue
+            <ArrowRight className="h-3.5 w-3.5" aria-hidden />
+          </Link>
+        </div>
+      )}
     </div>
   );
 }

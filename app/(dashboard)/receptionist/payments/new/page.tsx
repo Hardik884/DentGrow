@@ -27,3 +27,4 @@ export default async function ReceptionistNewPaymentPage({ searchParams }: Props
     </div>
   );
 }
+

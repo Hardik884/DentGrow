@@ -63,14 +63,27 @@ export default async function AnalyticsDashboardPage({
 
   const clinicId = profileData.clinic_id as string;
 
+  // Resolve clinic timezone for accurate "today" boundaries in analytics
+  const { data: settingsData } = await db
+    .from("clinic_settings")
+    .select("timezone")
+    .eq("clinic_id", clinicId)
+    .maybeSingle();
+  const clinicTimezone = (settingsData as { timezone?: string } | null)?.timezone ?? "UTC";
+
   // Resolve date range
   const params = await searchParams;
-  const today = new Date().toISOString().split("T")[0];
+  const today = new Intl.DateTimeFormat("en-CA", {
+    timeZone: clinicTimezone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
   const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
     .toISOString().split("T")[0];
   const dateFrom = params.from ?? thirtyDaysAgo;
   const dateTo = params.to ?? today;
-  const filter = { clinicId, dateFrom, dateTo };
+  const filter = { clinicId, dateFrom, dateTo, timezone: clinicTimezone };
 
   // Fetch all data in parallel
   const [
@@ -100,7 +113,7 @@ export default async function AnalyticsDashboardPage({
 
       {/* ── APPOINTMENTS ─────────────────────────────────────────────── */}
       <section>
-        <h2 className="text-base font-semibold text-gray-700 mb-3">Appointments</h2>
+        <h2 className="text-sm font-semibold text-[#09090B] mb-3 uppercase tracking-wider text-[#71717A]">Appointments</h2>
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
           <MetricCard label="Total" value={summary.totalAppointments} />
           <MetricCard label="Today" value={summary.appointmentsToday} accent="blue" />
@@ -121,7 +134,7 @@ export default async function AnalyticsDashboardPage({
 
       {/* ── PATIENTS ─────────────────────────────────────────────────── */}
       <section>
-        <h2 className="text-base font-semibold text-gray-700 mb-3">Patients</h2>
+        <h2 className="text-xs font-semibold text-[#71717A] uppercase tracking-wider mb-3">Patients</h2>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <MetricCard label="Total Patients" value={summary.totalPatients} />
           <MetricCard label="New This Month" value={summary.newPatientsThisMonth} accent="blue" />
@@ -141,7 +154,7 @@ export default async function AnalyticsDashboardPage({
 
       {/* ── REVENUE ──────────────────────────────────────────────────── */}
       <section>
-        <h2 className="text-base font-semibold text-gray-700 mb-3">Revenue</h2>
+        <h2 className="text-xs font-semibold text-[#71717A] uppercase tracking-wider mb-3">Revenue</h2>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <MetricCard
             label="Total Revenue"
@@ -197,7 +210,7 @@ export default async function AnalyticsDashboardPage({
 
       {/* ── SOURCE ANALYTICS ────────────────────────────────────────── */}
       <section>
-        <h2 className="text-base font-semibold text-gray-700 mb-3">Acquisition Sources</h2>
+        <h2 className="text-xs font-semibold text-[#71717A] uppercase tracking-wider mb-3">Acquisition Sources</h2>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <ChartCard title="Appointment Sources">
             <AcquisitionSourceChart data={sourceAnalytics.breakdown} />
@@ -210,7 +223,7 @@ export default async function AnalyticsDashboardPage({
 
       {/* ── TREATMENTS ──────────────────────────────────────────────── */}
       <section>
-        <h2 className="text-base font-semibold text-gray-700 mb-3">Treatments</h2>
+        <h2 className="text-xs font-semibold text-[#71717A] uppercase tracking-wider mb-3">Treatments</h2>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <ChartCard title="Most Common Treatments">
             <TreatmentBreakdownChart data={treatmentAnalytics.byType} />
@@ -230,7 +243,7 @@ export default async function AnalyticsDashboardPage({
 
       {/* ── FOLLOW-UPS ──────────────────────────────────────────────── */}
       <section>
-        <h2 className="text-base font-semibold text-gray-700 mb-3">Follow-Ups</h2>
+        <h2 className="text-xs font-semibold text-[#71717A] uppercase tracking-wider mb-3">Follow-Ups</h2>
         <div className="grid grid-cols-3 gap-3 mb-4">
           <MetricCard label="Pending" value={summary.pendingFollowUps} accent="amber" />
           <MetricCard label="Completed" value={summary.completedFollowUps} accent="green" />
@@ -250,7 +263,7 @@ export default async function AnalyticsDashboardPage({
 
       {/* ── QUEUE ───────────────────────────────────────────────────── */}
       <section>
-        <h2 className="text-base font-semibold text-gray-700 mb-3">Queue</h2>
+        <h2 className="text-xs font-semibold text-[#71717A] uppercase tracking-wider mb-3">Queue</h2>
         <div className="grid grid-cols-3 gap-3">
           <MetricCard
             label="Avg Wait Time"
@@ -263,10 +276,11 @@ export default async function AnalyticsDashboardPage({
 
       {/* ── INSIGHTS ────────────────────────────────────────────────── */}
       <section>
-        <h2 className="text-base font-semibold text-gray-700 mb-3">Insights</h2>
+        <h2 className="text-xs font-semibold text-[#71717A] uppercase tracking-wider mb-3">Insights</h2>
         <AnalyticsInsightsPanel insights={insights} />
       </section>
 
     </div>
   );
 }
+

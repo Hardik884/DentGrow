@@ -6,7 +6,10 @@ import { useQueue } from "@/hooks/useQueue";
 import { advanceQueue } from "@/actions/queue";
 import { QueueEntry } from "./QueueEntry";
 import { LoadingSpinner } from "@/components/shared/LoadingSpinner";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Button } from "@/components/ui/button";
 import { formatTimeAgo } from "@/lib/utils";
+import { ListOrdered, CheckCircle2, Clock, Users } from "lucide-react";
 import type { QueueEntryWithPatient } from "@/types";
 
 interface QueueMetrics {
@@ -24,25 +27,7 @@ interface QueueBoardProps {
   metrics?: QueueMetrics;
 }
 
-/**
- * QueueBoard
- *
- * Full queue display for staff (dentist + receptionist).
- * Receives initial server-fetched data; subscribes to Realtime via useQueue.
- *
- * Sections:
- * - Metrics strip (total, waiting, completed, avg wait)
- * - Currently seeing card (in_progress) + Advance Queue button
- * - Waiting queue list with Call Next + Skip per entry
- * - Completed queue list
- *
- * Wait time estimates use appointment-specific durations, not clinic average.
- */
-export function QueueBoard({
-  initialQueue,
-  clinicId = "",
-  metrics,
-}: QueueBoardProps) {
+export function QueueBoard({ initialQueue, clinicId = "", metrics }: QueueBoardProps) {
   const router = useRouter();
   const { queue, isLoading, error } = useQueue({ clinicId, initialQueue });
   const [isPending, startTransition] = useTransition();
@@ -63,114 +48,104 @@ export function QueueBoard({
 
   if (error) {
     return (
-      <div className="border rounded-lg p-4 bg-red-50 text-red-600 text-sm">
+      <div className="border border-[#FECACA] rounded-xl p-4 bg-[#FEF2F2] text-sm text-[#DC2626]">
         {error}
       </div>
     );
   }
 
   return (
-    <div className="space-y-5">
-      {/* ── Metrics strip ──────────────────────────────────────── */}
+    <div className="space-y-4">
+      {/* ── Metrics strip ──────────────────────────────────── */}
       {metrics && (
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          <MetricCard label="Total Today" value={metrics.totalToday} />
-          <MetricCard
-            label="Waiting Now"
-            value={metrics.waitingNow}
-            highlight={metrics.waitingNow > 0}
-          />
-          <MetricCard label="Completed" value={metrics.completedToday} />
-          <MetricCard
-            label="Avg Wait"
-            value={`${metrics.avgWaitMinutes} min`}
-          />
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <MetricTile label="Total Today" value={metrics.totalToday} icon={<Users className="h-3.5 w-3.5" aria-hidden />} />
+          <MetricTile label="Waiting" value={metrics.waitingNow} icon={<Clock className="h-3.5 w-3.5" aria-hidden />} highlight={metrics.waitingNow > 0} />
+          <MetricTile label="Completed" value={metrics.completedToday} icon={<CheckCircle2 className="h-3.5 w-3.5" aria-hidden />} />
+          <MetricTile label="Avg Wait" value={`${metrics.avgWaitMinutes}m`} icon={<Clock className="h-3.5 w-3.5" aria-hidden />} />
         </div>
       )}
 
-      {/* ── Status bar ──────────────────────────────────────────── */}
-      <div className="flex items-center justify-between text-sm text-gray-500">
+      {/* ── Status bar ─────────────────────────────────────── */}
+      <div className="flex items-center justify-between text-xs text-[#71717A]">
         <span>
           {waiting.length} waiting · {completed.length} completed today
         </span>
         {isLoading && <LoadingSpinner size="sm" />}
       </div>
 
-      {/* ── Currently Seeing ────────────────────────────────────── */}
+      {/* ── Currently Seeing ──────────────────────────────── */}
       {inProgress ? (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-3">
+        <div className="bg-[#FAFAFA] border border-[#E4E4E7] rounded-xl p-4 space-y-3">
           <div className="flex items-center justify-between">
-            <p className="text-xs font-semibold text-blue-600 uppercase tracking-wide">
-              Currently Seeing
-            </p>
-            <span className="text-xs text-blue-400">
-              {inProgress.duration_minutes ?? 30} min appointment
+            <div className="flex items-center gap-2">
+              <div className="h-2 w-2 rounded-full bg-[#16A34A] animate-pulse" />
+              <p className="text-xs font-semibold text-[#09090B] uppercase tracking-wider">
+                Currently Seeing
+              </p>
+            </div>
+            <span className="text-xs text-[#71717A]">
+              {inProgress.duration_minutes ?? 30} min appt
             </span>
           </div>
           <QueueEntry entry={inProgress} showActions={false} />
-          <button
-            type="button"
-            onClick={handleAdvance}
-            disabled={isPending}
-            className="px-4 py-2 text-sm font-semibold bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 transition-colors"
-          >
-            {isPending ? "Advancing…" : "Mark Done & Call Next"}
-          </button>
-          {advanceError && (
-            <p className="text-xs text-red-600" role="alert">
-              {advanceError}
-            </p>
-          )}
+          <div className="pt-1">
+            <Button
+              onClick={handleAdvance}
+              disabled={isPending}
+              isLoading={isPending}
+              size="sm"
+            >
+              Mark Done & Call Next
+            </Button>
+            {advanceError && (
+              <p className="text-xs text-[#DC2626] mt-2" role="alert">{advanceError}</p>
+            )}
+          </div>
         </div>
       ) : waiting.length > 0 ? (
-        <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 space-y-3">
-          <p className="text-sm text-gray-600">
-            No one is currently being seen.
-          </p>
-          <button
-            type="button"
+        <div className="bg-[#FAFAFA] border border-[#E4E4E7] rounded-xl p-4 space-y-3">
+          <p className="text-sm text-[#71717A]">No one is currently being seen.</p>
+          <Button
             onClick={handleAdvance}
             disabled={isPending}
-            className="px-4 py-2 text-sm font-semibold bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 transition-colors"
+            isLoading={isPending}
+            size="sm"
           >
-            {isPending ? "Calling…" : "Call First Patient"}
-          </button>
+            Call First Patient
+          </Button>
           {advanceError && (
-            <p className="text-xs text-red-600" role="alert">
-              {advanceError}
-            </p>
+            <p className="text-xs text-[#DC2626]" role="alert">{advanceError}</p>
           )}
         </div>
       ) : null}
 
-      {/* ── Waiting Queue ─────────────────────────────────────────── */}
-      <div className="bg-white border rounded-lg overflow-hidden">
-        <div className="px-4 py-3 border-b bg-gray-50">
-          <h2 className="font-semibold text-gray-900 text-sm">
-            Waiting ({waiting.length})
+      {/* ── Waiting Queue ──────────────────────────────────── */}
+      <div className="bg-white border border-[#E4E4E7] rounded-xl overflow-hidden">
+        <div className="px-5 py-3.5 border-b border-[#E4E4E7] flex items-center gap-2">
+          <ListOrdered className="h-4 w-4 text-[#71717A]" aria-hidden />
+          <h2 className="text-sm font-semibold text-[#09090B]">
+            Waiting <span className="text-[#71717A] font-normal">({waiting.length})</span>
           </h2>
         </div>
 
         {waiting.length === 0 ? (
-          <div className="p-6 text-sm text-gray-500 text-center">
-            No patients waiting.
-          </div>
+          <EmptyState
+            title="Queue is empty"
+            description="No patients are currently waiting."
+          />
         ) : (
-          <div className="divide-y">
+          <div className="divide-y divide-[#F4F4F5]">
             {waiting.map((entry, idx) => {
-              // Estimated wait = sum of durations for entries before this one
               const waitBefore = waiting
                 .slice(0, idx)
                 .reduce((sum, e) => sum + (e.duration_minutes ?? 30), 0);
 
               return (
-                <div key={entry.id} className="p-4 space-y-1">
-                  <QueueEntry
-                    entry={entry}
-                    showActions={!inProgress}
-                  />
+                <div key={entry.id} className="px-5 py-3.5">
+                  <QueueEntry entry={entry} showActions={!inProgress} />
                   {waitBefore > 0 && (
-                    <p className="text-xs text-gray-400 pl-11">
+                    <p className="text-xs text-[#A1A1AA] mt-1.5 pl-10">
                       Est. wait: ~{waitBefore} min
                     </p>
                   )}
@@ -181,38 +156,30 @@ export function QueueBoard({
         )}
       </div>
 
-      {/* ── Completed Today ───────────────────────────────────────── */}
+      {/* ── Completed Today ─────────────────────────────────── */}
       {completed.length > 0 && (
-        <div className="bg-white border rounded-lg overflow-hidden">
-          <div className="px-4 py-3 border-b bg-gray-50">
-            <h2 className="font-semibold text-gray-900 text-sm">
-              Completed Today ({completed.length})
+        <div className="bg-white border border-[#E4E4E7] rounded-xl overflow-hidden">
+          <div className="px-5 py-3.5 border-b border-[#E4E4E7] flex items-center gap-2">
+            <CheckCircle2 className="h-4 w-4 text-[#71717A]" aria-hidden />
+            <h2 className="text-sm font-semibold text-[#09090B]">
+              Completed <span className="text-[#71717A] font-normal">({completed.length})</span>
             </h2>
           </div>
-          <div className="divide-y">
+          <div className="divide-y divide-[#F4F4F5]">
             {completed.map((entry) => (
-              <div
-                key={entry.id}
-                className="px-4 py-3 flex items-center justify-between text-sm"
-              >
-                <div className="flex items-center gap-3">
-                  <span className="text-gray-300 w-8 text-center tabular-nums font-bold">
-                    {entry.position}
-                  </span>
-                  <div>
-                    <p className="font-medium text-gray-700">
-                      {entry.patient.name}
-                    </p>
-                    <p className="text-xs text-gray-400">
-                      {entry.called_at
-                        ? `Seen ${formatTimeAgo(entry.called_at)}`
-                        : "Completed"}
-                    </p>
-                  </div>
+              <div key={entry.id} className="px-5 py-3 flex items-center gap-3">
+                <div className="w-7 h-7 rounded-full bg-[#F0FDF4] flex items-center justify-center shrink-0">
+                  <CheckCircle2 className="h-3.5 w-3.5 text-[#16A34A]" aria-hidden />
                 </div>
-                <span className="text-xs text-green-600 font-medium">
-                  ✓ Done
-                </span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-[#71717A] truncate">
+                    {entry.patient.name}
+                  </p>
+                  <p className="text-xs text-[#A1A1AA]">
+                    {entry.called_at ? `Seen ${formatTimeAgo(entry.called_at)}` : "Completed"}
+                  </p>
+                </div>
+                <span className="text-xs text-[#16A34A] font-medium">Done</span>
               </div>
             ))}
           </div>
@@ -222,31 +189,26 @@ export function QueueBoard({
   );
 }
 
-// ── Sub-component ──────────────────────────────────────────────────────────────
+// ── Sub-component ────────────────────────────────────────────────────────────
 
-function MetricCard({
+function MetricTile({
   label,
   value,
+  icon,
   highlight = false,
 }: {
   label: string;
   value: string | number;
+  icon: React.ReactNode;
   highlight?: boolean;
 }) {
   return (
-    <div
-      className={`rounded-lg border p-4 ${
-        highlight ? "bg-amber-50 border-amber-200" : "bg-white"
-      }`}
-    >
-      <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">
-        {label}
-      </p>
-      <p
-        className={`text-2xl font-bold mt-1 ${
-          highlight ? "text-amber-700" : "text-gray-900"
-        }`}
-      >
+    <div className="bg-white border border-[#E4E4E7] rounded-xl p-4 space-y-2">
+      <div className="flex items-center justify-between">
+        <p className="text-xs font-medium text-[#71717A]">{label}</p>
+        <div className={`text-${highlight ? "[#CA8A04]" : "[#A1A1AA]"}`}>{icon}</div>
+      </div>
+      <p className={`text-xl font-semibold tracking-tight ${highlight ? "text-[#CA8A04]" : "text-[#09090B]"}`}>
         {value}
       </p>
     </div>

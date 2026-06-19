@@ -377,19 +377,10 @@ comment on index idx_queue_clinic_date_status is
 -- =============================================================================
 
 alter table clinic_settings
-  add column if not exists timezone text not null default 'UTC';
-
--- Constraint: reject strings that are not valid IANA timezone names.
--- pg_timezone_names is a built-in catalog view.
-alter table clinic_settings
-  add constraint chk_valid_timezone
-    check (timezone in (select name from pg_timezone_names));
+  add column if not exists timezone text not null default 'Asia/Kolkata';
 
 comment on column clinic_settings.timezone is
-  'IANA timezone name (e.g. ''Asia/Kolkata'', ''America/New_York''). '
-  'Used for all local-time calculations: slot boundaries, queue date, reminder scheduling. '
-  'Default UTC — must be updated during clinic onboarding.';
-
+  'IANA timezone name (e.g. Asia/Kolkata, America/New_York). Used for slot boundaries, queue calculations and reminder scheduling.';
 -- Update create_patient_appointment() to use clinic timezone for DOW calculation.
 -- (Full replacement — only the DOW extraction line changes.)
 create or replace function create_patient_appointment(

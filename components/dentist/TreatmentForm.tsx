@@ -14,29 +14,22 @@ import {
 } from "@/types";
 import { createTreatment, getTreatment, updateTreatment } from "@/actions/treatments";
 import { TREATMENT_STATUS_LABELS } from "@/lib/utils";
+import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@/components/ui/button";
+import { Field } from "@/components/ui/field";
+import { SkeletonCard } from "@/components/ui/skeleton";
+import { Lock, Eye } from "lucide-react";
 
 interface TreatmentFormProps {
-  /** undefined = new treatment */
   treatmentId?: string;
   appointmentId?: string;
   patientId?: string;
-  /** Called after successful save */
   onSuccess?: (treatment: Treatment) => void;
 }
 
-/**
- * TreatmentForm
- *
- * Create + edit treatment form — dentist role only.
- * Shows both internal_notes and patient_visible_notes.
- * Uses react-hook-form + Zod (CreateTreatmentSchema / UpdateTreatmentSchema).
- */
-export function TreatmentForm({
-  treatmentId,
-  appointmentId,
-  patientId,
-  onSuccess,
-}: TreatmentFormProps) {
+export function TreatmentForm({ treatmentId, appointmentId, patientId, onSuccess }: TreatmentFormProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [serverError, setServerError] = useState<string | null>(null);
@@ -64,7 +57,6 @@ export function TreatmentForm({
     },
   });
 
-  // Load existing treatment data for edit mode
   useEffect(() => {
     if (!treatmentId) return;
     getTreatment(treatmentId).then((result) => {
@@ -100,7 +92,6 @@ export function TreatmentForm({
         if (onSuccess) {
           onSuccess(result.data);
         } else {
-          // Navigate back to patient treatments or treatments list
           const target = patientId
             ? `/dentist/patients/${patientId}/treatments`
             : "/dentist/treatments";
@@ -111,151 +102,123 @@ export function TreatmentForm({
     });
   }
 
-  if (loading) {
-    return (
-      <div className="bg-white border rounded-lg p-6">
-        <div className="animate-pulse space-y-4">
-          <div className="h-4 bg-gray-200 rounded w-1/3" />
-          <div className="h-10 bg-gray-200 rounded" />
-          <div className="h-10 bg-gray-200 rounded" />
-        </div>
-      </div>
-    );
-  }
+  if (loading) return <SkeletonCard className="h-64" />;
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-      <div className="bg-white border rounded-lg p-6 space-y-5">
-        <h2 className="font-semibold text-gray-900">
-          {isEdit ? "Edit Treatment" : "New Treatment"}
-        </h2>
+    <form onSubmit={handleSubmit(onSubmit)}>
+      {serverError && (
+        <div className="mb-4 rounded-lg bg-[#FEF2F2] border border-[#FECACA] px-4 py-3 text-xs text-[#DC2626]">
+          {serverError}
+        </div>
+      )}
 
-        {/* Hidden fields for new treatment */}
-        {!isEdit && (
-          <>
-            <input type="hidden" {...register("appointment_id" as keyof CreateTreatmentInput)} />
-            <input type="hidden" {...register("patient_id" as keyof CreateTreatmentInput)} />
-          </>
-        )}
+      <div className="bg-white border border-[#E4E4E7] rounded-xl overflow-hidden divide-y divide-[#F4F4F5]">
+        <div className="px-6 py-5 space-y-4">
+          <h2 className="text-sm font-semibold text-[#09090B]">
+            {isEdit ? "Edit Treatment" : "New Treatment"}
+          </h2>
 
-        {/* Treatment Type */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Treatment Type <span className="text-red-500">*</span>
-          </label>
-          <input
-            type="text"
-            {...register("treatment_type")}
-            placeholder="e.g. Root Canal, Cleaning, Extraction"
-            className="w-full px-3 py-2 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-          {errors.treatment_type && (
-            <p className="mt-1 text-xs text-red-600">{errors.treatment_type.message}</p>
+          {!isEdit && (
+            <>
+              <input type="hidden" {...register("appointment_id" as keyof CreateTreatmentInput)} />
+              <input type="hidden" {...register("patient_id" as keyof CreateTreatmentInput)} />
+            </>
           )}
-        </div>
 
-        {/* Status + Cost row */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Status <span className="text-red-500">*</span>
-            </label>
-            <select
-              {...register("status")}
-              className="w-full px-3 py-2 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              {Object.values(TreatmentStatus).map((s) => (
-                <option key={s} value={s}>
-                  {TREATMENT_STATUS_LABELS[s]}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Cost (₹) <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="number"
-              min={0}
-              step="0.01"
-              {...register("cost", { valueAsNumber: true })}
-              placeholder="0.00"
-              className="w-full px-3 py-2 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          <Field label="Treatment Type" htmlFor="treatment-type" required error={(errors as Record<string, {message?: string}>).treatment_type?.message}>
+            <Input
+              id="treatment-type"
+              type="text"
+              {...register("treatment_type")}
+              placeholder="e.g. Root Canal, Cleaning, Extraction"
+              hasError={!!(errors as Record<string, unknown>).treatment_type}
             />
-            {errors.cost && (
-              <p className="mt-1 text-xs text-red-600">{errors.cost.message}</p>
-            )}
+          </Field>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Field label="Status" htmlFor="status" required>
+              <Select id="status" {...register("status")}>
+                {Object.values(TreatmentStatus).map((s) => (
+                  <option key={s} value={s}>{TREATMENT_STATUS_LABELS[s]}</option>
+                ))}
+              </Select>
+            </Field>
+
+            <Field label="Cost (₹)" htmlFor="cost" required error={(errors as Record<string, {message?: string}>).cost?.message}>
+              <Input
+                id="cost"
+                type="number"
+                min={0}
+                step="0.01"
+                {...register("cost", { valueAsNumber: true })}
+                placeholder="0.00"
+                hasError={!!(errors as Record<string, unknown>).cost}
+              />
+            </Field>
           </div>
+
+          <Field label="Performed At" htmlFor="performed-at" hint="Date and time of treatment">
+            <Input
+              id="performed-at"
+              type="datetime-local"
+              {...register("performed_at")}
+            />
+          </Field>
         </div>
 
-        {/* Performed At */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Performed At
-          </label>
-          <input
-            type="datetime-local"
-            {...register("performed_at")}
-            className="w-full px-3 py-2 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
+        {/* Notes */}
+        <div className="px-6 py-5 space-y-4">
+          <div>
+            <h3 className="text-sm font-semibold text-[#09090B]">Notes</h3>
+          </div>
+
+          <Field
+            label="Internal Notes"
+            htmlFor="internal-notes"
+            hint="Dentist only — never shown to the patient"
+          >
+            <div className="space-y-1.5">
+              <div className="flex items-center gap-1.5 text-xs text-[#71717A]">
+                <Lock className="h-3 w-3" aria-hidden />
+                <span>Dentist-only</span>
+              </div>
+              <Textarea
+                id="internal-notes"
+                {...register("internal_notes")}
+                rows={4}
+                placeholder="Clinical observations, dentist-only details…"
+              />
+            </div>
+          </Field>
+
+          <Field
+            label="Patient-Visible Notes"
+            htmlFor="patient-notes"
+            hint="Visible to the patient in their portal"
+          >
+            <div className="space-y-1.5">
+              <div className="flex items-center gap-1.5 text-xs text-[#16A34A]">
+                <Eye className="h-3 w-3" aria-hidden />
+                <span>Patient can see this</span>
+              </div>
+              <Textarea
+                id="patient-notes"
+                {...register("patient_visible_notes")}
+                rows={3}
+                placeholder="e.g. Filling completed on upper left molar…"
+              />
+            </div>
+          </Field>
         </div>
 
-        {/* Internal Notes — dentist only */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Internal Notes
-            <span className="ml-2 text-xs font-normal text-gray-400">
-              (dentist only — not visible to patient)
-            </span>
-          </label>
-          <textarea
-            {...register("internal_notes")}
-            rows={4}
-            placeholder="Clinical observations, dentist-only details..."
-            className="w-full px-3 py-2 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-y"
-          />
+        <div className="px-6 py-4 bg-[#FAFAFA] flex items-center justify-end gap-3">
+          <Button variant="outline" size="sm" type="button" onClick={() => router.back()}>
+            Cancel
+          </Button>
+          <Button type="submit" size="sm" isLoading={isPending}>
+            {isPending ? "Saving…" : isEdit ? "Save Changes" : "Create Treatment"}
+          </Button>
         </div>
-
-        {/* Patient-Visible Notes */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Patient-Visible Notes
-            <span className="ml-2 text-xs font-normal text-gray-400">
-              (visible in patient portal)
-            </span>
-          </label>
-          <textarea
-            {...register("patient_visible_notes")}
-            rows={3}
-            placeholder="e.g. Filling completed on upper left molar..."
-            className="w-full px-3 py-2 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-y"
-          />
-        </div>
-
-        {serverError && (
-          <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-md px-3 py-2">
-            {serverError}
-          </p>
-        )}
-      </div>
-
-      <div className="flex items-center gap-3">
-        <button
-          type="submit"
-          disabled={isPending}
-          className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-        >
-          {isPending ? "Saving..." : isEdit ? "Save Changes" : "Create Treatment"}
-        </button>
-        <button
-          type="button"
-          onClick={() => router.back()}
-          className="px-4 py-2 text-sm font-medium border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
-        >
-          Cancel
-        </button>
       </div>
     </form>
   );

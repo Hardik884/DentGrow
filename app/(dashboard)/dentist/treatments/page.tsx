@@ -127,3 +127,4 @@ export default async function DentistTreatmentsPage({ searchParams }: Props) {
     </div>
   );
 }
+

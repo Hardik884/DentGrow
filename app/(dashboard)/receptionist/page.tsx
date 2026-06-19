@@ -4,40 +4,61 @@ import { TodayAppointmentList } from "@/components/receptionist/TodayAppointment
 import { QueueWidget } from "@/components/queue/QueueWidget";
 import { PendingPaymentsList } from "@/components/receptionist/PendingPaymentsList";
 import { PatientSearchBar } from "@/components/receptionist/PatientSearchBar";
+import { getTodayQueue } from "@/actions/queue";
+import { createServerClient } from "@/lib/supabase/server";
+import { Plus } from "lucide-react";
 
 export const metadata: Metadata = {
-  title: "Dashboard — DentGrow",
+  title: "Dashboard",
 };
 
-/**
- * /receptionist
- * Receptionist dashboard — operational front-desk view.
- *
- * Displays:
- * - Prominent patient search bar
- * - Today's appointment list with status badges
- * - Live queue widget
- * - Patients with pending payments
- */
 export default async function ReceptionistDashboardPage() {
+  const supabase = await createServerClient();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const db: any = supabase;
+  const { data: { user } } = await supabase.auth.getUser();
+
+  let clinicId = "";
+  if (user) {
+    const { data: profile } = await db
+      .from("profiles")
+      .select("clinic_id")
+      .eq("id", user.id)
+      .single();
+    clinicId = (profile as { clinic_id: string } | null)?.clinic_id ?? "";
+  }
+
+  const queueResult = await getTodayQueue();
+  const initialQueue = queueResult.data ?? [];
+
   return (
-    <div className="p-6 space-y-6">
-      <PageHeader title="Dashboard" />
+    <div className="p-6 max-w-screen-xl">
+      <PageHeader
+        title="Dashboard"
+        description="Front-desk overview for today"
+        action={{ label: "New Appointment", href: "/receptionist/appointments/new", icon: <Plus className="h-3.5 w-3.5" /> }}
+      />
 
-      {/* Prominent patient search — primary tool for receptionists */}
-      <PatientSearchBar />
+      {/* Patient Search — prominent for receptionist workflow */}
+      <div className="mb-4">
+        <PatientSearchBar />
+      </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 space-y-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div className="lg:col-span-2 space-y-4">
           <TodayAppointmentList />
           <PendingPaymentsList />
         </div>
 
         <div>
-          {/* Live queue widget */}
-          <QueueWidget />
+          <QueueWidget
+            initialQueue={initialQueue}
+            clinicId={clinicId}
+            queueHref="/receptionist/queue"
+          />
         </div>
       </div>
     </div>
   );
 }
+

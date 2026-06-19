@@ -7,7 +7,8 @@ import { AppointmentHistoryTimeline } from "@/components/shared/AppointmentHisto
 import { AppointmentStatusBadge } from "@/components/shared/AppointmentStatusBadge";
 import { AppointmentTreatmentsSection } from "@/components/dentist/AppointmentTreatmentsSection";
 import { getAppointment } from "@/actions/appointments";
-import { formatDateTime, APPOINTMENT_SOURCE_LABELS } from "@/lib/utils";
+import { createServerClient } from "@/lib/supabase/server";
+import { formatDateTimeInTimezone, APPOINTMENT_SOURCE_LABELS } from "@/lib/utils";
 import type { AppointmentStatus } from "@/types";
 
 export const metadata: Metadata = {
@@ -38,6 +39,37 @@ export default async function DentistAppointmentDetailPage({ params }: Props) {
 
   const appt = result.data;
 
+  // Fetch clinic timezone for correct date/time display and for RescheduleModal
+  const supabase = await createServerClient();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const db: any = supabase;
+  const { data: { user } } = await supabase.auth.getUser();
+
+  let clinicTimezone = "UTC";
+  let clinicToday: string | undefined;
+  if (user) {
+    const { data: profile } = await db
+      .from("profiles")
+      .select("clinic_id")
+      .eq("id", user.id)
+      .single();
+    const clinicId = (profile as { clinic_id: string } | null)?.clinic_id;
+    if (clinicId) {
+      const { data: settings } = await db
+        .from("clinic_settings")
+        .select("timezone")
+        .eq("clinic_id", clinicId)
+        .maybeSingle();
+      clinicTimezone = (settings as { timezone?: string } | null)?.timezone ?? "UTC";
+      clinicToday = new Intl.DateTimeFormat("en-CA", {
+        timeZone: clinicTimezone,
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+      }).format(new Date());
+    }
+  }
+
   return (
     <div className="p-6 space-y-6 max-w-3xl">
       <PageHeader title="Appointment" backHref="/dentist/appointments" />
@@ -60,7 +92,7 @@ export default async function DentistAppointmentDetailPage({ params }: Props) {
         </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-4 border-t">
-          <Detail label="Date &amp; Time" value={formatDateTime(appt.scheduled_at)} />
+          <Detail label="Date & Time" value={formatDateTimeInTimezone(appt.scheduled_at, clinicTimezone)} />
           <Detail label="Duration" value={`${appt.duration_minutes} min`} />
           <Detail
             label="Source"
@@ -84,6 +116,7 @@ export default async function DentistAppointmentDetailPage({ params }: Props) {
         appointmentId={appt.id}
         currentStatus={appt.status as AppointmentStatus}
         currentScheduledAt={appt.scheduled_at}
+        clinicToday={clinicToday}
       />
 
       {/* ── Treatments for this appointment ─────────────────── */}
@@ -93,7 +126,7 @@ export default async function DentistAppointmentDetailPage({ params }: Props) {
       />
 
       {/* ── Audit history timeline ───────────────────────────── */}
-      <AppointmentHistoryTimeline history={appt.history} />
+      <AppointmentHistoryTimeline history={appt.history} timezone={clinicTimezone} />
     </div>
   );
 }
@@ -101,10 +134,9 @@ export default async function DentistAppointmentDetailPage({ params }: Props) {
 function Detail({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <p
-        className="text-xs font-medium text-gray-500 uppercase tracking-wide"
-        dangerouslySetInnerHTML={{ __html: label }}
-      />
+      <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+        {label}
+      </p>
       <p className="text-sm font-semibold text-gray-900 mt-0.5">{value}</p>
     </div>
   );

@@ -46,7 +46,7 @@ export function getGeminiModel() {
 
   // TODO: Replace model name with exact Gemini 3.1 Flash Lite identifier
   // when confirmed by Google AI SDK release notes.
-  return _genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+  return _genAI.getGenerativeModel({ model: "gemini-3.1-flash-lite" });
 }
 
 /**

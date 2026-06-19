@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getAppointment } from "@/actions/appointments";
+import { createServerClient } from "@/lib/supabase/server";
 import { AppointmentStatusBadge } from "@/components/shared/AppointmentStatusBadge";
 import { CancelAppointmentButton } from "@/components/shared/CancelAppointmentButton";
-import { formatDateTime } from "@/lib/utils";
+import { formatDateTimeInTimezone } from "@/lib/utils";
 import type { AppointmentStatus } from "@/types";
 
 export const metadata: Metadata = {
@@ -33,6 +34,32 @@ export default async function PortalAppointmentDetailPage({ params }: Props) {
   const status = appt.status as AppointmentStatus;
   const isCancellable = ["scheduled", "checked_in"].includes(status);
 
+  // Fetch clinic timezone for correct display of scheduled_at
+  const supabase = await createServerClient();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const db: any = supabase;
+  const { data: { user } } = await supabase.auth.getUser();
+
+  let clinicTimezone = "UTC";
+  if (user) {
+    // Portal user: resolve via portal link → patient → clinic
+    const { data: link } = await db
+      .from("patient_portal_links")
+      .select("patient_id, patients!inner(clinic_id)")
+      .eq("user_id", user.id)
+      .single();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const clinicId = (link as any)?.patients?.clinic_id as string | undefined;
+    if (clinicId) {
+      const { data: settings } = await db
+        .from("clinic_settings")
+        .select("timezone")
+        .eq("clinic_id", clinicId)
+        .maybeSingle();
+      clinicTimezone = (settings as { timezone?: string } | null)?.timezone ?? "UTC";
+    }
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -48,7 +75,7 @@ export default async function PortalAppointmentDetailPage({ params }: Props) {
               Date &amp; Time
             </p>
             <p className="font-semibold mt-0.5">
-              {formatDateTime(appt.scheduled_at)}
+              {formatDateTimeInTimezone(appt.scheduled_at, clinicTimezone)}
             </p>
           </div>
           <div>

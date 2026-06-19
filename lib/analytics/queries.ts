@@ -35,6 +35,8 @@ export interface DateRangeFilter {
   clinicId: string;
   dateFrom: string;
   dateTo: string;
+  /** IANA timezone for the clinic — e.g. "Asia/Kolkata". Defaults to UTC. */
+  timezone?: string;
 }
 
 function startOf(date: string): string {
@@ -42,6 +44,62 @@ function startOf(date: string): string {
 }
 function endOf(date: string): string {
   return `${date}T23:59:59.999Z`;
+}
+
+/**
+ * utcBoundariesForLocalDate
+ *
+ * Returns the UTC ISO timestamps representing the start and end of the given
+ * local-calendar date in the specified IANA timezone. Use this when filtering
+ * a `timestamptz` column by a clinic's local "today" so queries don't miss
+ * rows on either side of UTC midnight.
+ */
+function utcBoundariesForLocalDate(
+  localDate: string,
+  timezone: string
+): { start: string; end: string } {
+  const startMs = zonedDatetimeToUtcMs(`${localDate}T00:00:00`, timezone);
+  const endMs = zonedDatetimeToUtcMs(`${localDate}T23:59:59.999`, timezone);
+  return {
+    start: new Date(startMs).toISOString(),
+    end: new Date(endMs).toISOString(),
+  };
+}
+
+/**
+ * zonedDatetimeToUtcMs
+ *
+ * Converts a wall-clock datetime string interpreted in `timezone` to a UTC
+ * epoch-ms value. Uses Intl.DateTimeFormat to determine the offset.
+ */
+function zonedDatetimeToUtcMs(localDatetime: string, timezone: string): number {
+  // Step 1: parse the local string as if it were UTC, get a reference point.
+  const naiveUtcMs = Date.parse(`${localDatetime}Z`);
+
+  // Step 2: ask Intl what wall-clock time `naiveUtcMs` shows in `timezone`.
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: timezone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  }).formatToParts(new Date(naiveUtcMs));
+  const get = (t: string) => parts.find((p) => p.type === t)?.value ?? "0";
+  const tzAsUtcMs = Date.UTC(
+    Number(get("year")),
+    Number(get("month")) - 1,
+    Number(get("day")),
+    Number(get("hour")) === 24 ? 0 : Number(get("hour")),
+    Number(get("minute")),
+    Number(get("second"))
+  );
+
+  // Step 3: the offset is naiveUtc - tzAsUtc. Apply it to get the real UTC.
+  const offsetMs = naiveUtcMs - tzAsUtcMs;
+  return naiveUtcMs + offsetMs;
 }
 
 // =============================================================================
@@ -95,13 +153,24 @@ interface QueueRow {
 
 export async function getDashboardKPIs(
   supabase: DbClient,
-  clinicId: string
+  clinicId: string,
+  /** IANA timezone for the clinic — e.g. "Asia/Kolkata". Defaults to UTC. */
+  timezone: string = "UTC"
 ): Promise<DashboardKPIs> {
-  const todayStart = new Date();
-  todayStart.setHours(0, 0, 0, 0);
-  const todayEnd = new Date();
-  todayEnd.setHours(23, 59, 59, 999);
-  const todayDate = todayStart.toISOString().split("T")[0];
+  // Compute "today" in the clinic's local calendar so a clinic in IST at
+  // 01:00 doesn't query against the previous UTC date and miss appointments.
+  const todayDate = new Intl.DateTimeFormat("en-CA", {
+    timeZone: timezone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
+
+  // Convert local day boundaries to UTC ISO strings for timestamptz queries.
+  const { start: todayStartIso, end: todayEndIso } = utcBoundariesForLocalDate(
+    todayDate,
+    timezone
+  );
 
   const [apptRes, queueRes, revenueRes, newPatientsRes] = await Promise.all([
     supabase
@@ -109,13 +178,14 @@ export async function getDashboardKPIs(
       .select("status, source")
       .eq("clinic_id", clinicId)
       .is("deleted_at", null)
-      .gte("scheduled_at", todayStart.toISOString())
-      .lte("scheduled_at", todayEnd.toISOString()),
+      .gte("scheduled_at", todayStartIso)
+      .lte("scheduled_at", todayEndIso),
 
     supabase
       .from("queue_entries")
       .select("status")
-      .eq("clinic_id", clinicId),
+      .eq("clinic_id", clinicId)
+      .eq("queue_date", todayDate),
 
     supabase
       .from("payments")
@@ -129,8 +199,8 @@ export async function getDashboardKPIs(
       .select("id", { count: "exact", head: true })
       .eq("clinic_id", clinicId)
       .is("deleted_at", null)
-      .gte("created_at", todayStart.toISOString())
-      .lte("created_at", todayEnd.toISOString()),
+      .gte("created_at", todayStartIso)
+      .lte("created_at", todayEndIso),
   ]);
 
   const appointments = (apptRes.data ?? []) as Pick<ApptRow, "status" | "source">[];
@@ -191,16 +261,25 @@ export async function getAnalyticsSummary(
   filter: DateRangeFilter
 ): Promise<AnalyticsSummary> {
   const { clinicId, dateFrom, dateTo } = filter;
+  const timezone = filter.timezone ?? "UTC";
 
-  const monthStart = new Date();
-  monthStart.setDate(1);
-  monthStart.setHours(0, 0, 0, 0);
+  // Compute "today" in the clinic's local calendar (not server-local or UTC).
+  const todayDate = new Intl.DateTimeFormat("en-CA", {
+    timeZone: timezone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
 
-  const todayStart = new Date();
-  todayStart.setHours(0, 0, 0, 0);
-  const todayEnd = new Date();
-  todayEnd.setHours(23, 59, 59, 999);
-  const todayDate = todayStart.toISOString().split("T")[0];
+  // Build UTC boundaries for today using the clinic timezone so the query
+  // doesn't miss appointments on either side of UTC midnight.
+  const { start: todayStartIso, end: todayEndIso } = utcBoundariesForLocalDate(todayDate, timezone);
+
+  // First day of the current month in the clinic's local calendar
+  const [yr, mo] = todayDate.split("-").map(Number);
+  const monthStartDate = `${yr}-${String(mo).padStart(2, "0")}-01`;
+  const { start: monthStartIso } = utcBoundariesForLocalDate(monthStartDate, timezone);
+
   const today = todayDate;
 
   const [
@@ -217,7 +296,7 @@ export async function getAnalyticsSummary(
       .from("appointments")
       .select("status, source")
       .eq("clinic_id", clinicId).is("deleted_at", null)
-      .gte("scheduled_at", todayStart.toISOString()).lte("scheduled_at", todayEnd.toISOString()),
+      .gte("scheduled_at", todayStartIso).lte("scheduled_at", todayEndIso),
 
     supabase
       .from("patients")
@@ -228,7 +307,7 @@ export async function getAnalyticsSummary(
       .from("patients")
       .select("id", { count: "exact", head: true })
       .eq("clinic_id", clinicId).is("deleted_at", null)
-      .gte("created_at", monthStart.toISOString()),
+      .gte("created_at", monthStartIso),
 
     supabase
       .from("payments")
@@ -249,7 +328,8 @@ export async function getAnalyticsSummary(
     supabase
       .from("queue_entries")
       .select("status, checked_in_at, called_at")
-      .eq("clinic_id", clinicId),
+      .eq("clinic_id", clinicId)
+      .eq("queue_date", todayDate),
   ]);
 
   const appointments = (apptRes.data ?? []) as ApptRow[];
@@ -272,9 +352,8 @@ export async function getAnalyticsSummary(
   const activePatients = patients.filter((p) => p.last_visit !== null).length;
 
   const totalRevenue = payments.reduce((sum, p) => sum + (p.amount ?? 0), 0);
-  const monthDateStr = monthStart.toISOString().split("T")[0];
   const revenueThisMonth = payments
-    .filter((p) => p.payment_date >= monthDateStr)
+    .filter((p) => p.payment_date >= monthStartDate)
     .reduce((sum, p) => sum + (p.amount ?? 0), 0);
 
   const totalTreatmentCost = treatments.reduce((sum, t) => sum + Number(t.cost ?? 0), 0);
@@ -580,9 +659,16 @@ export async function getRevenueAnalytics(
   const avgPerCompletedAppointment = completedAppts > 0 ? totalInRange / completedAppts : 0;
 
   const now = new Date();
-  const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split("T")[0];
-  const prevMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString().split("T")[0];
-  const prevMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0).toISOString().split("T")[0];
+  const tz = filter.timezone ?? "UTC";
+  const todayStr = new Intl.DateTimeFormat("en-CA", {
+    timeZone: tz, year: "numeric", month: "2-digit", day: "2-digit",
+  }).format(now);
+  const [tYr, tMo] = todayStr.split("-").map(Number);
+  const currentMonthStart = `${tYr}-${String(tMo).padStart(2, "0")}-01`;
+  const prevMo = tMo === 1 ? 12 : tMo - 1;
+  const prevYr = tMo === 1 ? tYr - 1 : tYr;
+  const prevMonthStart = `${prevYr}-${String(prevMo).padStart(2, "0")}-01`;
+  const prevMonthEnd = new Date(tYr, tMo - 1, 0).toLocaleDateString("en-CA");
 
   const [curRes, prevRes] = await Promise.all([
     supabase.from("payments").select("amount").eq("clinic_id", clinicId).is("deleted_at", null)
@@ -665,7 +751,10 @@ export async function getFollowUpAnalytics(
   filter: DateRangeFilter
 ): Promise<FollowUpAnalytics> {
   const { clinicId, dateFrom, dateTo } = filter;
-  const today = new Date().toISOString().split("T")[0];
+  const tz = filter.timezone ?? "UTC";
+  const today = new Intl.DateTimeFormat("en-CA", {
+    timeZone: tz, year: "numeric", month: "2-digit", day: "2-digit",
+  }).format(new Date());
 
   const [followUpsRes, withTreatmentRes] = await Promise.all([
     supabase

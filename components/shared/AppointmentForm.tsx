@@ -5,21 +5,26 @@ import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { createAppointment } from "@/actions/appointments";
-import { searchPatients } from "@/actions/patients";
+import { searchPatients, createPatient } from "@/actions/patients";
 import { getAvailableSlots } from "@/actions/availability";
 import {
   CreateAppointmentSchema,
+  CreatePatientSchema,
   type CreateAppointmentInput,
+  type CreatePatientInput,
   type Patient,
 } from "@/types";
 import { cn, formatTime, APPOINTMENT_SOURCE_LABELS } from "@/lib/utils";
-import {
-  TREATMENT_TEMPLATES,
-  getDurationForTreatment,
-} from "@/lib/treatment-templates";
+import { TREATMENT_TEMPLATES, getDurationForTreatment } from "@/lib/treatment-templates";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { Field } from "@/components/ui/field";
+import { PatientAvatar } from "./PatientAvatar";
+import { LoadingSpinner } from "./LoadingSpinner";
+import { CheckCircle2, Search, Plus, Clock } from "lucide-react";
 
-// The Zod schema uses .default(30) on duration_minutes which makes the
-// input type differ from the output type. We use the output type for the form.
 type AppointmentFormValues = {
   patient_id: string;
   scheduled_at: string;
@@ -29,56 +34,44 @@ type AppointmentFormValues = {
 };
 
 interface AppointmentFormProps {
-  /** Where to redirect after successful submit */
   successRedirect: string;
   cancelHref: string;
-  /** Pre-selected patient (e.g. when creating from patient profile) */
   preselectedPatient?: Pick<Patient, "id" | "name">;
+  clinicToday?: string;
 }
 
-/**
- * AppointmentForm
- *
- * Shared create form for both dentist and receptionist appointment booking.
- *
- * Steps:
- * 1. Patient search + selection (debounced ilike search)
- * 2. Date selection → fetches available slots via getAvailableSlots()
- * 3. Slot selection from the generated grid
- * 4. Source + notes
- *
- * Submits to: actions/appointments.ts → createAppointment()
- */
 export function AppointmentForm({
   successRedirect,
   cancelHref,
   preselectedPatient,
+  clinicToday,
 }: AppointmentFormProps) {
   const router = useRouter();
 
-  // ── Patient search state ──────────────────────────────────────────────────
-  const [patientQuery, setPatientQuery] = useState(
-    preselectedPatient?.name ?? ""
+  const [patientQuery, setPatientQuery] = useState(preselectedPatient?.name ?? "");
+  const [patientResults, setPatientResults] = useState<Pick<Patient, "id" | "name" | "phone">[]>([]);
+  const [selectedPatient, setSelectedPatient] = useState<Pick<Patient, "id" | "name"> | null>(
+    preselectedPatient ?? null
   );
-  const [patientResults, setPatientResults] = useState<
-    Pick<Patient, "id" | "name" | "phone">[]
-  >([]);
-  const [selectedPatient, setSelectedPatient] = useState<
-    Pick<Patient, "id" | "name"> | null
-  >(preselectedPatient ?? null);
   const [isSearching, setIsSearching] = useState(false);
-  const [searchTimer, setSearchTimer] = useState<ReturnType<
-    typeof setTimeout
-  > | null>(null);
+  const [searchTimer, setSearchTimer] = useState<ReturnType<typeof setTimeout> | null>(null);
+  const [showDropdown, setShowDropdown] = useState(false);
 
-  // ── Slot state ────────────────────────────────────────────────────────────
-  const today = new Date().toISOString().split("T")[0];
+  const [showNewPatient, setShowNewPatient] = useState(false);
+  const [newPatientError, setNewPatientError] = useState<string | null>(null);
+  const [isSavingPatient, setIsSavingPatient] = useState(false);
+
+  const newPatientForm = useForm<CreatePatientInput>({
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    resolver: zodResolver(CreatePatientSchema) as any,
+    defaultValues: { name: "", phone: "", gender: undefined },
+  });
+
+  const today = clinicToday ?? new Date().toISOString().split("T")[0];
   const [selectedDate, setSelectedDate] = useState(today);
   const [slots, setSlots] = useState<string[]>([]);
   const [slotsLoading, setSlotsLoading] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
-
-  // ── Treatment type state ──────────────────────────────────────────────────
   const [selectedTreatmentType, setSelectedTreatmentType] = useState<string>("");
 
   const {
@@ -88,7 +81,6 @@ export function AppointmentForm({
     watch,
     formState: { errors, isSubmitting },
     setError,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } = useForm<AppointmentFormValues>({
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     resolver: zodResolver(CreateAppointmentSchema) as any,
@@ -100,18 +92,15 @@ export function AppointmentForm({
     },
   });
 
-  // ── Treatment type → auto-fill duration ───────────────────────────────────
   function handleTreatmentTypeChange(treatmentType: string) {
     setSelectedTreatmentType(treatmentType);
     if (treatmentType) {
       const defaultDuration = getDurationForTreatment(treatmentType);
       setValue("duration_minutes", defaultDuration, { shouldValidate: true });
-      // Re-fetch slots for new duration
       fetchSlots(selectedDate, defaultDuration);
     }
   }
 
-  // ── Fetch available slots when date OR duration changes ──────────────────
   const fetchSlots = useCallback(async (date: string, durationMinutes: number) => {
     setSlotsLoading(true);
     setSelectedSlot(null);
@@ -127,7 +116,6 @@ export function AppointmentForm({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedDate, fetchSlots]);
 
-  // ── Patient search debounce ───────────────────────────────────────────────
   function handlePatientSearch(query: string) {
     setPatientQuery(query);
     setSelectedPatient(null);
@@ -136,19 +124,15 @@ export function AppointmentForm({
     if (searchTimer) clearTimeout(searchTimer);
     if (query.trim().length < 2) {
       setPatientResults([]);
+      setShowDropdown(false);
       return;
     }
 
     const t = setTimeout(async () => {
       setIsSearching(true);
       const result = await searchPatients(query.trim());
-      setPatientResults(
-        (result.data ?? []).map((p) => ({
-          id: p.id,
-          name: p.name,
-          phone: p.phone,
-        }))
-      );
+      setPatientResults((result.data ?? []).map((p) => ({ id: p.id, name: p.name, phone: p.phone })));
+      setShowDropdown(true);
       setIsSearching(false);
     }, 300);
 
@@ -160,11 +144,26 @@ export function AppointmentForm({
     setValue("patient_id", p.id, { shouldValidate: true });
     setPatientQuery(p.name);
     setPatientResults([]);
+    setShowDropdown(false);
+    setShowNewPatient(false);
   }
 
   function selectSlot(slot: string) {
     setSelectedSlot(slot);
     setValue("scheduled_at", slot, { shouldValidate: true });
+  }
+
+  async function handleSaveNewPatient(values: CreatePatientInput) {
+    setNewPatientError(null);
+    setIsSavingPatient(true);
+    const result = await createPatient(values);
+    setIsSavingPatient(false);
+    if (result.error || !result.data) {
+      setNewPatientError(result.error ?? "Failed to create patient.");
+      return;
+    }
+    selectPatient({ id: result.data.id, name: result.data.name });
+    newPatientForm.reset();
   }
 
   async function onSubmit(values: AppointmentFormValues) {
@@ -178,298 +177,343 @@ export function AppointmentForm({
   }
 
   return (
-    <form
-      onSubmit={handleSubmit(onSubmit)}
-      className="bg-white border rounded-lg divide-y"
-      noValidate
-    >
-      {/* Root error */}
+    <form onSubmit={handleSubmit(onSubmit)} noValidate>
       {errors.root && (
         <div
           role="alert"
-          className="px-6 py-4 bg-red-50 border-b border-red-200 text-sm text-red-700 rounded-t-lg"
+          className="mb-4 rounded-lg bg-[#FEF2F2] border border-[#FECACA] px-4 py-3 text-xs text-[#DC2626]"
         >
           {errors.root.message}
         </div>
       )}
 
-      {/* ── Patient ─────────────────────────────────────────────── */}
-      <fieldset className="px-6 py-5 space-y-3">
-        <legend className="text-sm font-semibold text-gray-900">Patient</legend>
+      <div className="bg-white border border-[#E4E4E7] rounded-xl overflow-hidden divide-y divide-[#F4F4F5]">
 
-        <input type="hidden" {...register("patient_id")} />
-
-        {preselectedPatient ? (
-          <div className="flex items-center gap-3 px-3 py-2 bg-blue-50 border border-blue-200 rounded-md">
-            <span className="text-sm font-medium text-blue-800">
-              {preselectedPatient.name}
-            </span>
-            <span className="text-xs text-blue-500">Pre-selected</span>
-          </div>
-        ) : (
-          <div className="relative">
-            <input
-              type="search"
-              value={patientQuery}
-              onChange={(e) => handlePatientSearch(e.target.value)}
-              placeholder="Search patient by name or phone…"
-              disabled={isSubmitting}
-              className={cn(
-                "w-full px-3 py-2 text-sm border rounded-md outline-none",
-                "focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20",
-                "disabled:bg-gray-50 disabled:cursor-not-allowed",
-                selectedPatient ? "border-green-400 bg-green-50" : "border-gray-300"
-              )}
-              aria-label="Search patient"
-              autoComplete="off"
-            />
-            {isSearching && (
-              <span className="absolute right-3 top-2.5 text-xs text-gray-400">
-                Searching…
-              </span>
-            )}
-            {patientResults.length > 0 && (
-              <ul className="absolute z-20 w-full mt-1 bg-white border rounded-md shadow-lg max-h-52 overflow-y-auto">
-                {patientResults.map((p) => (
-                  <li key={p.id}>
-                    <button
-                      type="button"
-                      onClick={() => selectPatient(p)}
-                      className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 flex justify-between items-center"
-                    >
-                      <span className="font-medium">{p.name}</span>
-                      <span className="text-gray-400 text-xs">{p.phone ?? "—"}</span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-        )}
-
-        {selectedPatient && !preselectedPatient && (
-          <p className="text-xs text-green-600">✓ {selectedPatient.name} selected</p>
-        )}
-        {errors.patient_id && (
-          <p className="text-xs text-red-600" role="alert">
-            {errors.patient_id.message}
-          </p>
-        )}
-      </fieldset>
-
-      {/* ── Date + Slot ─────────────────────────────────────────── */}
-      <fieldset className="px-6 py-5 space-y-4">
-        <legend className="text-sm font-semibold text-gray-900">
-          Date &amp; Time
-        </legend>
-
-        <input type="hidden" {...register("scheduled_at")} />
-
-        {/* Date picker */}
-        <div className="space-y-1">
-          <label htmlFor="appt-date" className="block text-sm font-medium text-gray-700">
-            Date <span className="text-red-500">*</span>
-          </label>
-          <input
-            id="appt-date"
-            type="date"
-            value={selectedDate}
-            min={today}
-            disabled={isSubmitting}
-            onChange={(e) => setSelectedDate(e.target.value)}
-            className="px-3 py-2 text-sm border border-gray-300 rounded-md outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 disabled:bg-gray-50"
-          />
-        </div>
-
-        {/* Slot grid */}
-        {slotsLoading ? (
-          <p className="text-sm text-gray-500">Loading available slots…</p>
-        ) : slots.length === 0 ? (
-          <p className="text-sm text-gray-500">
-            No available slots on {selectedDate}. Try a different date.
-          </p>
-        ) : (
-          <div className="space-y-2">
-            <p className="text-sm font-medium text-gray-700">
-              Available Times <span className="text-red-500">*</span>
-            </p>
-            <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
-              {slots.map((slot) => {
-                const timePart = slot.split("T")[1]?.slice(0, 5) ?? "";
-                return (
-                  <button
-                    key={slot}
-                    type="button"
-                    disabled={isSubmitting}
-                    onClick={() => selectSlot(slot)}
-                    className={cn(
-                      "py-2 px-1 text-sm rounded-md border transition-colors",
-                      selectedSlot === slot
-                        ? "border-blue-600 bg-blue-600 text-white font-semibold"
-                        : "border-gray-200 text-gray-700 hover:border-blue-300 hover:bg-blue-50",
-                      "disabled:opacity-50 disabled:cursor-not-allowed"
-                    )}
-                  >
-                    {formatTime(`${timePart}:00`)}
-                  </button>
-                );
-              })}
+        {/* ── Patient ─────────────────────────────────────────────── */}
+        <div className="px-6 py-5 space-y-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-sm font-semibold text-[#09090B]">Patient</h3>
+              <p className="text-xs text-[#71717A] mt-0.5">Search for existing or add new</p>
             </div>
-          </div>
-        )}
-
-        {errors.scheduled_at && (
-          <p className="text-xs text-red-600" role="alert">
-            Please select a time slot.
-          </p>
-        )}
-      </fieldset>
-
-      {/* ── Appointment Details ──────────────────────────────────── */}
-      <fieldset className="px-6 py-5 space-y-4">
-        <legend className="text-sm font-semibold text-gray-900">Details</legend>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {/* Treatment Type — auto-fills duration */}
-          <div className="space-y-1">
-            <label
-              htmlFor="treatment-type"
-              className="block text-sm font-medium text-gray-700"
-            >
-              Treatment Type{" "}
-              <span className="text-gray-400 font-normal">(optional)</span>
-            </label>
-            <select
-              id="treatment-type"
-              value={selectedTreatmentType}
-              disabled={isSubmitting}
-              onChange={(e) => handleTreatmentTypeChange(e.target.value)}
-              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 disabled:bg-gray-50"
-            >
-              <option value="">Select treatment…</option>
-              {TREATMENT_TEMPLATES.map((t) => (
-                <option key={t.value} value={t.value}>
-                  {t.label} ({t.defaultDurationMinutes} min)
-                </option>
-              ))}
-            </select>
-            {selectedTreatmentType && (
-              <p className="text-xs text-blue-600">
-                Duration auto-set — you can override below
-              </p>
+            {!preselectedPatient && !selectedPatient && (
+              <button
+                type="button"
+                onClick={() => {
+                  setShowNewPatient((v) => !v);
+                  setPatientResults([]);
+                  setPatientQuery("");
+                  setValue("patient_id", "");
+                  newPatientForm.reset();
+                  setNewPatientError(null);
+                  setShowDropdown(false);
+                }}
+                disabled={isSubmitting}
+                className="flex items-center gap-1 text-xs font-medium text-[#71717A] hover:text-[#09090B] transition-colors"
+              >
+                <Plus className="h-3 w-3" aria-hidden />
+                {showNewPatient ? "Search existing" : "New patient"}
+              </button>
+            )}
+            {selectedPatient && !preselectedPatient && (
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedPatient(null);
+                  setValue("patient_id", "");
+                  setPatientQuery("");
+                }}
+                disabled={isSubmitting}
+                className="text-xs text-[#71717A] hover:text-[#09090B] transition-colors"
+              >
+                Change
+              </button>
             )}
           </div>
 
-          {/* Source */}
-          <div className="space-y-1">
-            <label
-              htmlFor="source"
-              className="block text-sm font-medium text-gray-700"
-            >
-              Booking Source <span className="text-red-500">*</span>
-            </label>
-            <select
-              id="source"
-              {...register("source")}
-              disabled={isSubmitting}
-              className={cn(
-                "w-full px-3 py-2 text-sm border rounded-md outline-none",
-                "focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20",
-                "disabled:bg-gray-50 disabled:cursor-not-allowed",
-                errors.source ? "border-red-400" : "border-gray-300"
+          <input type="hidden" {...register("patient_id")} />
+
+          {preselectedPatient ? (
+            <div className="flex items-center gap-3 px-3 py-2.5 bg-[#F4F4F5] border border-[#E4E4E7] rounded-lg">
+              <PatientAvatar name={preselectedPatient.name} size="sm" />
+              <span className="text-sm font-medium text-[#09090B]">{preselectedPatient.name}</span>
+              <span className="text-xs text-[#A1A1AA]">Pre-selected</span>
+            </div>
+          ) : selectedPatient ? (
+            <div className="flex items-center gap-3 px-3 py-2.5 bg-[#F0FDF4] border border-[#BBF7D0] rounded-lg">
+              <CheckCircle2 className="h-4 w-4 text-[#16A34A] shrink-0" aria-hidden />
+              <PatientAvatar name={selectedPatient.name} size="sm" />
+              <span className="text-sm font-medium text-[#09090B]">{selectedPatient.name}</span>
+            </div>
+          ) : showNewPatient ? (
+            <div className="space-y-3 border border-dashed border-[#E4E4E7] rounded-lg p-4 bg-[#FAFAFA]">
+              <p className="text-xs font-semibold text-[#09090B]">New Patient Details</p>
+
+              {newPatientError && (
+                <p className="text-xs text-[#DC2626]" role="alert">{newPatientError}</p>
               )}
-            >
-              {Object.entries(APPOINTMENT_SOURCE_LABELS).map(([val, label]) => (
-                <option key={val} value={val}>
-                  {label}
-                </option>
-              ))}
-            </select>
-            {errors.source && (
-              <p className="text-xs text-red-600" role="alert">
-                {errors.source.message}
-              </p>
-            )}
-          </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <Field label="Full Name" htmlFor="np-name" required>
+                  <Input
+                    id="np-name"
+                    type="text"
+                    {...newPatientForm.register("name")}
+                    disabled={isSavingPatient}
+                    placeholder="Patient full name"
+                    hasError={!!newPatientForm.formState.errors.name}
+                  />
+                  {newPatientForm.formState.errors.name && (
+                    <p className="text-xs text-[#DC2626] mt-1">{newPatientForm.formState.errors.name.message}</p>
+                  )}
+                </Field>
+
+                <Field label="Phone" htmlFor="np-phone">
+                  <Input
+                    id="np-phone"
+                    type="tel"
+                    {...newPatientForm.register("phone")}
+                    disabled={isSavingPatient}
+                    placeholder="+91 98765 43210"
+                  />
+                </Field>
+
+                <Field label="Gender" htmlFor="np-gender">
+                  <Select
+                    id="np-gender"
+                    {...newPatientForm.register("gender")}
+                    disabled={isSavingPatient}
+                  >
+                    <option value="">Select…</option>
+                    <option value="male">Male</option>
+                    <option value="female">Female</option>
+                    <option value="other">Other</option>
+                  </Select>
+                </Field>
+
+                <Field label="Date of Birth" htmlFor="np-dob">
+                  <Input
+                    id="np-dob"
+                    type="date"
+                    {...newPatientForm.register("date_of_birth")}
+                    disabled={isSavingPatient}
+                  />
+                </Field>
+              </div>
+
+              <div className="flex items-center justify-end gap-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  type="button"
+                  onClick={() => { setShowNewPatient(false); newPatientForm.reset(); }}
+                  disabled={isSavingPatient}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={newPatientForm.handleSubmit(handleSaveNewPatient)}
+                  isLoading={isSavingPatient}
+                >
+                  {isSavingPatient ? "Saving…" : "Save & Continue"}
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className="relative">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#A1A1AA]" aria-hidden />
+                <Input
+                  type="search"
+                  value={patientQuery}
+                  onChange={(e) => handlePatientSearch(e.target.value)}
+                  placeholder="Search patient by name or phone…"
+                  disabled={isSubmitting}
+                  aria-label="Search patient"
+                  autoComplete="off"
+                  className="pl-9"
+                  onBlur={() => setTimeout(() => setShowDropdown(false), 150)}
+                  onFocus={() => patientResults.length > 0 && setShowDropdown(true)}
+                />
+                {isSearching && (
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                    <LoadingSpinner size="sm" />
+                  </div>
+                )}
+              </div>
+              {showDropdown && patientResults.length > 0 && (
+                <ul className="absolute z-20 w-full mt-1 bg-white border border-[#E4E4E7] rounded-xl shadow-lg max-h-52 overflow-y-auto">
+                  {patientResults.map((p) => (
+                    <li key={p.id}>
+                      <button
+                        type="button"
+                        onMouseDown={(e) => e.preventDefault()}
+                        onClick={() => selectPatient(p)}
+                        className="w-full px-4 py-2.5 text-left hover:bg-[#FAFAFA] flex items-center gap-3 transition-colors"
+                      >
+                        <PatientAvatar name={p.name} size="sm" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-[#09090B] truncate">{p.name}</p>
+                          <p className="text-xs text-[#71717A]">{p.phone ?? "—"}</p>
+                        </div>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
+
+          {errors.patient_id && !showNewPatient && (
+            <p className="text-xs text-[#DC2626]" role="alert">
+              {errors.patient_id.message ?? "Please select a patient."}
+            </p>
+          )}
         </div>
 
-        {/* Duration — pre-filled from treatment type, manually overrideable */}
-        <div className="space-y-1">
-          <label
-            htmlFor="duration"
-            className="block text-sm font-medium text-gray-700"
-          >
-            Duration (minutes)
-          </label>
-          <div className="flex items-center gap-3">
-            <select
+        {/* ── Date & Time ─────────────────────────────────────────── */}
+        <div className="px-6 py-5 space-y-4">
+          <div>
+            <h3 className="text-sm font-semibold text-[#09090B]">Date &amp; Time</h3>
+            <p className="text-xs text-[#71717A] mt-0.5">Choose an available slot</p>
+          </div>
+
+          <input type="hidden" {...register("scheduled_at")} />
+
+          <Field label="Date" htmlFor="appt-date" required>
+            <Input
+              id="appt-date"
+              type="date"
+              value={selectedDate}
+              min={today}
+              disabled={isSubmitting}
+              onChange={(e) => setSelectedDate(e.target.value)}
+            />
+          </Field>
+
+          {/* Slot grid */}
+          {slotsLoading ? (
+            <div className="flex items-center gap-2 text-sm text-[#71717A] py-2">
+              <LoadingSpinner size="sm" />
+              Loading available slots…
+            </div>
+          ) : slots.length === 0 ? (
+            <div className="rounded-lg bg-[#FAFAFA] border border-[#E4E4E7] p-4 text-center">
+              <p className="text-sm text-[#71717A]">No available slots on this date.</p>
+              <p className="text-xs text-[#A1A1AA] mt-0.5">Try selecting a different date.</p>
+            </div>
+          ) : (
+            <Field label="Available Times" required error={errors.scheduled_at ? "Please select a time slot." : undefined}>
+              <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 mt-1">
+                {slots.map((slot) => {
+                  const timePart = slot.split("T")[1]?.slice(0, 5) ?? "";
+                  return (
+                    <button
+                      key={slot}
+                      type="button"
+                      disabled={isSubmitting}
+                      onClick={() => selectSlot(slot)}
+                      className={cn(
+                        "flex items-center justify-center gap-1 py-2 px-1 text-xs rounded-lg border transition-all",
+                        selectedSlot === slot
+                          ? "border-[#18181B] bg-[#18181B] text-white font-medium"
+                          : "border-[#E4E4E7] text-[#09090B] hover:border-[#D4D4D8] hover:bg-[#FAFAFA]",
+                        "disabled:opacity-50 disabled:cursor-not-allowed"
+                      )}
+                    >
+                      <Clock className="h-3 w-3 opacity-60" aria-hidden />
+                      {formatTime(`${timePart}:00`)}
+                    </button>
+                  );
+                })}
+              </div>
+            </Field>
+          )}
+        </div>
+
+        {/* ── Appointment Details ──────────────────────────────────── */}
+        <div className="px-6 py-5 space-y-4">
+          <div>
+            <h3 className="text-sm font-semibold text-[#09090B]">Details</h3>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Field label="Treatment Type" htmlFor="treatment-type" hint="Auto-fills duration">
+              <Select
+                id="treatment-type"
+                value={selectedTreatmentType}
+                disabled={isSubmitting}
+                onChange={(e) => handleTreatmentTypeChange(e.target.value)}
+              >
+                <option value="">Select treatment…</option>
+                {TREATMENT_TEMPLATES.map((t) => (
+                  <option key={t.value} value={t.value}>
+                    {t.label} ({t.defaultDurationMinutes}m)
+                  </option>
+                ))}
+              </Select>
+            </Field>
+
+            <Field label="Booking Source" htmlFor="source" required error={errors.source?.message}>
+              <Select
+                id="source"
+                {...register("source")}
+                disabled={isSubmitting}
+                hasError={!!errors.source}
+              >
+                {Object.entries(APPOINTMENT_SOURCE_LABELS).map(([val, label]) => (
+                  <option key={val} value={val}>{label}</option>
+                ))}
+              </Select>
+            </Field>
+          </div>
+
+          <Field label="Duration" htmlFor="duration" hint="Changing duration refreshes available slots">
+            <Select
               id="duration"
               {...register("duration_minutes", { valueAsNumber: true })}
               disabled={isSubmitting}
               onChange={(e) => {
                 const newDuration = Number(e.target.value);
                 setValue("duration_minutes", newDuration);
-                // Re-fetch slots for the new duration
                 fetchSlots(selectedDate, newDuration);
                 setSelectedSlot(null);
               }}
-              className="w-48 px-3 py-2 text-sm border border-gray-300 rounded-md outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 disabled:bg-gray-50"
+              className="w-40"
             >
               {[10, 15, 20, 30, 45, 60, 90, 120].map((d) => (
-                <option key={d} value={d}>
-                  {d} min
-                </option>
+                <option key={d} value={d}>{d} min</option>
               ))}
-            </select>
-            <span className="text-xs text-gray-500">
-              Changing duration refreshes available slots
-            </span>
-          </div>
+            </Select>
+          </Field>
+
+          <Field label="Notes" htmlFor="notes" hint="Optional — reason for visit, special instructions">
+            <Textarea
+              id="notes"
+              {...register("notes")}
+              rows={2}
+              disabled={isSubmitting}
+              placeholder="Reason for visit, special instructions…"
+            />
+          </Field>
         </div>
 
-        {/* Notes */}
-        <div className="space-y-1">
-          <label
-            htmlFor="notes"
-            className="block text-sm font-medium text-gray-700"
+        {/* ── Actions ─────────────────────────────────────────────── */}
+        <div className="px-6 py-4 bg-[#FAFAFA] flex items-center justify-end gap-3">
+          <Button variant="outline" size="sm" asChild>
+            <a href={cancelHref}>Cancel</a>
+          </Button>
+          <Button
+            type="submit"
+            size="sm"
+            disabled={isSubmitting || (!selectedPatient && !preselectedPatient) || !selectedSlot}
+            isLoading={isSubmitting}
           >
-            Notes{" "}
-            <span className="text-gray-400 font-normal">(optional)</span>
-          </label>
-          <textarea
-            id="notes"
-            {...register("notes")}
-            rows={2}
-            disabled={isSubmitting}
-            placeholder="Reason for visit, special instructions…"
-            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md outline-none resize-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 disabled:bg-gray-50"
-          />
-          {errors.notes && (
-            <p className="text-xs text-red-600" role="alert">
-              {errors.notes.message}
-            </p>
-          )}
+            {isSubmitting ? "Booking…" : "Book Appointment"}
+          </Button>
         </div>
-      </fieldset>
-
-      {/* ── Actions ─────────────────────────────────────────────── */}
-      <div className="px-6 py-4 bg-gray-50 flex items-center justify-end gap-3 rounded-b-lg">
-        <a
-          href={cancelHref}
-          className="px-4 py-2 text-sm font-medium text-gray-700 border border-gray-300 rounded-md hover:bg-gray-100 transition-colors"
-        >
-          Cancel
-        </a>
-        <button
-          type="submit"
-          disabled={isSubmitting || !selectedPatient || !selectedSlot}
-          className="px-4 py-2 text-sm font-semibold text-white bg-blue-600 rounded-md
-                     hover:bg-blue-700 transition-colors
-                     focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2
-                     disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          {isSubmitting ? "Booking…" : "Book Appointment"}
-        </button>
       </div>
     </form>
   );

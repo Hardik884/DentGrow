@@ -25,6 +25,12 @@ interface SlotPickerProps {
  */
 export function SlotPicker({ patientId }: SlotPickerProps) {
   const router = useRouter();
+
+  // We cannot know the clinic timezone client-side without an extra fetch.
+  // Use UTC-based today as the minimum — the server action also validates
+  // that the date is not in the past, so this is a UI-only guard.
+  // The getAvailableSlots server action filters past slots server-side using
+  // the clinic timezone, so this only affects the date picker minimum.
   const today = new Date().toISOString().split("T")[0];
 
   const [selectedDate, setSelectedDate] = useState(today);

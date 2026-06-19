@@ -6,6 +6,8 @@ import { RescheduleModal } from "@/components/shared/RescheduleModal";
 interface RescheduleReceptionistPanelProps {
   appointmentId: string;
   currentScheduledAt: string;
+  /** Today's date in clinic timezone. Forwarded to RescheduleModal. */
+  clinicToday?: string;
 }
 
 /**
@@ -17,6 +19,7 @@ interface RescheduleReceptionistPanelProps {
 export function RescheduleReceptionistPanel({
   appointmentId,
   currentScheduledAt,
+  clinicToday,
 }: RescheduleReceptionistPanelProps) {
   const [open, setOpen] = useState(false);
 
@@ -34,6 +37,7 @@ export function RescheduleReceptionistPanel({
           appointmentId={appointmentId}
           currentScheduledAt={currentScheduledAt}
           onClose={() => setOpen(false)}
+          clinicToday={clinicToday}
         />
       )}
     </>

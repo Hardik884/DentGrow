@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createServerClient } from "@/lib/supabase/server";
+import { getTodayInTimezone } from "@/lib/utils";
 import {
   CreateFollowUpSchema,
   UpdateFollowUpSchema,
@@ -52,6 +53,23 @@ async function resolveSession(): Promise<{
   return { db, profile: (data as ResolvedProfile | null) ?? null };
 }
 
+/**
+ * todayForClinic — today's date (YYYY-MM-DD) in the clinic's local timezone.
+ * Use this instead of new Date().toISOString().split('T')[0] so overdue follow-ups
+ * are computed against the clinic's local calendar, not UTC.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function todayForClinic(db: any, clinicId: string): Promise<string> {
+  if (!clinicId) return new Date().toISOString().split("T")[0];
+  const { data } = await db
+    .from("clinic_settings")
+    .select("timezone")
+    .eq("clinic_id", clinicId)
+    .maybeSingle();
+  const tz = (data as { timezone?: string } | null)?.timezone ?? "UTC";
+  return getTodayInTimezone(tz);
+}
+
 // =============================================================================
 // createFollowUp — dentist + receptionist
 // =============================================================================
@@ -84,6 +102,7 @@ export async function createFollowUp(
         due_date: parsed.data.due_date,
         status: "pending",
         notes: parsed.data.notes ?? null,
+        created_by: profile.id,
       })
       .select()
       .single();
@@ -356,7 +375,7 @@ export async function getAllFollowUps(filters?: {
     const from = (page - 1) * limit;
     const to = from + limit - 1;
 
-    const today = new Date().toISOString().split("T")[0];
+    const today = await todayForClinic(db, profile.clinic_id);
 
     let query = db
       .from("follow_ups")
@@ -407,7 +426,7 @@ export async function getOverdueFollowUps(): Promise<
       return { data: null, error: "Forbidden" };
     }
 
-    const today = new Date().toISOString().split("T")[0];
+    const today = await todayForClinic(db, profile.clinic_id);
 
     const { data, error } = await db
       .from("follow_ups")
@@ -497,7 +516,7 @@ export async function getFollowUpStats(): Promise<
       return { data: null, error: "Forbidden" };
     }
 
-    const today = new Date().toISOString().split("T")[0];
+    const today = await todayForClinic(db, profile.clinic_id);
 
     const { data, error } = await db
       .from("follow_ups")

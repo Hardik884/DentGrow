@@ -2,36 +2,26 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getAppointment } from "@/actions/appointments";
 import { AppointmentStatusBadge } from "./AppointmentStatusBadge";
-import { formatDateTime, APPOINTMENT_SOURCE_LABELS } from "@/lib/utils";
+import { formatDateTimeInTimezone, APPOINTMENT_SOURCE_LABELS } from "@/lib/utils";
+import { PatientAvatar } from "./PatientAvatar";
+import { Clock } from "lucide-react";
 import type { AppointmentWithPatient } from "@/types";
 
 interface AppointmentCardProps {
   appointmentId?: string;
   appointment?: AppointmentWithPatient;
-  /** When true, hides staff-only fields (patient name, source) */
   portalView?: boolean;
-  /** Role-prefixed base href for "View" links e.g. "/dentist" */
   baseHref?: string;
+  timezone?: string;
 }
 
-/**
- * AppointmentCard
- *
- * Server Component — displays a single appointment summary.
- * Used by: dentist list, receptionist list, patient portal list.
- *
- * When `appointmentId` is provided without `appointment`, fetches the
- * appointment data server-side via getAppointment().
- *
- * portalView=true suppresses staff-only fields.
- */
 export async function AppointmentCard({
   appointmentId,
   appointment: appointmentProp,
   portalView = false,
   baseHref,
+  timezone = "UTC",
 }: AppointmentCardProps) {
-  // Fetch if only ID is provided
   let appointment = appointmentProp;
   if (!appointment && appointmentId) {
     const result = await getAppointment(appointmentId);
@@ -41,52 +31,46 @@ export async function AppointmentCard({
 
   if (!appointment) {
     return (
-      <div className="border rounded-lg p-4 bg-gray-50 text-sm text-gray-400">
+      <div className="px-5 py-4 text-sm text-[#71717A]">
         Appointment not found.
       </div>
     );
   }
 
-  const href = baseHref
-    ? `${baseHref}/appointments/${appointment.id}`
-    : undefined;
+  const href = baseHref ? `${baseHref}/appointments/${appointment.id}` : undefined;
 
   const content = (
-    <div className="border rounded-lg p-4 bg-white space-y-2 hover:border-gray-300 transition-colors">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0 flex-1">
-          {!portalView && (
-            <p className="font-semibold text-gray-900 truncate">
-              {appointment.patient.name}
-            </p>
-          )}
-          <p className="text-sm text-gray-700">
-            {formatDateTime(appointment.scheduled_at)}
+    <div className="px-5 py-3.5 flex items-center gap-3 hover:bg-[#FAFAFA] transition-colors group">
+      {!portalView && (
+        <PatientAvatar name={appointment.patient.name} size="sm" />
+      )}
+      <div className="flex-1 min-w-0">
+        {!portalView && (
+          <p className="text-sm font-medium text-[#09090B] truncate">
+            {appointment.patient.name}
           </p>
-          <p className="text-xs text-gray-400 mt-0.5">
+        )}
+        <div className="flex items-center gap-1.5 mt-0.5">
+          <Clock className="h-3 w-3 text-[#A1A1AA] shrink-0" aria-hidden />
+          <p className="text-xs text-[#71717A]">
+            {formatDateTimeInTimezone(appointment.scheduled_at, timezone)}
+            {" · "}
             {appointment.duration_minutes} min
             {!portalView && appointment.source
               ? ` · ${APPOINTMENT_SOURCE_LABELS[appointment.source] ?? appointment.source}`
               : ""}
           </p>
         </div>
-        <AppointmentStatusBadge status={appointment.status} />
+        {appointment.notes && (
+          <p className="text-xs text-[#A1A1AA] truncate mt-0.5">{appointment.notes}</p>
+        )}
       </div>
-
-      {appointment.notes && (
-        <p className="text-sm text-gray-600 border-t pt-2 truncate">
-          {appointment.notes}
-        </p>
-      )}
+      <AppointmentStatusBadge status={appointment.status} />
     </div>
   );
 
   if (href) {
-    return (
-      <Link href={href} className="block">
-        {content}
-      </Link>
-    );
+    return <Link href={href} className="block">{content}</Link>;
   }
 
   return content;

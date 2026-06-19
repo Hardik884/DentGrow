@@ -5,25 +5,13 @@ import { generatePatientSummary } from "@/actions/ai";
 import { AIFallbackMessage } from "./AIFallbackMessage";
 import { LoadingSpinner } from "@/components/shared/LoadingSpinner";
 import { ErrorBoundary } from "@/components/shared/ErrorBoundary";
+import { Button } from "@/components/ui/button";
+import { Sparkles, RefreshCcw } from "lucide-react";
 
 interface PatientSummaryCardProps {
   patientId: string;
 }
 
-/**
- * PatientSummaryCard
- *
- * "Generate Summary" trigger + AI-generated result display.
- * Dentist role only.
- *
- * Pattern:
- * 1. Dentist clicks "Generate Summary" button.
- * 2. Component calls generatePatientSummary(patientId) Server Action.
- * 3. On success: renders summary text.
- * 4. On error: renders AIFallbackMessage (non-blocking).
- *
- * Summary is not stored — regenerated on each click.
- */
 function PatientSummaryCardInner({ patientId }: PatientSummaryCardProps) {
   const [summary, setSummary] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -35,55 +23,72 @@ function PatientSummaryCardInner({ patientId }: PatientSummaryCardProps) {
     setSummary(null);
 
     const result = await generatePatientSummary(patientId);
-
-    if (result.error) {
-      setError(result.error);
-    } else {
-      setSummary(result.data);
-    }
-
+    if (result.error) setError(result.error);
+    else setSummary(result.data);
     setIsLoading(false);
   }
 
   return (
-    <div className="bg-white border rounded-lg p-4 space-y-3">
-      <div className="flex items-center justify-between">
-        <h2 className="font-semibold text-gray-900 text-sm flex items-center gap-1">
-          <span>✨</span> AI Summary
-        </h2>
-        <button
-          type="button"
+    <div className="bg-white border border-[#E4E4E7] rounded-xl overflow-hidden">
+      <div className="px-5 py-4 border-b border-[#E4E4E7] flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Sparkles className="h-3.5 w-3.5 text-[#71717A]" aria-hidden />
+          <h2 className="text-sm font-semibold text-[#09090B]">AI Summary</h2>
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
           onClick={handleGenerate}
           disabled={isLoading}
-          className="px-3 py-1 text-xs font-medium text-blue-600 border border-blue-200 rounded-md hover:bg-blue-50 disabled:opacity-50"
         >
-          {isLoading ? "Generating…" : summary ? "Regenerate" : "Generate Summary"}
-        </button>
+          {isLoading ? (
+            <>
+              <LoadingSpinner size="sm" />
+              Generating…
+            </>
+          ) : summary ? (
+            <>
+              <RefreshCcw className="h-3 w-3" aria-hidden />
+              Regenerate
+            </>
+          ) : (
+            <>
+              <Sparkles className="h-3 w-3" aria-hidden />
+              Generate
+            </>
+          )}
+        </Button>
       </div>
 
-      {isLoading && (
-        <div className="flex items-center gap-2 text-sm text-gray-500">
-          <LoadingSpinner size="sm" />
-          <span>Analysing patient records…</span>
-        </div>
-      )}
+      <div className="px-5 py-4">
+        {!summary && !isLoading && !error && (
+          <p className="text-sm text-[#A1A1AA]">
+            Generate an AI-powered clinical summary for this patient.
+          </p>
+        )}
 
-      {error && <AIFallbackMessage message={error} />}
+        {isLoading && (
+          <div className="flex items-center gap-2 text-sm text-[#71717A]">
+            <LoadingSpinner size="sm" />
+            Analysing patient records…
+          </div>
+        )}
 
-      {summary && (
-        <div className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
-          {summary}
-        </div>
-      )}
+        {error && <AIFallbackMessage message={error} />}
+
+        {summary && (
+          <div className="text-sm text-[#09090B] leading-relaxed whitespace-pre-wrap">
+            {summary}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
 
 export function PatientSummaryCard({ patientId }: PatientSummaryCardProps) {
   return (
-    <ErrorBoundary
-      fallback={<AIFallbackMessage message="Unable to load AI summary." />}
-    >
+    <ErrorBoundary fallback={<AIFallbackMessage message="Unable to load AI summary." />}>
       <PatientSummaryCardInner patientId={patientId} />
     </ErrorBoundary>
   );

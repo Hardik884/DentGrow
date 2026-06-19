@@ -3,23 +3,15 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { checkInPatient } from "@/actions/queue";
+import { Button } from "@/components/ui/button";
+import { CheckCircle2 } from "lucide-react";
 
 interface CheckInButtonProps {
   appointmentId: string;
   isCheckedIn?: boolean;
 }
 
-/**
- * CheckInButton
- *
- * Receptionist action — checks in a patient on arrival.
- * Creates a queue_entries row via actions/queue.ts → checkInPatient().
- * Refreshes the page on success so server components re-render.
- */
-export function CheckInButton({
-  appointmentId,
-  isCheckedIn = false,
-}: CheckInButtonProps) {
+export function CheckInButton({ appointmentId, isCheckedIn = false }: CheckInButtonProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [isDone, setIsDone] = useState(isCheckedIn);
@@ -29,10 +21,7 @@ export function CheckInButton({
     setError(null);
     startTransition(async () => {
       const result = await checkInPatient(appointmentId);
-      if (result.error) {
-        setError(result.error);
-        return;
-      }
+      if (result.error) { setError(result.error); return; }
       setIsDone(true);
       router.refresh();
     });
@@ -40,27 +29,19 @@ export function CheckInButton({
 
   if (isDone) {
     return (
-      <div className="px-4 py-2 bg-green-50 text-green-700 text-sm font-medium rounded-md border border-green-200 inline-flex items-center gap-1">
-        <span aria-hidden>✓</span> Checked In
+      <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#F0FDF4] text-[#16A34A] text-xs font-medium rounded-lg border border-[#BBF7D0]">
+        <CheckCircle2 className="h-3.5 w-3.5" aria-hidden />
+        Checked In
       </div>
     );
   }
 
   return (
-    <div className="space-y-1">
-      <button
-        type="button"
-        onClick={handleCheckIn}
-        disabled={isPending}
-        className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 disabled:opacity-50 transition-colors"
-      >
+    <div className="space-y-1.5">
+      <Button size="sm" onClick={handleCheckIn} disabled={isPending} isLoading={isPending}>
         {isPending ? "Checking in…" : "Check In Patient"}
-      </button>
-      {error && (
-        <p className="text-xs text-red-600" role="alert">
-          {error}
-        </p>
-      )}
+      </Button>
+      {error && <p className="text-xs text-[#DC2626]" role="alert">{error}</p>}
     </div>
   );
 }

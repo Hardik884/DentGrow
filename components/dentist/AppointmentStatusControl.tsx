@@ -7,32 +7,24 @@ import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { RescheduleModal } from "@/components/shared/RescheduleModal";
 import { VALID_APPOINTMENT_TRANSITIONS } from "@/types";
 import { APPOINTMENT_STATUS_LABELS } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { CalendarClock } from "lucide-react";
 import type { AppointmentStatus } from "@/types";
 
 interface AppointmentStatusControlProps {
   appointmentId: string;
   currentStatus?: AppointmentStatus;
   currentScheduledAt?: string;
+  clinicToday?: string;
 }
 
-/**
- * AppointmentStatusControl
- *
- * Status lifecycle state machine UI — dentist view.
- * Renders valid next-status actions based on VALID_APPOINTMENT_TRANSITIONS.
- *
- * Destructive actions (cancel, no_show) require ConfirmDialog confirmation.
- * Reschedule opens RescheduleModal slot picker.
- *
- * Calls:
- *   updateAppointmentStatus() for lifecycle transitions
- *   cancelAppointment() for cancel action
- *   rescheduleAppointment() via RescheduleModal
- */
+const DESTRUCTIVE: AppointmentStatus[] = ["cancelled", "no_show"];
+
 export function AppointmentStatusControl({
   appointmentId,
   currentStatus = "scheduled",
   currentScheduledAt = new Date().toISOString(),
+  clinicToday,
 }: AppointmentStatusControlProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -41,7 +33,6 @@ export function AppointmentStatusControl({
   const [error, setError] = useState<string | null>(null);
 
   const validNext = VALID_APPOINTMENT_TRANSITIONS[currentStatus];
-  const DESTRUCTIVE: AppointmentStatus[] = ["cancelled", "no_show"];
 
   function handleTransition(newStatus: AppointmentStatus) {
     setError(null);
@@ -50,16 +41,10 @@ export function AppointmentStatusControl({
       if (newStatus === "cancelled") {
         result = await cancelAppointment(appointmentId);
       } else {
-        result = await updateAppointmentStatus({
-          appointment_id: appointmentId,
-          new_status: newStatus,
-        });
+        result = await updateAppointmentStatus({ appointment_id: appointmentId, new_status: newStatus });
       }
-      if (result.error) {
-        setError(result.error);
-      } else {
-        router.refresh();
-      }
+      if (result.error) setError(result.error);
+      else router.refresh();
       setConfirmAction(null);
     });
   }
@@ -68,81 +53,74 @@ export function AppointmentStatusControl({
 
   if (isTerminal) {
     return (
-      <div className="bg-white border rounded-lg p-4">
-        <p className="text-sm text-gray-500">
-          This appointment is{" "}
-          <strong>{APPOINTMENT_STATUS_LABELS[currentStatus]}</strong>.
+      <div className="bg-white border border-[#E4E4E7] rounded-xl p-5">
+        <p className="text-sm text-[#71717A]">
+          Appointment is <strong className="text-[#09090B]">{APPOINTMENT_STATUS_LABELS[currentStatus]}</strong>.
         </p>
       </div>
     );
   }
 
   return (
-    <div className="bg-white border rounded-lg p-4 space-y-3">
-      <h3 className="text-sm font-semibold text-gray-900">Actions</h3>
+    <div className="bg-white border border-[#E4E4E7] rounded-xl p-5 space-y-3">
+      <h3 className="text-sm font-semibold text-[#09090B]">Actions</h3>
 
       {error && (
-        <p className="text-sm text-red-600" role="alert">
-          {error}
-        </p>
+        <p className="text-xs text-[#DC2626]" role="alert">{error}</p>
       )}
 
       <div className="flex flex-wrap gap-2">
-        {/* Reschedule — available for non-terminal statuses */}
+        {/* Reschedule */}
         {!["completed", "cancelled", "no_show"].includes(currentStatus) && (
-          <button
-            type="button"
+          <Button
+            variant="outline"
+            size="sm"
             disabled={isPending}
             onClick={() => setShowReschedule(true)}
-            className="px-3 py-1.5 text-sm rounded-md border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50 transition-colors"
           >
+            <CalendarClock className="h-3.5 w-3.5" aria-hidden />
             Reschedule
-          </button>
+          </Button>
         )}
 
-        {/* Status transition buttons */}
+        {/* Status transitions */}
         {validNext.map((status) => {
           const isDestructive = DESTRUCTIVE.includes(status);
           const label = APPOINTMENT_STATUS_LABELS[status] ?? status.replace("_", " ");
           return (
-            <button
+            <Button
               key={status}
-              type="button"
+              variant={isDestructive ? "danger" : "default"}
+              size="sm"
               disabled={isPending}
-              onClick={() =>
-                isDestructive ? setConfirmAction(status) : handleTransition(status)
-              }
-              className={
-                isDestructive
-                  ? "px-3 py-1.5 text-sm rounded-md border border-red-300 text-red-600 hover:bg-red-50 disabled:opacity-50 transition-colors"
-                  : "px-3 py-1.5 text-sm rounded-md bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
-              }
+              isLoading={isPending}
+              onClick={() => isDestructive ? setConfirmAction(status) : handleTransition(status)}
             >
-              {isPending ? "Updating…" : label}
-            </button>
+              {label}
+            </Button>
           );
         })}
       </div>
 
-      {/* Destructive confirm dialog */}
       {confirmAction && (
         <ConfirmDialog
           open={true}
           title={`Confirm: ${APPOINTMENT_STATUS_LABELS[confirmAction]}`}
           description={`Are you sure you want to mark this appointment as "${APPOINTMENT_STATUS_LABELS[confirmAction]}"? This cannot be undone.`}
           confirmLabel="Yes, proceed"
+          variant="danger"
           onConfirm={() => handleTransition(confirmAction)}
           onCancel={() => setConfirmAction(null)}
           isLoading={isPending}
         />
       )}
 
-      {/* Reschedule modal */}
       {showReschedule && (
         <RescheduleModal
           appointmentId={appointmentId}
           currentScheduledAt={currentScheduledAt}
           onClose={() => setShowReschedule(false)}
+          clinicToday={clinicToday}
         />
       )}
     </div>

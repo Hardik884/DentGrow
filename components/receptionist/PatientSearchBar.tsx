@@ -3,13 +3,8 @@
 import { useRouter } from "next/navigation";
 import { PatientSearch } from "@/components/shared/PatientSearch";
 import type { Patient } from "@/types";
+import { Search } from "lucide-react";
 
-/**
- * PatientSearchBar
- *
- * Prominent patient search bar for the receptionist dashboard.
- * On selection → navigates to the patient's profile page.
- */
 export function PatientSearchBar() {
   const router = useRouter();
 
@@ -18,8 +13,11 @@ export function PatientSearchBar() {
   }
 
   return (
-    <div className="bg-white border rounded-lg p-4">
-      <p className="text-sm font-medium text-gray-700 mb-2">Find Patient</p>
+    <div className="bg-white border border-[#E4E4E7] rounded-xl p-5">
+      <div className="flex items-center gap-2 mb-3">
+        <Search className="h-4 w-4 text-[#71717A]" aria-hidden />
+        <h2 className="text-sm font-semibold text-[#09090B]">Patient Search</h2>
+      </div>
       <PatientSearch
         onSelect={handleSelect}
         placeholder="Search by name or phone number…"

@@ -3,116 +3,73 @@
 import { useActionState } from "react";
 import { signUp } from "@/actions/auth";
 import type { ActionResult } from "@/types";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Field } from "@/components/ui/field";
 
 const initialState: ActionResult<null> = { data: null, error: null };
 
-/**
- * SignupForm
- *
- * Client component for patient portal self-registration.
- * Delegates mutation to the signUp Server Action via useActionState.
- * On success, signUp calls redirect() to /portal/setup.
- */
 export function SignupForm() {
   const [state, formAction, isPending] = useActionState(signUp, initialState);
 
   return (
     <form action={formAction} className="space-y-4" noValidate>
-      {/* Error banner */}
       {state.error && (
         <div
           role="alert"
-          className="rounded-md bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700"
+          className="rounded-lg bg-[#FEF2F2] border border-[#FECACA] px-3.5 py-3 text-xs text-[#DC2626] flex items-start gap-2"
         >
+          <svg className="h-4 w-4 shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20" aria-hidden>
+            <path fillRule="evenodd" d="M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0Zm-8-5a.75.75 0 0 1 .75.75v4.5a.75.75 0 0 1-1.5 0v-4.5A.75.75 0 0 1 10 5Zm0 10a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z" clipRule="evenodd" />
+          </svg>
           {state.error}
         </div>
       )}
 
-      {/* Email */}
-      <div className="space-y-1">
-        <label
-          htmlFor="email"
-          className="block text-sm font-medium text-gray-700"
-        >
-          Email address
-        </label>
-        <input
+      <Field label="Email address" htmlFor="email">
+        <Input
           id="email"
           name="email"
           type="email"
           autoComplete="email"
           required
           disabled={isPending}
-          className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm
-                     placeholder-gray-400 shadow-sm outline-none
-                     focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20
-                     disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-400"
           placeholder="you@example.com"
         />
-      </div>
+      </Field>
 
-      {/* Password */}
-      <div className="space-y-1">
-        <label
-          htmlFor="password"
-          className="block text-sm font-medium text-gray-700"
-        >
-          Password
-        </label>
-        <input
+      <Field label="Password" htmlFor="password" hint="Minimum 8 characters">
+        <Input
           id="password"
           name="password"
           type="password"
           autoComplete="new-password"
           required
           disabled={isPending}
-          className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm
-                     placeholder-gray-400 shadow-sm outline-none
-                     focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20
-                     disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-400"
           placeholder="Min. 8 characters"
         />
-      </div>
+      </Field>
 
-      {/* Confirm password */}
-      <div className="space-y-1">
-        <label
-          htmlFor="confirmPassword"
-          className="block text-sm font-medium text-gray-700"
-        >
-          Confirm password
-        </label>
-        <input
+      <Field label="Confirm password" htmlFor="confirmPassword">
+        <Input
           id="confirmPassword"
           name="confirmPassword"
           type="password"
           autoComplete="new-password"
           required
           disabled={isPending}
-          className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm
-                     placeholder-gray-400 shadow-sm outline-none
-                     focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20
-                     disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-400"
           placeholder="••••••••"
         />
-      </div>
+      </Field>
 
-      {/* Submit */}
-      <button
-        type="submit"
-        disabled={isPending}
-        className="w-full rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold
-                   text-white shadow-sm transition-colors
-                   hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2
-                   focus-visible:ring-blue-600 focus-visible:ring-offset-2
-                   disabled:cursor-not-allowed disabled:opacity-60"
-      >
+      <Button type="submit" className="w-full mt-2" isLoading={isPending}>
         {isPending ? "Creating account…" : "Create account"}
-      </button>
+      </Button>
 
-      <p className="text-xs text-gray-500 text-center">
+      <p className="text-xs text-[#71717A] text-center">
         For clinic staff accounts, contact your administrator.
       </p>
     </form>
   );
 }
+

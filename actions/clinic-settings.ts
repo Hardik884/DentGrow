@@ -1,5 +1,7 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
+import { createServerClient } from "@/lib/supabase/server";
 import {
   UpdateClinicSettingsSchema,
   type ActionResult,
@@ -17,23 +19,68 @@ import {
  *   and appointment slot boundaries. Never hardcode clinic info in app code.
  */
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type DbClient = any;
+
+type ResolvedProfile = {
+  id: string;
+  clinic_id: string;
+  role: "dentist" | "receptionist" | "patient";
+};
+
+async function resolveSession(): Promise<{
+  db: DbClient;
+  profile: ResolvedProfile | null;
+}> {
+  const supabase = await createServerClient();
+  const db: DbClient = supabase;
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return { db, profile: null };
+
+  const { data } = await db
+    .from("profiles")
+    .select("id, clinic_id, role")
+    .eq("id", user.id)
+    .single();
+
+  return { db, profile: (data as ResolvedProfile | null) ?? null };
+}
+
 // =============================================================================
-// getClinicSettings
+// getClinicSettings — readable by any authenticated clinic member
 // =============================================================================
 
-export async function getClinicSettings(): Promise<
-  ActionResult<ClinicSettings>
-> {
+export async function getClinicSettings(): Promise<ActionResult<ClinicSettings>> {
   try {
-    // TODO: SELECT * FROM clinic_settings WHERE clinic_id = auth_clinic_id()
-    return { data: null, error: "Not yet implemented" };
-  } catch {
+    const { db, profile } = await resolveSession();
+    if (!profile) return { data: null, error: "Unauthorized" };
+
+    const { data, error } = await db
+      .from("clinic_settings")
+      .select("*")
+      .eq("clinic_id", profile.clinic_id)
+      .maybeSingle();
+
+    if (error) {
+      console.error("[getClinicSettings]", error);
+      return { data: null, error: "Failed to fetch clinic settings." };
+    }
+
+    // If no settings row exists yet, return null (page will show empty form)
+    return { data: (data as ClinicSettings | null) ?? null, error: null };
+  } catch (err) {
+    console.error("[getClinicSettings] unexpected:", err);
     return { data: null, error: "Unexpected error" };
   }
 }
 
 // =============================================================================
 // updateClinicSettings — dentist only
+// Upserts the clinic_settings row (creates it if it doesn't exist yet).
 // =============================================================================
 
 export async function updateClinicSettings(
@@ -42,13 +89,47 @@ export async function updateClinicSettings(
   try {
     const parsed = UpdateClinicSettingsSchema.safeParse(input);
     if (!parsed.success) {
-      return { data: null, error: parsed.error.errors[0]?.message ?? "Invalid input" };
+      return {
+        data: null,
+        error: parsed.error.errors[0]?.message ?? "Invalid input",
+      };
     }
-    // TODO: verify dentist role
-    // TODO: update clinic_settings WHERE clinic_id = auth_clinic_id()
-    void parsed;
-    return { data: null, error: "Not yet implemented" };
-  } catch {
+
+    const { db, profile } = await resolveSession();
+    if (!profile) return { data: null, error: "Unauthorized" };
+    if (profile.role !== "dentist") {
+      return { data: null, error: "Forbidden: only dentists can update clinic settings." };
+    }
+
+    // Upsert: update if exists, insert if not (first time a dentist saves settings)
+    const { data, error } = await db
+      .from("clinic_settings")
+      .upsert(
+        {
+          clinic_id: profile.clinic_id,
+          clinic_name: parsed.data.clinic_name,
+          phone: parsed.data.phone || null,
+          email: parsed.data.email || null,
+          address: parsed.data.address || null,
+          average_appointment_duration: parsed.data.average_appointment_duration,
+          timezone: parsed.data.timezone,
+          clinic_hours: parsed.data.clinic_hours ?? null,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "clinic_id" }
+      )
+      .select()
+      .single();
+
+    if (error) {
+      console.error("[updateClinicSettings]", error);
+      return { data: null, error: "Failed to save clinic settings." };
+    }
+
+    revalidatePath("/dentist/settings");
+    return { data: data as ClinicSettings, error: null };
+  } catch (err) {
+    console.error("[updateClinicSettings] unexpected:", err);
     return { data: null, error: "Unexpected error" };
   }
 }

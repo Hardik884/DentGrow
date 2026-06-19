@@ -1,5 +1,7 @@
 "use client";
 
+import { Button } from "@/components/ui/button";
+
 interface ConfirmDialogProps {
   open: boolean;
   title: string;
@@ -9,18 +11,9 @@ interface ConfirmDialogProps {
   onConfirm: () => void;
   onCancel: () => void;
   isLoading?: boolean;
+  variant?: "default" | "danger";
 }
 
-/**
- * ConfirmDialog
- *
- * Generic confirmation modal. Used by:
- * - AI mutating actions (booking, cancellation, rescheduling)
- * - Destructive staff actions (soft delete patient)
- *
- * Must be rendered client-side ('use client') for state management.
- * The parent component controls open state.
- */
 export function ConfirmDialog({
   open,
   title,
@@ -30,12 +23,13 @@ export function ConfirmDialog({
   onConfirm,
   onCancel,
   isLoading = false,
+  variant = "default",
 }: ConfirmDialogProps) {
   if (!open) return null;
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
       role="dialog"
       aria-modal="true"
       aria-labelledby="confirm-dialog-title"
@@ -43,37 +37,40 @@ export function ConfirmDialog({
     >
       {/* Backdrop */}
       <div
-        className="absolute inset-0 bg-black/50"
+        className="absolute inset-0 bg-black/40 backdrop-blur-[2px]"
         onClick={onCancel}
         aria-hidden="true"
       />
 
       {/* Dialog */}
-      <div className="relative bg-white rounded-lg shadow-xl max-w-md w-full mx-4 p-6 space-y-4">
-        <h2 id="confirm-dialog-title" className="text-lg font-semibold text-gray-900">
-          {title}
-        </h2>
-        <p id="confirm-dialog-desc" className="text-sm text-gray-600">
-          {description}
-        </p>
+      <div className="relative bg-white rounded-xl border border-[#E4E4E7] shadow-2xl max-w-sm w-full p-6 space-y-4 animate-fade-in-up">
+        <div className="space-y-1.5">
+          <h2 id="confirm-dialog-title" className="text-base font-semibold text-[#09090B]">
+            {title}
+          </h2>
+          <p id="confirm-dialog-desc" className="text-sm text-[#71717A] leading-relaxed">
+            {description}
+          </p>
+        </div>
 
-        <div className="flex gap-3 justify-end pt-2">
-          <button
-            type="button"
+        <div className="flex gap-2 justify-end pt-1">
+          <Button
+            variant="outline"
+            size="sm"
             onClick={onCancel}
             disabled={isLoading}
-            className="px-4 py-2 text-sm font-medium text-gray-700 border rounded-md hover:bg-gray-50 disabled:opacity-50"
           >
             {cancelLabel}
-          </button>
-          <button
-            type="button"
+          </Button>
+          <Button
+            variant={variant === "danger" ? "danger" : "default"}
+            size="sm"
             onClick={onConfirm}
             disabled={isLoading}
-            className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50"
+            isLoading={isLoading}
           >
             {isLoading ? "Processing…" : confirmLabel}
-          </button>
+          </Button>
         </div>
       </div>
     </div>

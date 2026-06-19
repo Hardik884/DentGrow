@@ -217,7 +217,10 @@ export type UpdatePatientInput = z.infer<typeof UpdatePatientSchema>;
 
 export const CreateAppointmentSchema = z.object({
   patient_id: z.string().uuid(),
-  scheduled_at: z.string().datetime(),
+  // Accept ISO datetime with OR without timezone offset.
+  // Slots from getAvailableSlots() return "YYYY-MM-DDTHH:MM:00" (no offset);
+  // the server action converts to a proper timestamptz before inserting.
+  scheduled_at: z.string().min(1, "Please select a time slot"),
   duration_minutes: z.number().int().positive().default(30),
   source: z.enum(["walk_in", "phone_call", "website", "referral", "other"]),
   notes: z.string().max(1000).optional(),

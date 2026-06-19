@@ -36,3 +36,4 @@ export default async function NewFollowUpPage({ searchParams }: Props) {
     </div>
   );
 }
+

@@ -36,13 +36,13 @@ export function PeakHoursHeatmap({ data }: PeakHoursHeatmapProps) {
   }
 
   function intensity(count: number): string {
-    if (maxCount === 0 || count === 0) return "bg-gray-100";
+    if (maxCount === 0 || count === 0) return "bg-[#F4F4F5]";
     const ratio = count / maxCount;
-    if (ratio < 0.2) return "bg-blue-100";
-    if (ratio < 0.4) return "bg-blue-200";
-    if (ratio < 0.6) return "bg-blue-400";
-    if (ratio < 0.8) return "bg-blue-500";
-    return "bg-blue-700";
+    if (ratio < 0.2) return "bg-[#E4E4E7]";
+    if (ratio < 0.4) return "bg-[#A1A1AA]";
+    if (ratio < 0.6) return "bg-[#71717A]";
+    if (ratio < 0.8) return "bg-[#3F3F46]";
+    return "bg-[#18181B]";
   }
 
   return (

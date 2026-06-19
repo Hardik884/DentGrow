@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { createServerClient } from "@/lib/supabase/server";
-import { getTodayQueue } from "@/actions/queue";
+import { getTodayQueue, getQueueStatus } from "@/actions/queue";
 import { QueuePositionCard } from "@/components/queue/QueuePositionCard";
 
 export const metadata: Metadata = {
@@ -17,10 +17,9 @@ export const metadata: Metadata = {
  * 1. patient_id from portal link
  * 2. clinic_id for Realtime subscription
  * 3. average_appointment_duration from clinic_settings (fallback)
- * 4. Full today's queue for initial render (Realtime updates via useQueue)
- *
- * The queue shows the patient's position, patients ahead, estimated wait,
- * and which number is currently being seen.
+ * 4. The patient's own queue entry (RLS scopes this to a single row).
+ *    Position context (patientsAhead, currentQueueNumber, estimated wait)
+ *    comes from getQueueStatus() which uses an aggregated count.
  */
 export default async function PortalQueuePage() {
   const supabase = await createServerClient();
@@ -36,7 +35,7 @@ export default async function PortalQueuePage() {
   // Resolve portal link → patient_id + clinic_id
   const { data: linkData } = await db
     .from("patient_portal_links")
-    .select("patient_id, patient:patients(clinic_id)")
+    .select("patient_id, patients!inner(clinic_id)")
     .eq("user_id", user.id)
     .single();
 
@@ -44,11 +43,13 @@ export default async function PortalQueuePage() {
 
   const link = linkData as {
     patient_id: string;
-    patient: { clinic_id: string } | null;
+    patients: { clinic_id: string } | { clinic_id: string }[] | null;
   };
 
   const patientId = link.patient_id;
-  const clinicId = link.patient?.clinic_id ?? "";
+  const clinicId = Array.isArray(link.patients)
+    ? link.patients[0]?.clinic_id ?? ""
+    : link.patients?.clinic_id ?? "";
 
   // Fetch clinic settings for fallback average duration
   const { data: settingsData } = await db
@@ -61,12 +62,23 @@ export default async function PortalQueuePage() {
     (settingsData as { average_appointment_duration?: number } | null)
       ?.average_appointment_duration ?? 30;
 
-  // Fetch today's full queue for initial render (includes all patients for position context)
-  // Note: for portal users, RLS limits getTodayQueue to show patient-role data.
-  // We use a broader fetch here via the server-side Supabase client (anon key + user session)
-  // which respects RLS. The patient can see the queue count but not other patients' names.
-  const queueResult = await getTodayQueue();
+  // For portal users, getTodayQueue returns just the patient's own entry.
+  // We pair it with getQueueStatus, which reports patientsAhead + estimated
+  // wait via a service-role aggregate so the count is accurate even though
+  // RLS hides other patients' rows from this user.
+  const [queueResult, statusResult] = await Promise.all([
+    getTodayQueue(),
+    getQueueStatus(patientId),
+  ]);
+
   const initialQueue = queueResult.data ?? [];
+  const status = statusResult.data ?? {
+    position: null,
+    patientsAhead: 0,
+    estimatedWaitMinutes: 0,
+    currentQueueNumber: null,
+    myStatus: null,
+  };
 
   return (
     <div className="space-y-6">
@@ -77,6 +89,7 @@ export default async function PortalQueuePage() {
         initialQueue={initialQueue}
         clinicId={clinicId}
         averageAppointmentDuration={averageAppointmentDuration}
+        initialStatus={status}
       />
 
       <div className="bg-white border rounded-lg p-4 text-sm text-gray-600 space-y-1">
@@ -90,3 +103,4 @@ export default async function PortalQueuePage() {
     </div>
   );
 }
+

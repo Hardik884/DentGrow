@@ -48,13 +48,10 @@ export default async function ReceptionistQueuePage() {
   }
 
   return (
-    <div className="p-6 space-y-6">
-      <PageHeader title="Queue" />
-      <QueueBoard
-        initialQueue={initialQueue}
-        clinicId={clinicId}
-        metrics={metrics}
-      />
+    <div className="p-6 max-w-screen-xl">
+      <PageHeader title="Queue" description="Live waiting room — real-time updates" />
+      <QueueBoard initialQueue={initialQueue} clinicId={clinicId} metrics={metrics} />
     </div>
   );
 }
+

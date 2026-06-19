@@ -3,22 +3,13 @@
 import { signOut } from "@/actions/auth";
 import { useTransition } from "react";
 import { cn } from "@/lib/utils";
+import { LogOut } from "lucide-react";
 
 interface SignOutButtonProps {
   className?: string;
-  variant?: "default" | "ghost";
 }
 
-/**
- * SignOutButton
- *
- * Calls the signOut Server Action. Displays a loading state while in flight.
- * signOut redirects to /login on the server — this component never receives
- * a success response.
- *
- * Used in DashboardSidebar and PortalNav.
- */
-export function SignOutButton({ className, variant = "ghost" }: SignOutButtonProps) {
+export function SignOutButton({ className }: SignOutButtonProps) {
   const [isPending, startTransition] = useTransition();
 
   function handleSignOut() {
@@ -29,17 +20,18 @@ export function SignOutButton({ className, variant = "ghost" }: SignOutButtonPro
 
   return (
     <button
+      type="button"
       onClick={handleSignOut}
       disabled={isPending}
       aria-label="Sign out"
       className={cn(
-        "text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50",
-        variant === "ghost"
-          ? "text-gray-500 hover:text-gray-900"
-          : "text-red-600 hover:text-red-700",
+        "flex items-center gap-2 w-full px-2 py-1.5 rounded-lg text-xs font-medium",
+        "text-[#71717A] hover:text-[#09090B] hover:bg-[#F4F4F5]",
+        "transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-50",
         className
       )}
     >
+      <LogOut className="h-3.5 w-3.5 shrink-0" aria-hidden />
       {isPending ? "Signing out…" : "Sign out"}
     </button>
   );

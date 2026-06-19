@@ -8,7 +8,8 @@ import { RescheduleReceptionistPanel } from "@/components/receptionist/Reschedul
 import { CancelAppointmentButton } from "@/components/shared/CancelAppointmentButton";
 import { AppointmentHistoryTimeline } from "@/components/shared/AppointmentHistoryTimeline";
 import { getAppointment } from "@/actions/appointments";
-import { formatDateTime, APPOINTMENT_SOURCE_LABELS } from "@/lib/utils";
+import { createServerClient } from "@/lib/supabase/server";
+import { formatDateTimeInTimezone, APPOINTMENT_SOURCE_LABELS } from "@/lib/utils";
 import type { AppointmentStatus } from "@/types";
 
 export const metadata: Metadata = {
@@ -40,6 +41,37 @@ export default async function ReceptionistAppointmentDetailPage({ params }: Prop
   const isTerminal = ["completed", "cancelled", "no_show"].includes(status);
   const isCheckedIn = status === "checked_in";
 
+  // Fetch clinic timezone for correct date/time display and RescheduleModal
+  const supabase = await createServerClient();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const db: any = supabase;
+  const { data: { user } } = await supabase.auth.getUser();
+
+  let clinicTimezone = "UTC";
+  let clinicToday: string | undefined;
+  if (user) {
+    const { data: profile } = await db
+      .from("profiles")
+      .select("clinic_id")
+      .eq("id", user.id)
+      .single();
+    const clinicId = (profile as { clinic_id: string } | null)?.clinic_id;
+    if (clinicId) {
+      const { data: settings } = await db
+        .from("clinic_settings")
+        .select("timezone")
+        .eq("clinic_id", clinicId)
+        .maybeSingle();
+      clinicTimezone = (settings as { timezone?: string } | null)?.timezone ?? "UTC";
+      clinicToday = new Intl.DateTimeFormat("en-CA", {
+        timeZone: clinicTimezone,
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+      }).format(new Date());
+    }
+  }
+
   return (
     <div className="p-6 space-y-6 max-w-3xl">
       <PageHeader title="Appointment" backHref="/receptionist/appointments" />
@@ -64,7 +96,7 @@ export default async function ReceptionistAppointmentDetailPage({ params }: Prop
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 pt-4 border-t text-sm">
           <div>
             <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Date &amp; Time</p>
-            <p className="font-semibold mt-0.5">{formatDateTime(appt.scheduled_at)}</p>
+            <p className="font-semibold mt-0.5">{formatDateTimeInTimezone(appt.scheduled_at, clinicTimezone)}</p>
           </div>
           <div>
             <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Duration</p>
@@ -108,6 +140,7 @@ export default async function ReceptionistAppointmentDetailPage({ params }: Prop
             <RescheduleReceptionistPanel
               appointmentId={appt.id}
               currentScheduledAt={appt.scheduled_at}
+              clinicToday={clinicToday}
             />
 
             {/* Cancel */}
@@ -120,7 +153,7 @@ export default async function ReceptionistAppointmentDetailPage({ params }: Prop
       )}
 
       {/* ── History ──────────────────────────────────────────── */}
-      <AppointmentHistoryTimeline history={appt.history} />
+      <AppointmentHistoryTimeline history={appt.history} timezone={clinicTimezone} />
     </div>
   );
 }

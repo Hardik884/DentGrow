@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createServerClient } from "@/lib/supabase/server";
+import { getTodayInTimezone } from "@/lib/utils";
 import {
   RecordPaymentSchema,
   type ActionResult,
@@ -97,6 +98,7 @@ export async function recordPayment(
         method: parsed.data.method,
         payment_date: parsed.data.payment_date,
         notes: parsed.data.notes ?? null,
+        created_by: profile.id,
       })
       .select()
       .single();
@@ -383,7 +385,15 @@ export async function getPaymentsToday(): Promise<ActionResult<number>> {
       return { data: null, error: "Forbidden" };
     }
 
-    const today = new Date().toISOString().split("T")[0];
+    // Use the clinic's local "today" so a clinic in Asia/Kolkata at 01:00 IST
+    // doesn't query against the previous calendar day.
+    const { data: settings } = await db
+      .from("clinic_settings")
+      .select("timezone")
+      .eq("clinic_id", profile.clinic_id)
+      .maybeSingle();
+    const tz = (settings as { timezone?: string } | null)?.timezone ?? "UTC";
+    const today = getTodayInTimezone(tz);
 
     const { data, error } = await db
       .from("payments")

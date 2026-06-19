@@ -254,6 +254,20 @@ export async function softDeletePatient(
       return { data: null, error: "Failed to cascade delete." };
     }
 
+    // Remove any active queue entries for this patient (queue_entries has
+    // no soft-delete column — we hard-delete waiting entries to keep the
+    // queue clean. In-progress / completed entries are left for audit.)
+    const { error: qErr } = await db
+      .from("queue_entries")
+      .delete()
+      .eq("patient_id", id)
+      .eq("clinic_id", cid)
+      .eq("status", "waiting");
+    if (qErr) {
+      // Non-fatal — log but don't fail the whole cascade
+      console.error("[softDeletePatient] queue:", qErr);
+    }
+
     const { error: patErr } = await db
       .from("patients")
       .update({ deleted_at: now })
@@ -278,6 +292,19 @@ export async function softDeletePatient(
 // searchPatients — name + phone partial match (ilike; backed by trigram index)
 // =============================================================================
 
+/**
+ * sanitizeForOrFilter — escape PostgREST `or()` filter operators.
+ *
+ * The `or()` filter expects: `name.ilike.%foo%,phone.ilike.%foo%`
+ * If user input contains `,`, `(`, `)`, `%`, or `*`, it can break the parser
+ * or in some cases inject unintended filter terms. We strip those characters
+ * (they have no useful meaning in a name/phone search anyway) before composing
+ * the filter string.
+ */
+function sanitizeForOrFilter(input: string): string {
+  return input.replace(/[,()%*\\]/g, " ").trim();
+}
+
 export async function searchPatients(
   query: string
 ): Promise<ActionResult<Patient[]>> {
@@ -292,12 +319,15 @@ export async function searchPatients(
       return { data: null, error: "Forbidden" };
     }
 
+    const safe = sanitizeForOrFilter(trimmed);
+    if (safe.length < 2) return { data: [], error: null };
+
     const { data, error } = await db
       .from("patients")
       .select("*")
       .eq("clinic_id", profile.clinic_id)
       .is("deleted_at", null)
-      .or(`name.ilike.%${trimmed}%,phone.ilike.%${trimmed}%`)
+      .or(`name.ilike.%${safe}%,phone.ilike.%${safe}%`)
       .order("name")
       .limit(20);
 
@@ -421,8 +451,10 @@ export async function getPatients(filters?: {
       .is("deleted_at", null);
 
     if (filters?.search && filters.search.trim().length >= 2) {
-      const s = filters.search.trim();
-      query = query.or(`name.ilike.%${s}%,phone.ilike.%${s}%`);
+      const s = sanitizeForOrFilter(filters.search.trim());
+      if (s.length >= 2) {
+        query = query.or(`name.ilike.%${s}%,phone.ilike.%${s}%`);
+      }
     }
 
     const { data, error, count } = await query

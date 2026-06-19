@@ -1,22 +1,15 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
+import { Input } from "@/components/ui/input";
 
-/**
- * DateRangeFilter
- *
- * Analytics date range selector.
- * Updates URL search params (?from=&to=) — no state library needed.
- * Default: last 30 days.
- */
 export function DateRangeFilter() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
   const today = new Date().toISOString().split("T")[0];
   const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
-    .toISOString()
-    .split("T")[0];
+    .toISOString().split("T")[0];
 
   const from = searchParams.get("from") ?? thirtyDaysAgo;
   const to = searchParams.get("to") ?? today;
@@ -28,19 +21,25 @@ export function DateRangeFilter() {
   }
 
   return (
-    <div className="flex items-center gap-2 text-sm">
-      <input
+    <div className="flex items-center gap-2">
+      <label htmlFor="date-from" className="text-xs text-[#71717A] sr-only">From</label>
+      <Input
+        id="date-from"
         type="date"
         value={from}
         onChange={(e) => handleChange("from", e.target.value)}
-        className="border rounded-md px-2 py-1 text-sm"
+        aria-label="Start date"
+        className="w-36 text-xs h-8"
       />
-      <span className="text-gray-400">to</span>
-      <input
+      <span className="text-xs text-[#A1A1AA]">–</span>
+      <label htmlFor="date-to" className="text-xs text-[#71717A] sr-only">To</label>
+      <Input
+        id="date-to"
         type="date"
         value={to}
         onChange={(e) => handleChange("to", e.target.value)}
-        className="border rounded-md px-2 py-1 text-sm"
+        aria-label="End date"
+        className="w-36 text-xs h-8"
       />
     </div>
   );

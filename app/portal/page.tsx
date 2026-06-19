@@ -22,3 +22,4 @@ export const metadata: Metadata = {
 export default function PortalDashboardPage() {
   return <PortalDashboard />;
 }
+

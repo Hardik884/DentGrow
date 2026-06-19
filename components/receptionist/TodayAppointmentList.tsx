@@ -1,26 +1,35 @@
 import { getAppointmentsToday } from "@/actions/appointments";
 import { AppointmentCard } from "@/components/shared/AppointmentCard";
+import { EmptyState } from "@/components/ui/empty-state";
+import { CalendarDays } from "lucide-react";
 
-/**
- * TodayAppointmentList
- *
- * Server Component — full list of today's appointments for receptionist dashboard.
- * Includes all statuses with status badges.
- */
 export async function TodayAppointmentList() {
   const result = await getAppointmentsToday();
   const appointments = result.data ?? [];
 
   return (
-    <div className="bg-white border rounded-lg p-4">
-      <h2 className="font-semibold text-gray-900 mb-3">Today&apos;s Appointments</h2>
+    <div className="bg-white border border-[#E4E4E7] rounded-xl overflow-hidden">
+      <div className="px-5 py-4 border-b border-[#E4E4E7]">
+        <h2 className="text-sm font-semibold text-[#09090B]">Today&apos;s Appointments</h2>
+        <p className="text-xs text-[#71717A] mt-0.5">
+          {appointments.length} appointment{appointments.length !== 1 ? "s" : ""} today
+        </p>
+      </div>
 
       {appointments.length === 0 ? (
-        <p className="text-sm text-gray-500">No appointments today.</p>
+        <EmptyState
+          icon={<CalendarDays className="h-5 w-5" aria-hidden />}
+          title="No appointments today"
+          description="Today's schedule is clear."
+        />
       ) : (
-        <div className="space-y-3">
+        <div className="divide-y divide-[#F4F4F5]">
           {appointments.map((appointment) => (
-            <AppointmentCard key={appointment.id} appointment={appointment} />
+            <AppointmentCard
+              key={appointment.id}
+              appointment={appointment}
+              baseHref="/receptionist"
+            />
           ))}
         </div>
       )}

@@ -13,7 +13,9 @@
  *    does NOT overlap any existing booked appointment's occupied window
  *    [appt_start, appt_start + appt_duration).
  * 4. Also verify the entire requested window fits within the rule's [start, end).
- * 5. Return sorted ISO datetime strings for valid slots only.
+ * 5. Optionally filter out slots whose start time is before nowCutoffMinutes
+ *    (used when the requested date is today, to hide past slots).
+ * 6. Return sorted ISO datetime strings for valid slots only.
  *
  * This supports variable-duration appointments:
  *   - A 60-min root canal cannot fit in a 30-min gap.
@@ -34,7 +36,7 @@ export interface OccupiedSlot {
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
 /** Parse "HH:MM" → total minutes from midnight */
-function toMinutes(time: string): number {
+export function toMinutes(time: string): number {
   const [h, m] = time.split(":").map(Number);
   return (h ?? 0) * 60 + (m ?? 0);
 }
@@ -56,9 +58,6 @@ function fromMinutes(totalMinutes: number): string {
  * Generates all candidate slot start times for a single availability rule.
  * Uses rule.slotDurationMinutes as the step size.
  * Returns an array of "HH:MM" time strings.
- *
- * The caller is responsible for filtering by requested duration via
- * getAvailableSlots (which checks the full window fits + no overlaps).
  */
 export function generateSlots(rule: AvailabilityRule): string[] {
   const slots: string[] = [];
@@ -68,7 +67,6 @@ export function generateSlots(rule: AvailabilityRule): string[] {
 
   let current = startMins;
 
-  // Generate candidate starts at every slotDuration interval
   while (current < endMins) {
     slots.push(fromMinutes(current));
     current += rule.slotDurationMinutes;
@@ -85,19 +83,25 @@ export function generateSlots(rule: AvailabilityRule): string[] {
  * 2. Filtering out slots where [candidate, candidate + requestedDuration)
  *    would overlap any occupied appointment window.
  * 3. Filtering out slots where the full window would exceed the rule boundary.
+ * 4. Filtering out slots that are in the past (when nowCutoffMinutes is set).
  *
- * @param date               - ISO date string "YYYY-MM-DD"
- * @param rules              - Active availability rules for the date's day_of_week
- * @param occupied           - Existing booked (non-cancelled/no-show) appointments
- * @param timezone           - IANA timezone (e.g. "Asia/Kolkata")
+ * @param date                   - ISO date string "YYYY-MM-DD"
+ * @param rules                  - Active availability rules for the date's day_of_week
+ * @param occupied               - Existing booked (non-cancelled/no-show) appointments
+ * @param timezone               - IANA timezone (e.g. "Asia/Kolkata")
  * @param requestedDurationMinutes - Duration of the appointment being booked (default 30)
+ * @param nowCutoffMinutes       - Current time in minutes-since-midnight (clinic timezone).
+ *                                 When provided, all slots starting at or before this
+ *                                 value are filtered out. Pass null/undefined for
+ *                                 future dates where no cutoff is needed.
  */
 export function getAvailableSlots(
   date: string,
   rules: AvailabilityRule[],
   occupied: OccupiedSlot[],
   timezone: string,
-  requestedDurationMinutes = 30
+  requestedDurationMinutes = 30,
+  nowCutoffMinutes?: number | null
 ): string[] {
   if (rules.length === 0) return [];
 
@@ -131,9 +135,13 @@ export function getAvailableSlots(
       // 1. Entire slot must fit within the rule window
       if (candidateEnd > ruleEndMins) continue;
 
-      // 2. Slot must not overlap any occupied window
+      // 2. Filter out past slots when a cutoff is provided (today only)
+      //    A slot is considered past if it has already started (start <= now).
+      //    We use strict ">" so that the CURRENT slot (just started) is also hidden.
+      if (nowCutoffMinutes != null && candidateStart <= nowCutoffMinutes) continue;
+
+      // 3. Slot must not overlap any occupied window
       const hasOverlap = occupiedWindows.some(([occStart, occEnd]) => {
-        // Overlap when: candidateStart < occEnd AND candidateEnd > occStart
         return candidateStart < occEnd && candidateEnd > occStart;
       });
 
