@@ -15,8 +15,12 @@ const eslintConfig = [
     rules: {
       // Enforce no-any in strict mode — matches TypeScript strict: true
       "@typescript-eslint/no-explicit-any": "error",
-      // Ensure all async functions have error handling surface
-      "@typescript-eslint/no-floating-promises": "warn",
+      // NOTE: no-floating-promises is a type-aware rule that requires
+      // parserOptions.project (typed linting). The next/core-web-vitals
+      // compat preset does not configure typed linting, so this rule
+      // causes a fatal ESLint error at build time. Removed to unblock builds.
+      // Re-enable by adding languageOptions.parserOptions.project if typed
+      // linting is explicitly configured.
     },
   },
 ];

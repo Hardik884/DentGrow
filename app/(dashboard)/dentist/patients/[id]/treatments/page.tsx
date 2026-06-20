@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import Link from "next/link";
 import { PageHeader } from "@/components/layouts/PageHeader";
 import { PatientTreatmentsTab } from "@/components/dentist/PatientTreatmentsTab";
 import { getPatient } from "@/actions/patients";

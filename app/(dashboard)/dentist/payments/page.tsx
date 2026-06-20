@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { PageHeader } from "@/components/layouts/PageHeader";
 import { PendingPaymentsList } from "@/components/receptionist/PendingPaymentsList";
 import { getPaymentsToday } from "@/actions/payments";

@@ -3,7 +3,6 @@ import { notFound } from "next/navigation";
 import { getPatient } from "@/actions/patients";
 import { PatientAvatar } from "@/components/shared/PatientAvatar";
 import { DeletePatientButton } from "@/components/dentist/DeletePatientButton";
-import { StatusBadge } from "@/components/shared/StatusBadge";
 import { formatDate, formatCurrency, calculateAge } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";

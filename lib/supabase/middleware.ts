@@ -125,7 +125,6 @@ type SupabaseClient = any;
 
 /** Resolve the user's role from the profiles table. Returns null if not found. */
 async function resolveRole(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   supabase: SupabaseClient,
   userId: string
 ): Promise<"dentist" | "receptionist" | "patient" | null> {

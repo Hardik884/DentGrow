@@ -959,6 +959,10 @@ export async function getAppointments(filters?: {
   status?: AppointmentStatus;
   dateFrom?: string;
   dateTo?: string;
+  /** Optional time-of-day lower bound, e.g. "08:00". Combined with dateFrom. */
+  timeFrom?: string;
+  /** Optional time-of-day upper bound, e.g. "18:00". Combined with dateTo. */
+  timeTo?: string;
   patientId?: string;
   page?: number;
   limit?: number;
@@ -984,8 +988,14 @@ export async function getAppointments(filters?: {
     }
 
     if (filters?.status) query = query.eq("status", filters.status);
-    if (filters?.dateFrom) query = query.gte("scheduled_at", `${filters.dateFrom}T00:00:00`);
-    if (filters?.dateTo) query = query.lte("scheduled_at", `${filters.dateTo}T23:59:59`);
+
+    // Date + time filtering: combine date and time parts into a full datetime string.
+    // timeFrom/timeTo are "HH:MM" strings from the filter bar.
+    const fromTime = filters?.timeFrom || "00:00:00";
+    const toTime = filters?.timeTo ? `${filters.timeTo}:59` : "23:59:59";
+    if (filters?.dateFrom) query = query.gte("scheduled_at", `${filters.dateFrom}T${fromTime}`);
+    if (filters?.dateTo) query = query.lte("scheduled_at", `${filters.dateTo}T${toTime}`);
+
     if (filters?.patientId) query = query.eq("patient_id", filters.patientId);
 
     const { data, error, count } = await query.range(from, to);

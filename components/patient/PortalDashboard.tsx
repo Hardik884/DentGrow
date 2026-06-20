@@ -10,7 +10,7 @@ import { AppointmentCard } from "@/components/shared/AppointmentCard";
 import { OutstandingBalanceCard } from "./OutstandingBalanceCard";
 import { EmptyState } from "@/components/ui/empty-state";
 import { formatDate, formatCurrency, TREATMENT_STATUS_LABELS } from "@/lib/utils";
-import { CalendarDays, ArrowRight, Clock, Bell, Stethoscope, CreditCard } from "lucide-react";
+import { CalendarDays, ArrowRight, Bell, Stethoscope, CreditCard } from "lucide-react";
 import type { TreatmentStatus } from "@/types";
 
 export async function PortalDashboard() {

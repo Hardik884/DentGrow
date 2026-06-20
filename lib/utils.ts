@@ -176,35 +176,9 @@ export function getUtcBoundariesForLocalDate(
   timezone: string
 ): { start: string; end: string } {
   try {
-    // Parse midnight local time → UTC
-    // We use Intl to figure out the UTC offset for this date+timezone
-    const startLocal = new Date(`${localDate}T00:00:00`);
-    const endLocal = new Date(`${localDate}T23:59:59.999`);
-
-    // Get the offset in minutes by comparing UTC time to the timezone's midnight
-    const startFormatter = new Intl.DateTimeFormat("en-CA", {
-      timeZone: timezone,
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit",
-      hour12: false,
-    });
-
-    // Strategy: construct the UTC timestamp by working backward from local midnight
-    // Use Date constructor with the full local time string interpreted as UTC,
-    // then shift by the timezone offset.
-    // The most reliable approach: use a fixed reference.
-    const tzDate = new Date(
-      new Date(`${localDate}T00:00:00`).toLocaleString("en-US", { timeZone: timezone })
-    );
-    void tzDate;
-
-    // Simplest correct approach: build a string that toISOString can use
-    // We interpret "YYYY-MM-DDT00:00:00" as local midnight in the given timezone.
-    // The timezone offset for a given date can be determined from Intl.
+    // Simplest correct approach: delegate to zonedDateToUTC which handles
+    // the offset calculation via Intl. The intermediate Date objects and
+    // formatter that were here were dead code.
     const midnightUTC = zonedDateToUTC(`${localDate}T00:00:00`, timezone);
     const endOfDayUTC = zonedDateToUTC(`${localDate}T23:59:59.999`, timezone);
 

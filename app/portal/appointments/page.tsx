@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { AppointmentList } from "@/components/patient/AppointmentList";
 
 export const metadata: Metadata = {
@@ -16,12 +17,12 @@ export default async function PortalAppointmentsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold">My Appointments</h1>
-        <a
+        <Link
           href="/portal/appointments/new"
           className="text-sm font-medium text-blue-600"
         >
           Book Appointment
-        </a>
+        </Link>
       </div>
 
       <AppointmentList />

@@ -14,7 +14,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
-import { Separator } from "@/components/ui/separator";
 import { CalendarPicker } from "@/components/ui/calendar-picker";
 
 interface PatientFormProps {

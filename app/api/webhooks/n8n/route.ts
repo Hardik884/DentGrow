@@ -29,6 +29,7 @@ export async function POST(request: NextRequest) {
     }
 
     const payload = await request.json();
+    void payload;
 
     // TODO: Validate payload shape with Zod against WebhookPayloadSchema
     // TODO: Write to webhook_logs using service role Supabase client

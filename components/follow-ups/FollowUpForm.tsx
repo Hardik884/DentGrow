@@ -17,7 +17,6 @@ import { PatientAvatar } from "@/components/shared/PatientAvatar";
 import { LoadingSpinner } from "@/components/shared/LoadingSpinner";
 import {
   FOLLOW_UP_STATUS_LABELS,
-  FOLLOW_UP_TYPE_LABELS,
   formatDate,
   formatDateTime,
 } from "@/lib/utils";

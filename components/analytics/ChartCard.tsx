@@ -1,5 +1,4 @@
 import { cn } from "@/lib/utils";
-import { LoadingSpinner } from "@/components/shared/LoadingSpinner";
 import { SkeletonCard } from "@/components/ui/skeleton";
 
 interface ChartCardProps {

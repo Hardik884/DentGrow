@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { PageHeader } from "@/components/layouts/PageHeader";
 import { TreatmentList } from "@/components/dentist/TreatmentList";
-import { StatusBadge } from "@/components/shared/StatusBadge";
 import { getAllTreatments } from "@/actions/treatments";
 import { TREATMENT_STATUS_LABELS, formatCurrency } from "@/lib/utils";
 import type { Treatment, TreatmentStatus } from "@/types";
@@ -16,12 +15,6 @@ interface Props {
 }
 
 const STATUS_VALUES: TreatmentStatus[] = ["planned", "in_progress", "completed", "cancelled"];
-const STATUS_VARIANT_MAP: Record<TreatmentStatus, "default" | "info" | "success" | "error"> = {
-  planned: "default",
-  in_progress: "info",
-  completed: "success",
-  cancelled: "error",
-};
 
 /**
  * /dentist/treatments

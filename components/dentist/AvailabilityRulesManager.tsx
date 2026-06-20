@@ -214,7 +214,6 @@ function RuleFormFields({
   onCancel,
   submitLabel,
 }: {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   form: ReturnType<typeof useForm<CreateAvailabilityRuleInput>>;
   onCancel: () => void;
   submitLabel: string;
