@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { Input } from "@/components/ui/input";
+import { CalendarPicker } from "@/components/ui/calendar-picker";
 
 export function DateRangeFilter() {
   const router = useRouter();
@@ -15,6 +15,7 @@ export function DateRangeFilter() {
   const to = searchParams.get("to") ?? today;
 
   function handleChange(key: "from" | "to", value: string) {
+    if (!value) return;
     const params = new URLSearchParams(searchParams.toString());
     params.set(key, value);
     router.push(`?${params.toString()}`);
@@ -22,24 +23,22 @@ export function DateRangeFilter() {
 
   return (
     <div className="flex items-center gap-2">
-      <label htmlFor="date-from" className="text-xs text-[#71717A] sr-only">From</label>
-      <Input
-        id="date-from"
-        type="date"
+      <span className="text-xs text-[#A1A1AA] sr-only">From</span>
+      <CalendarPicker
         value={from}
-        onChange={(e) => handleChange("from", e.target.value)}
+        max={to}
+        onChange={(d) => handleChange("from", d)}
         aria-label="Start date"
-        className="w-36 text-xs h-8"
+        className="w-36 text-xs"
       />
       <span className="text-xs text-[#A1A1AA]">–</span>
-      <label htmlFor="date-to" className="text-xs text-[#71717A] sr-only">To</label>
-      <Input
-        id="date-to"
-        type="date"
+      <span className="text-xs text-[#A1A1AA] sr-only">To</span>
+      <CalendarPicker
         value={to}
-        onChange={(e) => handleChange("to", e.target.value)}
+        min={from}
+        onChange={(d) => handleChange("to", d)}
         aria-label="End date"
-        className="w-36 text-xs h-8"
+        className="w-36 text-xs"
       />
     </div>
   );

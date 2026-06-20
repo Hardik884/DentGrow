@@ -15,8 +15,7 @@ import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
-import { CheckCircle2, Link as LinkIcon } from "lucide-react";
-import Link from "next/link";
+import { CheckCircle2 } from "lucide-react";
 
 const TIMEZONES = [
   "Asia/Kolkata", "Asia/Dubai", "Asia/Singapore", "Asia/Tokyo",
@@ -167,11 +166,7 @@ export function ClinicSettingsForm({ initialSettings }: ClinicSettingsFormProps)
           <div>
             <h3 className="text-sm font-semibold text-[#09090B]">Clinic Hours</h3>
             <p className="text-xs text-[#71717A] mt-0.5">
-              Used for AI assistant responses.{" "}
-              <Link href="/dentist/settings/availability" className="underline underline-offset-4 hover:text-[#09090B]">
-                Manage booking slots separately
-              </Link>
-              .
+              Defines when appointments can be booked. Days marked closed generate no slots.
             </p>
           </div>
 

@@ -8,6 +8,7 @@ import {
   UpdateFollowUpSchema,
   type ActionResult,
   type FollowUp,
+  type FollowUpWithRelations,
 } from "@/types";
 
 /**
@@ -16,10 +17,17 @@ import {
  * Security rules (enforced in every action):
  * - clinic_id is ALWAYS sourced from the server session.
  * - Dentist: full CRUD (create, update, complete, cancel, list).
- * - Receptionist: create, update, view — cannot cancel or hard-manage.
+ * - Receptionist: create, update, view — cannot cancel or complete.
  * - Patient: view own follow-ups only (via portal link).
  * - Overdue = due_date < today AND status = 'pending'.
  * - Soft-deleted follow-ups excluded from all queries.
+ *
+ * Validation guards:
+ * - patient must exist and belong to the clinic
+ * - appointment_id (if provided) must belong to the patient
+ * - treatment_id (if provided) must belong to the patient
+ * - due_date must be a valid date string
+ * - follow_up_type is required
  */
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -55,8 +63,6 @@ async function resolveSession(): Promise<{
 
 /**
  * todayForClinic — today's date (YYYY-MM-DD) in the clinic's local timezone.
- * Use this instead of new Date().toISOString().split('T')[0] so overdue follow-ups
- * are computed against the clinic's local calendar, not UTC.
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function todayForClinic(db: any, clinicId: string): Promise<string> {
@@ -92,17 +98,75 @@ export async function createFollowUp(
       return { data: null, error: "Forbidden: patients cannot create follow-ups." };
     }
 
+    // ── Validate patient exists and belongs to this clinic ─────────────────
+    const { data: patientRow } = await db
+      .from("patients")
+      .select("id")
+      .eq("id", parsed.data.patient_id)
+      .eq("clinic_id", profile.clinic_id)
+      .is("deleted_at", null)
+      .single();
+
+    if (!patientRow) {
+      return { data: null, error: "Patient not found in this clinic." };
+    }
+
+    // ── Validate appointment belongs to this patient (if provided) ─────────
+    if (parsed.data.appointment_id) {
+      const { data: apptRow } = await db
+        .from("appointments")
+        .select("id")
+        .eq("id", parsed.data.appointment_id)
+        .eq("patient_id", parsed.data.patient_id)
+        .eq("clinic_id", profile.clinic_id)
+        .is("deleted_at", null)
+        .single();
+
+      if (!apptRow) {
+        return {
+          data: null,
+          error: "Appointment not found or does not belong to this patient.",
+        };
+      }
+    }
+
+    // ── Validate treatment belongs to this patient (if provided) ───────────
+    if (parsed.data.treatment_id) {
+      const { data: txRow } = await db
+        .from("treatments")
+        .select("id")
+        .eq("id", parsed.data.treatment_id)
+        .eq("patient_id", parsed.data.patient_id)
+        .eq("clinic_id", profile.clinic_id)
+        .is("deleted_at", null)
+        .single();
+
+      if (!txRow) {
+        return {
+          data: null,
+          error: "Treatment not found or does not belong to this patient.",
+        };
+      }
+    }
+
+    // ── Validate due_date is not in the past ───────────────────────────────
+    const today = await todayForClinic(db, profile.clinic_id);
+    if (parsed.data.due_date < today) {
+      return { data: null, error: "Due date cannot be in the past." };
+    }
+
     const { data, error } = await db
       .from("follow_ups")
       .insert({
-        clinic_id: profile.clinic_id,
-        patient_id: parsed.data.patient_id,
+        clinic_id:      profile.clinic_id,
+        patient_id:     parsed.data.patient_id,
         appointment_id: parsed.data.appointment_id ?? null,
-        treatment_id: parsed.data.treatment_id ?? null,
-        due_date: parsed.data.due_date,
-        status: "pending",
-        notes: parsed.data.notes ?? null,
-        created_by: profile.id,
+        treatment_id:   parsed.data.treatment_id ?? null,
+        follow_up_type: parsed.data.follow_up_type,
+        due_date:       parsed.data.due_date,
+        status:         "pending",
+        notes:          parsed.data.notes ?? null,
+        created_by:     profile.id,
       })
       .select()
       .single();
@@ -147,15 +211,67 @@ export async function updateFollowUp(
       return { data: null, error: "Forbidden" };
     }
 
+    // Fetch the existing follow-up to resolve patient_id for cross-checks
+    const { data: existing } = await db
+      .from("follow_ups")
+      .select("id, patient_id, status")
+      .eq("id", id)
+      .eq("clinic_id", profile.clinic_id)
+      .is("deleted_at", null)
+      .single();
+
+    if (!existing) return { data: null, error: "Follow-up not found." };
+
+    const patientId: string = (existing as { patient_id: string }).patient_id;
+
+    // ── Validate appointment belongs to this patient (if being updated) ────
+    if (parsed.data.appointment_id) {
+      const { data: apptRow } = await db
+        .from("appointments")
+        .select("id")
+        .eq("id", parsed.data.appointment_id)
+        .eq("patient_id", patientId)
+        .eq("clinic_id", profile.clinic_id)
+        .is("deleted_at", null)
+        .single();
+
+      if (!apptRow) {
+        return {
+          data: null,
+          error: "Appointment not found or does not belong to this patient.",
+        };
+      }
+    }
+
+    // ── Validate treatment belongs to this patient (if being updated) ──────
+    if (parsed.data.treatment_id) {
+      const { data: txRow } = await db
+        .from("treatments")
+        .select("id")
+        .eq("id", parsed.data.treatment_id)
+        .eq("patient_id", patientId)
+        .eq("clinic_id", profile.clinic_id)
+        .is("deleted_at", null)
+        .single();
+
+      if (!txRow) {
+        return {
+          data: null,
+          error: "Treatment not found or does not belong to this patient.",
+        };
+      }
+    }
+
     const updates: Record<string, unknown> = {
       updated_at: new Date().toISOString(),
     };
 
-    if (parsed.data.due_date !== undefined) updates.due_date = parsed.data.due_date;
-    if (parsed.data.notes !== undefined) updates.notes = parsed.data.notes ?? null;
-    if (parsed.data.appointment_id !== undefined) updates.appointment_id = parsed.data.appointment_id ?? null;
-    if (parsed.data.treatment_id !== undefined) updates.treatment_id = parsed.data.treatment_id ?? null;
-    if (parsed.data.status !== undefined) updates.status = parsed.data.status;
+    if (parsed.data.follow_up_type !== undefined) updates.follow_up_type = parsed.data.follow_up_type;
+    if (parsed.data.due_date !== undefined)        updates.due_date        = parsed.data.due_date;
+    if (parsed.data.notes !== undefined)           updates.notes           = parsed.data.notes ?? null;
+    if (parsed.data.appointment_id !== undefined)  updates.appointment_id  = parsed.data.appointment_id ?? null;
+    if (parsed.data.treatment_id !== undefined)    updates.treatment_id    = parsed.data.treatment_id ?? null;
+    if (parsed.data.status !== undefined)          updates.status          = parsed.data.status;
 
     const { data, error } = await db
       .from("follow_ups")
@@ -186,7 +302,7 @@ export async function updateFollowUp(
 }
 
 // =============================================================================
-// completeFollowUp — sets status = 'completed' — dentist only
+// completeFollowUp — dentist only
 // =============================================================================
 
 export async function completeFollowUp(
@@ -204,7 +320,7 @@ export async function completeFollowUp(
     const { data, error } = await db
       .from("follow_ups")
       .update({
-        status: "completed",
+        status:     "completed",
         updated_at: new Date().toISOString(),
       })
       .eq("id", id)
@@ -234,7 +350,7 @@ export async function completeFollowUp(
 }
 
 // =============================================================================
-// cancelFollowUp — sets status = 'cancelled' — dentist only
+// cancelFollowUp — dentist only
 // =============================================================================
 
 export async function cancelFollowUp(
@@ -252,7 +368,7 @@ export async function cancelFollowUp(
     const { data, error } = await db
       .from("follow_ups")
       .update({
-        status: "cancelled",
+        status:     "cancelled",
         updated_at: new Date().toISOString(),
       })
       .eq("id", id)
@@ -282,12 +398,12 @@ export async function cancelFollowUp(
 }
 
 // =============================================================================
-// getFollowUp — single follow-up by id (staff only)
+// getFollowUp — single follow-up by id with relations (staff only)
 // =============================================================================
 
 export async function getFollowUp(
   id: string
-): Promise<ActionResult<FollowUp & { patient?: { id: string; name: string } }>> {
+): Promise<ActionResult<FollowUpWithRelations>> {
   try {
     if (!id) return { data: null, error: "Follow-up ID is required" };
 
@@ -299,7 +415,12 @@ export async function getFollowUp(
 
     const { data, error } = await db
       .from("follow_ups")
-      .select("*, patients(id, name)")
+      .select(
+        "*, " +
+        "patient:patients(id, name, phone), " +
+        "appointment:appointments(id, scheduled_at, status), " +
+        "treatment:treatments(id, treatment_type, status)"
+      )
       .eq("id", id)
       .eq("clinic_id", profile.clinic_id)
       .is("deleted_at", null)
@@ -309,7 +430,7 @@ export async function getFollowUp(
       return { data: null, error: "Follow-up not found." };
     }
 
-    return { data: data as FollowUp & { patient?: { id: string; name: string } }, error: null };
+    return { data: data as FollowUpWithRelations, error: null };
   } catch (err) {
     console.error("[getFollowUp] unexpected:", err);
     return { data: null, error: "Unexpected error" };
@@ -322,7 +443,7 @@ export async function getFollowUp(
 
 export async function getFollowUpsForPatient(
   patientId: string
-): Promise<ActionResult<FollowUp[]>> {
+): Promise<ActionResult<FollowUpWithRelations[]>> {
   try {
     if (!patientId) return { data: [], error: null };
 
@@ -334,7 +455,12 @@ export async function getFollowUpsForPatient(
 
     const { data, error } = await db
       .from("follow_ups")
-      .select("*")
+      .select(
+        "*, " +
+        "patient:patients(id, name, phone), " +
+        "appointment:appointments(id, scheduled_at, status), " +
+        "treatment:treatments(id, treatment_type, status)"
+      )
       .eq("patient_id", patientId)
       .eq("clinic_id", profile.clinic_id)
       .is("deleted_at", null)
@@ -345,7 +471,7 @@ export async function getFollowUpsForPatient(
       return { data: null, error: "Failed to fetch follow-ups." };
     }
 
-    return { data: (data ?? []) as FollowUp[], error: null };
+    return { data: (data ?? []) as FollowUpWithRelations[], error: null };
   } catch (err) {
     console.error("[getFollowUpsForPatient] unexpected:", err);
     return { data: null, error: "Unexpected error" };
@@ -362,7 +488,7 @@ export async function getAllFollowUps(filters?: {
   status?: "pending" | "completed" | "cancelled" | "overdue";
   page?: number;
   limit?: number;
-}): Promise<ActionResult<{ followUps: (FollowUp & { patient: { id: string; name: string } | null })[]; total: number }>> {
+}): Promise<ActionResult<{ followUps: FollowUpWithRelations[]; total: number }>> {
   try {
     const { db, profile } = await resolveSession();
     if (!profile) return { data: null, error: "Unauthorized" };
@@ -370,16 +496,22 @@ export async function getAllFollowUps(filters?: {
       return { data: null, error: "Forbidden" };
     }
 
-    const page = filters?.page ?? 1;
+    const page  = filters?.page ?? 1;
     const limit = Math.min(filters?.limit ?? 50, 100);
-    const from = (page - 1) * limit;
-    const to = from + limit - 1;
+    const from  = (page - 1) * limit;
+    const to    = from + limit - 1;
 
     const today = await todayForClinic(db, profile.clinic_id);
 
     let query = db
       .from("follow_ups")
-      .select("*, patients(id, name)", { count: "exact" })
+      .select(
+        "*, " +
+        "patient:patients(id, name, phone), " +
+        "appointment:appointments(id, scheduled_at, status), " +
+        "treatment:treatments(id, treatment_type, status)",
+        { count: "exact" }
+      )
       .eq("clinic_id", profile.clinic_id)
       .is("deleted_at", null);
 
@@ -400,7 +532,7 @@ export async function getAllFollowUps(filters?: {
 
     return {
       data: {
-        followUps: (data ?? []) as (FollowUp & { patient: { id: string; name: string } | null })[],
+        followUps: (data ?? []) as FollowUpWithRelations[],
         total: count ?? 0,
       },
       error: null,
@@ -413,11 +545,10 @@ export async function getAllFollowUps(filters?: {
 
 // =============================================================================
 // getOverdueFollowUps — dentist dashboard + analytics
-// due_date < today AND status = pending
 // =============================================================================
 
 export async function getOverdueFollowUps(): Promise<
-  ActionResult<(FollowUp & { patient: { id: string; name: string } | null })[]>
+  ActionResult<FollowUpWithRelations[]>
 > {
   try {
     const { db, profile } = await resolveSession();
@@ -430,7 +561,12 @@ export async function getOverdueFollowUps(): Promise<
 
     const { data, error } = await db
       .from("follow_ups")
-      .select("*, patients(id, name)")
+      .select(
+        "*, " +
+        "patient:patients(id, name, phone), " +
+        "appointment:appointments(id, scheduled_at, status), " +
+        "treatment:treatments(id, treatment_type, status)"
+      )
       .eq("clinic_id", profile.clinic_id)
       .eq("status", "pending")
       .lt("due_date", today)
@@ -443,11 +579,89 @@ export async function getOverdueFollowUps(): Promise<
     }
 
     return {
-      data: (data ?? []) as (FollowUp & { patient: { id: string; name: string } | null })[],
+      data: (data ?? []) as FollowUpWithRelations[],
       error: null,
     };
   } catch (err) {
     console.error("[getOverdueFollowUps] unexpected:", err);
+    return { data: null, error: "Unexpected error" };
+  }
+}
+
+// =============================================================================
+// getPatientAppointments — fetch appointments for a patient (used by form)
+// Returns lightweight list for the appointment selector in the follow-up form.
+// =============================================================================
+
+export async function getPatientAppointmentsForFollowUp(
+  patientId: string
+): Promise<ActionResult<Array<{ id: string; scheduled_at: string; status: string }>>> {
+  try {
+    if (!patientId) return { data: [], error: null };
+
+    const { db, profile } = await resolveSession();
+    if (!profile) return { data: null, error: "Unauthorized" };
+    if (profile.role === "patient") return { data: null, error: "Forbidden" };
+
+    const { data, error } = await db
+      .from("appointments")
+      .select("id, scheduled_at, status")
+      .eq("patient_id", patientId)
+      .eq("clinic_id", profile.clinic_id)
+      .is("deleted_at", null)
+      .not("status", "in", '("cancelled","no_show")')
+      .order("scheduled_at", { ascending: false })
+      .limit(20);
+
+    if (error) {
+      console.error("[getPatientAppointmentsForFollowUp]", error);
+      return { data: null, error: "Failed to fetch appointments." };
+    }
+
+    return {
+      data: (data ?? []) as Array<{ id: string; scheduled_at: string; status: string }>,
+      error: null,
+    };
+  } catch (err) {
+    console.error("[getPatientAppointmentsForFollowUp] unexpected:", err);
+    return { data: null, error: "Unexpected error" };
+  }
+}
+
+// =============================================================================
+// getPatientTreatmentsForFollowUp — fetch treatments for a patient (used by form)
+// =============================================================================
+
+export async function getPatientTreatmentsForFollowUp(
+  patientId: string
+): Promise<ActionResult<Array<{ id: string; treatment_type: string; status: string }>>> {
+  try {
+    if (!patientId) return { data: [], error: null };
+
+    const { db, profile } = await resolveSession();
+    if (!profile) return { data: null, error: "Unauthorized" };
+    if (profile.role === "patient") return { data: null, error: "Forbidden" };
+
+    const { data, error } = await db
+      .from("treatments")
+      .select("id, treatment_type, status")
+      .eq("patient_id", patientId)
+      .eq("clinic_id", profile.clinic_id)
+      .is("deleted_at", null)
+      .order("created_at", { ascending: false })
+      .limit(20);
+
+    if (error) {
+      console.error("[getPatientTreatmentsForFollowUp]", error);
+      return { data: null, error: "Failed to fetch treatments." };
+    }
+
+    return {
+      data: (data ?? []) as Array<{ id: string; treatment_type: string; status: string }>,
+      error: null,
+    };
+  } catch (err) {
+    console.error("[getPatientTreatmentsForFollowUp] unexpected:", err);
     return { data: null, error: "Unexpected error" };
   }
 }
@@ -467,7 +681,6 @@ export async function getPatientPortalFollowUps(): Promise<ActionResult<FollowUp
 
     if (!user) return { data: null, error: "Unauthorized" };
 
-    // Resolve patient_id via portal link
     const { data: link } = await db
       .from("patient_portal_links")
       .select("patient_id")
@@ -506,7 +719,7 @@ export async function getFollowUpStats(): Promise<
     pending: number;
     overdue: number;
     completed: number;
-    upcoming: number; // pending and due_date >= today
+    upcoming: number;
   }>
 > {
   try {
@@ -531,12 +744,7 @@ export async function getFollowUpStats(): Promise<
 
     const rows = (data ?? []) as { status: string; due_date: string }[];
 
-    const stats = {
-      pending: 0,
-      overdue: 0,
-      completed: 0,
-      upcoming: 0,
-    };
+    const stats = { pending: 0, overdue: 0, completed: 0, upcoming: 0 };
 
     for (const row of rows) {
       if (row.status === "pending") {

@@ -2,23 +2,25 @@ import Link from "next/link";
 import { getFollowUpsForPatient, getAllFollowUps } from "@/actions/follow-ups";
 import { OverdueFollowUpBadge } from "./OverdueFollowUpBadge";
 import { StatusBadge } from "@/components/shared/StatusBadge";
-import { formatDate, FOLLOW_UP_STATUS_LABELS } from "@/lib/utils";
-import type { FollowUp } from "@/types";
+import {
+  formatDate,
+  formatDateTime,
+  FOLLOW_UP_STATUS_LABELS,
+  FOLLOW_UP_TYPE_LABELS,
+} from "@/lib/utils";
+import { Calendar, Stethoscope } from "lucide-react";
+import type { FollowUpWithRelations } from "@/types";
 
 interface FollowUpListProps {
   /** If provided, shows follow-ups for this specific patient only. */
   patientId?: string;
   /** If provided, shows only follow-ups with this status. Use 'overdue' for overdue filter. */
   statusFilter?: "pending" | "completed" | "cancelled" | "overdue";
-  /** Whether to show a link to the patient name (used in clinic-wide list) */
+  /** Whether to show the patient name column (used in clinic-wide list) */
   showPatientLink?: boolean;
-  /** base href for the follow-up detail link (default: /dentist) */
+  /** Base href for follow-up detail links (default: /dentist) */
   baseHref?: string;
 }
-
-type FollowUpWithPatient = FollowUp & {
-  patient?: { id: string; name: string } | null;
-};
 
 /**
  * FollowUpList
@@ -27,10 +29,12 @@ type FollowUpWithPatient = FollowUp & {
  *   - A specific patient profile (patientId prop)
  *   - Clinic-wide list with optional status filter (no patientId)
  *
- * Overdue follow-ups (status = pending AND due_date < today) are highlighted
- * with a red badge and shown with days-overdue count.
- * Upcoming pending follow-ups show days remaining.
- * Completed follow-ups show the completion date (updated_at).
+ * Each row shows:
+ *   - Follow-up type badge
+ *   - Patient name (when in clinic-wide view)
+ *   - Due date with overdue/remaining indicator
+ *   - Related treatment and appointment (if linked)
+ *   - Status badge
  */
 export async function FollowUpList({
   patientId,
@@ -38,11 +42,11 @@ export async function FollowUpList({
   showPatientLink = false,
   baseHref = "/dentist",
 }: FollowUpListProps) {
-  let followUps: FollowUpWithPatient[] = [];
+  let followUps: FollowUpWithRelations[] = [];
 
   if (patientId) {
     const result = await getFollowUpsForPatient(patientId);
-    followUps = (result.data ?? []) as FollowUpWithPatient[];
+    followUps = result.data ?? [];
   } else {
     const result = await getAllFollowUps({ status: statusFilter, limit: 100 });
     followUps = result.data?.followUps ?? [];
@@ -61,23 +65,26 @@ export async function FollowUpList({
   });
 
   return (
-    <div className="bg-white border rounded-lg divide-y">
-      <div className="px-4 py-3 flex items-center justify-between">
-        <h2 className="font-semibold text-gray-900">Follow-Ups</h2>
+    <div className="bg-white border border-border rounded-xl overflow-hidden">
+      {/* Header */}
+      <div className="px-4 py-3 border-b border-border flex items-center justify-between">
+        <h2 className="text-sm font-semibold text-text-primary">Follow-Ups</h2>
         {patientId && (
           <Link
             href={`${baseHref}/follow-ups/new?patient=${patientId}`}
-            className="text-xs font-medium text-blue-600 hover:underline"
+            className="text-xs font-medium text-blue-600 hover:underline underline-offset-4"
           >
-            + New
+            + New Follow-Up
           </Link>
         )}
       </div>
 
       {sorted.length === 0 ? (
-        <p className="px-4 py-6 text-sm text-gray-500 text-center">No follow-ups found.</p>
+        <p className="px-4 py-8 text-sm text-text-secondary text-center">
+          No follow-ups found.
+        </p>
       ) : (
-        <ul className="divide-y">
+        <ul className="divide-y divide-border">
           {sorted.map((followUp) => (
             <FollowUpRow
               key={followUp.id}
@@ -93,9 +100,9 @@ export async function FollowUpList({
   );
 }
 
-// -----------------------------------------------------------------------------
-// FollowUpRow — single row in the list
-// -----------------------------------------------------------------------------
+// =============================================================================
+// FollowUpRow — single list item
+// =============================================================================
 
 function FollowUpRow({
   followUp,
@@ -103,7 +110,7 @@ function FollowUpRow({
   showPatientLink,
   baseHref,
 }: {
-  followUp: FollowUpWithPatient;
+  followUp: FollowUpWithRelations;
   today: Date;
   showPatientLink: boolean;
   baseHref: string;
@@ -112,47 +119,88 @@ function FollowUpRow({
   dueDate.setHours(0, 0, 0, 0);
 
   const isOverdue = followUp.status === "pending" && dueDate < today;
-  const diffMs = dueDate.getTime() - today.getTime();
-  const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+  const diffMs    = dueDate.getTime() - today.getTime();
+  const diffDays  = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+
+  const followUpType: string = followUp.follow_up_type ?? "";
+  const typeLabel = FOLLOW_UP_TYPE_LABELS[followUpType] ?? followUpType ?? "Follow-up";
 
   return (
-    <li className="px-4 py-3 hover:bg-gray-50 transition-colors">
-      <Link href={`${baseHref}/follow-ups/${followUp.id}`} className="block">
+    <li className="hover:bg-[#FAFAFA] transition-colors">
+      <Link
+        href={`${baseHref}/follow-ups/${followUp.id}`}
+        className="block px-4 py-3"
+      >
         <div className="flex items-start justify-between gap-3">
-          {/* Left: notes + patient + date */}
-          <div className="min-w-0 flex-1">
-            <p className="text-sm font-medium text-gray-900 truncate">
-              {followUp.notes ?? "Follow-up"}
-            </p>
+          {/* Left: type + patient + dates + relations */}
+          <div className="min-w-0 flex-1 space-y-1">
+            {/* Row 1: type label + patient name */}
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-sm font-semibold text-text-primary">{typeLabel}</span>
 
-            {showPatientLink && followUp.patient && (
-              <p className="text-xs text-gray-500 mt-0.5 truncate">
-                {followUp.patient.name}
-              </p>
-            )}
+              {showPatientLink && followUp.patient && (
+                <>
+                  <span className="text-text-secondary text-xs">·</span>
+                  <span className="text-xs font-medium text-blue-700">
+                    {followUp.patient.name}
+                  </span>
+                  {followUp.patient.phone && (
+                    <span className="text-xs text-text-secondary hidden sm:inline">
+                      {followUp.patient.phone}
+                    </span>
+                  )}
+                </>
+              )}
+            </div>
 
-            <p className="text-xs text-gray-500 mt-0.5">
+            {/* Row 2: due date + overdue indicator */}
+            <p className="text-xs text-text-secondary">
               Due {formatDate(followUp.due_date)}
               {followUp.status === "completed" && followUp.updated_at && (
-                <span className="text-green-600 ml-2">
+                <span className="text-success ml-2">
                   · Completed {formatDate(followUp.updated_at)}
                 </span>
               )}
               {followUp.status === "pending" && isOverdue && (
-                <span className="text-red-600 ml-2">
+                <span className="text-danger font-medium ml-2">
                   · {Math.abs(diffDays)} day{Math.abs(diffDays) !== 1 ? "s" : ""} overdue
                 </span>
               )}
-              {followUp.status === "pending" && !isOverdue && diffDays >= 0 && (
+              {followUp.status === "pending" && !isOverdue && (
                 <span className="text-amber-600 ml-2">
                   · {diffDays === 0 ? "Due today" : `${diffDays} day${diffDays !== 1 ? "s" : ""} remaining`}
                 </span>
               )}
             </p>
+
+            {/* Row 3: notes (if present) */}
+            {followUp.notes && (
+              <p className="text-xs text-text-secondary truncate max-w-sm">
+                {followUp.notes}
+              </p>
+            )}
+
+            {/* Row 4: related appointment + treatment */}
+            {(followUp.appointment || followUp.treatment) && (
+              <div className="flex items-center gap-3 flex-wrap mt-0.5">
+                {followUp.appointment && (
+                  <span className="inline-flex items-center gap-1 text-xs text-text-secondary">
+                    <Calendar className="h-3 w-3 shrink-0" aria-hidden />
+                    {formatDateTime(followUp.appointment.scheduled_at)}
+                  </span>
+                )}
+                {followUp.treatment && (
+                  <span className="inline-flex items-center gap-1 text-xs text-text-secondary">
+                    <Stethoscope className="h-3 w-3 shrink-0" aria-hidden />
+                    {followUp.treatment.treatment_type}
+                  </span>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Right: badges */}
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-2 shrink-0 mt-0.5">
             {isOverdue && <OverdueFollowUpBadge />}
             <StatusBadge
               label={FOLLOW_UP_STATUS_LABELS[followUp.status]}

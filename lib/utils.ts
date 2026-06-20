@@ -361,6 +361,17 @@ export const FOLLOW_UP_STATUS_LABELS: Record<FollowUpStatus, string> = {
   cancelled: "Cancelled",
 };
 
+export const FOLLOW_UP_TYPE_LABELS: Record<string, string> = {
+  review:            "Review",
+  cleaning:          "Cleaning",
+  crown_check:       "Crown Check",
+  root_canal_review: "Root Canal Review",
+  implant_review:    "Implant Review",
+  payment_reminder:  "Payment Reminder",
+  consultation:      "Consultation",
+  custom:            "Custom",
+};
+
 export const APPOINTMENT_SOURCE_LABELS = {
   walk_in: "Walk-in",
   phone_call: "Phone Call",

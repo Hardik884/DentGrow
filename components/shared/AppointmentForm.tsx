@@ -21,6 +21,7 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Field } from "@/components/ui/field";
+import { CalendarPicker } from "@/components/ui/calendar-picker";
 import { PatientAvatar } from "./PatientAvatar";
 import { LoadingSpinner } from "./LoadingSpinner";
 import { CheckCircle2, Search, Plus, Clock } from "lucide-react";
@@ -292,11 +293,13 @@ export function AppointmentForm({
                 </Field>
 
                 <Field label="Date of Birth" htmlFor="np-dob">
-                  <Input
+                  <CalendarPicker
                     id="np-dob"
-                    type="date"
-                    {...newPatientForm.register("date_of_birth")}
+                    value={newPatientForm.watch("date_of_birth") ?? undefined}
                     disabled={isSavingPatient}
+                    onChange={(d) => newPatientForm.setValue("date_of_birth", d)}
+                    placeholder="Date of birth"
+                    clearable
                   />
                 </Field>
               </div>
@@ -383,13 +386,12 @@ export function AppointmentForm({
           <input type="hidden" {...register("scheduled_at")} />
 
           <Field label="Date" htmlFor="appt-date" required>
-            <Input
+            <CalendarPicker
               id="appt-date"
-              type="date"
               value={selectedDate}
               min={today}
               disabled={isSubmitting}
-              onChange={(e) => setSelectedDate(e.target.value)}
+              onChange={(d) => { if (d) setSelectedDate(d); }}
             />
           </Field>
 

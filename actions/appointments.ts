@@ -20,7 +20,7 @@ import {
   type AvailabilityRule as SlotRule,
   type OccupiedSlot,
 } from "@/lib/scheduling/slots";
-import { zonedDateToUTC } from "@/lib/utils";
+import { zonedDateToUTC, getTodayInTimezone } from "@/lib/utils";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type DbClient = any;
@@ -205,6 +205,10 @@ export async function createAppointment(
     };
     const requestedDow = dowMap[dowStr] ?? noonLocal.getDay();
 
+    // ── Build slot rules — mirror getAvailableSlots priority order ────────
+    // Priority 1: explicit availability_rules (legacy / override path)
+    // Priority 2: clinic_hours from clinic_settings (primary path going forward)
+    // If neither exists → "No availability configured for that day."
     const { data: rules } = await db
       .from("availability_rules")
       .select("start_time, end_time, slot_duration_minutes")
@@ -212,11 +216,53 @@ export async function createAppointment(
       .eq("day_of_week", requestedDow)
       .eq("is_active", true);
 
-    if (!rules || rules.length === 0) {
-      return {
-        data: null,
-        error: "No availability configured for that day. Please choose another date.",
+    let slotRules: SlotRule[];
+
+    if (rules && rules.length > 0) {
+      // Explicit availability rules exist — use them
+      slotRules = (rules as { start_time: string; end_time: string; slot_duration_minutes: number }[]).map((r) => ({
+        startTime: r.start_time.slice(0, 5),
+        endTime: r.end_time.slice(0, 5),
+        slotDurationMinutes: r.slot_duration_minutes,
+      }));
+    } else {
+      // No explicit rules — fall back to clinic_hours
+      const { data: settingsWithHours } = await db
+        .from("clinic_settings")
+        .select("clinic_hours, average_appointment_duration")
+        .eq("clinic_id", profile.clinic_id)
+        .maybeSingle();
+
+      const clinicHours = (settingsWithHours as { clinic_hours?: Record<string, { open: string | null; close: string | null; is_open: boolean }> } | null)?.clinic_hours ?? null;
+      const defaultSlotDuration = (settingsWithHours as { average_appointment_duration?: number } | null)?.average_appointment_duration ?? 30;
+
+      if (!clinicHours) {
+        return {
+          data: null,
+          error: "No availability configured for that day. Please choose another date.",
+        };
+      }
+
+      // Map DOW integer → day name for clinic_hours lookup
+      const DOW_TO_DAY_NAME: Record<number, string> = {
+        0: "sunday", 1: "monday", 2: "tuesday", 3: "wednesday",
+        4: "thursday", 5: "friday", 6: "saturday",
       };
+      const dayName = DOW_TO_DAY_NAME[requestedDow];
+      const dayHours = dayName ? clinicHours[dayName] : null;
+
+      if (!dayHours || !dayHours.is_open || !dayHours.open || !dayHours.close) {
+        return {
+          data: null,
+          error: "No availability configured for that day. Please choose another date.",
+        };
+      }
+
+      slotRules = [{
+        startTime: dayHours.open.slice(0, 5),
+        endTime: dayHours.close.slice(0, 5),
+        slotDurationMinutes: defaultSlotDuration,
+      }];
     }
 
     // Fetch occupied slots for validation (with durations)
@@ -228,12 +274,6 @@ export async function createAppointment(
       .lte("scheduled_at", `${requestedDate}T23:59:59`)
       .is("deleted_at", null)
       .not("status", "in", '("cancelled","no_show")');
-
-    const slotRules: SlotRule[] = (rules as { start_time: string; end_time: string; slot_duration_minutes: number }[]).map((r) => ({
-      startTime: r.start_time.slice(0, 5),
-      endTime: r.end_time.slice(0, 5),
-      slotDurationMinutes: r.slot_duration_minutes,
-    }));
 
     const occupiedSlots: OccupiedSlot[] = (occupied ?? []).map((o: { scheduled_at: string; duration_minutes: number }) => ({
       scheduledAt: o.scheduled_at,
@@ -411,6 +451,84 @@ export async function updateAppointmentStatus(
       return { data: null, error: "Failed to update appointment status." };
     }
 
+    // ── On checked_in: create queue_entries row ────────────────────────────
+    // The receptionist path uses checkInPatient() directly (which also calls
+    // this transition). The dentist path uses AppointmentStatusControl →
+    // updateAppointmentStatus, which previously skipped queue entry creation.
+    // Both paths must produce a queue_entries row on checked_in.
+    if (newStatus === "checked_in") {
+      // Resolve clinic timezone for correct queue_date
+      const { data: tzData } = await db
+        .from("clinic_settings")
+        .select("timezone")
+        .eq("clinic_id", profile.clinic_id)
+        .maybeSingle();
+      const tz = (tzData as { timezone?: string } | null)?.timezone ?? "UTC";
+      const qDate = getTodayInTimezone(tz);
+
+      // Check for an existing queue entry for this appointment (any date).
+      // The uq_queue_appointment constraint is not date-scoped — one appointment
+      // can only appear once in queue_entries globally.
+      const { data: existingEntry } = await db
+        .from("queue_entries")
+        .select("id, queue_date")
+        .eq("appointment_id", parsed.data.appointment_id)
+        .maybeSingle();
+
+      if (!existingEntry) {
+        // Get next position: MAX(position) for today's clinic queue + 1
+        const { data: posData } = await db
+          .from("queue_entries")
+          .select("position")
+          .eq("clinic_id", profile.clinic_id)
+          .eq("queue_date", qDate)
+          .order("position", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        const nextPosition = ((posData as { position: number } | null)?.position ?? 0) + 1;
+
+        console.log("[updateAppointmentStatus → checked_in] inserting queue entry:", {
+          clinic_id: profile.clinic_id,
+          appointment_id: parsed.data.appointment_id,
+          patient_id: currentAppt.patient_id,
+          position: nextPosition,
+          queue_date: qDate,
+        });
+
+        const { error: queueInsertErr } = await db
+          .from("queue_entries")
+          .insert({
+            clinic_id: profile.clinic_id,
+            appointment_id: parsed.data.appointment_id,
+            patient_id: currentAppt.patient_id,
+            position: nextPosition,
+            status: "waiting",
+            checked_in_at: new Date().toISOString(),
+            queue_date: qDate,
+          });
+
+        if (queueInsertErr) {
+          console.error("[updateAppointmentStatus → checked_in] queue insert failed:", queueInsertErr);
+          // Roll back the appointment status change — the check-in is not
+          // complete without a queue entry.
+          await db
+            .from("appointments")
+            .update({ status: currentStatus, updated_at: new Date().toISOString() })
+            .eq("id", parsed.data.appointment_id)
+            .eq("clinic_id", profile.clinic_id);
+          return { data: null, error: `Check-in failed: ${queueInsertErr.message}` };
+        }
+
+        console.log("[updateAppointmentStatus → checked_in] queue entry created, position:", nextPosition);
+        revalidatePath(`/${profile.role}/queue`);
+      } else {
+        // Entry already exists (e.g. receptionist checked in before dentist
+        // attempted the same transition). Not an error — idempotent.
+        console.log("[updateAppointmentStatus → checked_in] queue entry already exists for this appointment, skipping insert");
+      }
+    }
+
     // ── Write history ──────────────────────────────────────────────────────
     await writeHistory({
       appointment_id: parsed.data.appointment_id,
@@ -514,16 +632,49 @@ export async function rescheduleAppointment(
     };
     const newDow = dowMap[dowStr] ?? noonLocal.getDay();
 
-    // Validate new slot availability
-    const { data: rules } = await db
+    // ── Validate new slot availability — mirror getAvailableSlots priority order ──
+    const { data: reschedRules } = await db
       .from("availability_rules")
       .select("start_time, end_time, slot_duration_minutes")
       .eq("clinic_id", profile.clinic_id)
       .eq("day_of_week", newDow)
       .eq("is_active", true);
 
-    if (!rules || rules.length === 0) {
-      return { data: null, error: "No availability on the selected date." };
+    let slotRules: SlotRule[];
+
+    if (reschedRules && reschedRules.length > 0) {
+      slotRules = (reschedRules as { start_time: string; end_time: string; slot_duration_minutes: number }[]).map((r) => ({
+        startTime: r.start_time.slice(0, 5),
+        endTime: r.end_time.slice(0, 5),
+        slotDurationMinutes: r.slot_duration_minutes,
+      }));
+    } else {
+      // Fall back to clinic_hours
+      const { data: reschedSettings } = await db
+        .from("clinic_settings")
+        .select("clinic_hours, average_appointment_duration")
+        .eq("clinic_id", profile.clinic_id)
+        .maybeSingle();
+
+      const clinicHours = (reschedSettings as { clinic_hours?: Record<string, { open: string | null; close: string | null; is_open: boolean }> } | null)?.clinic_hours ?? null;
+      const defaultSlotDuration = (reschedSettings as { average_appointment_duration?: number } | null)?.average_appointment_duration ?? 30;
+
+      const DOW_TO_DAY_NAME: Record<number, string> = {
+        0: "sunday", 1: "monday", 2: "tuesday", 3: "wednesday",
+        4: "thursday", 5: "friday", 6: "saturday",
+      };
+      const dayName = DOW_TO_DAY_NAME[newDow];
+      const dayHours = dayName && clinicHours ? clinicHours[dayName] : null;
+
+      if (!dayHours || !dayHours.is_open || !dayHours.open || !dayHours.close) {
+        return { data: null, error: "No availability on the selected date." };
+      }
+
+      slotRules = [{
+        startTime: dayHours.open.slice(0, 5),
+        endTime: dayHours.close.slice(0, 5),
+        slotDurationMinutes: defaultSlotDuration,
+      }];
     }
 
     // Occupied slots for new date (exclude the appointment being rescheduled) — with durations
@@ -536,12 +687,6 @@ export async function rescheduleAppointment(
       .lte("scheduled_at", `${newDate}T23:59:59`)
       .is("deleted_at", null)
       .not("status", "in", '("cancelled","no_show")');
-
-    const slotRules: SlotRule[] = (rules as { start_time: string; end_time: string; slot_duration_minutes: number }[]).map((r) => ({
-      startTime: r.start_time.slice(0, 5),
-      endTime: r.end_time.slice(0, 5),
-      slotDurationMinutes: r.slot_duration_minutes,
-    }));
 
     const occupiedSlots: OccupiedSlot[] = (occupied ?? []).map((o: { scheduled_at: string; duration_minutes: number }) => ({
       scheduledAt: o.scheduled_at,

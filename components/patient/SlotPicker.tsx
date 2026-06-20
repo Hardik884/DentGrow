@@ -6,6 +6,7 @@ import { getAvailableSlots } from "@/actions/availability";
 import { createAppointment } from "@/actions/appointments";
 import { formatTime } from "@/lib/utils";
 import { cn } from "@/lib/utils";
+import { CalendarPicker } from "@/components/ui/calendar-picker";
 
 interface SlotPickerProps {
   /** Pre-resolved patient_id for the portal user */
@@ -52,6 +53,7 @@ export function SlotPicker({ patientId }: SlotPickerProps) {
   }, []);
 
   async function handleDateChange(date: string) {
+    if (!date) return;
     setSelectedDate(date);
     await fetchSlots(date);
   }
@@ -84,33 +86,30 @@ export function SlotPicker({ patientId }: SlotPickerProps) {
       {error && (
         <div
           role="alert"
-          className="px-4 py-3 bg-red-50 border border-red-200 text-sm text-red-700 rounded-md"
+          className="px-4 py-3 bg-red-50 border border-red-200 text-sm text-red-700 rounded-lg"
         >
           {error}
         </div>
       )}
 
       {/* Date picker */}
-      <div className="space-y-1">
-        <label className="text-sm font-medium text-gray-700 block">
+      <div className="space-y-1.5">
+        <label className="text-sm font-medium text-gray-700 block" htmlFor="slot-date">
           Select Date
         </label>
-            {/* Date picker */}
-          <input
-            type="date"
-            id="slot-date"
-            value={selectedDate}
-            min={today}
-            disabled={isBooking}
-            onChange={(e) => handleDateChange(e.target.value)}
-            aria-label="Select appointment date"
-            className="border border-gray-300 rounded-lg px-3 py-2 text-sm w-full outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 disabled:bg-gray-50"
-          />
+        <CalendarPicker
+          id="slot-date"
+          value={selectedDate}
+          min={today}
+          disabled={isBooking}
+          onChange={handleDateChange}
+          placeholder="Pick an appointment date"
+        />
         {!slotsLoaded && (
           <button
             type="button"
             onClick={() => fetchSlots(selectedDate)}
-            className="text-sm text-blue-600 hover:underline mt-1"
+            className="text-sm text-blue-600 hover:underline mt-1 block"
           >
             Check available slots →
           </button>

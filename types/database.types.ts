@@ -328,6 +328,7 @@ export type Database = {
           patient_id: string;
           appointment_id: string | null;
           treatment_id: string | null;
+          follow_up_type: string;
           due_date: string;
           status: "pending" | "completed" | "cancelled";
           notes: string | null;
@@ -342,6 +343,7 @@ export type Database = {
           patient_id: string;
           appointment_id?: string | null;
           treatment_id?: string | null;
+          follow_up_type?: string;
           due_date: string;
           status?: "pending" | "completed" | "cancelled";
           notes?: string | null;
@@ -356,6 +358,7 @@ export type Database = {
           patient_id?: string;
           appointment_id?: string | null;
           treatment_id?: string | null;
+          follow_up_type?: string;
           due_date?: string;
           status?: "pending" | "completed" | "cancelled";
           notes?: string | null;

@@ -22,6 +22,12 @@ type ResolvedProfile = {
   role: "dentist" | "receptionist" | "patient";
 };
 
+type ClinicDayHours = {
+  open: string | null;
+  close: string | null;
+  is_open: boolean;
+};
+
 async function resolveSession() {
   const supabase = await createServerClient();
   const db: DbClient = supabase;
@@ -104,7 +110,7 @@ export async function createAvailabilityRule(
       return { data: null, error: "Failed to create availability rule." };
     }
 
-    revalidatePath("/dentist/settings/availability");
+    revalidatePath("/dentist/settings");
     return { data: data as AvailabilityRule, error: null };
   } catch {
     return { data: null, error: "Unexpected error" };
@@ -145,7 +151,7 @@ export async function updateAvailabilityRule(
       return { data: null, error: "Failed to update availability rule." };
     }
 
-    revalidatePath("/dentist/settings/availability");
+    revalidatePath("/dentist/settings");
     return { data: data as AvailabilityRule, error: null };
   } catch {
     return { data: null, error: "Unexpected error" };
@@ -178,7 +184,7 @@ export async function toggleAvailabilityRule(
       return { data: null, error: "Failed to toggle availability rule." };
     }
 
-    revalidatePath("/dentist/settings/availability");
+    revalidatePath("/dentist/settings");
     return { data: data as AvailabilityRule, error: null };
   } catch {
     return { data: null, error: "Unexpected error" };
@@ -186,8 +192,55 @@ export async function toggleAvailabilityRule(
 }
 
 // =============================================================================
+// clinicHoursToSlotRules
+//
+// Converts a clinic_hours JSONB object (source of truth) into the SlotRule[]
+// format expected by the slot generation engine.
+//
+// DOW mapping: clinic_hours keys are day names; Sunday = 0, Monday = 1, …
+// =============================================================================
+
+const DAY_NAME_TO_DOW: Record<string, number> = {
+  sunday: 0, monday: 1, tuesday: 2, wednesday: 3,
+  thursday: 4, friday: 5, saturday: 6,
+};
+
+function clinicHoursToSlotRules(
+  clinicHours: Record<string, ClinicDayHours>,
+  requestedDayOfWeek: number,
+  slotDurationMinutes: number
+): SlotRule[] {
+  const rules: SlotRule[] = [];
+
+  for (const [dayName, hours] of Object.entries(clinicHours)) {
+    const dow = DAY_NAME_TO_DOW[dayName.toLowerCase()];
+    if (dow === undefined || dow !== requestedDayOfWeek) continue;
+    if (!hours.is_open || !hours.open || !hours.close) continue;
+
+    rules.push({
+      startTime: hours.open.slice(0, 5),
+      endTime: hours.close.slice(0, 5),
+      slotDurationMinutes,
+    });
+  }
+
+  return rules;
+}
+
+// =============================================================================
 // getAvailableSlots — duration-aware slot generation
-// Used by: portal, receptionist UI, AppointmentForm, Patient AI Assistant
+//
+// Source of truth priority:
+//   1. clinic_hours (from clinic_settings) — always used first
+//   2. availability_rules — used as override if active rules exist for the day
+//      (backward-compatible: clinics that already configured rules keep them)
+//
+// Closed days (is_open: false in clinic_hours OR no active rule) → no slots.
+// Outside clinic hours → no slots.
+// Overlap prevention and duration validation still enforced by the slot engine.
+//
+// Used by: portal SlotPicker, staff AppointmentForm, RescheduleModal,
+//          Patient AI Assistant, and createAppointment server action.
 // =============================================================================
 
 export async function getAvailableSlots(
@@ -201,18 +254,23 @@ export async function getAvailableSlots(
     const { db, profile } = await resolveSession();
     if (!profile) return { data: null, error: "Unauthorized" };
 
-    // Fetch clinic timezone first — needed for DOW calculation and past-slot filtering
+    // Fetch clinic settings: timezone + clinic_hours + avg duration
     const { data: settings } = await db
       .from("clinic_settings")
-      .select("timezone")
+      .select("timezone, clinic_hours, average_appointment_duration")
       .eq("clinic_id", profile.clinic_id)
       .maybeSingle();
 
-    const timezone = (settings as { timezone?: string } | null)?.timezone ?? "UTC";
+    const timezone =
+      (settings as { timezone?: string } | null)?.timezone ?? "UTC";
+    const clinicHours =
+      (settings as { clinic_hours?: Record<string, ClinicDayHours> } | null)
+        ?.clinic_hours ?? null;
+    const defaultSlotDuration =
+      (settings as { average_appointment_duration?: number } | null)
+        ?.average_appointment_duration ?? 30;
 
-    // ── Past-date rejection (server-side guard) ────────────────────────────
-    // Use clinic timezone to compute today's date so a clinic in UTC+5:30
-    // doesn't get yesterday's date when queried just after midnight UTC.
+    // ── Past-date rejection ─────────────────────────────────────────────────
     const todayInTz = new Intl.DateTimeFormat("en-CA", {
       timeZone: timezone,
       year: "numeric",
@@ -221,14 +279,10 @@ export async function getAvailableSlots(
     }).format(new Date());
 
     if (date < todayInTz) {
-      // Past date — return empty, no slots
       return { data: [], error: null };
     }
 
-    // ── Day-of-week: use timezone-aware calculation ────────────────────────
-    // new Date("YYYY-MM-DD").getDay() parses as UTC midnight and gives the
-    // WRONG dow for dates in timezones behind UTC (e.g. Americas).
-    // Appending T12:00:00 (local noon) avoids crossing midnight in any tz.
+    // ── DOW: timezone-aware ─────────────────────────────────────────────────
     const noonLocal = new Date(`${date}T12:00:00`);
     const dayStr = new Intl.DateTimeFormat("en-US", {
       timeZone: timezone,
@@ -239,8 +293,9 @@ export async function getAvailableSlots(
     };
     const dayOfWeek = dowMap[dayStr] ?? noonLocal.getDay();
 
-    // Fetch active rules for this day
-    const { data: rules, error: rulesErr } = await db
+    // ── Build slot rules ────────────────────────────────────────────────────
+    // Step 1: Try availability_rules for this day (explicit overrides)
+    const { data: dbRules, error: rulesErr } = await db
       .from("availability_rules")
       .select("start_time, end_time, slot_duration_minutes")
       .eq("clinic_id", profile.clinic_id)
@@ -252,11 +307,35 @@ export async function getAvailableSlots(
       return { data: null, error: "Failed to fetch availability rules." };
     }
 
-    if (!rules || rules.length === 0) {
-      return { data: [], error: null }; // no availability this day
+    let slotRules: SlotRule[];
+
+    if (dbRules && dbRules.length > 0) {
+      // Explicit availability rules configured — use them (legacy / override path)
+      slotRules = (
+        dbRules as { start_time: string; end_time: string; slot_duration_minutes: number }[]
+      ).map((r) => ({
+        startTime: r.start_time.slice(0, 5),
+        endTime: r.end_time.slice(0, 5),
+        slotDurationMinutes: r.slot_duration_minutes,
+      }));
+    } else if (clinicHours) {
+      // No explicit rules — derive from clinic_hours (primary path going forward)
+      slotRules = clinicHoursToSlotRules(
+        clinicHours,
+        dayOfWeek,
+        defaultSlotDuration
+      );
+    } else {
+      // No clinic_hours and no rules → no slots
+      return { data: [], error: null };
     }
 
-    // Resolve the clinic's dentist for occupied-slot lookup
+    if (slotRules.length === 0) {
+      // Day is closed (is_open: false or no matching rule)
+      return { data: [], error: null };
+    }
+
+    // ── Dentist for occupied-slot lookup ────────────────────────────────────
     const { data: dentistData } = await db
       .from("profiles")
       .select("id")
@@ -267,9 +346,7 @@ export async function getAvailableSlots(
 
     const dentistId = (dentistData as { id: string } | null)?.id;
 
-    // ── Occupied slot boundaries: use clinic-timezone UTC boundaries ───────
-    // Query appointments that fall within the clinic's local day boundaries
-    // (not naive UTC midnight-to-midnight, which would miss/include wrong appts).
+    // ── Occupied slots ──────────────────────────────────────────────────────
     const startBoundary = `${date}T00:00:00`;
     const endBoundary = `${date}T23:59:59`;
 
@@ -284,14 +361,6 @@ export async function getAvailableSlots(
           .lte("scheduled_at", endBoundary)
       : { data: [] };
 
-    const slotRules: SlotRule[] = (
-      rules as { start_time: string; end_time: string; slot_duration_minutes: number }[]
-    ).map((r) => ({
-      startTime: r.start_time.slice(0, 5),
-      endTime: r.end_time.slice(0, 5),
-      slotDurationMinutes: r.slot_duration_minutes,
-    }));
-
     const occupiedSlots: OccupiedSlot[] = (
       (occupied ?? []) as { scheduled_at: string; duration_minutes: number }[]
     ).map((o) => ({
@@ -299,9 +368,7 @@ export async function getAvailableSlots(
       durationMinutes: o.duration_minutes ?? 30,
     }));
 
-    // ── Past-slot cutoff for today ─────────────────────────────────────────
-    // For today only: compute current time-of-day in clinic timezone and pass
-    // it as the cutoff so already-passed slots are excluded.
+    // ── Past-slot cutoff for today ──────────────────────────────────────────
     let nowCutoffMinutes: number | null = null;
     if (date === todayInTz) {
       const now = new Date();
@@ -310,7 +377,9 @@ export async function getAvailableSlots(
         hour: "2-digit",
         minute: "2-digit",
         hour12: false,
-      }).format(now).slice(0, 5); // "HH:MM"
+      })
+        .format(now)
+        .slice(0, 5);
       const [h, m] = timeStr.split(":").map(Number);
       nowCutoffMinutes = (h ?? 0) * 60 + (m ?? 0);
     }

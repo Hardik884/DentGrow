@@ -159,19 +159,33 @@ export async function checkInPatient(
       };
     }
 
-    // Prevent duplicate check-ins (UNIQUE constraint on appointment_id)
-    const { data: existing } = await db
+    // Prevent duplicate check-ins for today only.
+    // We scope by queue_date so a past-day entry does not block today's check-in.
+    const qDateEarly = await todayForClinic(db, profile.clinic_id);
+
+    console.log("[checkInPatient] appointmentId:", appointmentId, "queue_date:", qDateEarly, "clinic_id:", profile.clinic_id, "role:", profile.role);
+
+    // Check for any existing queue entry for this appointment regardless of date.
+    // The uq_queue_appointment DB constraint is NOT scoped to queue_date,
+    // so we must check globally to give a clean error instead of a constraint violation.
+    const { data: existingAny } = await db
       .from("queue_entries")
-      .select("id")
+      .select("id, queue_date, status")
       .eq("appointment_id", appointmentId)
       .maybeSingle();
 
-    if (existing) {
-      return { data: null, error: "Patient is already in the queue." };
+    if (existingAny) {
+      const row = existingAny as { id: string; queue_date: string; status: string };
+      if (row.queue_date === qDateEarly) {
+        return { data: null, error: "Patient is already in the queue." };
+      }
+      // Entry exists from a previous day — the unique constraint will block re-insert.
+      // Return a clear error rather than a cryptic DB constraint failure.
+      return { data: null, error: "This appointment was already checked in on a previous visit. Please use a new appointment." };
     }
 
-    // Compute today's date in clinic timezone (NOT UTC).
-    const qDate = await todayForClinic(db, profile.clinic_id);
+    // Use the already-computed date (avoids a second DB round-trip).
+    const qDate = qDateEarly;
 
     // Get next position: MAX(position) + 1 for today's queue at this clinic
     const { data: posData } = await db
@@ -184,6 +198,8 @@ export async function checkInPatient(
       .maybeSingle();
 
     const nextPosition = ((posData as { position: number } | null)?.position ?? 0) + 1;
+
+    console.log("[checkInPatient] inserting: position:", nextPosition, "queue_date:", qDate, "patient_id:", appointment.patient_id);
 
     // Insert queue entry
     const { data: entry, error: insertErr } = await db
@@ -200,18 +216,25 @@ export async function checkInPatient(
       .select()
       .single();
 
+    console.log("[checkInPatient] insert result:", { entry, insertErr });
+
     if (insertErr || !entry) {
-      console.error("[checkInPatient] insert:", insertErr);
-      return { data: null, error: "Failed to check in patient." };
+      console.error("[checkInPatient] insert failed:", insertErr);
+      return { data: null, error: insertErr?.message ?? "Failed to check in patient." };
     }
 
     // Also update the appointment status to checked_in if it was scheduled
     if (appointment.status === "scheduled") {
-      await db
+      const { error: apptUpdateErr } = await db
         .from("appointments")
         .update({ status: "checked_in", updated_at: new Date().toISOString() })
         .eq("id", appointmentId)
         .eq("clinic_id", profile.clinic_id);
+      if (apptUpdateErr) {
+        console.error("[checkInPatient] appointment status update failed:", apptUpdateErr);
+      } else {
+        console.log("[checkInPatient] appointment status updated to checked_in");
+      }
     }
 
     revalidatePath(`/${profile.role}/queue`);
@@ -456,6 +479,8 @@ export async function getTodayQueue(): Promise<
     // Staff path
     if (profile && (profile.role === "dentist" || profile.role === "receptionist")) {
       const qDate = await todayForClinic(db, profile.clinic_id);
+      console.log("[getTodayQueue] staff query: clinic_id:", profile.clinic_id, "queue_date:", qDate, "role:", profile.role);
+
       const { data, error } = await db
         .from("queue_entries")
         .select(
@@ -465,8 +490,10 @@ export async function getTodayQueue(): Promise<
         .eq("queue_date", qDate)
         .order("position", { ascending: true });
 
+      console.log("[getTodayQueue] raw result:", { rowCount: (data ?? []).length, error });
+
       if (error) {
-        console.error("[getTodayQueue]", error);
+        console.error("[getTodayQueue] query error:", error);
         return { data: null, error: "Failed to fetch queue." };
       }
 
@@ -480,6 +507,7 @@ export async function getTodayQueue(): Promise<
         })
       );
 
+      console.log("[getTodayQueue] returning", entries.length, "entries:", entries.map((e: QueueEntryWithPatient) => ({ id: e.id, status: e.status, position: e.position, queue_date: (e as unknown as Record<string,unknown>).queue_date })));
       return { data: entries as QueueEntryWithPatient[], error: null };
     }
 

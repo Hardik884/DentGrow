@@ -1,5 +1,7 @@
 "use client";
 
+import { CalendarPicker } from "@/components/ui/calendar-picker";
+
 interface DateRangePickerProps {
   from?: string;
   to?: string;
@@ -14,23 +16,32 @@ interface DateRangePickerProps {
  * Default range is last 30 days.
  */
 export function DateRangePicker({ from, to, onChange }: DateRangePickerProps) {
-  // TODO: implement date range picker using shadcn/ui Calendar
-  void from;
-  void to;
-  void onChange;
+  function handleFromChange(date: string) {
+    onChange?.(date, to ?? "");
+  }
+
+  function handleToChange(date: string) {
+    onChange?.(from ?? "", date);
+  }
 
   return (
-    <div className="flex items-center gap-2 text-sm">
-      <input
-        type="date"
-        className="border rounded-md px-2 py-1 text-sm"
-        defaultValue={from}
+    <div className="flex items-center gap-2">
+      <CalendarPicker
+        value={from}
+        onChange={handleFromChange}
+        max={to}
+        placeholder="From date"
+        className="w-36"
+        clearable
       />
-      <span className="text-gray-400">to</span>
-      <input
-        type="date"
-        className="border rounded-md px-2 py-1 text-sm"
-        defaultValue={to}
+      <span className="text-sm text-[#A1A1AA]">to</span>
+      <CalendarPicker
+        value={to}
+        onChange={handleToChange}
+        min={from}
+        placeholder="To date"
+        className="w-36"
+        clearable
       />
     </div>
   );

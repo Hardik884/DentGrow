@@ -38,6 +38,15 @@ export function useQueue({
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Keep queue in sync when the server re-renders with fresh initialQueue data
+  // (e.g. after router.refresh() from CheckInButton, advanceQueue, etc.)
+  useEffect(() => {
+    setQueue(initialQueue);
+  // We deliberately use a serialized key comparison to avoid infinite loops.
+  // Supabase Realtime will handle fine-grained live updates independently.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialQueue.map((e) => e.id + e.status).join(",")]);
+
   const refetch = useCallback(async () => {
     setIsLoading(true);
     try {
@@ -58,10 +67,11 @@ export function useQueue({
   useEffect(() => {
     if (!clinicId) return;
 
-    const today = new Date().toISOString().split("T")[0];
-
+    // Use a channel name without a date suffix so the subscription stays
+    // active across midnight boundaries without needing to re-subscribe.
+    // The Realtime filter on clinic_id is what actually scopes the events.
     const channel = supabase
-      .channel(`queue:${clinicId}:${today}`)
+      .channel(`queue:${clinicId}`)
       .on(
         "postgres_changes",
         {

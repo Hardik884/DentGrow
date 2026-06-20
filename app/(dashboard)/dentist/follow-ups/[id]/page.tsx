@@ -16,7 +16,8 @@ interface Props {
  * /dentist/follow-ups/[id]
  *
  * Follow-up detail + edit form — dentist role.
- * Fetches follow-up server-side and passes initialData to the form.
+ * Fetches follow-up server-side (with patient, appointment, treatment relations)
+ * and passes initialData to the form.
  * Shows complete and cancel action buttons for pending follow-ups.
  */
 export default async function DentistFollowUpDetailPage({ params }: Props) {
@@ -45,6 +46,8 @@ export default async function DentistFollowUpDetailPage({ params }: Props) {
 
       <FollowUpForm
         followUpId={id}
+        patientId={followUp.patient_id}
+        patientName={followUp.patient?.name}
         initialData={followUp}
         role="dentist"
       />

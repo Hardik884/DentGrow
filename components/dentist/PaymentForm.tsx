@@ -14,6 +14,7 @@ import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
+import { CalendarPicker } from "@/components/ui/calendar-picker";
 
 interface PaymentFormProps {
   patientId?: string;
@@ -39,6 +40,7 @@ export function PaymentForm({
   const {
     register,
     handleSubmit,
+    watch,
     setValue,
     formState: { errors },
   } = useForm<RecordPaymentInput>({
@@ -151,11 +153,12 @@ export function PaymentForm({
           </div>
 
           <Field label="Payment Date" htmlFor="payment-date" required error={(errors as Record<string, {message?: string}>).payment_date?.message}>
-            <Input
+            <CalendarPicker
               id="payment-date"
-              type="date"
-              {...register("payment_date")}
-              hasError={!!(errors as Record<string, unknown>).payment_date}
+              value={watch("payment_date") ?? today}
+              max={today}
+              onChange={(d) => setValue("payment_date", d, { shouldValidate: true })}
+              placeholder="Select payment date"
             />
           </Field>
 

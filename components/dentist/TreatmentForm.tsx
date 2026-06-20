@@ -20,6 +20,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { SkeletonCard } from "@/components/ui/skeleton";
+import { CalendarPicker } from "@/components/ui/calendar-picker";
 import { Lock, Eye } from "lucide-react";
 
 interface TreatmentFormProps {
@@ -29,11 +30,26 @@ interface TreatmentFormProps {
   onSuccess?: (treatment: Treatment) => void;
 }
 
+/** Split an ISO datetime string into its "YYYY-MM-DD" and "HH:mm" parts. */
+function splitDatetime(iso: string | null | undefined): { date: string; time: string } {
+  if (!iso) return { date: "", time: "" };
+  // Handle both "YYYY-MM-DDTHH:mm" and full ISO strings
+  const [datePart, timePart = ""] = iso.split("T");
+  return {
+    date: datePart ?? "",
+    time: timePart.slice(0, 5), // "HH:mm"
+  };
+}
+
 export function TreatmentForm({ treatmentId, appointmentId, patientId, onSuccess }: TreatmentFormProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [serverError, setServerError] = useState<string | null>(null);
   const [loading, setLoading] = useState(!!treatmentId);
+
+  // Separate controlled state for the date picker fields
+  const [performedDate, setPerformedDate] = useState("");
+  const [performedTime, setPerformedTime] = useState("");
 
   const isEdit = !!treatmentId;
   const schema = isEdit ? UpdateTreatmentSchema : CreateTreatmentSchema;
@@ -42,6 +58,7 @@ export function TreatmentForm({ treatmentId, appointmentId, patientId, onSuccess
     register,
     handleSubmit,
     reset,
+    setValue,
     formState: { errors },
   } = useForm<CreateTreatmentInput | UpdateTreatmentInput>({
     resolver: zodResolver(schema),
@@ -61,20 +78,35 @@ export function TreatmentForm({ treatmentId, appointmentId, patientId, onSuccess
     if (!treatmentId) return;
     getTreatment(treatmentId).then((result) => {
       if (result.data) {
+        const { date, time } = splitDatetime(result.data.performed_at);
+        setPerformedDate(date);
+        setPerformedTime(time);
         reset({
           treatment_type: result.data.treatment_type,
           internal_notes: result.data.internal_notes ?? "",
           patient_visible_notes: result.data.patient_visible_notes ?? "",
           cost: Number(result.data.cost),
           status: result.data.status,
-          performed_at: result.data.performed_at
-            ? new Date(result.data.performed_at).toISOString().slice(0, 16)
-            : undefined,
+          performed_at: date ? (time ? `${date}T${time}` : date) : undefined,
         });
       }
       setLoading(false);
     });
   }, [treatmentId, reset]);
+
+  // Keep performed_at in sync whenever the date or time changes
+  function handleDateChange(date: string) {
+    setPerformedDate(date);
+    const combined = date ? (performedTime ? `${date}T${performedTime}` : date) : undefined;
+    setValue("performed_at" as keyof CreateTreatmentInput, combined);
+  }
+
+  function handleTimeChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const time = e.target.value;
+    setPerformedTime(time);
+    const combined = performedDate ? (time ? `${performedDate}T${time}` : performedDate) : undefined;
+    setValue("performed_at" as keyof CreateTreatmentInput, combined);
+  }
 
   function onSubmit(values: CreateTreatmentInput | UpdateTreatmentInput) {
     setServerError(null);
@@ -125,6 +157,9 @@ export function TreatmentForm({ treatmentId, appointmentId, patientId, onSuccess
             </>
           )}
 
+          {/* performed_at is managed via controlled state above; register keeps it in RHF */}
+          <input type="hidden" {...register("performed_at" as keyof CreateTreatmentInput)} />
+
           <Field label="Treatment Type" htmlFor="treatment-type" required error={(errors as Record<string, {message?: string}>).treatment_type?.message}>
             <Input
               id="treatment-type"
@@ -157,12 +192,24 @@ export function TreatmentForm({ treatmentId, appointmentId, patientId, onSuccess
             </Field>
           </div>
 
-          <Field label="Performed At" htmlFor="performed-at" hint="Date and time of treatment">
-            <Input
-              id="performed-at"
-              type="datetime-local"
-              {...register("performed_at")}
-            />
+          <Field label="Performed At" htmlFor="performed-at-date" hint="Optional — date and time the treatment was performed">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <CalendarPicker
+                id="performed-at-date"
+                value={performedDate}
+                onChange={handleDateChange}
+                placeholder="Select date"
+                clearable
+              />
+              <Input
+                id="performed-at-time"
+                type="time"
+                value={performedTime}
+                onChange={handleTimeChange}
+                disabled={!performedDate}
+                aria-label="Treatment time"
+              />
+            </div>
           </Field>
         </div>
 

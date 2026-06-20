@@ -6,6 +6,7 @@ import { PatientSummaryCard } from "@/components/ai/PatientSummaryCard";
 import { PatientFollowUpsTab } from "@/components/follow-ups/PatientFollowUpsTab";
 import { PatientTreatmentsTab } from "@/components/dentist/PatientTreatmentsTab";
 import { PatientPaymentsTab } from "@/components/dentist/PatientPaymentsTab";
+import { getPatient } from "@/actions/patients";
 
 export const metadata: Metadata = {
   title: "Patient Profile — DentGrow",
@@ -28,6 +29,11 @@ export default async function DentistPatientProfilePage({ params, searchParams }
   const [{ id }, { tab: rawTab }] = await Promise.all([params, searchParams]);
 
   if (!id) notFound();
+
+  // Fetch patient name for use in "New Follow-Up" links so the form can
+  // pre-populate the selected-patient chip without a client round-trip.
+  const patientResult = await getPatient(id);
+  const patientName = patientResult.data?.name;
 
   const tab: Tab =
     rawTab === "treatments" || rawTab === "payments" || rawTab === "follow-ups"
@@ -68,6 +74,7 @@ export default async function DentistPatientProfilePage({ params, searchParams }
             {/* Quick follow-up summary on overview */}
             <PatientFollowUpsTab
               patientId={id}
+              patientName={patientName}
               baseHref="/dentist"
               role="dentist"
             />
@@ -82,6 +89,7 @@ export default async function DentistPatientProfilePage({ params, searchParams }
       {tab === "follow-ups" && (
         <PatientFollowUpsTab
           patientId={id}
+          patientName={patientName}
           baseHref="/dentist"
           role="dentist"
         />

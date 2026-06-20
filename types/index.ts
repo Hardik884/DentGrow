@@ -96,6 +96,18 @@ export const FollowUpStatus = {
 } as const;
 export type FollowUpStatus = (typeof FollowUpStatus)[keyof typeof FollowUpStatus];
 
+export const FollowUpType = {
+  REVIEW:            "review",
+  CLEANING:          "cleaning",
+  CROWN_CHECK:       "crown_check",
+  ROOT_CANAL_REVIEW: "root_canal_review",
+  IMPLANT_REVIEW:    "implant_review",
+  PAYMENT_REMINDER:  "payment_reminder",
+  CONSULTATION:      "consultation",
+  CUSTOM:            "custom",
+} as const;
+export type FollowUpType = (typeof FollowUpType)[keyof typeof FollowUpType];
+
 export const QueueStatus = {
   WAITING:     "waiting",
   IN_PROGRESS: "in_progress",
@@ -160,6 +172,13 @@ export type QueueEntryWithPatient = QueueEntry & {
   patient: Pick<Patient, "id" | "name">;
   /** Duration of the linked appointment — used for accurate wait time calculation */
   duration_minutes?: number;
+};
+
+/** Follow-up with joined patient, appointment, and treatment relations */
+export type FollowUpWithRelations = FollowUp & {
+  patient: Pick<Patient, "id" | "name" | "phone"> | null;
+  appointment: Pick<Appointment, "id" | "scheduled_at" | "status"> | null;
+  treatment: Pick<Treatment, "id" | "treatment_type" | "status"> | null;
 };
 
 /** Receptionist view — internal_notes excluded */
@@ -229,7 +248,10 @@ export type CreateAppointmentInput = z.infer<typeof CreateAppointmentSchema>;
 
 export const RescheduleAppointmentSchema = z.object({
   appointment_id: z.string().uuid(),
-  new_scheduled_at: z.string().datetime(),
+  // Accept ISO datetime with OR without timezone offset.
+  // Slots from getAvailableSlots() return "YYYY-MM-DDTHH:MM:00" (no offset);
+  // the server action converts to UTC via zonedDateToUTC before inserting.
+  new_scheduled_at: z.string().min(1, "Please select a time slot"),
 });
 export type RescheduleAppointmentInput = z.infer<typeof RescheduleAppointmentSchema>;
 
@@ -249,7 +271,9 @@ export const CreateTreatmentSchema = z.object({
   patient_visible_notes: z.string().max(2000).optional(),
   cost: z.number().nonnegative(),
   status: z.enum(["planned", "in_progress", "completed", "cancelled"]).default("planned"),
-  performed_at: z.string().datetime().optional(),
+  // Accepts "YYYY-MM-DD", "YYYY-MM-DDTHH:mm", or full ISO strings.
+  // The server action normalises this to a proper timestamptz before inserting.
+  performed_at: z.string().min(1).optional(),
 });
 export type CreateTreatmentInput = z.infer<typeof CreateTreatmentSchema>;
 
@@ -270,16 +294,36 @@ export type RecordPaymentInput = z.infer<typeof RecordPaymentSchema>;
 
 // ── Follow-Up ─────────────────────────────────────────────────────────────────
 
+const FOLLOW_UP_TYPE_VALUES = [
+  "review",
+  "cleaning",
+  "crown_check",
+  "root_canal_review",
+  "implant_review",
+  "payment_reminder",
+  "consultation",
+  "custom",
+] as const;
+
 export const CreateFollowUpSchema = z.object({
-  patient_id: z.string().uuid(),
-  appointment_id: z.string().uuid().optional(),
-  treatment_id: z.string().uuid().optional(),
-  due_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  patient_id: z.string().uuid("Patient is required"),
+  follow_up_type: z.enum(FOLLOW_UP_TYPE_VALUES, {
+    required_error: "Follow-up type is required",
+    invalid_type_error: "Invalid follow-up type",
+  }),
+  due_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Valid due date is required"),
+  appointment_id: z.string().uuid().optional().or(z.literal("")).transform(v => v || undefined),
+  treatment_id: z.string().uuid().optional().or(z.literal("")).transform(v => v || undefined),
   notes: z.string().max(1000).optional(),
 });
 export type CreateFollowUpInput = z.infer<typeof CreateFollowUpSchema>;
 
-export const UpdateFollowUpSchema = CreateFollowUpSchema.partial().extend({
+export const UpdateFollowUpSchema = z.object({
+  follow_up_type: z.enum(FOLLOW_UP_TYPE_VALUES).optional(),
+  due_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  appointment_id: z.string().uuid().optional().or(z.literal("")).transform(v => v || undefined),
+  treatment_id: z.string().uuid().optional().or(z.literal("")).transform(v => v || undefined),
+  notes: z.string().max(1000).optional(),
   status: z.enum(["pending", "completed", "cancelled"]).optional(),
 });
 export type UpdateFollowUpInput = z.infer<typeof UpdateFollowUpSchema>;

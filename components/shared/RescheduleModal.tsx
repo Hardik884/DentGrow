@@ -6,8 +6,8 @@ import { rescheduleAppointment } from "@/actions/appointments";
 import { getAvailableSlots } from "@/actions/availability";
 import { cn, formatTime } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Field } from "@/components/ui/field";
+import { CalendarPicker } from "@/components/ui/calendar-picker";
 import { LoadingSpinner } from "./LoadingSpinner";
 import { Clock } from "lucide-react";
 
@@ -77,12 +77,11 @@ export function RescheduleModal({
         )}
 
         <Field label="New Date" htmlFor="reschedule-date">
-          <Input
+          <CalendarPicker
             id="reschedule-date"
-            type="date"
             value={selectedDate}
             min={today}
-            onChange={(e) => setSelectedDate(e.target.value)}
+            onChange={(d) => { if (d) setSelectedDate(d); }}
           />
         </Field>
 

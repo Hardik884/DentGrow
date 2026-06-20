@@ -15,6 +15,7 @@ import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { Separator } from "@/components/ui/separator";
+import { CalendarPicker } from "@/components/ui/calendar-picker";
 
 interface PatientFormProps {
   patient?: Patient;
@@ -29,6 +30,8 @@ export function PatientForm({ patient, successRedirect, cancelHref }: PatientFor
   const {
     register,
     handleSubmit,
+    watch,
+    setValue,
     formState: { errors, isSubmitting },
     setError,
   } = useForm<CreatePatientInput>({
@@ -111,13 +114,14 @@ export function PatientForm({ patient, successRedirect, cancelHref }: PatientFor
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Field label="Date of Birth" htmlFor="dob" error={errors.date_of_birth?.message}>
-              <Input
+              <CalendarPicker
                 id="dob"
-                {...register("date_of_birth")}
-                type="date"
-                disabled={isSubmitting}
+                value={watch("date_of_birth") ?? undefined}
                 max={new Date().toISOString().split("T")[0]}
-                hasError={!!errors.date_of_birth}
+                disabled={isSubmitting}
+                onChange={(d) => setValue("date_of_birth", d, { shouldValidate: true })}
+                placeholder="Select date of birth"
+                clearable
               />
             </Field>
 

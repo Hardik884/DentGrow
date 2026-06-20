@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { Suspense } from "react";
 import { createServerClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/layouts/PageHeader";
 import { AppointmentStatusBadge } from "@/components/shared/AppointmentStatusBadge";
+import { AppointmentFilters } from "@/components/dentist/AppointmentFilters";
 import { getAppointments } from "@/actions/appointments";
 import { formatDateTimeInTimezone, APPOINTMENT_SOURCE_LABELS } from "@/lib/utils";
 import type { AppointmentStatus } from "@/types";
@@ -16,33 +18,25 @@ interface Props {
     status?: string;
     dateFrom?: string;
     dateTo?: string;
+    timeFrom?: string;
+    timeTo?: string;
     page?: string;
-    view?: "list" | "calendar";
   }>;
 }
-
-const STATUS_OPTIONS: { value: string; label: string }[] = [
-  { value: "", label: "All statuses" },
-  { value: "scheduled", label: "Scheduled" },
-  { value: "checked_in", label: "Checked In" },
-  { value: "in_progress", label: "In Progress" },
-  { value: "completed", label: "Completed" },
-  { value: "cancelled", label: "Cancelled" },
-  { value: "no_show", label: "No Show" },
-];
 
 /**
  * /dentist/appointments
  *
- * Server Component — appointment list with status + date range filters.
- * Supports pagination. Dentist can create, view, and navigate to detail.
+ * Server Component — appointment list with status + date range + time filters.
+ * AppointmentFilters is a client component that drives URL search params.
+ * Timezone-aware: date boundaries are converted to UTC before querying.
  */
 export default async function DentistAppointmentsPage({ searchParams }: Props) {
   const params = await searchParams;
   const page = Math.max(1, parseInt(params.page ?? "1", 10) || 1);
   const limit = 20;
 
-  // Fetch clinic timezone for correct date display
+  // Fetch clinic timezone for correct date display and "today" calculation
   const supabase = await createServerClient();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const db: any = supabase;
@@ -77,6 +71,8 @@ export default async function DentistAppointmentsPage({ searchParams }: Props) {
     status: params.status as AppointmentStatus | undefined,
     dateFrom: params.dateFrom,
     dateTo: params.dateTo,
+    timeFrom: params.timeFrom,
+    timeTo: params.timeTo,
     page,
     limit,
   });
@@ -86,9 +82,11 @@ export default async function DentistAppointmentsPage({ searchParams }: Props) {
 
   function pageHref(p: number) {
     const sp = new URLSearchParams();
-    if (params.status) sp.set("status", params.status);
+    if (params.status)   sp.set("status",   params.status);
     if (params.dateFrom) sp.set("dateFrom", params.dateFrom);
-    if (params.dateTo) sp.set("dateTo", params.dateTo);
+    if (params.dateTo)   sp.set("dateTo",   params.dateTo);
+    if (params.timeFrom) sp.set("timeFrom", params.timeFrom);
+    if (params.timeTo)   sp.set("timeTo",   params.timeTo);
     sp.set("page", String(p));
     return `?${sp.toString()}`;
   }
@@ -100,85 +98,35 @@ export default async function DentistAppointmentsPage({ searchParams }: Props) {
         action={{ label: "+ New Appointment", href: "/dentist/appointments/new" }}
       />
 
-      {/* ── Filters ────────────────────────────────────────────── */}
-      <form method="GET" className="flex flex-wrap gap-3 items-end">
-        {/* Status */}
-        <div className="space-y-1">
-          <label htmlFor="status-filter" className="text-xs font-medium text-gray-500 uppercase tracking-wide">
-            Status
-          </label>
-          <select
-            id="status-filter"
-            name="status"
-            defaultValue={params.status ?? ""}
-            className="px-3 py-2 text-sm border border-gray-300 rounded-md outline-none focus:border-blue-500"
-          >
-            {STATUS_OPTIONS.map((s) => (
-              <option key={s.value} value={s.value}>
-                {s.label}
-              </option>
-            ))}
-          </select>
-        </div>
+      {/* ── Filters (client component, drives URL params) ──── */}
+      <Suspense>
+        <AppointmentFilters
+          today={today}
+          initialStatus={params.status ?? ""}
+          initialDateFrom={params.dateFrom ?? today}
+          initialDateTo={params.dateTo ?? today}
+          initialTimeFrom={params.timeFrom ?? ""}
+          initialTimeTo={params.timeTo ?? ""}
+        />
+      </Suspense>
 
-        {/* Date From */}
-        <div className="space-y-1">
-          <label htmlFor="dateFrom" className="text-xs font-medium text-gray-500 uppercase tracking-wide">
-            From
-          </label>
-          <input
-            id="dateFrom"
-            type="date"
-            name="dateFrom"
-            defaultValue={params.dateFrom ?? today}
-            className="px-3 py-2 text-sm border border-gray-300 rounded-md outline-none focus:border-blue-500"
-          />
-        </div>
-
-        {/* Date To */}
-        <div className="space-y-1">
-          <label htmlFor="dateTo" className="text-xs font-medium text-gray-500 uppercase tracking-wide">
-            To
-          </label>
-          <input
-            id="dateTo"
-            type="date"
-            name="dateTo"
-            defaultValue={params.dateTo ?? today}
-            className="px-3 py-2 text-sm border border-gray-300 rounded-md outline-none focus:border-blue-500"
-          />
-        </div>
-
-        <button
-          type="submit"
-          className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700"
-        >
-          Filter
-        </button>
-        <a
-          href="/dentist/appointments"
-          className="px-4 py-2 text-sm font-medium text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50"
-        >
-          Reset
-        </a>
-      </form>
-
-      {/* ── Results count ──────────────────────────────────────── */}
-      <p className="text-sm text-gray-500">
+      {/* ── Results count ──────────────────────────────────── */}
+      <p className="text-sm text-[#71717A]">
         {total} appointment{total !== 1 ? "s" : ""} found
       </p>
 
-      {/* ── Table ─────────────────────────────────────────────── */}
+      {/* ── Table ─────────────────────────────────────────── */}
       {appointments.length === 0 ? (
-        <div className="bg-white border rounded-lg p-12 text-center">
-          <p className="text-gray-500 text-sm">No appointments match your filters.</p>
+        <div className="bg-white border border-[#E4E4E7] rounded-xl p-12 text-center">
+          <p className="text-[#71717A] text-sm">No appointments match your filters.</p>
+          <p className="text-[#A1A1AA] text-xs mt-1">Try adjusting the date range or clearing filters.</p>
         </div>
       ) : (
-        <div className="bg-white border rounded-lg overflow-hidden">
+        <div className="bg-white border border-[#E4E4E7] rounded-xl overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b bg-gray-50 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                <tr className="border-b border-[#F4F4F5] bg-[#FAFAFA] text-left text-xs font-semibold text-[#71717A] uppercase tracking-wide">
                   <th className="px-4 py-3">Patient</th>
                   <th className="px-4 py-3">Date &amp; Time</th>
                   <th className="px-4 py-3">Duration</th>
@@ -187,13 +135,13 @@ export default async function DentistAppointmentsPage({ searchParams }: Props) {
                   <th className="px-4 py-3 sr-only">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
+              <tbody className="divide-y divide-[#F4F4F5]">
                 {appointments.map((appt) => (
                   <tr
                     key={appt.id}
-                    className="hover:bg-gray-50 transition-colors"
+                    className="hover:bg-[#FAFAFA] transition-colors"
                   >
-                    <td className="px-4 py-3 font-medium text-gray-900">
+                    <td className="px-4 py-3 font-medium text-[#09090B]">
                       <Link
                         href={`/dentist/patients/${appt.patient_id}`}
                         className="hover:text-blue-600 transition-colors"
@@ -201,17 +149,17 @@ export default async function DentistAppointmentsPage({ searchParams }: Props) {
                         {appt.patient.name}
                       </Link>
                     </td>
-                    <td className="px-4 py-3 text-gray-600">
+                    <td className="px-4 py-3 text-[#52525B]">
                       {formatDateTimeInTimezone(appt.scheduled_at, clinicTimezone)}
                     </td>
-                    <td className="px-4 py-3 text-gray-600">
+                    <td className="px-4 py-3 text-[#52525B]">
                       {appt.duration_minutes} min
                     </td>
-                    <td className="px-4 py-3 text-gray-600">
+                    <td className="px-4 py-3 text-[#52525B]">
                       {APPOINTMENT_SOURCE_LABELS[appt.source] ?? appt.source}
                     </td>
                     <td className="px-4 py-3">
-                      <AppointmentStatusBadge status={appt.status} />
+                      <AppointmentStatusBadge status={appt.status as AppointmentStatus} />
                     </td>
                     <td className="px-4 py-3 text-right">
                       <Link
@@ -229,17 +177,15 @@ export default async function DentistAppointmentsPage({ searchParams }: Props) {
         </div>
       )}
 
-      {/* ── Pagination ─────────────────────────────────────────── */}
+      {/* ── Pagination ─────────────────────────────────────── */}
       {totalPages > 1 && (
-        <div className="flex items-center justify-between text-sm text-gray-600">
-          <span>
-            Page {page} of {totalPages}
-          </span>
+        <div className="flex items-center justify-between text-sm text-[#71717A]">
+          <span>Page {page} of {totalPages}</span>
           <div className="flex gap-1">
             {page > 1 && (
               <Link
                 href={pageHref(page - 1)}
-                className="px-3 py-1 border rounded-md hover:bg-gray-50"
+                className="px-3 py-1 border border-[#E4E4E7] rounded-lg hover:bg-[#FAFAFA] text-[#09090B]"
               >
                 ← Prev
               </Link>
@@ -247,7 +193,7 @@ export default async function DentistAppointmentsPage({ searchParams }: Props) {
             {page < totalPages && (
               <Link
                 href={pageHref(page + 1)}
-                className="px-3 py-1 border rounded-md hover:bg-gray-50"
+                className="px-3 py-1 border border-[#E4E4E7] rounded-lg hover:bg-[#FAFAFA] text-[#09090B]"
               >
                 Next →
               </Link>
@@ -258,4 +204,3 @@ export default async function DentistAppointmentsPage({ searchParams }: Props) {
     </div>
   );
 }
-

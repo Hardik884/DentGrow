@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { PageHeader } from "@/components/layouts/PageHeader";
 import { DashboardKPIs } from "@/components/dentist/DashboardKPIs";
 import { QueueWidget } from "@/components/queue/QueueWidget";
-import { InsightsPanel } from "@/components/ai/InsightsPanel";
 import { UpcomingAppointments } from "@/components/dentist/UpcomingAppointments";
 import { getTodayQueue } from "@/actions/queue";
 import { createServerClient } from "@/lib/supabase/server";
@@ -54,7 +53,6 @@ export default async function DentistDashboardPage() {
             clinicId={clinicId}
             queueHref="/dentist/queue"
           />
-          <InsightsPanel />
         </div>
       </div>
     </div>

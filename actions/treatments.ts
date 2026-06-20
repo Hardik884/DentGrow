@@ -77,6 +77,22 @@ export async function createTreatment(
       return { data: null, error: "Forbidden: only dentists can create treatments." };
     }
 
+    // Normalise performed_at: "YYYY-MM-DD" and "YYYY-MM-DDTHH:mm" are both
+    // valid user inputs, but Postgres requires a full timestamptz. We coerce
+    // to ISO 8601 with seconds and UTC offset before inserting.
+    let performedAt: string | null = null;
+    if (parsed.data.performed_at) {
+      const raw = parsed.data.performed_at.trim();
+      if (raw.length === 10) {
+        // "YYYY-MM-DD" — treat as noon UTC to avoid day-shift issues
+        performedAt = `${raw}T12:00:00.000Z`;
+      } else {
+        // "YYYY-MM-DDTHH:mm" or already a full ISO string
+        const d = new Date(raw);
+        performedAt = isNaN(d.getTime()) ? null : d.toISOString();
+      }
+    }
+
     const { data, error } = await db
       .from("treatments")
       .insert({
@@ -88,7 +104,7 @@ export async function createTreatment(
         patient_visible_notes: parsed.data.patient_visible_notes ?? null,
         cost: parsed.data.cost,
         status: parsed.data.status ?? "planned",
-        performed_at: parsed.data.performed_at ?? null,
+        performed_at: performedAt,
       })
       .select()
       .single();
@@ -144,7 +160,19 @@ export async function updateTreatment(
     if (parsed.data.patient_visible_notes !== undefined) updates.patient_visible_notes = parsed.data.patient_visible_notes ?? null;
     if (parsed.data.cost !== undefined) updates.cost = parsed.data.cost;
     if (parsed.data.status !== undefined) updates.status = parsed.data.status;
-    if (parsed.data.performed_at !== undefined) updates.performed_at = parsed.data.performed_at ?? null;
+    if (parsed.data.performed_at !== undefined) {
+      if (!parsed.data.performed_at) {
+        updates.performed_at = null;
+      } else {
+        const raw = parsed.data.performed_at.trim();
+        if (raw.length === 10) {
+          updates.performed_at = `${raw}T12:00:00.000Z`;
+        } else {
+          const d = new Date(raw);
+          updates.performed_at = isNaN(d.getTime()) ? null : d.toISOString();
+        }
+      }
+    }
 
     const { data, error } = await db
       .from("treatments")
