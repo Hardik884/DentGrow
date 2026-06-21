@@ -12,6 +12,9 @@ import {
   type Patient,
 } from "@/types";
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type AdminClient = any;
+
 /**
  * isNextRedirectError — recognises errors thrown by Next.js redirect()/notFound().
  *
@@ -185,7 +188,7 @@ async function _linkExistingPatient({
   user: AuthUser;
   patient: Pick<Patient, "id" | "name" | "clinic_id">;
 }): Promise<ActionResult<PortalLinkResult>> {
-  const admin = createAdminClient();
+  const admin: AdminClient = createAdminClient();
 
   const { error: insertErr } = await admin
     .from("patient_portal_links")
@@ -247,7 +250,7 @@ async function _createAndLinkNewPatient({
   phone: string;
   name: string;
 }): Promise<ActionResult<PortalLinkResult>> {
-  const admin = createAdminClient();
+  const admin: AdminClient = createAdminClient();
 
   // Resolve clinic_id — single-clinic MVP: use the first active clinic.
   const { data: clinicRow, error: clinicErr } = await admin
@@ -440,6 +443,8 @@ export async function getPortalProfile(): Promise<
 > {
   try {
     const supabase = await createServerClient();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const db: any = supabase;
 
     const {
       data: { user },
@@ -448,7 +453,7 @@ export async function getPortalProfile(): Promise<
     if (!user) return { data: null, error: "Unauthorized" };
 
     // Resolve patient via portal link
-    const { data: link } = await supabase
+    const { data: link } = await db
       .from("patient_portal_links")
       .select("patient_id")
       .eq("user_id", user.id)
@@ -458,7 +463,7 @@ export async function getPortalProfile(): Promise<
       return { data: null, error: "Portal account not linked." };
     }
 
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from("patients")
       .select(
         "id, name, phone, date_of_birth, gender, address, emergency_contact_name, emergency_contact_phone, total_visits, last_visit, created_at"
@@ -507,6 +512,8 @@ export async function updatePortalProfile(
     }
 
     const supabase = await createServerClient();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const db: any = supabase;
 
     const {
       data: { user },
@@ -515,7 +522,7 @@ export async function updatePortalProfile(
     if (!user) return { data: null, error: "Unauthorized" };
 
     // Resolve patient via portal link
-    const { data: link } = await supabase
+    const { data: link } = await db
       .from("patient_portal_links")
       .select("patient_id")
       .eq("user_id", user.id)
@@ -538,7 +545,7 @@ export async function updatePortalProfile(
       }),
     };
 
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from("patients")
       .update(updates)
       .eq("id", link.patient_id)

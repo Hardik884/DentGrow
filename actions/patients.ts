@@ -215,7 +215,8 @@ export async function softDeletePatient(
     // subject to RLS policy evaluation. This is the correct pattern for
     // server-side privileged operations that have already been authorized in
     // application code — identical to how portal-link.ts handles its writes.
-    const admin = createAdminClient();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const admin: DbClient = createAdminClient();
 
     // Cascade soft-delete related records first, then the patient itself.
     // Each step surfaces the real Supabase/DB error so the exact failing
