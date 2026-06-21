@@ -16,6 +16,27 @@ import {
 type AdminClient = any;
 
 /**
+ * normalizePhone
+ *
+ * Strips all non-digit characters, then removes a leading country code if
+ * the result is longer than 10 digits (handles +91, 91, 0 prefixes).
+ * Returns the last 10 digits so that all of the following resolve identically:
+ *   "9876543210"        → "9876543210"
+ *   "+91 9876543210"    → "9876543210"
+ *   "91-9876543210"     → "9876543210"
+ *   "98765 43210"       → "9876543210"
+ *   "+919876543210"     → "9876543210"
+ *
+ * This normalized form is used for lookups and for storing new self-registered
+ * patient records so future lookups always succeed.
+ */
+function normalizePhone(raw: string): string {
+  const digitsOnly = raw.replace(/\D/g, "");
+  // If we have more than 10 digits, trim to the last 10 (drops country codes)
+  return digitsOnly.length > 10 ? digitsOnly.slice(-10) : digitsOnly;
+}
+
+/**
  * isNextRedirectError — recognises errors thrown by Next.js redirect()/notFound().
  *
  * Next 15 no longer exports isRedirectError from next/navigation, but the
@@ -103,13 +124,16 @@ export async function linkPortalAccount(
       redirect("/portal");
     }
 
-    const phone = parsed.data.phone.trim();
+    const phone = normalizePhone(parsed.data.phone.trim());
 
     // ── PATH A: try to find an existing patient by phone ──────────────────────
+    // phone is already the 10-digit normalized form (normalizePhone strips all
+    // non-digits and trims to the last 10). The suffix search ensures records
+    // stored with a country code (+91, 91, etc.) are matched correctly.
     const { data: matches, error: searchErr } = await supabase
       .from("patients")
       .select("id, name, clinic_id, phone")
-      .ilike("phone", phone)
+      .ilike("phone", `%${phone}`)
       .is("deleted_at", null)
       .limit(5);
 
@@ -268,11 +292,13 @@ async function _createAndLinkNewPatient({
 
   // Guard: don't create a duplicate patient if this phone already exists in the
   // clinic (race condition between two concurrent signups with the same number).
+  // phone is already the 10-digit normalized form, so the suffix search matches
+  // any stored format (with or without a country code prefix).
   const { data: raceCheck } = await admin
     .from("patients")
     .select("id")
     .eq("clinic_id", clinicId)
-    .ilike("phone", phone)
+    .ilike("phone", `%${phone}`)
     .is("deleted_at", null)
     .maybeSingle();
 
@@ -285,6 +311,8 @@ async function _createAndLinkNewPatient({
   }
 
   // Create the new patient record, flagged as self-registered.
+  // phone is already the 10-digit normalized form — store it as-is so future
+  // lookups via the same normalization path always match cleanly.
   const { data: newPatient, error: patientErr } = await admin
     .from("patients")
     .insert({
