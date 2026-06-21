@@ -54,9 +54,6 @@ function isNextRedirectError(err: unknown): boolean {
  *   - clinic_id never stored in portal_links — always derived via patients.clinic_id
  */
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type DbClient = any;
-
 /**
  * Special sentinel returned when no patient record was found for the given phone
  * and the caller has NOT yet confirmed they want to create a new one.
@@ -84,7 +81,6 @@ export async function linkPortalAccount(
     }
 
     const supabase = await createServerClient();
-    const db: DbClient = supabase;
 
     const {
       data: { user },
@@ -93,7 +89,7 @@ export async function linkPortalAccount(
     if (!user) return { data: null, error: "Unauthorized" };
 
     // Check if this user already has a portal link (UNIQUE constraint guard)
-    const { data: existingLink } = await db
+    const { data: existingLink } = await supabase
       .from("patient_portal_links")
       .select("id")
       .eq("user_id", user.id)
@@ -107,7 +103,7 @@ export async function linkPortalAccount(
     const phone = parsed.data.phone.trim();
 
     // ── PATH A: try to find an existing patient by phone ──────────────────────
-    const { data: matches, error: searchErr } = await db
+    const { data: matches, error: searchErr } = await supabase
       .from("patients")
       .select("id, name, clinic_id, phone")
       .ilike("phone", phone)
@@ -147,7 +143,7 @@ export async function linkPortalAccount(
     const patient = patients[0];
 
     // Check the patient isn't already linked to another auth account
-    const { data: patientLinkExists } = await db
+    const { data: patientLinkExists } = await supabase
       .from("patient_portal_links")
       .select("id")
       .eq("patient_id", patient.id)
@@ -252,11 +248,9 @@ async function _createAndLinkNewPatient({
   name: string;
 }): Promise<ActionResult<PortalLinkResult>> {
   const admin = createAdminClient();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const adminDb: any = admin;
 
   // Resolve clinic_id — single-clinic MVP: use the first active clinic.
-  const { data: clinicRow, error: clinicErr } = await adminDb
+  const { data: clinicRow, error: clinicErr } = await admin
     .from("clinics")
     .select("id")
     .limit(1)
@@ -271,7 +265,7 @@ async function _createAndLinkNewPatient({
 
   // Guard: don't create a duplicate patient if this phone already exists in the
   // clinic (race condition between two concurrent signups with the same number).
-  const { data: raceCheck } = await adminDb
+  const { data: raceCheck } = await admin
     .from("patients")
     .select("id")
     .eq("clinic_id", clinicId)
@@ -288,7 +282,7 @@ async function _createAndLinkNewPatient({
   }
 
   // Create the new patient record, flagged as self-registered.
-  const { data: newPatient, error: patientErr } = await adminDb
+  const { data: newPatient, error: patientErr } = await admin
     .from("patients")
     .insert({
       clinic_id: clinicId,
@@ -306,14 +300,14 @@ async function _createAndLinkNewPatient({
   }
 
   // Now link the new patient record to the auth account.
-  const { error: linkErr } = await adminDb
+  const { error: linkErr } = await admin
     .from("patient_portal_links")
     .insert({ patient_id: newPatient.id, user_id: user.id });
 
   if (linkErr) {
     // Roll back the patient record to keep things clean.
     console.error("[linkPortalAccount] portal link insert (new patient):", linkErr);
-    await adminDb.from("patients").delete().eq("id", newPatient.id);
+    await admin.from("patients").delete().eq("id", newPatient.id);
     return { data: null, error: "Failed to link your account. Please try again." };
   }
 
@@ -321,7 +315,7 @@ async function _createAndLinkNewPatient({
   const { data: authUser } = await admin.auth.admin.getUserById(user.id);
   const userEmail = authUser?.user?.email ?? "";
 
-  const { error: profileErr } = await adminDb.from("profiles").insert({
+  const { error: profileErr } = await admin.from("profiles").insert({
     id: user.id,
     clinic_id: clinicId,
     full_name: name || userEmail.split("@")[0],
@@ -331,12 +325,11 @@ async function _createAndLinkNewPatient({
   if (profileErr) {
     // Roll back both patient record and portal link.
     console.error("[linkPortalAccount] profile insert (new patient):", profileErr);
-    await adminDb
+    await admin
       .from("patient_portal_links")
       .delete()
-      .eq("user_id", user.id)
-      .eq("patient_id", newPatient.id);
-    await adminDb.from("patients").delete().eq("id", newPatient.id);
+      .eq("user_id", user.id);
+    await admin.from("patients").delete().eq("id", newPatient.id);
     return {
       data: null,
       error: "Account setup failed while creating your profile. Please try again.",
@@ -354,7 +347,6 @@ async function _createAndLinkNewPatient({
 export async function getLinkedPatient(): Promise<ActionResult<PortalUser>> {
   try {
     const supabase = await createServerClient();
-    const db: DbClient = supabase;
 
     const {
       data: { user },
@@ -362,7 +354,7 @@ export async function getLinkedPatient(): Promise<ActionResult<PortalUser>> {
 
     if (!user) return { data: null, error: "Unauthorized" };
 
-    const { data, error } = await db
+    const { data, error } = await supabase
       .from("patient_portal_links")
       .select("patient_id, patients!inner(clinic_id)")
       .eq("user_id", user.id)
@@ -400,7 +392,6 @@ export async function checkPortalLinkStatus(): Promise<
 > {
   try {
     const supabase = await createServerClient();
-    const db: DbClient = supabase;
 
     const {
       data: { user },
@@ -408,7 +399,7 @@ export async function checkPortalLinkStatus(): Promise<
 
     if (!user) return { data: "unlinked", error: null };
 
-    const { data } = await db
+    const { data } = await supabase
       .from("patient_portal_links")
       .select("patient_id")
       .eq("user_id", user.id)
@@ -449,7 +440,6 @@ export async function getPortalProfile(): Promise<
 > {
   try {
     const supabase = await createServerClient();
-    const db: DbClient = supabase;
 
     const {
       data: { user },
@@ -458,7 +448,7 @@ export async function getPortalProfile(): Promise<
     if (!user) return { data: null, error: "Unauthorized" };
 
     // Resolve patient via portal link
-    const { data: link } = await db
+    const { data: link } = await supabase
       .from("patient_portal_links")
       .select("patient_id")
       .eq("user_id", user.id)
@@ -468,7 +458,7 @@ export async function getPortalProfile(): Promise<
       return { data: null, error: "Portal account not linked." };
     }
 
-    const { data, error } = await db
+    const { data, error } = await supabase
       .from("patients")
       .select(
         "id, name, phone, date_of_birth, gender, address, emergency_contact_name, emergency_contact_phone, total_visits, last_visit, created_at"
@@ -502,6 +492,7 @@ import {
   UpdatePortalProfileSchema,
   type UpdatePortalProfileInput,
 } from "@/lib/portal-profile";
+import type { PatientUpdate } from "@/types";
 
 export async function updatePortalProfile(
   input: unknown
@@ -516,7 +507,6 @@ export async function updatePortalProfile(
     }
 
     const supabase = await createServerClient();
-    const db: DbClient = supabase;
 
     const {
       data: { user },
@@ -525,7 +515,7 @@ export async function updatePortalProfile(
     if (!user) return { data: null, error: "Unauthorized" };
 
     // Resolve patient via portal link
-    const { data: link } = await db
+    const { data: link } = await supabase
       .from("patient_portal_links")
       .select("patient_id")
       .eq("user_id", user.id)
@@ -535,23 +525,20 @@ export async function updatePortalProfile(
       return { data: null, error: "Portal account not linked." };
     }
 
-    // Only update the fields that are safe for patients to edit
-    const updates: Record<string, unknown> = {
+    // Build a typed update payload — only the fields patients are allowed to edit.
+    const updates: PatientUpdate = {
       updated_at: new Date().toISOString(),
+      ...(parsed.data.phone !== undefined && { phone: parsed.data.phone || null }),
+      ...(parsed.data.address !== undefined && { address: parsed.data.address || null }),
+      ...(parsed.data.emergency_contact_name !== undefined && {
+        emergency_contact_name: parsed.data.emergency_contact_name || null,
+      }),
+      ...(parsed.data.emergency_contact_phone !== undefined && {
+        emergency_contact_phone: parsed.data.emergency_contact_phone || null,
+      }),
     };
 
-    if (parsed.data.phone !== undefined)
-      updates.phone = parsed.data.phone || null;
-    if (parsed.data.address !== undefined)
-      updates.address = parsed.data.address || null;
-    if (parsed.data.emergency_contact_name !== undefined)
-      updates.emergency_contact_name =
-        parsed.data.emergency_contact_name || null;
-    if (parsed.data.emergency_contact_phone !== undefined)
-      updates.emergency_contact_phone =
-        parsed.data.emergency_contact_phone || null;
-
-    const { data, error } = await db
+    const { data, error } = await supabase
       .from("patients")
       .update(updates)
       .eq("id", link.patient_id)

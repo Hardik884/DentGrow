@@ -199,7 +199,16 @@ export type Database = {
           performed_by?: string | null;
           timestamp?: string;
         };
-        Update: Record<string, never>; // append-only
+        // append-only: no fields may be updated via the client
+        Update: {
+          id?: never;
+          appointment_id?: never;
+          action?: never;
+          old_value?: never;
+          new_value?: never;
+          performed_by?: never;
+          timestamp?: never;
+        };
       };
       queue_entries: {
         Row: {
@@ -387,7 +396,13 @@ export type Database = {
           user_id: string;
           created_at?: string;
         };
-        Update: Record<string, never>; // immutable
+        // immutable: no fields may be updated via the client
+        Update: {
+          id?: never;
+          patient_id?: never;
+          user_id?: never;
+          created_at?: never;
+        };
       };
       clinic_settings: {
         Row: {
@@ -477,7 +492,14 @@ export type Database = {
           payload?: Json | null;
           received_at?: string;
         };
-        Update: Record<string, never>; // append-only
+        // append-only: no fields may be updated via the client
+        Update: {
+          id?: never;
+          clinic_id?: never;
+          event_type?: never;
+          payload?: never;
+          received_at?: never;
+        };
       };
     };
     Views: {
