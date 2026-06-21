@@ -78,13 +78,13 @@ async function getClinicTimezone(
   db: DbClient,
   clinicId: string
 ): Promise<string> {
-  if (!clinicId) return "UTC";
+  if (!clinicId) return "Asia/Kolkata";
   const { data } = await db
     .from("clinic_settings")
     .select("timezone")
     .eq("clinic_id", clinicId)
     .maybeSingle();
-  return (data as { timezone?: string } | null)?.timezone ?? "UTC";
+  return (data as { timezone?: string } | null)?.timezone ?? "Asia/Kolkata";
 }
 
 /**
@@ -654,6 +654,27 @@ export async function getQueueStatus(patientId: string): Promise<
       position: number;
       status: string;
     };
+
+    // If the patient's queue entry is completed, they are no longer in the
+    // active queue. Return empty status so the portal does not show queue UI.
+    if (myEntry.status === "completed") {
+      const { data: currentData } = await service
+        .from("queue_entries")
+        .select("position")
+        .eq("clinic_id", clinicId)
+        .eq("queue_date", qDate)
+        .eq("status", "in_progress")
+        .maybeSingle();
+
+      return {
+        data: {
+          ...empty,
+          currentQueueNumber:
+            (currentData as { position: number } | null)?.position ?? null,
+        },
+        error: null,
+      };
+    }
 
     // Count waiting entries with lower position than the patient's
     const { data: aheadEntries } = await service

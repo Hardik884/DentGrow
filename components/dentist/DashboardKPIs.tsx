@@ -51,14 +51,14 @@ export async function DashboardKPIs() {
   const profile = profileData as { clinic_id: string } | null;
   const clinicId = profile?.clinic_id ?? "";
 
-  let timezone = "UTC";
+  let timezone = "Asia/Kolkata";
   if (clinicId) {
     const { data: settings } = await supabase
       .from("clinic_settings")
       .select("timezone")
       .eq("clinic_id", clinicId)
       .maybeSingle();
-    timezone = (settings as { timezone?: string } | null)?.timezone ?? "UTC";
+    timezone = (settings as { timezone?: string } | null)?.timezone ?? "Asia/Kolkata";
   }
 
   const kpis = await getDashboardKPIs(

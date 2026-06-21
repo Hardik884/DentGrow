@@ -392,7 +392,7 @@ export async function getPaymentsToday(): Promise<ActionResult<number>> {
       .select("timezone")
       .eq("clinic_id", profile.clinic_id)
       .maybeSingle();
-    const tz = (settings as { timezone?: string } | null)?.timezone ?? "UTC";
+    const tz = (settings as { timezone?: string } | null)?.timezone ?? "Asia/Kolkata";
     const today = getTodayInTimezone(tz);
 
     const { data, error } = await db

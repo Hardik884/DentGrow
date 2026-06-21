@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { SignOutButton } from "@/components/shared/SignOutButton";
+import { DentGrowLogo } from "@/components/shared/DentGrowLogo";
 import {
   LayoutDashboard,
   CalendarDays,
@@ -11,6 +12,7 @@ import {
   Stethoscope,
   CreditCard,
   Bell,
+  User,
   type LucideIcon,
 } from "lucide-react";
 
@@ -31,6 +33,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: "Treatments",   href: "/portal/treatments",   icon: Stethoscope },
   { label: "Payments",     href: "/portal/payments",     icon: CreditCard },
   { label: "Follow-Ups",   href: "/portal/follow-ups",   icon: Bell },
+  { label: "Profile",      href: "/portal/profile",      icon: User },
 ];
 
 export function PortalNav({ patientId }: PortalNavProps) {
@@ -40,20 +43,10 @@ export function PortalNav({ patientId }: PortalNavProps) {
 
   return (
     <header className="bg-white border-b border-[#E4E4E7] sticky top-0 z-10">
-      <div className="max-w-2xl mx-auto px-4">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6">
         <div className="flex items-center justify-between h-14">
           {/* Brand */}
-          <div className="flex items-center gap-2">
-            <div className="h-7 w-7 rounded-lg bg-[#18181B] flex items-center justify-center">
-              <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4" aria-hidden>
-                <path
-                  d="M12 3C10.4 3 9 4.1 8.5 5.5C7.5 5.2 6.3 5.5 5.5 6.3C4.7 7.1 4.4 8.3 4.7 9.3C3.3 9.8 2.5 11 2.5 12.5C2.5 14 3.3 15.2 4.7 15.7C4.4 16.7 4.7 17.9 5.5 18.7C6.3 19.5 7.5 19.8 8.5 19.5C9 20.9 10.4 22 12 22C13.6 22 15 20.9 15.5 19.5C16.5 19.8 17.7 19.5 18.5 18.7C19.3 17.9 19.6 16.7 19.3 15.7C20.7 15.2 21.5 14 21.5 12.5C21.5 11 20.7 9.8 19.3 9.3C19.6 8.3 19.3 7.1 18.5 6.3C17.7 5.5 16.5 5.2 15.5 5.5C15 4.1 13.6 3 12 3Z"
-                  fill="white"
-                />
-              </svg>
-            </div>
-            <span className="text-sm font-semibold text-[#09090B] tracking-tight">DentGrow</span>
-          </div>
+          <DentGrowLogo size={28} withWordmark />
 
           {/* Desktop nav */}
           <nav className="hidden sm:flex items-center gap-1" aria-label="Portal navigation">

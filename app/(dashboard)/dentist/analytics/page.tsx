@@ -69,7 +69,7 @@ export default async function AnalyticsDashboardPage({
     .select("timezone")
     .eq("clinic_id", clinicId)
     .maybeSingle();
-  const clinicTimezone = (settingsData as { timezone?: string } | null)?.timezone ?? "UTC";
+  const clinicTimezone = (settingsData as { timezone?: string } | null)?.timezone ?? "Asia/Kolkata";
 
   // Resolve date range
   const params = await searchParams;

@@ -37,7 +37,7 @@ export default async function DentistNewAppointmentPage() {
         .eq("clinic_id", clinicId)
         .maybeSingle();
 
-      const tz = (settings as { timezone?: string } | null)?.timezone ?? "UTC";
+      const tz = (settings as { timezone?: string } | null)?.timezone ?? "Asia/Kolkata";
       clinicToday = new Intl.DateTimeFormat("en-CA", {
         timeZone: tz,
         year: "numeric",

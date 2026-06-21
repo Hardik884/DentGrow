@@ -12,7 +12,7 @@ import {
   type AvailabilityRule as SlotRule,
   type OccupiedSlot,
 } from "@/lib/scheduling/slots";
-
+import { getUtcBoundariesForLocalDate } from "@/lib/utils";
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type DbClient = any;
 
@@ -254,15 +254,37 @@ export async function getAvailableSlots(
     const { db, profile } = await resolveSession();
     if (!profile) return { data: null, error: "Unauthorized" };
 
+    // Resolve clinic_id for portal patients via portal link
+    let resolvedClinicId = profile.clinic_id;
+    if (profile.role === "patient") {
+      const { data: linkData } = await db
+        .from("patient_portal_links")
+        .select("patient_id, patients!inner(clinic_id)")
+        .eq("user_id", profile.id)
+        .single();
+
+      if (!linkData) return { data: null, error: "Portal account not linked." };
+
+      const link = linkData as {
+        patient_id: string;
+        patients: { clinic_id: string } | { clinic_id: string }[] | null;
+      };
+      const linkedClinicId = Array.isArray(link.patients)
+        ? link.patients[0]?.clinic_id
+        : link.patients?.clinic_id;
+      if (!linkedClinicId) return { data: null, error: "Unable to determine clinic." };
+      resolvedClinicId = linkedClinicId;
+    }
+
     // Fetch clinic settings: timezone + clinic_hours + avg duration
     const { data: settings } = await db
       .from("clinic_settings")
       .select("timezone, clinic_hours, average_appointment_duration")
-      .eq("clinic_id", profile.clinic_id)
+      .eq("clinic_id", resolvedClinicId)
       .maybeSingle();
 
     const timezone =
-      (settings as { timezone?: string } | null)?.timezone ?? "UTC";
+      (settings as { timezone?: string } | null)?.timezone ?? "Asia/Kolkata";
     const clinicHours =
       (settings as { clinic_hours?: Record<string, ClinicDayHours> } | null)
         ?.clinic_hours ?? null;
@@ -298,7 +320,7 @@ export async function getAvailableSlots(
     const { data: dbRules, error: rulesErr } = await db
       .from("availability_rules")
       .select("start_time, end_time, slot_duration_minutes")
-      .eq("clinic_id", profile.clinic_id)
+      .eq("clinic_id", resolvedClinicId)
       .eq("day_of_week", dayOfWeek)
       .eq("is_active", true);
 
@@ -339,7 +361,7 @@ export async function getAvailableSlots(
     const { data: dentistData } = await db
       .from("profiles")
       .select("id")
-      .eq("clinic_id", profile.clinic_id)
+      .eq("clinic_id", resolvedClinicId)
       .eq("role", "dentist")
       .limit(1)
       .single();
@@ -347,8 +369,10 @@ export async function getAvailableSlots(
     const dentistId = (dentistData as { id: string } | null)?.id;
 
     // ── Occupied slots ──────────────────────────────────────────────────────
-    const startBoundary = `${date}T00:00:00`;
-    const endBoundary = `${date}T23:59:59`;
+    // Use UTC boundaries for the clinic's local date so that the gte/lte
+    // comparison against the UTC-stored timestamptz column is correct.
+    const { start: startBoundary, end: endBoundary } =
+      getUtcBoundariesForLocalDate(date, timezone);
 
     const { data: occupied } = dentistId
       ? await db

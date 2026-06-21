@@ -40,23 +40,23 @@ export default async function PortalAppointmentDetailPage({ params }: Props) {
   const db: any = supabase;
   const { data: { user } } = await supabase.auth.getUser();
 
-  let clinicTimezone = "UTC";
+  let clinicTimezone = "Asia/Kolkata";
+
   if (user) {
-    // Portal user: resolve via portal link → patient → clinic
-    const { data: link } = await db
+    const { data: profile } = await db
       .from("patient_portal_links")
       .select("patient_id, patients!inner(clinic_id)")
       .eq("user_id", user.id)
       .single();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const clinicId = (link as any)?.patients?.clinic_id as string | undefined;
+    const clinicId = (profile as any)?.patients?.clinic_id as string | undefined;
     if (clinicId) {
       const { data: settings } = await db
         .from("clinic_settings")
         .select("timezone")
         .eq("clinic_id", clinicId)
         .maybeSingle();
-      clinicTimezone = (settings as { timezone?: string } | null)?.timezone ?? "UTC";
+      clinicTimezone = (settings as { timezone?: string } | null)?.timezone ?? "Asia/Kolkata";
     }
   }
 

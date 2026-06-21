@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createServerClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import {
   CreatePatientSchema,
   UpdatePatientSchema,
@@ -209,74 +210,90 @@ export async function softDeletePatient(
     const now = new Date().toISOString();
     const cid = profile.clinic_id;
 
-    // Cascade soft-delete related records first, then the patient itself
-    const { error: apptErr } = await db
+    // Authorization is fully resolved above (role === 'dentist', clinic_id scoped).
+    // The cascade writes use the admin client (service-role) so they are not
+    // subject to RLS policy evaluation. This is the correct pattern for
+    // server-side privileged operations that have already been authorized in
+    // application code — identical to how portal-link.ts handles its writes.
+    const admin = createAdminClient();
+
+    // Cascade soft-delete related records first, then the patient itself.
+    // Each step surfaces the real Supabase/DB error so the exact failing
+    // table and constraint are visible in server logs and returned to the caller.
+
+    const { error: apptErr } = await admin
       .from("appointments")
       .update({ deleted_at: now })
       .eq("patient_id", id)
       .eq("clinic_id", cid)
       .is("deleted_at", null);
     if (apptErr) {
-      console.error("[softDeletePatient] appointments:", apptErr);
-      return { data: null, error: "Failed to cascade delete." };
+      const msg = `appointments: ${apptErr.message ?? apptErr.code ?? JSON.stringify(apptErr)}`;
+      console.error("[softDeletePatient]", msg, apptErr);
+      return { data: null, error: `Failed to cascade delete (${msg}).` };
     }
 
-    const { error: txErr } = await db
+    const { error: txErr } = await admin
       .from("treatments")
       .update({ deleted_at: now })
       .eq("patient_id", id)
       .eq("clinic_id", cid)
       .is("deleted_at", null);
     if (txErr) {
-      console.error("[softDeletePatient] treatments:", txErr);
-      return { data: null, error: "Failed to cascade delete." };
+      const msg = `treatments: ${txErr.message ?? txErr.code ?? JSON.stringify(txErr)}`;
+      console.error("[softDeletePatient]", msg, txErr);
+      return { data: null, error: `Failed to cascade delete (${msg}).` };
     }
 
-    const { error: pyErr } = await db
+    const { error: pyErr } = await admin
       .from("payments")
       .update({ deleted_at: now })
       .eq("patient_id", id)
       .eq("clinic_id", cid)
       .is("deleted_at", null);
     if (pyErr) {
-      console.error("[softDeletePatient] payments:", pyErr);
-      return { data: null, error: "Failed to cascade delete." };
+      const msg = `payments: ${pyErr.message ?? pyErr.code ?? JSON.stringify(pyErr)}`;
+      console.error("[softDeletePatient]", msg, pyErr);
+      return { data: null, error: `Failed to cascade delete (${msg}).` };
     }
 
-    const { error: fuErr } = await db
+    const { error: fuErr } = await admin
       .from("follow_ups")
       .update({ deleted_at: now })
       .eq("patient_id", id)
       .eq("clinic_id", cid)
       .is("deleted_at", null);
     if (fuErr) {
-      console.error("[softDeletePatient] follow_ups:", fuErr);
-      return { data: null, error: "Failed to cascade delete." };
+      const msg = `follow_ups: ${fuErr.message ?? fuErr.code ?? JSON.stringify(fuErr)}`;
+      console.error("[softDeletePatient]", msg, fuErr);
+      return { data: null, error: `Failed to cascade delete (${msg}).` };
     }
 
-    // Remove any active queue entries for this patient (queue_entries has
-    // no soft-delete column — we hard-delete waiting entries to keep the
-    // queue clean. In-progress / completed entries are left for audit.)
-    const { error: qErr } = await db
+    // Remove any active queue entries for this patient. queue_entries has no
+    // soft-delete column — hard-delete waiting/in_progress entries to keep the
+    // live queue clean. completed entries are left for audit.
+    const { error: qErr } = await admin
       .from("queue_entries")
       .delete()
       .eq("patient_id", id)
       .eq("clinic_id", cid)
-      .eq("status", "waiting");
+      .in("status", ["waiting", "in_progress"]);
     if (qErr) {
-      // Non-fatal — log but don't fail the whole cascade
-      console.error("[softDeletePatient] queue:", qErr);
+      const msg = `queue_entries: ${qErr.message ?? qErr.code ?? JSON.stringify(qErr)}`;
+      console.error("[softDeletePatient]", msg, qErr);
+      return { data: null, error: `Failed to cascade delete (${msg}).` };
     }
 
-    const { error: patErr } = await db
+    const { error: patErr } = await admin
       .from("patients")
       .update({ deleted_at: now })
       .eq("id", id)
       .eq("clinic_id", cid)
       .is("deleted_at", null);
     if (patErr) {
-      console.error("[softDeletePatient] patient:", patErr);
-      return { data: null, error: "Failed to delete patient." };
+      const msg = `patient: ${patErr.message ?? patErr.code ?? JSON.stringify(patErr)}`;
+      console.error("[softDeletePatient]", msg, patErr);
+      return { data: null, error: `Failed to delete patient (${msg}).` };
     }
 
     revalidatePath("/dentist/patients");

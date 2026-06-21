@@ -1,11 +1,16 @@
 import { getAppointmentsToday } from "@/actions/appointments";
+import { getClinicSettings } from "@/actions/clinic-settings";
 import { AppointmentCard } from "@/components/shared/AppointmentCard";
 import { EmptyState } from "@/components/ui/empty-state";
 import { CalendarDays } from "lucide-react";
 
 export async function TodayAppointmentList() {
-  const result = await getAppointmentsToday();
+  const [result, settingsResult] = await Promise.all([
+    getAppointmentsToday(),
+    getClinicSettings(),
+  ]);
   const appointments = result.data ?? [];
+  const clinicTimezone = settingsResult.data?.timezone ?? "Asia/Kolkata";
 
   return (
     <div className="bg-white border border-[#E4E4E7] rounded-xl overflow-hidden">
@@ -29,6 +34,7 @@ export async function TodayAppointmentList() {
               key={appointment.id}
               appointment={appointment}
               baseHref="/receptionist"
+              timezone={clinicTimezone}
             />
           ))}
         </div>

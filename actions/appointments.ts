@@ -20,7 +20,8 @@ import {
   type AvailabilityRule as SlotRule,
   type OccupiedSlot,
 } from "@/lib/scheduling/slots";
-import { zonedDateToUTC, getTodayInTimezone } from "@/lib/utils";
+import { zonedDateToUTC, getTodayInTimezone, getUtcBoundariesForLocalDate } from "@/lib/utils";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type DbClient = any;
@@ -108,12 +109,53 @@ export async function createAppointment(
     const { db, profile } = await resolveSession();
     if (!profile) return { data: null, error: "Unauthorized" };
 
-    if (profile.role !== "dentist" && profile.role !== "receptionist") {
+    // ── Role-based access: staff + portal patients can book ───────────────
+    if (
+      profile.role !== "dentist" &&
+      profile.role !== "receptionist" &&
+      profile.role !== "patient"
+    ) {
       return { data: null, error: "Forbidden" };
     }
 
+    // ── Patient portal path: verify the patient_id matches the portal link ─
+    // Prevents a portal user from booking on behalf of another patient.
+    let resolvedClinicId = profile.clinic_id;
+    if (profile.role === "patient") {
+      const { data: linkData } = await db
+        .from("patient_portal_links")
+        .select("patient_id, patients!inner(clinic_id)")
+        .eq("user_id", profile.id)
+        .single();
+
+      if (!linkData) {
+        return { data: null, error: "Portal account not linked." };
+      }
+
+      const link = linkData as {
+        patient_id: string;
+        patients: { clinic_id: string } | { clinic_id: string }[] | null;
+      };
+
+      const linkedPatientId = link.patient_id;
+      const linkedClinicId = Array.isArray(link.patients)
+        ? link.patients[0]?.clinic_id
+        : link.patients?.clinic_id;
+
+      if (!linkedClinicId) {
+        return { data: null, error: "Unable to determine clinic." };
+      }
+
+      // Portal user must book for themselves only
+      if (parsed.data.patient_id !== linkedPatientId) {
+        return { data: null, error: "Forbidden: you can only book for yourself." };
+      }
+
+      resolvedClinicId = linkedClinicId;
+    }
+
     // ── Resolve dentist_id ──────────────────────────────────────────────────
-    // Dentist = their own profile; Receptionist = find the clinic's dentist
+    // Dentist = their own profile; Receptionist + Patient = find the clinic's dentist
     let dentistId: string;
     if (profile.role === "dentist") {
       dentistId = profile.id;
@@ -121,7 +163,7 @@ export async function createAppointment(
       const { data: dentistData } = await db
         .from("profiles")
         .select("id")
-        .eq("clinic_id", profile.clinic_id)
+        .eq("clinic_id", resolvedClinicId)
         .eq("role", "dentist")
         .limit(1)
         .single();
@@ -137,7 +179,7 @@ export async function createAppointment(
       .from("patients")
       .select("id")
       .eq("id", parsed.data.patient_id)
-      .eq("clinic_id", profile.clinic_id)
+      .eq("clinic_id", resolvedClinicId)
       .is("deleted_at", null)
       .single();
 
@@ -152,9 +194,9 @@ export async function createAppointment(
     const { data: settingsData } = await db
       .from("clinic_settings")
       .select("timezone")
-      .eq("clinic_id", profile.clinic_id)
+      .eq("clinic_id", resolvedClinicId)
       .maybeSingle();
-    const clinicTimezone = (settingsData as { timezone?: string } | null)?.timezone ?? "UTC";
+    const clinicTimezone = (settingsData as { timezone?: string } | null)?.timezone ?? "Asia/Kolkata";
 
     // ── Convert local slot string to UTC now that we have the timezone ─────
     // Slots from getAvailableSlots() are "YYYY-MM-DDTHH:MM:00" — wall-clock
@@ -212,7 +254,7 @@ export async function createAppointment(
     const { data: rules } = await db
       .from("availability_rules")
       .select("start_time, end_time, slot_duration_minutes")
-      .eq("clinic_id", profile.clinic_id)
+      .eq("clinic_id", resolvedClinicId)
       .eq("day_of_week", requestedDow)
       .eq("is_active", true);
 
@@ -230,7 +272,7 @@ export async function createAppointment(
       const { data: settingsWithHours } = await db
         .from("clinic_settings")
         .select("clinic_hours, average_appointment_duration")
-        .eq("clinic_id", profile.clinic_id)
+        .eq("clinic_id", resolvedClinicId)
         .maybeSingle();
 
       const clinicHours = (settingsWithHours as { clinic_hours?: Record<string, { open: string | null; close: string | null; is_open: boolean }> } | null)?.clinic_hours ?? null;
@@ -266,12 +308,16 @@ export async function createAppointment(
     }
 
     // Fetch occupied slots for validation (with durations)
+    // Use UTC boundaries for the clinic's local date so that the gte/lte
+    // comparison against the timestamptz column is correct.
+    const { start: occupiedStart, end: occupiedEnd } =
+      getUtcBoundariesForLocalDate(requestedDate, clinicTimezone);
     const { data: occupied } = await db
       .from("appointments")
       .select("scheduled_at, duration_minutes")
       .eq("dentist_id", dentistId)
-      .gte("scheduled_at", `${requestedDate}T00:00:00`)
-      .lte("scheduled_at", `${requestedDate}T23:59:59`)
+      .gte("scheduled_at", occupiedStart)
+      .lte("scheduled_at", occupiedEnd)
       .is("deleted_at", null)
       .not("status", "in", '("cancelled","no_show")');
 
@@ -300,10 +346,17 @@ export async function createAppointment(
     // (Already computed above as scheduledAtUtc — see UTC conversion note.)
 
     // ── Insert appointment ─────────────────────────────────────────────────
-    const { data: appointment, error: insertErr } = await db
+    // For patient portal bookings: use the admin (service-role) client to
+    // bypass RLS — the RLS policy drops the patient INSERT permission and
+    // routes bookings through the create_patient_appointment() DB function.
+    // Our server action performs identical validation, so we use admin insert
+    // directly rather than the RPC function (both are safe server-side).
+    const insertDb = profile.role === "patient" ? createAdminClient() : db;
+
+    const { data: appointment, error: insertErr } = await insertDb
       .from("appointments")
       .insert({
-        clinic_id: profile.clinic_id,
+        clinic_id: resolvedClinicId,
         patient_id: parsed.data.patient_id,
         dentist_id: dentistId,
         scheduled_at: scheduledAtUtc,
@@ -334,7 +387,11 @@ export async function createAppointment(
       performed_by: profile.id,
     });
 
-    revalidatePath(`/${profile.role}/appointments`);
+    if (profile.role === "patient") {
+      revalidatePath("/portal/appointments");
+    } else {
+      revalidatePath(`/${profile.role}/appointments`);
+    }
     return { data: appointment as Appointment, error: null };
   } catch (err) {
     console.error("[createAppointment] unexpected:", err);
@@ -463,7 +520,7 @@ export async function updateAppointmentStatus(
         .select("timezone")
         .eq("clinic_id", profile.clinic_id)
         .maybeSingle();
-      const tz = (tzData as { timezone?: string } | null)?.timezone ?? "UTC";
+      const tz = (tzData as { timezone?: string } | null)?.timezone ?? "Asia/Kolkata";
       const qDate = getTodayInTimezone(tz);
 
       // Check for an existing queue entry for this appointment (any date).
@@ -602,7 +659,7 @@ export async function rescheduleAppointment(
       .select("timezone")
       .eq("clinic_id", profile.clinic_id)
       .maybeSingle();
-    const clinicTimezone = (settingsData as { timezone?: string } | null)?.timezone ?? "UTC";
+    const clinicTimezone = (settingsData as { timezone?: string } | null)?.timezone ?? "Asia/Kolkata";
 
     // ── Convert local slot string to UTC ───────────────────────────────────
     // Slots from getAvailableSlots() are wall-clock local strings with no
@@ -678,13 +735,16 @@ export async function rescheduleAppointment(
     }
 
     // Occupied slots for new date (exclude the appointment being rescheduled) — with durations
+    // Use UTC boundaries for the clinic's local date so the timestamptz comparison is correct.
+    const { start: reschedStart, end: reschedEnd } =
+      getUtcBoundariesForLocalDate(newDate, clinicTimezone);
     const { data: occupied } = await db
       .from("appointments")
       .select("scheduled_at, duration_minutes")
       .eq("dentist_id", currentAppt.dentist_id)
       .neq("id", parsed.data.appointment_id)
-      .gte("scheduled_at", `${newDate}T00:00:00`)
-      .lte("scheduled_at", `${newDate}T23:59:59`)
+      .gte("scheduled_at", reschedStart)
+      .lte("scheduled_at", reschedEnd)
       .is("deleted_at", null)
       .not("status", "in", '("cancelled","no_show")');
 
@@ -756,31 +816,96 @@ export async function cancelAppointment(
     const { db, profile } = await resolveSession();
     if (!profile) return { data: null, error: "Unauthorized" };
 
-    if (profile.role !== "dentist" && profile.role !== "receptionist") {
+    // Staff: dentist + receptionist — scoped by clinic_id
+    // Patient: allowed to cancel their own future appointments only
+    if (
+      profile.role !== "dentist" &&
+      profile.role !== "receptionist" &&
+      profile.role !== "patient"
+    ) {
       return { data: null, error: "Forbidden" };
     }
 
-    const { data: current } = await db
-      .from("appointments")
-      .select("status, scheduled_at")
-      .eq("id", appointmentId)
-      .eq("clinic_id", profile.clinic_id)
-      .is("deleted_at", null)
-      .single();
+    // ── Fetch the appointment ─────────────────────────────────────────────
+    // For staff: scope by clinic_id.
+    // For patients: scope by patient_id (resolved from portal link) via RLS.
+    //   RLS already enforces patient_id ownership; we additionally verify it
+    //   here server-side using the portal link table for defence-in-depth.
+    let appointmentQuery;
+
+    if (profile.role === "patient") {
+      // Resolve the patient_id from the portal link
+      const { data: linkData } = await db
+        .from("patient_portal_links")
+        .select("patient_id")
+        .eq("user_id", profile.id)
+        .single();
+
+      if (!linkData?.patient_id) {
+        return { data: null, error: "Portal account not linked." };
+      }
+
+      const portalPatientId = (linkData as { patient_id: string }).patient_id;
+
+      appointmentQuery = db
+        .from("appointments")
+        .select("status, scheduled_at, patient_id")
+        .eq("id", appointmentId)
+        .eq("patient_id", portalPatientId)   // ownership check
+        .is("deleted_at", null)
+        .single();
+    } else {
+      appointmentQuery = db
+        .from("appointments")
+        .select("status, scheduled_at, patient_id")
+        .eq("id", appointmentId)
+        .eq("clinic_id", profile.clinic_id)
+        .is("deleted_at", null)
+        .single();
+    }
+
+    const { data: current } = await appointmentQuery;
 
     if (!current) return { data: null, error: "Appointment not found." };
 
-    const appt = current as { status: string; scheduled_at: string };
+    const appt = current as { status: string; scheduled_at: string; patient_id: string };
 
     if (["completed", "cancelled", "no_show"].includes(appt.status)) {
       return { data: null, error: `Cannot cancel a ${appt.status} appointment.` };
     }
 
-    const { error: updateErr } = await db
-      .from("appointments")
-      .update({ status: "cancelled", updated_at: new Date().toISOString() })
-      .eq("id", appointmentId)
-      .eq("clinic_id", profile.clinic_id);
+    // Patients can only cancel appointments that have not been checked in yet.
+    // Once checked in the patient is in the queue — only staff can cancel.
+    if (profile.role === "patient" && !["scheduled"].includes(appt.status)) {
+      return {
+        data: null,
+        error: "You can only cancel a scheduled appointment. Please contact the clinic.",
+      };
+    }
+
+    // Build the update query scoped appropriately per role
+    let updateQuery;
+    if (profile.role === "patient") {
+      const { data: linkData } = await db
+        .from("patient_portal_links")
+        .select("patient_id")
+        .eq("user_id", profile.id)
+        .single();
+      const portalPatientId = (linkData as { patient_id: string } | null)?.patient_id;
+      updateQuery = db
+        .from("appointments")
+        .update({ status: "cancelled", updated_at: new Date().toISOString() })
+        .eq("id", appointmentId)
+        .eq("patient_id", portalPatientId);
+    } else {
+      updateQuery = db
+        .from("appointments")
+        .update({ status: "cancelled", updated_at: new Date().toISOString() })
+        .eq("id", appointmentId)
+        .eq("clinic_id", profile.clinic_id);
+    }
+
+    const { error: updateErr } = await updateQuery;
 
     if (updateErr) {
       console.error("[cancelAppointment]", updateErr);
@@ -795,8 +920,13 @@ export async function cancelAppointment(
       performed_by: profile.id,
     });
 
-    revalidatePath(`/${profile.role}/appointments`);
-    revalidatePath(`/${profile.role}/appointments/${appointmentId}`);
+    if (profile.role === "patient") {
+      revalidatePath("/portal/appointments");
+      revalidatePath(`/portal/appointments/${appointmentId}`);
+    } else {
+      revalidatePath(`/${profile.role}/appointments`);
+      revalidatePath(`/${profile.role}/appointments/${appointmentId}`);
+    }
 
     return { data: null, error: null };
   } catch (err) {
@@ -824,7 +954,7 @@ export async function getAppointmentsToday(): Promise<
       .select("timezone")
       .eq("clinic_id", profile.clinic_id)
       .maybeSingle();
-    const timezone = (settings as { timezone?: string } | null)?.timezone ?? "UTC";
+    const timezone = (settings as { timezone?: string } | null)?.timezone ?? "Asia/Kolkata";
 
     // Compute today's date in the clinic timezone
     const todayInTz = new Intl.DateTimeFormat("en-CA", {
@@ -834,38 +964,8 @@ export async function getAppointmentsToday(): Promise<
       day: "2-digit",
     }).format(new Date()); // en-CA locale returns YYYY-MM-DD
 
-    // Build UTC boundaries for the clinic's local day:
-    // midnight local → UTC, and end-of-day local → UTC.
-    // We use a simple but correct approach: interpret the local date string
-    // as midnight in the clinic timezone.
-    const localMidnight = `${todayInTz}T00:00:00`;
-    const localEndOfDay = `${todayInTz}T23:59:59`;
-
-    // Get UTC offsets by asking Intl what UTC time the local midnight corresponds to.
-    // Strategy: create a Date for the local midnight as if it were UTC, then find
-    // the real UTC time by checking what Intl says that moment is in the clinic tz.
-    function localToUTC(localDatetime: string, tz: string): string {
-      // Use a two-pass method: assume UTC, check offset, adjust.
-      const assumed = new Date(localDatetime + "Z");
-      const displayed = new Intl.DateTimeFormat("en-CA", {
-        timeZone: tz,
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit",
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit",
-        hour12: false,
-      }).format(assumed);
-      // displayed = "YYYY-MM-DD, HH:MM:SS"
-      const cleaned = displayed.replace(", ", "T");
-      const displayedDate = new Date(cleaned + "Z");
-      const diff = assumed.getTime() - displayedDate.getTime();
-      return new Date(new Date(localDatetime + "Z").getTime() + diff).toISOString();
-    }
-
-    const startUtc = localToUTC(localMidnight, timezone);
-    const endUtc = localToUTC(localEndOfDay, timezone);
+    // Convert local day boundaries to UTC using the shared utility
+    const { start: startUtc, end: endUtc } = getUtcBoundariesForLocalDate(todayInTz, timezone);
 
     const { data, error } = await db
       .from("appointments")
@@ -982,8 +1082,22 @@ export async function getAppointments(filters?: {
       .is("deleted_at", null)
       .order("scheduled_at", { ascending: false });
 
-    // Staff: scope to clinic; patient: RLS handles their own data
-    if (profile.role !== "patient") {
+    // Staff: scope to clinic_id.
+    // Patient: resolve patient_id from portal link and filter explicitly.
+    //          This is defence-in-depth alongside RLS — ensures the portal
+    //          user only sees their own appointments.
+    if (profile.role === "patient") {
+      const { data: linkData } = await db
+        .from("patient_portal_links")
+        .select("patient_id")
+        .eq("user_id", profile.id)
+        .single();
+      const portalPatientId = (linkData as { patient_id: string } | null)?.patient_id;
+      if (!portalPatientId) {
+        return { data: { appointments: [], total: 0 }, error: null };
+      }
+      query = query.eq("patient_id", portalPatientId);
+    } else {
       query = query.eq("clinic_id", profile.clinic_id);
     }
 

@@ -155,7 +155,7 @@ export async function getDashboardKPIs(
   supabase: DbClient,
   clinicId: string,
   /** IANA timezone for the clinic — e.g. "Asia/Kolkata". Defaults to UTC. */
-  timezone: string = "UTC"
+  timezone: string = "Asia/Kolkata"
 ): Promise<DashboardKPIs> {
   // Compute "today" in the clinic's local calendar so a clinic in IST at
   // 01:00 doesn't query against the previous UTC date and miss appointments.
@@ -261,7 +261,7 @@ export async function getAnalyticsSummary(
   filter: DateRangeFilter
 ): Promise<AnalyticsSummary> {
   const { clinicId, dateFrom, dateTo } = filter;
-  const timezone = filter.timezone ?? "UTC";
+  const timezone = filter.timezone ?? "Asia/Kolkata";
 
   // Compute "today" in the clinic's local calendar (not server-local or UTC).
   const todayDate = new Intl.DateTimeFormat("en-CA", {
@@ -451,11 +451,29 @@ export async function getAppointmentAnalytics(
   const uniqueDays = Object.keys(dailyTotals).length;
   const averagePerDay = uniqueDays > 0 ? Math.round(rows.length / uniqueDays) : 0;
 
+  // Build peak hours using the clinic's local timezone so that a 9:00 AM
+  // appointment stored as 03:30 UTC (Asia/Kolkata) is bucketed into hour 9,
+  // not hour 3. getUTCHours() / getUTCDay() would produce wrong buckets for
+  // any timezone that is not UTC.
+  const tz = filter.timezone ?? "Asia/Kolkata";
   const peakMap: Record<string, number> = {};
   for (const row of rows) {
     const dt = new Date(row.scheduled_at);
-    const hour = dt.getUTCHours();
-    const dayOfWeek = dt.getUTCDay();
+    // Extract local hour and day-of-week using Intl — works for any IANA timezone
+    const localParts = new Intl.DateTimeFormat("en-US", {
+      timeZone: tz,
+      hour: "numeric",
+      weekday: "short",
+      hour12: false,
+    }).formatToParts(dt);
+    const hourStr = localParts.find((p) => p.type === "hour")?.value ?? "0";
+    const weekdayStr = localParts.find((p) => p.type === "weekday")?.value ?? "Sun";
+    const DOW_MAP: Record<string, number> = {
+      Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6,
+    };
+    // Intl hour12:false returns "24" for midnight on some platforms — normalise
+    const hour = parseInt(hourStr) % 24;
+    const dayOfWeek = DOW_MAP[weekdayStr] ?? 0;
     const key = `${hour}:${dayOfWeek}`;
     peakMap[key] = (peakMap[key] ?? 0) + 1;
   }
@@ -659,7 +677,7 @@ export async function getRevenueAnalytics(
   const avgPerCompletedAppointment = completedAppts > 0 ? totalInRange / completedAppts : 0;
 
   const now = new Date();
-  const tz = filter.timezone ?? "UTC";
+  const tz = filter.timezone ?? "Asia/Kolkata";
   const todayStr = new Intl.DateTimeFormat("en-CA", {
     timeZone: tz, year: "numeric", month: "2-digit", day: "2-digit",
   }).format(now);
@@ -751,7 +769,7 @@ export async function getFollowUpAnalytics(
   filter: DateRangeFilter
 ): Promise<FollowUpAnalytics> {
   const { clinicId, dateFrom, dateTo } = filter;
-  const tz = filter.timezone ?? "UTC";
+  const tz = filter.timezone ?? "Asia/Kolkata";
   const today = new Intl.DateTimeFormat("en-CA", {
     timeZone: tz, year: "numeric", month: "2-digit", day: "2-digit",
   }).format(new Date());

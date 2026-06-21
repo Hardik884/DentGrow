@@ -4,6 +4,7 @@ import { AppointmentCard } from "@/components/shared/AppointmentCard";
 import { EmptyState } from "@/components/ui/empty-state";
 import { CalendarDays } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { createServerClient } from "@/lib/supabase/server";
 
 interface AppointmentListProps {
   limit?: number;
@@ -12,6 +13,35 @@ interface AppointmentListProps {
 export async function AppointmentList({ limit }: AppointmentListProps) {
   const result = await getAppointments({ status: "scheduled", limit: limit ?? 10 });
   const appointments = result.data?.appointments ?? [];
+
+  // Resolve clinic timezone for correct time display in the portal.
+  // Appointments are stored in UTC; we must display in the clinic's local timezone.
+  let clinicTimezone = "Asia/Kolkata"; // safe IST default for this MVP
+  try {
+    const supabase = await createServerClient();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const db: any = supabase;
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      const { data: linkData } = await db
+        .from("patient_portal_links")
+        .select("patient_id, patients!inner(clinic_id)")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const clinicId = (linkData as any)?.patients?.clinic_id as string | undefined;
+      if (clinicId) {
+        const { data: settings } = await db
+          .from("clinic_settings")
+          .select("timezone")
+          .eq("clinic_id", clinicId)
+          .maybeSingle();
+        clinicTimezone = (settings as { timezone?: string } | null)?.timezone ?? clinicTimezone;
+      }
+    }
+  } catch {
+    // Non-fatal — fall back to default timezone
+  }
 
   return (
     <div>
@@ -32,7 +62,11 @@ export async function AppointmentList({ limit }: AppointmentListProps) {
         <div className="bg-white border border-[#E4E4E7] rounded-xl overflow-hidden divide-y divide-[#F4F4F5]">
           {appointments.map((appointment) => (
             <Link key={appointment.id} href={`/portal/appointments/${appointment.id}`}>
-              <AppointmentCard appointment={appointment} portalView />
+              <AppointmentCard
+                appointment={appointment}
+                portalView
+                timezone={clinicTimezone}
+              />
             </Link>
           ))}
         </div>

@@ -39,6 +39,9 @@ export function QueuePositionCard({
   const { queue } = useQueue({ clinicId, initialQueue });
   const [status, setStatus] = useState<QueueStatus>(initialStatus ?? EMPTY_STATUS);
 
+  // Track the patient's realtime entry status for effect dependencies
+  const myEntryStatus = queue.find((e) => e.patient_id === patientId)?.status ?? null;
+
   useEffect(() => {
     if (!patientId) return;
     let cancelled = false;
@@ -48,28 +51,54 @@ export function QueuePositionCard({
     })();
     return () => { cancelled = true; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [queue.length, queue.find((e) => e.patient_id === patientId)?.status, patientId]);
+  }, [queue.length, myEntryStatus, patientId]);
 
   const myEntry = queue.find((e) => e.patient_id === patientId);
 
-  if (!myEntry && status.position == null) {
+  // Derive effective status: real-time queue entry takes precedence over
+  // the last-fetched server status.
+  const effectiveStatus = myEntry?.status ?? status.myStatus;
+
+  // Completed entries are no longer in the active queue — show empty state.
+  if (
+    effectiveStatus === "completed" ||
+    (!myEntry && status.position == null)
+  ) {
+    const isCompleted = effectiveStatus === "completed";
     return (
       <div className="bg-white border border-[#E4E4E7] rounded-xl p-8 text-center space-y-2">
         <div className="h-12 w-12 rounded-full bg-[#F4F4F5] flex items-center justify-center mx-auto mb-4">
-          <svg className="h-5 w-5 text-[#A1A1AA]" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden>
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0" />
-          </svg>
+          {isCompleted ? (
+            <svg className="h-5 w-5 text-[#16A34A]" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden>
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M5 13l4 4L19 7" />
+            </svg>
+          ) : (
+            <svg className="h-5 w-5 text-[#A1A1AA]" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden>
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0" />
+            </svg>
+          )}
         </div>
-        <p className="text-sm font-medium text-[#09090B]">Not in queue</p>
-        <p className="text-xs text-[#71717A]">
-          Check in with the receptionist when you arrive.
-        </p>
+        {isCompleted ? (
+          <>
+            <p className="text-sm font-medium text-[#09090B]">Appointment complete</p>
+            <p className="text-xs text-[#71717A]">
+              Your visit has been completed. Thank you!
+            </p>
+          </>
+        ) : (
+          <>
+            <p className="text-sm font-medium text-[#09090B]">Not in queue</p>
+            <p className="text-xs text-[#71717A]">
+              Check in with the receptionist when you arrive.
+            </p>
+          </>
+        )}
       </div>
     );
   }
 
   const position = myEntry?.position ?? status.position ?? 0;
-  const myStatus = myEntry?.status ?? status.myStatus;
+  const myStatus = effectiveStatus;
   const isBeingSeen = myStatus === "in_progress";
 
   let patientsAhead = status.patientsAhead;

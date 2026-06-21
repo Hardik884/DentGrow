@@ -1,4 +1,5 @@
 import { getAppointmentsToday } from "@/actions/appointments";
+import { getClinicSettings } from "@/actions/clinic-settings";
 import { AppointmentCard } from "@/components/shared/AppointmentCard";
 import { EmptyState } from "@/components/ui/empty-state";
 import { CalendarDays } from "lucide-react";
@@ -7,10 +8,14 @@ import { CalendarDays } from "lucide-react";
  * UpcomingAppointments — upcoming appointments for the dentist dashboard.
  */
 export async function UpcomingAppointments() {
-  const result = await getAppointmentsToday();
+  const [result, settingsResult] = await Promise.all([
+    getAppointmentsToday(),
+    getClinicSettings(),
+  ]);
   const appointments = (result.data ?? []).filter(
     (a) => a.status === "scheduled" || a.status === "checked_in"
   );
+  const clinicTimezone = settingsResult.data?.timezone ?? "Asia/Kolkata";
 
   return (
     <div className="bg-white border border-[#E4E4E7] rounded-xl overflow-hidden">
@@ -32,7 +37,12 @@ export async function UpcomingAppointments() {
       ) : (
         <div className="divide-y divide-[#F4F4F5]">
           {appointments.map((appointment) => (
-            <AppointmentCard key={appointment.id} appointment={appointment} />
+            <AppointmentCard
+              key={appointment.id}
+              appointment={appointment}
+              baseHref="/dentist"
+              timezone={clinicTimezone}
+            />
           ))}
         </div>
       )}

@@ -28,7 +28,7 @@ export default async function PortalLayout({
     <div className="min-h-screen bg-[#FAFAFA]">
       <PortalNav patientId={portalLink?.patient_id ?? null} />
 
-      <main className="max-w-2xl mx-auto px-4 py-6 portal-main">
+      <main className="max-w-screen-xl mx-auto px-4 sm:px-6 py-6 portal-main">
         {children}
       </main>
 

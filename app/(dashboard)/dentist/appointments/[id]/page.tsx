@@ -45,7 +45,7 @@ export default async function DentistAppointmentDetailPage({ params }: Props) {
   const db: any = supabase;
   const { data: { user } } = await supabase.auth.getUser();
 
-  let clinicTimezone = "UTC";
+  let clinicTimezone = "Asia/Kolkata";
   let clinicToday: string | undefined;
   if (user) {
     const { data: profile } = await db
@@ -60,7 +60,7 @@ export default async function DentistAppointmentDetailPage({ params }: Props) {
         .select("timezone")
         .eq("clinic_id", clinicId)
         .maybeSingle();
-      clinicTimezone = (settings as { timezone?: string } | null)?.timezone ?? "UTC";
+      clinicTimezone = (settings as { timezone?: string } | null)?.timezone ?? "Asia/Kolkata";
       clinicToday = new Intl.DateTimeFormat("en-CA", {
         timeZone: clinicTimezone,
         year: "numeric",

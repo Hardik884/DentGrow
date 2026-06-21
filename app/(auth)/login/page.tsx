@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { LoginForm } from "./LoginForm";
+import { DentGrowLogo } from "@/components/shared/DentGrowLogo";
 
 export const metadata: Metadata = {
   title: "Sign In",
@@ -11,16 +12,8 @@ export default function LoginPage() {
     <div className="space-y-8">
       {/* Brand */}
       <div className="space-y-1.5">
-        <div className="flex items-center gap-2 mb-6">
-          <div className="h-8 w-8 rounded-lg bg-[#18181B] flex items-center justify-center">
-            <svg viewBox="0 0 24 24" fill="none" className="h-4.5 w-4.5" aria-hidden>
-              <path
-                d="M12 3C10.4 3 9 4.1 8.5 5.5C7.5 5.2 6.3 5.5 5.5 6.3C4.7 7.1 4.4 8.3 4.7 9.3C3.3 9.8 2.5 11 2.5 12.5C2.5 14 3.3 15.2 4.7 15.7C4.4 16.7 4.7 17.9 5.5 18.7C6.3 19.5 7.5 19.8 8.5 19.5C9 20.9 10.4 22 12 22C13.6 22 15 20.9 15.5 19.5C16.5 19.8 17.7 19.5 18.5 18.7C19.3 17.9 19.6 16.7 19.3 15.7C20.7 15.2 21.5 14 21.5 12.5C21.5 11 20.7 9.8 19.3 9.3C19.6 8.3 19.3 7.1 18.5 6.3C17.7 5.5 16.5 5.2 15.5 5.5C15 4.1 13.6 3 12 3Z"
-                fill="white"
-              />
-            </svg>
-          </div>
-          <span className="text-base font-semibold text-[#09090B] tracking-tight">DentGrow</span>
+        <div className="mb-6">
+          <DentGrowLogo size={32} withWordmark />
         </div>
         <h1 className="text-2xl font-semibold text-[#09090B] tracking-tight">Welcome back</h1>
         <p className="text-sm text-[#71717A]">Sign in to your practice account</p>

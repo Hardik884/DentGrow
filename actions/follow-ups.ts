@@ -72,7 +72,7 @@ async function todayForClinic(db: any, clinicId: string): Promise<string> {
     .select("timezone")
     .eq("clinic_id", clinicId)
     .maybeSingle();
-  const tz = (data as { timezone?: string } | null)?.timezone ?? "UTC";
+  const tz = (data as { timezone?: string } | null)?.timezone ?? "Asia/Kolkata";
   return getTodayInTimezone(tz);
 }
 

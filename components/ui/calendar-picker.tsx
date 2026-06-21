@@ -372,6 +372,7 @@ export function CalendarPicker({
 
   const popoverRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
+  const [popoverSide, setPopoverSide] = useState<"left" | "right">("left");
 
   // Keep view in sync when value changes externally
   useEffect(() => {
@@ -462,7 +463,19 @@ export function CalendarPicker({
           id={triggerId}
           type="button"
           disabled={disabled}
-          onClick={() => setOpen((o) => !o)}
+          onClick={() => {
+            setOpen((o) => {
+              if (!o && triggerRef.current) {
+                // Measure how much space is to the right of the trigger.
+                // The calendar is ~288px wide (min-w-72 = 18rem). If there
+                // isn't enough room to the right, anchor to the right edge instead.
+                const rect = triggerRef.current.getBoundingClientRect();
+                const spaceRight = window.innerWidth - rect.left;
+                setPopoverSide(spaceRight >= 300 ? "left" : "right");
+              }
+              return !o;
+            });
+          }}
           aria-haspopup="dialog"
           className={cn(
             "flex items-center gap-2 w-full h-9 px-3 py-2 rounded-lg border border-border",
@@ -500,7 +513,10 @@ export function CalendarPicker({
           ref={popoverRef}
           role="dialog"
           aria-label="Date picker"
-          className="absolute z-50 mt-1.5 rounded-xl border border-border bg-white shadow-lg p-3 animate-in fade-in-0 zoom-in-95 duration-100 left-0 min-w-max"
+          className={cn(
+            "absolute z-50 mt-1.5 rounded-xl border border-border bg-white shadow-lg p-3 animate-in fade-in-0 zoom-in-95 duration-100 min-w-max",
+            popoverSide === "left" ? "left-0" : "right-0"
+          )}
         >
           {grid}
         </div>
