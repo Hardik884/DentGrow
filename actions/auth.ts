@@ -59,14 +59,18 @@ export async function signIn(
       redirect("/receptionist");
     case "patient":
       redirect("/portal");
-    default:
-      // Auth succeeded but no profile — this is an incomplete onboarding state
-      await supabase.auth.signOut();
-      return {
-        data: null,
-        error:
-          "Your account is not fully set up. Please contact your clinic administrator.",
-      };
+    default: {
+      // No profile row found. For patient self-registrations this means the
+      // user created an auth account but hasn't completed portal setup yet
+      // (linkPortalAccount creates the profile). Send them to /portal/setup
+      // so they can finish linking. Do NOT sign them out — the setup page
+      // requires an active session.
+      //
+      // For staff accounts this state should never occur in production
+      // (staff are created via the invite flow which always inserts a profile).
+      // If it does, the setup page will surface a clear message.
+      redirect("/portal/setup");
+    }
   }
 }
 

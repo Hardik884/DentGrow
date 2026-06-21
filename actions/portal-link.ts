@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createServerClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import {
   LinkPortalAccountSchema,
   type ActionResult,
@@ -32,19 +33,39 @@ function isNextRedirectError(err: unknown): boolean {
 /**
  * Portal Link Server Actions
  *
- * Manages the optional link between a Supabase Auth account and a patient record.
+ * Manages the link between a Supabase Auth account and a patient record.
  * See CLAUDE.md §5.8 for the full portal linking architecture.
  *
- * Key rules:
- * - Patient records exist independently of auth accounts.
- * - Linking is done by phone number match — the auth user provides their phone,
- *   the system finds the matching active patient record in the clinic.
- * - UNIQUE constraints on patient_portal_links prevent duplicate links.
- * - clinic_id is derived from patients.clinic_id via join — never stored in portal links.
+ * Two onboarding paths:
+ *
+ * A — Existing patient:
+ *   Phone matches an active patients row → link user_id to that record.
+ *   Preserves all existing clinical data.
+ *
+ * B — New patient (self-registration):
+ *   No phone match found. When confirmNew=true a new patients row is created
+ *   (name + phone + clinic_id), then linked. The patient can immediately book
+ *   appointments. Staff can enrich the record later.
+ *
+ * Key invariants preserved:
+ *   - patient_portal_links.user_id UNIQUE  (one portal account per patient)
+ *   - patient_portal_links.patient_id UNIQUE (one account per patient record)
+ *   - patients phone uniqueness per clinic (partial unique index)
+ *   - clinic_id never stored in portal_links — always derived via patients.clinic_id
  */
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type DbClient = any;
+
+/**
+ * Special sentinel returned when no patient record was found for the given phone
+ * and the caller has NOT yet confirmed they want to create a new one.
+ * The form uses this to switch to the "new patient" confirmation UI.
+ */
+export type PortalLinkResult =
+  | { status: "linked" }
+  | { status: "not_found"; phone: string }   // no existing record — prompt for name
+  | { status: "error"; message: string };
 
 // =============================================================================
 // linkPortalAccount — called post-signup on /portal/setup
@@ -52,13 +73,13 @@ type DbClient = any;
 
 export async function linkPortalAccount(
   input: unknown
-): Promise<ActionResult<null>> {
+): Promise<ActionResult<PortalLinkResult>> {
   try {
     const parsed = LinkPortalAccountSchema.safeParse(input);
     if (!parsed.success) {
       return {
         data: null,
-        error: parsed.error.errors[0]?.message ?? "Invalid phone number",
+        error: parsed.error.errors[0]?.message ?? "Invalid input",
       };
     }
 
@@ -83,9 +104,9 @@ export async function linkPortalAccount(
       redirect("/portal");
     }
 
-    // Search active patients by phone (case-insensitive, trimmed)
     const phone = parsed.data.phone.trim();
 
+    // ── PATH A: try to find an existing patient by phone ──────────────────────
     const { data: matches, error: searchErr } = await db
       .from("patients")
       .select("id, name, clinic_id, phone")
@@ -101,15 +122,28 @@ export async function linkPortalAccount(
     const patients = (matches ?? []) as Pick<Patient, "id" | "name" | "clinic_id" | "phone">[];
 
     if (patients.length === 0) {
-      return {
-        data: null,
-        error:
-          "No patient record found with that phone number. Please contact your clinic to link your account.",
-      };
+      // ── PATH B: no existing record ───────────────────────────────────────────
+      // If the caller hasn't confirmed they want a new record yet, send back the
+      // sentinel so the form can ask for their name before proceeding.
+      if (!parsed.data.confirmNew) {
+        return {
+          data: { status: "not_found", phone },
+          error: null,
+        };
+      }
+
+      // Caller confirmed → create a new patient record.
+      const name = parsed.data.name?.trim();
+      if (!name || name.length < 2) {
+        return { data: null, error: "Please enter your full name (at least 2 characters)." };
+      }
+
+      return await _createAndLinkNewPatient({ user, phone, name });
     }
 
+    // ── PATH A continued: existing record found ───────────────────────────────
     // Guard: if multiple matches somehow slip through (phone not unique in schema),
-    // use the first match. The clinic should maintain unique phone numbers.
+    // use the first match. The clinic maintains phone uniqueness via partial index.
     const patient = patients[0];
 
     // Check the patient isn't already linked to another auth account
@@ -127,19 +161,7 @@ export async function linkPortalAccount(
       };
     }
 
-    // Create the portal link
-    const { error: insertErr } = await db.from("patient_portal_links").insert({
-      patient_id: patient.id,
-      user_id: user.id,
-    });
-
-    if (insertErr) {
-      console.error("[linkPortalAccount] insert:", insertErr);
-      return { data: null, error: "Failed to link account. Please try again." };
-    }
-
-    revalidatePath("/portal");
-    return { data: null, error: null };
+    return await _linkExistingPatient({ user, patient });
   } catch (err) {
     // next/navigation redirect throws — rethrow so Next.js handles it
     if (isNextRedirectError(err)) {
@@ -148,6 +170,181 @@ export async function linkPortalAccount(
     console.error("[linkPortalAccount] unexpected:", err);
     return { data: null, error: "Unexpected error" };
   }
+}
+
+// =============================================================================
+// Internal helpers
+// =============================================================================
+
+type AuthUser = { id: string; email?: string };
+
+/**
+ * Links an authenticated portal user to an existing patient record.
+ * Creates the profiles row as a side-effect (first sign-in state).
+ */
+async function _linkExistingPatient({
+  user,
+  patient,
+}: {
+  user: AuthUser;
+  patient: Pick<Patient, "id" | "name" | "clinic_id">;
+}): Promise<ActionResult<PortalLinkResult>> {
+  const admin = createAdminClient();
+
+  const { error: insertErr } = await admin
+    .from("patient_portal_links")
+    .insert({ patient_id: patient.id, user_id: user.id });
+
+  if (insertErr) {
+    console.error("[linkPortalAccount] portal link insert:", insertErr);
+    return { data: null, error: "Failed to link account. Please try again." };
+  }
+
+  // Mark the patient record as having completed portal setup.
+  await admin
+    .from("patients")
+    .update({ portal_registered_at: new Date().toISOString() })
+    .eq("id", patient.id)
+    .is("portal_registered_at", null); // only set once, don't overwrite
+
+  const { data: authUser } = await admin.auth.admin.getUserById(user.id);
+  const userEmail = authUser?.user?.email ?? "";
+
+  const { error: profileErr } = await admin.from("profiles").insert({
+    id: user.id,
+    clinic_id: patient.clinic_id,
+    full_name: patient.name || userEmail.split("@")[0],
+    role: "patient",
+  });
+
+  if (profileErr) {
+    // Roll back the portal link to avoid a half-linked state
+    console.error("[linkPortalAccount] profile insert:", profileErr);
+    await admin
+      .from("patient_portal_links")
+      .delete()
+      .eq("user_id", user.id)
+      .eq("patient_id", patient.id);
+    return {
+      data: null,
+      error: "Account setup failed while creating your profile. Please try again.",
+    };
+  }
+
+  revalidatePath("/portal");
+  return { data: { status: "linked" }, error: null };
+}
+
+/**
+ * Creates a new patient record for a self-registering user, then links it.
+ *
+ * clinic_id resolution: fetches the first (and in the single-clinic MVP, only)
+ * clinic from the clinics table. Multi-clinic support would require the user
+ * to select a clinic first.
+ */
+async function _createAndLinkNewPatient({
+  user,
+  phone,
+  name,
+}: {
+  user: AuthUser;
+  phone: string;
+  name: string;
+}): Promise<ActionResult<PortalLinkResult>> {
+  const admin = createAdminClient();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const adminDb: any = admin;
+
+  // Resolve clinic_id — single-clinic MVP: use the first active clinic.
+  const { data: clinicRow, error: clinicErr } = await adminDb
+    .from("clinics")
+    .select("id")
+    .limit(1)
+    .single();
+
+  if (clinicErr || !clinicRow) {
+    console.error("[linkPortalAccount] clinic lookup:", clinicErr);
+    return { data: null, error: "Unable to find clinic. Please try again." };
+  }
+
+  const clinicId: string = clinicRow.id;
+
+  // Guard: don't create a duplicate patient if this phone already exists in the
+  // clinic (race condition between two concurrent signups with the same number).
+  const { data: raceCheck } = await adminDb
+    .from("patients")
+    .select("id")
+    .eq("clinic_id", clinicId)
+    .ilike("phone", phone)
+    .is("deleted_at", null)
+    .maybeSingle();
+
+  if (raceCheck) {
+    // A record appeared between the first lookup and now — link to it instead.
+    return await _linkExistingPatient({
+      user,
+      patient: { id: raceCheck.id, name, clinic_id: clinicId },
+    });
+  }
+
+  // Create the new patient record, flagged as self-registered.
+  const { data: newPatient, error: patientErr } = await adminDb
+    .from("patients")
+    .insert({
+      clinic_id: clinicId,
+      name,
+      phone,
+      is_self_registered: true,
+      portal_registered_at: new Date().toISOString(),
+    })
+    .select("id, clinic_id")
+    .single();
+
+  if (patientErr || !newPatient) {
+    console.error("[linkPortalAccount] patient insert:", patientErr);
+    return { data: null, error: "Failed to create your patient record. Please try again." };
+  }
+
+  // Now link the new patient record to the auth account.
+  const { error: linkErr } = await adminDb
+    .from("patient_portal_links")
+    .insert({ patient_id: newPatient.id, user_id: user.id });
+
+  if (linkErr) {
+    // Roll back the patient record to keep things clean.
+    console.error("[linkPortalAccount] portal link insert (new patient):", linkErr);
+    await adminDb.from("patients").delete().eq("id", newPatient.id);
+    return { data: null, error: "Failed to link your account. Please try again." };
+  }
+
+  // Create the profile row.
+  const { data: authUser } = await admin.auth.admin.getUserById(user.id);
+  const userEmail = authUser?.user?.email ?? "";
+
+  const { error: profileErr } = await adminDb.from("profiles").insert({
+    id: user.id,
+    clinic_id: clinicId,
+    full_name: name || userEmail.split("@")[0],
+    role: "patient",
+  });
+
+  if (profileErr) {
+    // Roll back both patient record and portal link.
+    console.error("[linkPortalAccount] profile insert (new patient):", profileErr);
+    await adminDb
+      .from("patient_portal_links")
+      .delete()
+      .eq("user_id", user.id)
+      .eq("patient_id", newPatient.id);
+    await adminDb.from("patients").delete().eq("id", newPatient.id);
+    return {
+      data: null,
+      error: "Account setup failed while creating your profile. Please try again.",
+    };
+  }
+
+  revalidatePath("/portal");
+  return { data: { status: "linked" }, error: null };
 }
 
 // =============================================================================

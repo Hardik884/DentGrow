@@ -1,0 +1,87 @@
+-- =============================================================================
+-- DentGrow — Fix: Orphaned Patient Auth Users Without Profile Rows
+-- Migration: 20260621000000_fix_orphaned_patient_profiles.sql
+--
+-- Root cause (fixed in application code):
+--   signUp() created an auth.users row but never created a profiles row.
+--   linkPortalAccount() used the anon client to INSERT into patient_portal_links,
+--   which has no INSERT RLS policy — so the portal link silently failed too.
+--   Result: auth user exists, no portal link, no profile → login blocked.
+--
+-- Application fix (already applied):
+--   linkPortalAccount() now uses the service-role admin client to INSERT both
+--   the patient_portal_links row and the profiles row atomically, with rollback
+--   on profile insert failure.
+--   signIn() now redirects profileless users to /portal/setup instead of
+--   returning the "not fully set up" error.
+--
+-- Production state before this migration:
+--   auth.users count = 2
+--   profiles count   = 1   ← the patient user is missing a profile
+--
+-- This migration does NOT auto-repair the orphaned user because:
+--   - We do not know which auth.users row is the orphan.
+--   - We do not know which patient record (if any) should be linked to it.
+--   - Automated writes to auth.users and profiles require the service role.
+--
+-- Required manual remediation for the existing orphaned user:
+-- =============================================================================
+
+-- STEP 1 — Identify the orphaned auth user.
+-- Run this in the Supabase SQL editor (service role context):
+--
+--   SELECT
+--     au.id            AS auth_user_id,
+--     au.email,
+--     au.created_at,
+--     p.id             AS profile_id
+--   FROM auth.users au
+--   LEFT JOIN public.profiles p ON p.id = au.id
+--   WHERE p.id IS NULL;
+--
+-- This returns all auth.users rows with no corresponding profile.
+
+-- STEP 2 — If the orphaned user should be re-linked to a patient record:
+-- (Replace the UUIDs and values with the real data.)
+--
+--   -- a. Find the matching patient record by phone or name:
+--   SELECT id, name, phone, clinic_id
+--   FROM patients
+--   WHERE phone = '<patient_phone>'
+--     AND deleted_at IS NULL;
+--
+--   -- b. Insert the portal link (run as service role):
+--   INSERT INTO public.patient_portal_links (patient_id, user_id)
+--   VALUES ('<patient_id>', '<auth_user_id>');
+--
+--   -- c. Insert the profile (run as service role):
+--   INSERT INTO public.profiles (id, clinic_id, full_name, role)
+--   VALUES (
+--     '<auth_user_id>',
+--     '<clinic_id_from_patient>',
+--     '<patient_name_or_email_local_part>',
+--     'patient'
+--   );
+
+-- STEP 3 — Verify the repair:
+--
+--   SELECT
+--     au.id, au.email,
+--     p.role, p.clinic_id, p.full_name,
+--     ppl.patient_id
+--   FROM auth.users au
+--   JOIN public.profiles p ON p.id = au.id
+--   JOIN public.patient_portal_links ppl ON ppl.user_id = au.id
+--   WHERE au.id = '<auth_user_id>';
+
+-- STEP 4 — If the orphaned user should be removed entirely (no patient record):
+-- (Only do this if confirmed the user should not exist.)
+--
+--   -- Remove via Supabase Auth Admin API or dashboard — do not delete directly
+--   -- from auth.users via SQL (Supabase manages cascade cleanup).
+
+-- =============================================================================
+-- GUARD: this migration contains no executable DML/DDL.
+-- The remediation above must be performed manually via the Supabase dashboard
+-- SQL editor or the Admin API, using the service role key.
+-- =============================================================================

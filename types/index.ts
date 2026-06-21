@@ -370,6 +370,18 @@ export type CreateAvailabilityRuleInput = z.infer<typeof CreateAvailabilityRuleS
 
 export const LinkPortalAccountSchema = z.object({
   phone: z.string().regex(phoneRegex, "Invalid phone number format"),
+  /**
+   * Required only for the "new patient" path — when no existing record matches
+   * the phone number. The server action creates a new patient record using this
+   * name. Optional on the first attempt (phone-only lookup); the form asks for
+   * it only when the server confirms no existing record was found.
+   */
+  name: z.string().min(2, "Name must be at least 2 characters").max(100).optional(),
+  /**
+   * When true the caller has confirmed they want to create a new patient record.
+   * Prevents accidentally creating a duplicate if the user fat-fingered the phone.
+   */
+  confirmNew: z.boolean().optional(),
 });
 export type LinkPortalAccountInput = z.infer<typeof LinkPortalAccountSchema>;
 

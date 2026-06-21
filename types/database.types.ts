@@ -89,6 +89,8 @@ export type Database = {
           created_at: string;
           updated_at: string;
           created_by: string | null;
+          is_self_registered: boolean;
+          portal_registered_at: string | null;
         };
         Insert: {
           id?: string;
@@ -107,6 +109,8 @@ export type Database = {
           created_at?: string;
           updated_at?: string;
           created_by?: string | null;
+          is_self_registered?: boolean;
+          portal_registered_at?: string | null;
         };
         Update: {
           id?: string;
@@ -125,6 +129,8 @@ export type Database = {
           created_at?: string;
           updated_at?: string;
           created_by?: string | null;
+          is_self_registered?: boolean;
+          portal_registered_at?: string | null;
         };
       };
       appointments: {

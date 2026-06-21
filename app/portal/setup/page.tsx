@@ -9,15 +9,19 @@ export const metadata: Metadata = {
 
 /**
  * /portal/setup
- * Portal account linking flow — shown when a user has signed up
- * but has no entry in patient_portal_links.
+ * Portal account setup — shown when a user has signed up but has no entry
+ * in patient_portal_links.
  *
- * Flow:
- * 1. User enters their phone number.
- * 2. Server Action (actions/portal-link.ts → linkPortalAccount) searches
- *    for an active patient record with that phone in the clinic.
- * 3. If match found → creates patient_portal_links row → redirects to /portal.
- * 4. If no match → displays "Contact your clinic to link your account" message.
+ * Two paths are supported:
+ *
+ * A — Existing patient
+ *   Enter the phone number registered with the clinic.
+ *   The server action finds the matching record and links it.
+ *
+ * B — New patient (self-registration)
+ *   If no record is found for the phone number, the server action prompts for
+ *   a name and creates a new patient record automatically.
+ *   No manual clinic registration required — patients are never blocked.
  */
 export default async function PortalSetupPage() {
   const supabase = await createServerClient();
@@ -43,23 +47,16 @@ export default async function PortalSetupPage() {
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-xl border p-6 w-full max-w-md space-y-6 shadow-sm">
         <div className="text-center space-y-1">
-          <h1 className="text-2xl font-bold text-gray-900">Link Your Account</h1>
+          <h1 className="text-2xl font-bold text-gray-900">Set Up Your Account</h1>
           <p className="text-sm text-gray-500">
-            Enter the phone number registered with your clinic to connect your
-            patient record.
+            Enter the phone number you&apos;d like to use for your patient account.
+            We&apos;ll connect you to your existing record, or create a new one
+            if you&apos;re visiting for the first time.
           </p>
         </div>
 
         <PortalLinkForm />
-
-        <p className="text-xs text-gray-400 text-center">
-          Don&apos;t have a patient record yet?{" "}
-          <span className="font-medium text-gray-500">
-            Contact your clinic to register first.
-          </span>
-        </p>
       </div>
     </div>
   );
 }
-
