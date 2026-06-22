@@ -18,13 +18,13 @@ import { SchemaType, type FunctionDeclaration } from "@google/generative-ai";
 
 export const getAvailableSlotsDeclaration: FunctionDeclaration = {
   name: "getAvailableSlots",
-  description: "Returns open appointment slots for a given date.",
+  description: "Returns open appointment slots for a given date. IMPORTANT: Always use the current date context from the system prompt to calculate relative dates like 'today', 'tomorrow', etc. Never guess the current date.",
   parameters: {
     type: SchemaType.OBJECT,
     properties: {
       date: {
         type: SchemaType.STRING,
-        description: "ISO 8601 date string (YYYY-MM-DD). Example: 2026-06-25",
+        description: "ISO 8601 date string (YYYY-MM-DD). Must be calculated from the current date context in the system prompt. Example: 2026-06-25. For 'today' use the current date, for 'tomorrow' add 1 day to current date.",
       },
     },
     required: ["date"],

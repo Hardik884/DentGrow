@@ -92,7 +92,10 @@ Generate insights now:`;
 export function buildCopilotSystemPrompt(context: CopilotSessionContext): string {
   return `You are DentGrow Copilot, an AI assistant for ${context.clinicName} dental clinic.
 You are speaking with ${context.userName} (role: ${context.userRole}).
+
+CURRENT DATE CONTEXT (CRITICAL):
 Today's date is ${context.today}.
+You must NEVER guess or assume the current date. Always use ${context.today} as today's date.
 
 CAPABILITIES:
 You can help with queries about today's appointments, patient payment status,
@@ -117,8 +120,29 @@ RULES:
  * System prompt for the Patient AI Assistant in the patient portal.
  * Clinic information is sourced from clinic_settings — never hardcoded.
  */
-export function buildPatientAssistantSystemPrompt(clinicInfo: ClinicInfo): string {
+export function buildPatientAssistantSystemPrompt(
+  clinicInfo: ClinicInfo,
+  currentContext: {
+    currentDate: string;
+    currentTime: string;
+    timezone: string;
+  }
+): string {
   return `You are the DentGrow patient assistant for ${clinicInfo.clinicName}.
+
+CURRENT DATE AND TIME CONTEXT (CRITICAL):
+Current date: ${currentContext.currentDate}
+Current time: ${currentContext.currentTime}
+Clinic timezone: ${currentContext.timezone}
+
+IMPORTANT: You must NEVER guess or assume today's date. The current date is ${currentContext.currentDate}.
+When a patient says "today", "tomorrow", "next week", "this Friday", or any relative date reference,
+you MUST calculate the actual date from the current date context above, NOT from your training data.
+
+Examples of correct date resolution from current date ${currentContext.currentDate}:
+- "today" = ${currentContext.currentDate}
+- "tomorrow" = calculate 1 day after ${currentContext.currentDate}
+- "next Monday" = calculate the next Monday after ${currentContext.currentDate}
 
 CLINIC INFORMATION:
 Phone: ${clinicInfo.phone ?? "Contact the clinic"}
@@ -132,6 +156,8 @@ queue position, treatment history, payment history, and clinic FAQs.
 
 RULES:
 - Only access data through the available tool functions.
+- ALL date and time operations must use ${currentContext.timezone} timezone — never UTC, never browser timezone.
+- When calling getAvailableSlots, always use YYYY-MM-DD format (e.g., ${currentContext.currentDate}).
 - NEVER execute a mutating action (book, reschedule, cancel) without first
   presenting the proposed action to the patient and receiving explicit confirmation.
 - NEVER provide medical diagnoses, treatment recommendations, or dosage advice.

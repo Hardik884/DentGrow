@@ -649,9 +649,12 @@ export async function sendPatientAssistantMessage(
     // ── Fetch clinic info for the system prompt ───────────────────────────
     const { data: clinicSettings } = await session.db
       .from("clinic_settings")
-      .select("clinic_name, phone, email, address, clinic_hours")
+      .select("clinic_name, phone, email, address, clinic_hours, timezone")
       .eq("clinic_id", session.clinicId)
       .maybeSingle();
+
+    const timezone =
+      (clinicSettings as { timezone?: string } | null)?.timezone ?? "Asia/Kolkata";
 
     const clinicInfo = {
       clinicName:
@@ -668,6 +671,31 @@ export async function sendPatientAssistantMessage(
           ?.clinic_hours ?? null,
     };
 
+    // ── Build current date/time context for the AI (Asia/Kolkata timezone) ──
+    const now = new Date();
+
+    // Get current time in clinic timezone (HH:MM format)
+    const currentTime = new Intl.DateTimeFormat("en-GB", {
+      timeZone: timezone,
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    }).format(now);
+
+    // Build full readable date for the prompt (e.g., "22 June 2026")
+    const currentDateReadable = new Intl.DateTimeFormat("en-GB", {
+      timeZone: timezone,
+      day: "2-digit",
+      month: "long",
+      year: "numeric",
+    }).format(now);
+
+    const currentContext = {
+      currentDate: currentDateReadable,
+      currentTime: `${currentTime} IST`,
+      timezone,
+    };
+
     const model = getGeminiModel();
 
     const result = await withAITimeout(
@@ -679,7 +707,7 @@ export async function sendPatientAssistantMessage(
         // This is the format required by gemini-3.1-flash-lite.
         const systemInstruction = {
           role: "system",
-          parts: [{ text: buildPatientAssistantSystemPrompt(clinicInfo) }],
+          parts: [{ text: buildPatientAssistantSystemPrompt(clinicInfo, currentContext) }],
         };
 
         // History: only include user/model turns (never system).
