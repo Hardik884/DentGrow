@@ -58,13 +58,27 @@ export async function updateSession(request: NextRequest) {
     if (!user) {
       return NextResponse.redirect(new URL("/login", request.url));
     }
-    return redirectByRole(supabase, user.id, request);
+    const role = await resolveRole(supabase, user.id);
+    if (role === null) {
+      // Authenticated but no profile row — mid-onboarding new user.
+      // redirectByKnownRole(null) would send to /login → infinite loop.
+      return NextResponse.redirect(new URL("/portal/setup", request.url));
+    }
+    return redirectByKnownRole(role, request);
   }
 
   // ── Auth pages — bounce authenticated users to their dashboard ─────────────
   if (pathname === "/login" || pathname === "/signup") {
     if (user) {
-      return redirectByRole(supabase, user.id, request);
+      const role = await resolveRole(supabase, user.id);
+      if (role === null) {
+        // Authenticated but no profile yet (new signup, mid-onboarding).
+        // Redirecting to /login here would create an infinite loop because
+        // the next visit to /login would hit this same branch again.
+        // Send them to /portal/setup to complete account linking instead.
+        return NextResponse.redirect(new URL("/portal/setup", request.url));
+      }
+      return redirectByKnownRole(role, request);
     }
     return supabaseResponse;
   }
@@ -165,7 +179,9 @@ function redirectByKnownRole(
     case "patient":
       return NextResponse.redirect(new URL("/portal", request.url));
     default:
-      // No profile found — send back to login
-      return NextResponse.redirect(new URL("/login", request.url));
+      // No profile row yet — user is mid-onboarding (signed up but hasn't
+      // completed portal linking). Send to /portal/setup rather than /login
+      // to avoid a redirect loop: /login → redirectByRole → null → /login → ∞
+      return NextResponse.redirect(new URL("/portal/setup", request.url));
   }
 }
