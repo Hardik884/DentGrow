@@ -265,58 +265,51 @@ export async function advanceQueue(): Promise<ActionResult<null>> {
     const cid = profile.clinic_id;
     const qDate = await todayForClinic(db, cid);
 
-    // Find current in_progress entry
+    // Find current in_progress entry — select patient_id directly to avoid
+    // a follow-up appointment lookup when updating visit counts.
     const { data: currentData } = await db
       .from("queue_entries")
-      .select("id, appointment_id")
+      .select("id, appointment_id, patient_id")
       .eq("clinic_id", cid)
       .eq("queue_date", qDate)
       .eq("status", "in_progress")
       .maybeSingle();
 
     if (currentData) {
-      const current = currentData as { id: string; appointment_id: string };
+      const current = currentData as { id: string; appointment_id: string; patient_id: string };
 
-      // Complete the current in_progress entry
-      await db
-        .from("queue_entries")
-        .update({ status: "completed" })
-        .eq("id", current.id);
+      // Complete the current in_progress entry + update appointment status in parallel.
+      await Promise.all([
+        db
+          .from("queue_entries")
+          .update({ status: "completed" })
+          .eq("id", current.id),
+        db
+          .from("appointments")
+          .update({ status: "completed", updated_at: new Date().toISOString() })
+          .eq("id", current.appointment_id)
+          .eq("clinic_id", cid),
+      ]);
 
-      // Also update appointment status to completed
-      await db
-        .from("appointments")
-        .update({ status: "completed", updated_at: new Date().toISOString() })
-        .eq("id", current.appointment_id)
-        .eq("clinic_id", cid);
-
-      // Fetch patient for total_visits update
-      const { data: apptData } = await db
-        .from("appointments")
-        .select("patient_id")
-        .eq("id", current.appointment_id)
+      // Update patient visit count — patient_id comes from the queue entry
+      // directly, avoiding the previous sequential appointment→patient fetch.
+      const { data: patientData } = await db
+        .from("patients")
+        .select("total_visits")
+        .eq("id", current.patient_id)
         .single();
 
-      if (apptData) {
-        const { patient_id } = apptData as { patient_id: string };
-        const { data: patientData } = await db
-          .from("patients")
-          .select("total_visits")
-          .eq("id", patient_id)
-          .single();
+      const currentVisits =
+        (patientData as { total_visits: number } | null)?.total_visits ?? 0;
 
-        const currentVisits =
-          (patientData as { total_visits: number } | null)?.total_visits ?? 0;
-
-        await db
-          .from("patients")
-          .update({
-            total_visits: currentVisits + 1,
-            last_visit: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-          })
-          .eq("id", patient_id);
-      }
+      await db
+        .from("patients")
+        .update({
+          total_visits: currentVisits + 1,
+          last_visit: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", current.patient_id);
     }
 
     // Find the first waiting entry (lowest position) and promote to in_progress
@@ -413,8 +406,11 @@ export async function skipPatient(
       return { data: null, error: null };
     }
 
-    // Move all waiting entries with position > skipped.position up by 1
-    // then put skipped entry at maxPosition
+    // Shift all waiting entries between (entry.position, maxPosition] down by -1,
+    // then place the skipped entry at maxPosition.
+    //
+    // Replaced the previous per-row serial loop with a Supabase RPC that
+    // performs a single UPDATE...WHERE id = ANY($1) server-side.
     const { data: toShift } = await db
       .from("queue_entries")
       .select("id, position")
@@ -424,11 +420,26 @@ export async function skipPatient(
       .gt("position", entry.position)
       .order("position", { ascending: true });
 
-    for (const row of (toShift ?? []) as { id: string; position: number }[]) {
-      await db
-        .from("queue_entries")
-        .update({ position: row.position - 1 })
-        .eq("id", row.id);
+    const shiftRows = (toShift ?? []) as { id: string; position: number }[];
+
+    if (shiftRows.length > 0) {
+      // Attempt bulk decrement via RPC (see migration 20260622000000).
+      // Falls back to sequential updates if the function doesn't exist yet.
+      const shiftIds = shiftRows.map((r) => r.id);
+      const { error: rpcErr } = await db.rpc("bulk_decrement_queue_positions", {
+        p_ids: shiftIds,
+      });
+
+      if (rpcErr) {
+        // RPC not yet deployed — fall back to sequential (still correct).
+        console.warn("[skipPatient] bulk_decrement_queue_positions RPC not available, falling back to sequential updates:", rpcErr.message);
+        for (const row of shiftRows) {
+          await db
+            .from("queue_entries")
+            .update({ position: row.position - 1 })
+            .eq("id", row.id);
+        }
+      }
     }
 
     // Place the skipped entry at the end

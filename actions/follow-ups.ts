@@ -98,59 +98,65 @@ export async function createFollowUp(
       return { data: null, error: "Forbidden: patients cannot create follow-ups." };
     }
 
-    // ── Validate patient exists and belongs to this clinic ─────────────────
-    const { data: patientRow } = await db
-      .from("patients")
-      .select("id")
-      .eq("id", parsed.data.patient_id)
-      .eq("clinic_id", profile.clinic_id)
-      .is("deleted_at", null)
-      .single();
+    // ── Validate patient, appointment, treatment, and timezone in parallel ────
+    // Previously these were fired sequentially. All four are independent reads
+    // so they can safely run in parallel.
+    const [patientRow, apptRow, txRow, today] = await Promise.all([
+      db
+        .from("patients")
+        .select("id")
+        .eq("id", parsed.data.patient_id)
+        .eq("clinic_id", profile.clinic_id)
+        .is("deleted_at", null)
+        .single()
+        .then((r: { data: unknown }) => r.data),
+
+      parsed.data.appointment_id
+        ? db
+            .from("appointments")
+            .select("id")
+            .eq("id", parsed.data.appointment_id)
+            .eq("patient_id", parsed.data.patient_id)
+            .eq("clinic_id", profile.clinic_id)
+            .is("deleted_at", null)
+            .single()
+            .then((r: { data: unknown }) => r.data)
+        : Promise.resolve(true), // no appointment to validate → pass-through
+
+      parsed.data.treatment_id
+        ? db
+            .from("treatments")
+            .select("id")
+            .eq("id", parsed.data.treatment_id)
+            .eq("patient_id", parsed.data.patient_id)
+            .eq("clinic_id", profile.clinic_id)
+            .is("deleted_at", null)
+            .single()
+            .then((r: { data: unknown }) => r.data)
+        : Promise.resolve(true), // no treatment to validate → pass-through
+
+      todayForClinic(db, profile.clinic_id),
+    ]);
 
     if (!patientRow) {
       return { data: null, error: "Patient not found in this clinic." };
     }
 
-    // ── Validate appointment belongs to this patient (if provided) ─────────
-    if (parsed.data.appointment_id) {
-      const { data: apptRow } = await db
-        .from("appointments")
-        .select("id")
-        .eq("id", parsed.data.appointment_id)
-        .eq("patient_id", parsed.data.patient_id)
-        .eq("clinic_id", profile.clinic_id)
-        .is("deleted_at", null)
-        .single();
-
-      if (!apptRow) {
-        return {
-          data: null,
-          error: "Appointment not found or does not belong to this patient.",
-        };
-      }
+    if (parsed.data.appointment_id && !apptRow) {
+      return {
+        data: null,
+        error: "Appointment not found or does not belong to this patient.",
+      };
     }
 
-    // ── Validate treatment belongs to this patient (if provided) ───────────
-    if (parsed.data.treatment_id) {
-      const { data: txRow } = await db
-        .from("treatments")
-        .select("id")
-        .eq("id", parsed.data.treatment_id)
-        .eq("patient_id", parsed.data.patient_id)
-        .eq("clinic_id", profile.clinic_id)
-        .is("deleted_at", null)
-        .single();
-
-      if (!txRow) {
-        return {
-          data: null,
-          error: "Treatment not found or does not belong to this patient.",
-        };
-      }
+    if (parsed.data.treatment_id && !txRow) {
+      return {
+        data: null,
+        error: "Treatment not found or does not belong to this patient.",
+      };
     }
 
     // ── Validate due_date is not in the past ───────────────────────────────
-    const today = await todayForClinic(db, profile.clinic_id);
     if (parsed.data.due_date < today) {
       return { data: null, error: "Due date cannot be in the past." };
     }

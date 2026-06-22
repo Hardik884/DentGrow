@@ -37,28 +37,45 @@ function KPICard({ label, value, icon, sub }: KPICardProps) {
   );
 }
 
+interface DashboardKPIsProps {
+  /** Pre-resolved clinic ID — passed from the page to avoid a redundant auth lookup. */
+  clinicId?: string;
+  /** Pre-resolved clinic timezone — passed from the page to avoid a redundant settings lookup. */
+  timezone?: string;
+}
+
 /**
  * DashboardKPIs — today's KPI cards for the dentist dashboard.
+ *
+ * When clinicId + timezone are passed as props (from the dashboard page that
+ * already resolved them), no additional DB queries are fired. Falls back to
+ * its own resolution for standalone use cases.
  */
-export async function DashboardKPIs() {
+export async function DashboardKPIs({ clinicId: propClinicId, timezone: propTimezone }: DashboardKPIsProps = {}) {
   const supabase = await createServerClient();
 
-  const { data: { user } } = await supabase.auth.getUser();
-  const { data: profileData } = user
-    ? await supabase.from("profiles").select("clinic_id").eq("id", user.id).single()
-    : { data: null };
+  let clinicId = propClinicId ?? "";
+  let timezone = propTimezone ?? "Asia/Kolkata";
 
-  const profile = profileData as { clinic_id: string } | null;
-  const clinicId = profile?.clinic_id ?? "";
+  // Only query if not provided — avoids duplicate auth+profile+settings lookups
+  // when the parent page already resolved these values.
+  if (!clinicId) {
+    const { data: { user } } = await supabase.auth.getUser();
+    const { data: profileData } = user
+      ? await supabase.from("profiles").select("clinic_id").eq("id", user.id).single()
+      : { data: null };
 
-  let timezone = "Asia/Kolkata";
-  if (clinicId) {
-    const { data: settings } = await supabase
-      .from("clinic_settings")
-      .select("timezone")
-      .eq("clinic_id", clinicId)
-      .maybeSingle();
-    timezone = (settings as { timezone?: string } | null)?.timezone ?? "Asia/Kolkata";
+    const profile = profileData as { clinic_id: string } | null;
+    clinicId = profile?.clinic_id ?? "";
+
+    if (clinicId && !propTimezone) {
+      const { data: settings } = await supabase
+        .from("clinic_settings")
+        .select("timezone")
+        .eq("clinic_id", clinicId)
+        .maybeSingle();
+      timezone = (settings as { timezone?: string } | null)?.timezone ?? "Asia/Kolkata";
+    }
   }
 
   const kpis = await getDashboardKPIs(

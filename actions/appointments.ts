@@ -190,10 +190,12 @@ export async function createAppointment(
     // ── Validate slot against availability rules ───────────────────────────
     const requestedDate = parsed.data.scheduled_at.split("T")[0];
 
-    // Fetch clinic timezone so slot validation uses the same zone as the UI
+    // Fetch all needed clinic settings in a single query upfront.
+    // Previously: fetched timezone first, then clinic_hours in a second call
+    // if no availability rules existed — two separate round-trips.
     const { data: settingsData } = await db
       .from("clinic_settings")
-      .select("timezone")
+      .select("timezone, clinic_hours, average_appointment_duration")
       .eq("clinic_id", resolvedClinicId)
       .maybeSingle();
     const clinicTimezone = (settingsData as { timezone?: string } | null)?.timezone ?? "Asia/Kolkata";
@@ -268,15 +270,9 @@ export async function createAppointment(
         slotDurationMinutes: r.slot_duration_minutes,
       }));
     } else {
-      // No explicit rules — fall back to clinic_hours
-      const { data: settingsWithHours } = await db
-        .from("clinic_settings")
-        .select("clinic_hours, average_appointment_duration")
-        .eq("clinic_id", resolvedClinicId)
-        .maybeSingle();
-
-      const clinicHours = (settingsWithHours as { clinic_hours?: Record<string, { open: string | null; close: string | null; is_open: boolean }> } | null)?.clinic_hours ?? null;
-      const defaultSlotDuration = (settingsWithHours as { average_appointment_duration?: number } | null)?.average_appointment_duration ?? 30;
+      // No explicit rules — fall back to clinic_hours (already fetched above).
+      const clinicHours = (settingsData as { clinic_hours?: Record<string, { open: string | null; close: string | null; is_open: boolean }> } | null)?.clinic_hours ?? null;
+      const defaultSlotDuration = (settingsData as { average_appointment_duration?: number } | null)?.average_appointment_duration ?? 30;
 
       if (!clinicHours) {
         return {
@@ -653,10 +649,11 @@ export async function rescheduleAppointment(
 
     const newDate = parsed.data.new_scheduled_at.split("T")[0];
 
-    // Fetch clinic timezone for consistent slot validation
+    // Fetch all needed clinic settings in a single query — previously fetched
+    // timezone first, then clinic_hours in a second call as a fallback.
     const { data: settingsData } = await db
       .from("clinic_settings")
-      .select("timezone")
+      .select("timezone, clinic_hours, average_appointment_duration")
       .eq("clinic_id", profile.clinic_id)
       .maybeSingle();
     const clinicTimezone = (settingsData as { timezone?: string } | null)?.timezone ?? "Asia/Kolkata";
@@ -706,15 +703,9 @@ export async function rescheduleAppointment(
         slotDurationMinutes: r.slot_duration_minutes,
       }));
     } else {
-      // Fall back to clinic_hours
-      const { data: reschedSettings } = await db
-        .from("clinic_settings")
-        .select("clinic_hours, average_appointment_duration")
-        .eq("clinic_id", profile.clinic_id)
-        .maybeSingle();
-
-      const clinicHours = (reschedSettings as { clinic_hours?: Record<string, { open: string | null; close: string | null; is_open: boolean }> } | null)?.clinic_hours ?? null;
-      const defaultSlotDuration = (reschedSettings as { average_appointment_duration?: number } | null)?.average_appointment_duration ?? 30;
+      // Fall back to clinic_hours — already fetched above in settingsData.
+      const clinicHours = (settingsData as { clinic_hours?: Record<string, { open: string | null; close: string | null; is_open: boolean }> } | null)?.clinic_hours ?? null;
+      const defaultSlotDuration = (settingsData as { average_appointment_duration?: number } | null)?.average_appointment_duration ?? 30;
 
       const DOW_TO_DAY_NAME: Record<number, string> = {
         0: "sunday", 1: "monday", 2: "tuesday", 3: "wednesday",

@@ -9,28 +9,25 @@ export const metadata: Metadata = {
 };
 
 export default async function DentistQueuePage() {
-  const [queueResult, metricsResult] = await Promise.all([
-    getTodayQueue(),
-    getQueueMetrics(),
-  ]);
-
-  const initialQueue = queueResult.data ?? [];
-  const metrics = metricsResult.data ?? undefined;
-
+  // Fetch queue data and metrics in parallel — already done correctly.
+  // Then resolve clinicId from session in parallel with those two calls too.
   const supabase = await createServerClient();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const db: any = supabase;
   const { data: { user } } = await supabase.auth.getUser();
 
-  let clinicId = "";
-  if (user) {
-    const { data: profile } = await db
-      .from("profiles")
-      .select("clinic_id")
-      .eq("id", user.id)
-      .single();
-    clinicId = (profile as { clinic_id: string } | null)?.clinic_id ?? "";
-  }
+  // Run all three fetches in parallel: queue, metrics, and clinic profile.
+  const [queueResult, metricsResult, profileRes] = await Promise.all([
+    getTodayQueue(),
+    getQueueMetrics(),
+    user
+      ? db.from("profiles").select("clinic_id").eq("id", user.id).single()
+      : Promise.resolve({ data: null }),
+  ]);
+
+  const initialQueue = queueResult.data ?? [];
+  const metrics = metricsResult.data ?? undefined;
+  const clinicId = (profileRes.data as { clinic_id: string } | null)?.clinic_id ?? "";
 
   return (
     <div className="p-6 max-w-screen-xl">

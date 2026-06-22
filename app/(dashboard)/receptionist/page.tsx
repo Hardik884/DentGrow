@@ -18,17 +18,15 @@ export default async function ReceptionistDashboardPage() {
   const db: any = supabase;
   const { data: { user } } = await supabase.auth.getUser();
 
-  let clinicId = "";
-  if (user) {
-    const { data: profile } = await db
-      .from("profiles")
-      .select("clinic_id")
-      .eq("id", user.id)
-      .single();
-    clinicId = (profile as { clinic_id: string } | null)?.clinic_id ?? "";
-  }
+  // Resolve profile and queue in parallel — no sequential waterfall.
+  const [profileRes, queueResult] = await Promise.all([
+    user
+      ? db.from("profiles").select("clinic_id").eq("id", user.id).single()
+      : Promise.resolve({ data: null }),
+    getTodayQueue(),
+  ]);
 
-  const queueResult = await getTodayQueue();
+  const clinicId = (profileRes.data as { clinic_id: string } | null)?.clinic_id ?? "";
   const initialQueue = queueResult.data ?? [];
 
   return (

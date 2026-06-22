@@ -1,35 +1,18 @@
-import { redirect } from "next/navigation";
-import { createServerClient } from "@/lib/supabase/server";
-
 /**
- * Dentist layout — dentist-only section.
- * Asserts role === 'dentist'. Renders 403 if not.
- * Provides the AI Insights side panel slot in the page shell.
+ * Dentist layout — pass-through.
+ *
+ * Role enforcement is handled at two layers:
+ * 1. middleware.ts → only allows role === 'dentist' past /dentist/* routes.
+ * 2. app/(dashboard)/layout.tsx → single auth + profile lookup for the full
+ *    dashboard segment.
+ *
+ * This layout previously repeated auth.getUser() + profiles.select(role),
+ * adding 2 redundant DB queries on every dentist page load. Removed.
  */
-export default async function DentistLayout({
+export default function DentistLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const supabase = await createServerClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) redirect("/login");
-
-  const { data: profileData } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", user.id)
-    .single();
-
-  const profile = profileData as { role: string } | null;
-  if (!profile || profile.role !== "dentist") {
-    redirect("/login");
-  }
-
   return <>{children}</>;
 }
-

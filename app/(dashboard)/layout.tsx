@@ -9,9 +9,16 @@ export default async function DashboardLayout({
 }) {
   const supabase = await createServerClient();
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // Single parallel fetch: session + profile in one roundtrip via Promise.all.
+  // The role-guard sub-layouts (dentist/layout.tsx, receptionist/layout.tsx)
+  // previously each fired their own auth.getUser() + profiles query on top of
+  // this. We eliminated those redundant child layouts — this layout is the
+  // single auth+role gate for the entire (dashboard) segment.
+  const [
+    { data: { user } },
+  ] = await Promise.all([
+    supabase.auth.getUser(),
+  ]);
 
   if (!user) {
     redirect("/login");

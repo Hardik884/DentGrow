@@ -14,38 +14,25 @@ export const metadata: Metadata = {
  * Server Component — live queue board for receptionist.
  * Fetches initial queue data + metrics server-side.
  * Realtime updates via useQueue hook.
- *
- * Receptionist can:
- * - Check in patients (from appointment detail page)
- * - View full queue with waiting + in_progress + completed
- * - Advance queue / skip patients
  */
 export default async function ReceptionistQueuePage() {
-  const [queueResult, metricsResult] = await Promise.all([
+  // Resolve session + queue + metrics in parallel — no sequential waterfall.
+  const supabase = await createServerClient();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const db: any = supabase;
+  const { data: { user } } = await supabase.auth.getUser();
+
+  const [queueResult, metricsResult, profileRes] = await Promise.all([
     getTodayQueue(),
     getQueueMetrics(),
+    user
+      ? db.from("profiles").select("clinic_id").eq("id", user.id).single()
+      : Promise.resolve({ data: null }),
   ]);
 
   const initialQueue = queueResult.data ?? [];
   const metrics = metricsResult.data ?? undefined;
-
-  // Resolve clinic_id for Realtime subscription
-  const supabase = await createServerClient();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const db: any = supabase;
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  let clinicId = "";
-  if (user) {
-    const { data: profile } = await db
-      .from("profiles")
-      .select("clinic_id")
-      .eq("id", user.id)
-      .single();
-    clinicId = (profile as { clinic_id: string } | null)?.clinic_id ?? "";
-  }
+  const clinicId = (profileRes.data as { clinic_id: string } | null)?.clinic_id ?? "";
 
   return (
     <div className="p-6 max-w-screen-xl">

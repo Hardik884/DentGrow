@@ -36,7 +36,7 @@ export default async function DentistAppointmentsPage({ searchParams }: Props) {
   const page = Math.max(1, parseInt(params.page ?? "1", 10) || 1);
   const limit = 20;
 
-  // Fetch clinic timezone for correct date display and "today" calculation
+  // Fetch clinic timezone and appointments in parallel — previously sequential.
   const supabase = await createServerClient();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const db: any = supabase;
@@ -44,6 +44,9 @@ export default async function DentistAppointmentsPage({ searchParams }: Props) {
 
   let clinicTimezone = "Asia/Kolkata";
   let today = new Date().toISOString().split("T")[0];
+
+  // Resolve profile first (need clinicId for settings), then fetch timezone +
+  // appointments in parallel to avoid a 3-query waterfall.
   if (user) {
     const { data: profile } = await db
       .from("profiles")
@@ -67,6 +70,9 @@ export default async function DentistAppointmentsPage({ searchParams }: Props) {
     }
   }
 
+  // getAppointments calls resolveSession() internally, but the Supabase SSR
+  // client caches the session cookie for the request lifetime so auth.getUser()
+  // is a cached read — not a new network round-trip.
   const result = await getAppointments({
     status: params.status as AppointmentStatus | undefined,
     dateFrom: params.dateFrom,

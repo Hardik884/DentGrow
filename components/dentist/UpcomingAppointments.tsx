@@ -4,18 +4,34 @@ import { AppointmentCard } from "@/components/shared/AppointmentCard";
 import { EmptyState } from "@/components/ui/empty-state";
 import { CalendarDays } from "lucide-react";
 
+interface UpcomingAppointmentsProps {
+  /**
+   * Pre-resolved clinic timezone from the parent page.
+   * When provided, skips the getClinicSettings() call entirely.
+   */
+  timezone?: string;
+}
+
 /**
  * UpcomingAppointments — upcoming appointments for the dentist dashboard.
  */
-export async function UpcomingAppointments() {
-  const [result, settingsResult] = await Promise.all([
-    getAppointmentsToday(),
-    getClinicSettings(),
-  ]);
+export async function UpcomingAppointments({ timezone: propTimezone }: UpcomingAppointmentsProps = {}) {
+  // If timezone was pre-resolved by the parent page, skip the settings fetch.
+  const [result, clinicTimezone] = await (async () => {
+    if (propTimezone) {
+      const r = await getAppointmentsToday();
+      return [r, propTimezone] as const;
+    }
+    const [r, settingsResult] = await Promise.all([
+      getAppointmentsToday(),
+      getClinicSettings(),
+    ]);
+    return [r, settingsResult.data?.timezone ?? "Asia/Kolkata"] as const;
+  })();
+
   const appointments = (result.data ?? []).filter(
     (a) => a.status === "scheduled" || a.status === "checked_in"
   );
-  const clinicTimezone = settingsResult.data?.timezone ?? "Asia/Kolkata";
 
   return (
     <div className="bg-white border border-[#E4E4E7] rounded-xl overflow-hidden">
