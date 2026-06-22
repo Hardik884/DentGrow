@@ -112,7 +112,9 @@ export async function linkPortalAccount(
 
     if (!user) return { data: null, error: "Unauthorized" };
 
-    // Check if this user already has a portal link (UNIQUE constraint guard)
+    // Check if this user already has a portal link (UNIQUE constraint guard).
+    // Uses the user-scoped client — the portal_links RLS policy allows a linked
+    // user to read their own row, so this is safe and correct.
     const { data: existingLink } = await supabase
       .from("patient_portal_links")
       .select("id")
@@ -124,13 +126,26 @@ export async function linkPortalAccount(
       redirect("/portal");
     }
 
+    // Use the admin client for the patient phone lookup.
+    //
+    // At this point in the flow the user has NO profile row and NO portal link.
+    // The patients RLS policies all require either:
+    //   • auth_role() = 'dentist'/'receptionist'  (reads from profiles — doesn't exist yet)
+    //   • id = auth_patient_id()                  (reads from portal_links — doesn't exist yet)
+    //
+    // auth_patient_id() returns NULL for an unlinked user, and NULL = id evaluates
+    // to NULL (not TRUE) in PostgreSQL, so every patients row is hidden.
+    // The user-scoped client therefore always returns zero rows, causing the
+    // lookup to fall through to the "not found" branch and create a duplicate.
+    //
+    // The admin client (service role) bypasses RLS and is the correct pattern
+    // here — this is a privileged onboarding lookup, not a patient data read.
+    const admin: AdminClient = createAdminClient();
+
     const phone = normalizePhone(parsed.data.phone.trim());
 
     // ── PATH A: try to find an existing patient by phone ──────────────────────
-    // phone is already the 10-digit normalized form (normalizePhone strips all
-    // non-digits and trims to the last 10). The suffix search ensures records
-    // stored with a country code (+91, 91, etc.) are matched correctly.
-    const { data: matches, error: searchErr } = await supabase
+    const { data: matches, error: searchErr } = await admin
       .from("patients")
       .select("id, name, clinic_id, phone")
       .ilike("phone", `%${phone}`)
@@ -169,8 +184,12 @@ export async function linkPortalAccount(
     // use the first match. The clinic maintains phone uniqueness via partial index.
     const patient = patients[0];
 
-    // Check the patient isn't already linked to another auth account
-    const { data: patientLinkExists } = await supabase
+    // Check the patient isn't already linked to another auth account.
+    // Must use the admin client — the portal_links RLS policy only lets a user
+    // see their own row (WHERE user_id = auth.uid()), so querying by patient_id
+    // to detect a *different* user's link would silently return null and the
+    // guard would never fire.
+    const { data: patientLinkExists } = await admin
       .from("patient_portal_links")
       .select("id")
       .eq("patient_id", patient.id)
@@ -233,12 +252,19 @@ async function _linkExistingPatient({
   const { data: authUser } = await admin.auth.admin.getUserById(user.id);
   const userEmail = authUser?.user?.email ?? "";
 
-  const { error: profileErr } = await admin.from("profiles").insert({
-    id: user.id,
-    clinic_id: patient.clinic_id,
-    full_name: patient.name || userEmail.split("@")[0],
-    role: "patient",
-  });
+  // Use upsert so a pre-existing profile row (from a prior partial attempt or
+  // retry) does not cause a unique-violation that rolls back the portal link.
+  // ignoreDuplicates: false means we update the row if it already exists, which
+  // is safe — the values are the same (same clinic_id, same role).
+  const { error: profileErr } = await admin.from("profiles").upsert(
+    {
+      id: user.id,
+      clinic_id: patient.clinic_id,
+      full_name: patient.name || userEmail.split("@")[0],
+      role: "patient",
+    },
+    { onConflict: "id" }
+  );
 
   if (profileErr) {
     // Roll back the portal link to avoid a half-linked state
@@ -346,12 +372,15 @@ async function _createAndLinkNewPatient({
   const { data: authUser } = await admin.auth.admin.getUserById(user.id);
   const userEmail = authUser?.user?.email ?? "";
 
-  const { error: profileErr } = await admin.from("profiles").insert({
-    id: user.id,
-    clinic_id: clinicId,
-    full_name: name || userEmail.split("@")[0],
-    role: "patient",
-  });
+  const { error: profileErr } = await admin.from("profiles").upsert(
+    {
+      id: user.id,
+      clinic_id: clinicId,
+      full_name: name || userEmail.split("@")[0],
+      role: "patient",
+    },
+    { onConflict: "id" }
+  );
 
   if (profileErr) {
     // Roll back both patient record and portal link.
