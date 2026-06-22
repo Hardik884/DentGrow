@@ -3,14 +3,21 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 /**
  * Gemini client initialisation.
  *
- * - Uses Gemini 3.1 Flash Lite model.
+ * - Uses gemini-3.1-flash-lite (GA, May 2026).
  * - All calls are server-side only. API key is never exposed to the client.
- * - Wraps calls with a configurable timeout (default 10s per CLAUDE.md §13.11).
- * - On timeout or Gemini error, throws a typed AIError for the Server Action
- *   to catch and return as { data: null, error: 'AI features are temporarily unavailable' }.
+ * - Wraps calls with a configurable timeout (default 15s).
+ * - On timeout or Gemini error, throws a typed AIError so the Server Action
+ *   can return { data: null, error: 'AI features are temporarily unavailable' }.
+ *
+ * NOTE on generationConfig:
+ *   Do NOT set generationConfig at getGenerativeModel() level when using
+ *   tool-calling (startChat with tools). Pass it per-request inside
+ *   startChat() or generateContent() instead. Setting it at model-init level
+ *   conflicts with the function-calling config in newer API versions and
+ *   produces 400 errors.
  */
 
-const AI_TIMEOUT_MS = 10_000;
+const AI_TIMEOUT_MS = 15_000;
 
 /**
  * Typed error for AI call failures (timeout + API errors).
@@ -34,6 +41,9 @@ let _genAI: GoogleGenerativeAI | null = null;
  * Returns the configured Gemini model instance.
  * Lazily initialises the SDK client on first call.
  * Called exclusively from Server Actions and Route Handlers.
+ *
+ * No generationConfig here — pass it per-call to avoid conflicts with
+ * tool declarations in startChat().
  */
 export function getGeminiModel() {
   if (!process.env.GOOGLE_AI_API_KEY) {
@@ -44,16 +54,8 @@ export function getGeminiModel() {
     _genAI = new GoogleGenerativeAI(process.env.GOOGLE_AI_API_KEY);
   }
 
-  // gemini-2.0-flash-lite is the current stable model matching the
-  // "Gemini Flash Lite" series used in DentGrow MVP.
-  // Update to gemini-3.1-flash-lite when the model ID is confirmed by Google.
   return _genAI.getGenerativeModel({
     model: "gemini-3.1-flash-lite",
-    generationConfig: {
-      temperature: 0.3,       // low temperature for factual, reliable responses
-      topP: 0.95,
-      maxOutputTokens: 1024,
-    },
   });
 }
 
@@ -61,7 +63,7 @@ export function getGeminiModel() {
  * withAITimeout
  *
  * Wraps any async AI call with a timeout.
- * Throws AIError if the call exceeds AI_TIMEOUT_MS.
+ * Throws AIError if the call exceeds timeoutMs.
  */
 export async function withAITimeout<T>(
   fn: () => Promise<T>,
@@ -78,7 +80,7 @@ export async function withAITimeout<T>(
     return await Promise.race([fn(), timeout]);
   } catch (error) {
     if (error instanceof AIError) throw error;
-    // Log the real error so it's visible in server logs — never swallow silently
+    // Log the real error — never swallow silently
     console.error("[AI] Request failed:", error);
     throw new AIError("AI request failed", error);
   }

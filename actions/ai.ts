@@ -157,7 +157,6 @@ async function resolvePortalSession(): Promise<PortalSession | null> {
 // All DB access happens here. The model NEVER touches the DB.
 // =============================================================================
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function executePatientTool(
   toolName: PatientToolName,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -673,18 +672,31 @@ export async function sendPatientAssistantMessage(
 
     const result = await withAITimeout(
       async () => {
-        // Build the tool declarations for Gemini function calling
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const tools = [{ functionDeclarations: ALL_PATIENT_TOOL_DECLARATIONS as any }];
+        // Tool declarations — FunctionDeclarationsTool[] shape required by SDK
+        const tools = [{ functionDeclarations: ALL_PATIENT_TOOL_DECLARATIONS }];
+
+        // systemInstruction as Content object: role "system" + parts array.
+        // This is the format required by gemini-3.1-flash-lite.
+        const systemInstruction = {
+          role: "system",
+          parts: [{ text: buildPatientAssistantSystemPrompt(clinicInfo) }],
+        };
+
+        // History: only include user/model turns (never system).
+        // Filter out any empty content to avoid API rejection.
+        const chatHistory = history
+          .slice(-10)
+          .filter((m) => m.content.trim().length > 0)
+          .map((m) => ({
+            role: m.role,
+            parts: [{ text: m.content }],
+          }));
 
         // Start chat with system instruction and history
         const chat = model.startChat({
-          systemInstruction: buildPatientAssistantSystemPrompt(clinicInfo),
+          systemInstruction,
           tools,
-          history: history.slice(-10).map((m) => ({
-            role: m.role,
-            parts: [{ text: m.content }],
-          })),
+          history: chatHistory,
         });
 
         // Send the user message
@@ -731,11 +743,12 @@ export async function sendPatientAssistantMessage(
             })
           );
 
-          // Send tool results back to the model
-          response = await chat.sendMessage(
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            toolResults as any
-          );
+          // Send tool results back to the model as function response parts
+          const toolResponseParts = toolResults.map((r) => ({
+            functionResponse: r.functionResponse,
+          }));
+
+          response = await chat.sendMessage(toolResponseParts);
           candidate = response.response;
         }
 
