@@ -747,7 +747,10 @@ export async function sendPatientAssistantMessage(
 
     return { data: { role: "model", content: result }, error: null };
   } catch (error) {
-    if (error instanceof AIError) return { data: null, error: AI_UNAVAILABLE };
+    if (error instanceof AIError) {
+      console.error("[sendPatientAssistantMessage] AIError:", error.message, error.cause);
+      return { data: null, error: AI_UNAVAILABLE };
+    }
     console.error("[sendPatientAssistantMessage] unexpected:", error);
     return { data: null, error: AI_UNAVAILABLE };
   }

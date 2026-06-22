@@ -48,7 +48,7 @@ export function getGeminiModel() {
   // "Gemini Flash Lite" series used in DentGrow MVP.
   // Update to gemini-3.1-flash-lite when the model ID is confirmed by Google.
   return _genAI.getGenerativeModel({
-    model: "gemini-2.0-flash-lite",
+    model: "gemini-3.1-flash-lite",
     generationConfig: {
       temperature: 0.3,       // low temperature for factual, reliable responses
       topP: 0.95,
@@ -78,6 +78,8 @@ export async function withAITimeout<T>(
     return await Promise.race([fn(), timeout]);
   } catch (error) {
     if (error instanceof AIError) throw error;
+    // Log the real error so it's visible in server logs — never swallow silently
+    console.error("[AI] Request failed:", error);
     throw new AIError("AI request failed", error);
   }
 }
