@@ -80,12 +80,16 @@ export function PortalNav({ patientId }: PortalNavProps) {
         </div>
       </div>
 
-      {/* Mobile bottom tab bar */}
+      {/* Mobile bottom tab bar
+          z-30 — above page content, below the chat panel (z-40).
+          The chat button uses bottom-[4.5rem] to sit above this bar.
+          Show only the first 5 nav items on mobile to prevent crowding.
+      */}
       <nav
-        className="sm:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-[#E4E4E7] flex z-20"
+        className="sm:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-[#E4E4E7] flex z-30"
         aria-label="Mobile portal navigation"
       >
-        {NAV_ITEMS.map((item) => {
+        {NAV_ITEMS.slice(0, 5).map((item) => {
           const isActive =
             item.href === "/portal"
               ? pathname === item.href
@@ -96,13 +100,13 @@ export function PortalNav({ patientId }: PortalNavProps) {
               key={item.href}
               href={item.href}
               className={cn(
-                "flex-1 flex flex-col items-center gap-1 py-2.5 text-[10px] font-medium transition-colors",
+                "flex-1 flex flex-col items-center gap-0.5 py-2 px-1 text-[9px] font-medium transition-colors",
                 isActive ? "text-[#09090B]" : "text-[#A1A1AA]"
               )}
               aria-current={isActive ? "page" : undefined}
             >
-              <item.icon className="h-4 w-4" aria-hidden />
-              {item.label}
+              <item.icon className="h-[18px] w-[18px]" aria-hidden />
+              <span className="leading-none mt-0.5">{item.label}</span>
             </Link>
           );
         })}

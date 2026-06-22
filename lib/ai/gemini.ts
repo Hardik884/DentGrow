@@ -44,9 +44,17 @@ export function getGeminiModel() {
     _genAI = new GoogleGenerativeAI(process.env.GOOGLE_AI_API_KEY);
   }
 
-  // TODO: Replace model name with exact Gemini 3.1 Flash Lite identifier
-  // when confirmed by Google AI SDK release notes.
-  return _genAI.getGenerativeModel({ model: "gemini-3.1-flash-lite" });
+  // gemini-2.0-flash-lite is the current stable model matching the
+  // "Gemini Flash Lite" series used in DentGrow MVP.
+  // Update to gemini-3.1-flash-lite when the model ID is confirmed by Google.
+  return _genAI.getGenerativeModel({
+    model: "gemini-2.0-flash-lite",
+    generationConfig: {
+      temperature: 0.3,       // low temperature for factual, reliable responses
+      topP: 0.95,
+      maxOutputTokens: 1024,
+    },
+  });
 }
 
 /**

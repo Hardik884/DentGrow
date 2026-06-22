@@ -1,12 +1,88 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { sendPatientAssistantMessage } from "@/actions/ai";
-import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { AIFallbackMessage } from "./AIFallbackMessage";
 import { ErrorBoundary } from "@/components/shared/ErrorBoundary";
-import { Sparkles, MessageSquare, X, Send } from "lucide-react";
+import {
+  Sparkles,
+  X,
+  Send,
+  Bot,
+  Minimize2,
+  ChevronDown,
+} from "lucide-react";
 import type { CopilotMessage } from "@/types";
+
+// ── Typing indicator ─────────────────────────────────────────────────────────
+
+function TypingIndicator() {
+  return (
+    <div className="flex justify-start">
+      <div className="bg-[#F4F4F5] rounded-2xl rounded-bl-sm px-3.5 py-2.5 flex items-center gap-1">
+        {[0, 150, 300].map((delay) => (
+          <span
+            key={delay}
+            className="w-1.5 h-1.5 rounded-full bg-[#A1A1AA] animate-bounce [animation-duration:1s]"
+            style={{ animationDelay: `${delay}ms` }}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── Message bubble ───────────────────────────────────────────────────────────
+
+function MessageBubble({ msg }: { msg: CopilotMessage }) {
+  const isUser = msg.role === "user";
+  return (
+    <div className={`flex ${isUser ? "justify-end" : "justify-start"} group`}>
+      {!isUser && (
+        <div className="w-6 h-6 rounded-full bg-[#18181B] flex items-center justify-center mr-2 mt-0.5 shrink-0">
+          <Bot className="h-3 w-3 text-white" aria-hidden />
+        </div>
+      )}
+      <div
+        className={
+          isUser
+            ? "max-w-[78%] bg-[#18181B] text-white rounded-2xl rounded-br-sm px-3.5 py-2.5 text-sm leading-relaxed"
+            : "max-w-[82%] bg-[#F4F4F5] text-[#09090B] rounded-2xl rounded-bl-sm px-3.5 py-2.5 text-sm leading-relaxed"
+        }
+      >
+        {msg.content}
+      </div>
+    </div>
+  );
+}
+
+// ── Suggested prompts ─────────────────────────────────────────────────────────
+
+const SUGGESTED_PROMPTS = [
+  "What slots are available tomorrow?",
+  "What are the clinic hours?",
+  "Do I have any upcoming appointments?",
+  "What's my queue position?",
+];
+
+function SuggestedPrompts({ onSelect }: { onSelect: (p: string) => void }) {
+  return (
+    <div className="px-3 pb-2 flex flex-wrap gap-1.5">
+      {SUGGESTED_PROMPTS.map((p) => (
+        <button
+          key={p}
+          type="button"
+          onClick={() => onSelect(p)}
+          className="text-[11px] px-2.5 py-1 rounded-full border border-[#E4E4E7] text-[#52525B] hover:border-[#18181B] hover:text-[#09090B] transition-colors bg-white"
+        >
+          {p}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+// ── Main component ────────────────────────────────────────────────────────────
 
 interface PatientAssistantProps {
   patientId: string;
@@ -14,137 +90,269 @@ interface PatientAssistantProps {
 
 function PatientAssistantInner({ patientId }: PatientAssistantProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [isMinimized, setIsMinimized] = useState(false);
   const [messages, setMessages] = useState<CopilotMessage[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showSuggestions, setShowSuggestions] = useState(true);
+  const [unreadCount, setUnreadCount] = useState(0);
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
-
-  async function handleSend() {
-    if (!input.trim() || isLoading) return;
-
-    const userMessage: CopilotMessage = { role: "user", content: input.trim() };
-    const updatedHistory = [...messages, userMessage];
-
-    setMessages(updatedHistory);
-    setInput("");
-    setIsLoading(true);
-    setError(null);
-
-    const result = await sendPatientAssistantMessage(updatedHistory, userMessage.content);
-
-    if (result.error) setError(result.error);
-    else if (result.data) setMessages([...updatedHistory, result.data]);
-
-    setIsLoading(false);
-  }
+  const inputRef = useRef<HTMLTextAreaElement>(null);
 
   void patientId;
 
-  return (
-    <>
-      {/* Floating toggle button */}
+  // Auto-scroll to bottom
+  useEffect(() => {
+    if (isOpen && !isMinimized) {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [messages, isLoading, isOpen, isMinimized]);
+
+  // Focus input when opening
+  useEffect(() => {
+    if (isOpen && !isMinimized) {
+      setTimeout(() => inputRef.current?.focus(), 100);
+      setUnreadCount(0);
+    }
+  }, [isOpen, isMinimized]);
+
+  // Keyboard shortcut: Escape to close
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape" && isOpen) setIsOpen(false);
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen]);
+
+  const handleSend = useCallback(
+    async (overrideMessage?: string) => {
+      const text = (overrideMessage ?? input).trim();
+      if (!text || isLoading) return;
+
+      const userMessage: CopilotMessage = { role: "user", content: text };
+      const updatedHistory = [...messages, userMessage];
+
+      setMessages(updatedHistory);
+      setInput("");
+      setIsLoading(true);
+      setError(null);
+      setShowSuggestions(false);
+
+      const result = await sendPatientAssistantMessage(
+        updatedHistory,
+        userMessage.content
+      );
+
+      setIsLoading(false);
+
+      if (result.error) {
+        setError(result.error);
+      } else if (result.data) {
+        setMessages([...updatedHistory, result.data]);
+        if (!isOpen || isMinimized) {
+          setUnreadCount((c) => c + 1);
+        }
+      }
+    },
+    [input, isLoading, messages, isOpen, isMinimized]
+  );
+
+  function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
+  }
+
+  function handleOpen() {
+    setIsOpen(true);
+    setIsMinimized(false);
+    setUnreadCount(0);
+  }
+
+  function handleClose() {
+    setIsOpen(false);
+    setIsMinimized(false);
+  }
+
+  function handleMinimize() {
+    setIsMinimized(true);
+  }
+
+  function handleRestore() {
+    setIsMinimized(false);
+    setUnreadCount(0);
+  }
+
+  // ── Floating button (when closed) ─────────────────────────────────────────
+  if (!isOpen) {
+    return (
       <button
         type="button"
-        onClick={() => setIsOpen((v) => !v)}
-        className="fixed bottom-6 right-6 z-50 w-12 h-12 bg-[#18181B] text-white rounded-full shadow-lg flex items-center justify-center hover:bg-[#27272A] transition-colors"
-        aria-label={isOpen ? "Close AI Assistant" : "Open AI Assistant"}
+        onClick={handleOpen}
+        aria-label="Open AI Assistant"
+        className="fixed bottom-18 right-4 sm:bottom-6 sm:right-6 z-40 w-[52px] h-[52px] bg-[#18181B] text-white rounded-full shadow-xl flex items-center justify-center hover:bg-[#27272A] active:scale-95 transition-all focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#18181B]"
       >
-        {isOpen
-          ? <X className="h-5 w-5" aria-hidden />
-          : <MessageSquare className="h-5 w-5" aria-hidden />
-        }
+        <div className="relative">
+          <Bot className="h-5 w-5" aria-hidden />
+          {unreadCount > 0 && (
+            <span className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center">
+              {unreadCount > 9 ? "9+" : unreadCount}
+            </span>
+          )}
+        </div>
       </button>
+    );
+  }
 
-      {/* Chat panel */}
-      {isOpen && (
-        <div className="fixed bottom-20 right-6 z-50 w-80 h-[420px] flex flex-col bg-white border border-[#E4E4E7] rounded-xl shadow-2xl overflow-hidden animate-fade-in-up">
-          {/* Header */}
-          <div className="px-4 py-3 border-b border-[#E4E4E7] flex items-center gap-2">
-            <Sparkles className="h-4 w-4 text-[#71717A]" aria-hidden />
-            <div>
-              <h2 className="text-sm font-semibold text-[#09090B]">DentGrow Assistant</h2>
-              <p className="text-xs text-[#71717A]">Ask about your appointments & visits</p>
-            </div>
+  // ── Minimized pill ────────────────────────────────────────────────────────
+  if (isOpen && isMinimized) {
+    return (
+      <div className="fixed bottom-[4.5rem] right-4 sm:bottom-6 sm:right-6 z-40">
+        <button
+          type="button"
+          onClick={handleRestore}
+          className="flex items-center gap-2 bg-[#18181B] text-white rounded-full shadow-xl px-4 py-2.5 hover:bg-[#27272A] active:scale-95 transition-all"
+          aria-label="Restore AI Assistant"
+        >
+          <Bot className="h-4 w-4" aria-hidden />
+          <span className="text-xs font-medium">DentGrow Assistant</span>
+          {unreadCount > 0 && (
+            <span className="w-5 h-5 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+              {unreadCount}
+            </span>
+          )}
+          <ChevronDown className="h-3.5 w-3.5 rotate-180" aria-hidden />
+        </button>
+      </div>
+    );
+  }
+
+  // ── Full chat panel ──────────────────────────────────────────────────────
+  return (
+    <>
+      {/* Chat panel
+          On mobile: full-width, sits above the bottom nav bar (bottom: 4.5rem = 72px)
+          On desktop: fixed bottom-right, 380px wide
+      */}
+      <div
+        role="dialog"
+        aria-label="DentGrow AI Assistant"
+        aria-modal="false"
+        className={[
+          "fixed z-40 flex flex-col bg-white border border-[#E4E4E7] shadow-2xl overflow-hidden",
+          // Mobile: full width, above bottom tab bar
+          "bottom-[4.5rem] left-2 right-2 rounded-2xl",
+          // Desktop: fixed position bottom-right
+          "sm:bottom-6 sm:left-auto sm:right-6 sm:w-[380px] sm:rounded-2xl",
+          // Height: fills available space on mobile, fixed on desktop
+          "h-[calc(100dvh-8rem)] sm:h-[560px]",
+        ].join(" ")}
+      >
+        {/* ── Header ─────────────────────────────────────────────────── */}
+        <div className="px-4 py-3 border-b border-[#E4E4E7] flex items-center gap-2.5 shrink-0 bg-[#18181B] rounded-t-2xl">
+          <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center shrink-0">
+            <Sparkles className="h-4 w-4 text-white" aria-hidden />
           </div>
-
-          {/* Messages */}
-          <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
-            {messages.length === 0 && (
-              <p className="text-xs text-[#A1A1AA] text-center mt-4">
-                Ask about appointments, queue position, treatments, or clinic information.
-              </p>
-            )}
-
-            {messages.map((msg, i) => (
-              <div
-                key={i}
-                className={msg.role === "user" ? "flex justify-end" : "flex justify-start"}
-              >
-                <div
-                  className={
-                    msg.role === "user"
-                      ? "max-w-[75%] bg-[#18181B] text-white rounded-xl rounded-br-sm px-3 py-2 text-xs"
-                      : "max-w-[75%] bg-[#F4F4F5] text-[#09090B] rounded-xl rounded-bl-sm px-3 py-2 text-xs"
-                  }
-                >
-                  {msg.content}
-                </div>
-              </div>
-            ))}
-
-            {isLoading && (
-              <div className="flex justify-start">
-                <div className="bg-[#F4F4F5] rounded-xl rounded-bl-sm px-3 py-2">
-                  <div className="flex gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-[#A1A1AA] animate-bounce" style={{ animationDelay: "0ms" }} />
-                    <span className="w-1.5 h-1.5 rounded-full bg-[#A1A1AA] animate-bounce" style={{ animationDelay: "150ms" }} />
-                    <span className="w-1.5 h-1.5 rounded-full bg-[#A1A1AA] animate-bounce" style={{ animationDelay: "300ms" }} />
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {error && <AIFallbackMessage message={error} />}
-            <div ref={messagesEndRef} />
+          <div className="flex-1 min-w-0">
+            <h2 className="text-sm font-semibold text-white leading-none">
+              DentGrow Assistant
+            </h2>
+            <p className="text-[11px] text-white/60 mt-0.5">
+              Ask about appointments, hours &amp; more
+            </p>
           </div>
-
-          {/* Input */}
-          <div className="px-3 py-2.5 border-t border-[#E4E4E7] flex gap-2">
-            <input
-              type="text"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleSend()}
-              placeholder="Type a message…"
-              disabled={isLoading}
-              aria-label="Chat message"
-              className="flex-1 border border-[#E4E4E7] rounded-lg px-3 py-1.5 text-xs text-[#09090B] placeholder:text-[#A1A1AA] outline-none focus:border-[#18181B] focus:ring-2 focus:ring-[#18181B]/10 disabled:opacity-50"
-            />
+          <div className="flex items-center gap-1">
             <button
               type="button"
-              onClick={handleSend}
-              disabled={isLoading || !input.trim()}
-              aria-label="Send message"
-              className="w-7 h-7 bg-[#18181B] text-white rounded-lg flex items-center justify-center hover:bg-[#27272A] disabled:opacity-40 transition-colors shrink-0"
+              onClick={handleMinimize}
+              aria-label="Minimize"
+              className="w-7 h-7 rounded-lg flex items-center justify-center text-white/60 hover:text-white hover:bg-white/10 transition-colors"
             >
-              <Send className="h-3.5 w-3.5" aria-hidden />
+              <Minimize2 className="h-3.5 w-3.5" aria-hidden />
+            </button>
+            <button
+              type="button"
+              onClick={handleClose}
+              aria-label="Close assistant"
+              className="w-7 h-7 rounded-lg flex items-center justify-center text-white/60 hover:text-white hover:bg-white/10 transition-colors"
+            >
+              <X className="h-4 w-4" aria-hidden />
             </button>
           </div>
         </div>
-      )}
 
-      <ConfirmDialog
-        open={false}
-        title="Confirm Action"
-        description=""
-        onConfirm={() => {}}
-        onCancel={() => {}}
-      />
+        {/* ── Messages area ───────────────────────────────────────────── */}
+        <div
+          className="flex-1 overflow-y-auto overscroll-contain px-3.5 py-3 space-y-3"
+          aria-live="polite"
+          aria-atomic="false"
+        >
+          {/* Welcome state */}
+          {messages.length === 0 && (
+            <div className="flex flex-col items-center text-center pt-4 pb-2 gap-3">
+              <div className="w-12 h-12 rounded-2xl bg-[#F4F4F5] flex items-center justify-center">
+                <Sparkles className="h-5 w-5 text-[#71717A]" aria-hidden />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-[#09090B]">
+                  Hi! I&apos;m your dental assistant.
+                </p>
+                <p className="text-xs text-[#71717A] mt-1 leading-relaxed">
+                  I can help you book appointments, check clinic hours, view
+                  your queue status, and more.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Message bubbles */}
+          {messages.map((msg, i) => (
+            <MessageBubble key={i} msg={msg} />
+          ))}
+
+          {/* Loading indicator */}
+          {isLoading && <TypingIndicator />}
+
+          {/* Error */}
+          {error && <AIFallbackMessage message={error} />}
+
+          <div ref={messagesEndRef} />
+        </div>
+
+        {/* ── Suggested prompts (shown when no messages) ──────────────── */}
+        {messages.length === 0 && showSuggestions && (
+          <SuggestedPrompts onSelect={(p) => handleSend(p)} />
+        )}
+
+        {/* ── Input area ──────────────────────────────────────────────── */}
+        <div className="px-3 py-2.5 border-t border-[#E4E4E7] flex items-end gap-2 shrink-0 bg-white">
+          <textarea
+            ref={inputRef}
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="Ask me anything…"
+            disabled={isLoading}
+            aria-label="Chat message"
+            rows={1}
+            maxLength={500}
+            className="flex-1 border border-[#E4E4E7] rounded-xl px-3 py-2 text-sm text-[#09090B] placeholder:text-[#A1A1AA] outline-none focus:border-[#18181B] focus:ring-2 focus:ring-[#18181B]/10 disabled:opacity-50 resize-none min-h-[38px] max-h-[100px] overflow-y-auto leading-snug"
+          />
+          <button
+            type="button"
+            onClick={() => handleSend()}
+            disabled={isLoading || !input.trim()}
+            aria-label="Send message"
+            className="w-9 h-9 bg-[#18181B] text-white rounded-xl flex items-center justify-center hover:bg-[#27272A] disabled:opacity-40 active:scale-95 transition-all shrink-0 self-end"
+          >
+            <Send className="h-3.5 w-3.5" aria-hidden />
+          </button>
+        </div>
+      </div>
     </>
   );
 }

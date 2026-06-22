@@ -28,7 +28,8 @@ export default async function PortalLayout({
     <div className="min-h-screen bg-[#FAFAFA]">
       <PortalNav patientId={portalLink?.patient_id ?? null} />
 
-      <main className="max-w-screen-xl mx-auto px-4 sm:px-6 py-6 portal-main">
+      {/* pb-[4.5rem] on mobile ensures content isn't hidden under the bottom tab bar */}
+      <main className="max-w-screen-xl mx-auto px-4 sm:px-6 py-6 pb-[5rem] sm:pb-6 portal-main">
         {children}
       </main>
 
