@@ -16,7 +16,6 @@ export default function LoginPage() {
           <DentGrowLogo size={32} withWordmark />
         </div>
         <h1 className="text-2xl font-semibold text-[#09090B] tracking-tight">Welcome back</h1>
-        <p className="text-sm text-[#71717A]">Sign in to your practice account</p>
       </div>
 
       {/* Card */}
