@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { PaymentForm } from "@/components/dentist/PaymentForm";
-import { Button } from "@/components/ui/button";
 import { Plus, X } from "lucide-react";
 
 interface RecordAppointmentPaymentProps {
@@ -29,10 +28,14 @@ export function RecordAppointmentPayment({
 
   if (!open) {
     return (
-      <Button size="sm" onClick={() => setOpen(true)}>
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="px-3 py-1.5 text-sm font-medium bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors whitespace-nowrap inline-flex items-center gap-1.5"
+      >
         <Plus className="h-3.5 w-3.5" aria-hidden />
         Record Payment
-      </Button>
+      </button>
     );
   }
 

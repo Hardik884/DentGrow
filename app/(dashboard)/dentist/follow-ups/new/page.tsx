@@ -13,6 +13,8 @@ interface Props {
     patientName?: string;
     appointment?: string;
     treatment?: string;
+    /** Return URL after successful creation — used when launched from appointment details */
+    back?: string;
   }>;
 }
 
@@ -26,13 +28,13 @@ interface Props {
  *   patientName — display name hint (avoids an extra fetch for the chip)
  *   appointment — pre-selects the related appointment (UUID)
  *   treatment   — pre-selects the related treatment (UUID)
+ *   back        — redirect URL on success (e.g. /dentist/appointments/{id})
  *
- * When navigating from a patient profile page, patient + patientName are set
- * so the patient selector shows immediately without a search interaction.
- * When launched from the global follow-ups list, the form shows an empty search.
+ * When navigating from an appointment page, patient + patientName + appointment
+ * + back are all set so the form is pre-populated and returns to the same page.
  */
 export default async function NewFollowUpPage({ searchParams }: Props) {
-  const { patient, patientName, appointment, treatment } = await searchParams;
+  const { patient, patientName, appointment, treatment, back } = await searchParams;
 
   // If we have a patient ID but no name hint, fetch the name server-side
   // so the form can render the selected-patient chip without a client round-trip.
@@ -44,15 +46,23 @@ export default async function NewFollowUpPage({ searchParams }: Props) {
     }
   }
 
+  // Determine the back link for the page header.
+  // Priority: explicit back param → patient profile → global follow-ups list
+  const backHref = back
+    ? back
+    : patient
+      ? `/dentist/patients/${patient}?tab=follow-ups`
+      : "/dentist/follow-ups";
+
+  // The success redirect after form submission mirrors the header back link.
+  const successRedirect = back
+    ?? (patient ? `/dentist/patients/${patient}?tab=follow-ups` : "/dentist/follow-ups");
+
   return (
     <div className="p-6 space-y-6">
       <PageHeader
         title="New Follow-Up"
-        backHref={
-          patient
-            ? `/dentist/patients/${patient}?tab=follow-ups`
-            : "/dentist/follow-ups"
-        }
+        backHref={backHref}
       />
 
       <FollowUpForm
@@ -61,6 +71,8 @@ export default async function NewFollowUpPage({ searchParams }: Props) {
         appointmentId={appointment}
         treatmentId={treatment}
         role="dentist"
+        successRedirect={successRedirect}
+        hideRelatedFields={!!appointment}
       />
     </div>
   );

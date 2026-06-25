@@ -89,13 +89,15 @@ export async function createTreatment(
     let performedAt: string | null = null;
     if (parsed.data.performed_at) {
       const raw = parsed.data.performed_at.trim();
-      if (raw.length === 10) {
-        // "YYYY-MM-DD" — treat as noon UTC to avoid day-shift issues
-        performedAt = `${raw}T12:00:00.000Z`;
-      } else {
-        // "YYYY-MM-DDTHH:mm" or already a full ISO string
-        const d = new Date(raw);
-        performedAt = isNaN(d.getTime()) ? null : d.toISOString();
+      if (raw.length > 0) {
+        if (raw.length === 10) {
+          // "YYYY-MM-DD" — treat as noon UTC to avoid day-shift issues
+          performedAt = `${raw}T12:00:00.000Z`;
+        } else {
+          // "YYYY-MM-DDTHH:mm" or already a full ISO string
+          const d = new Date(raw);
+          performedAt = isNaN(d.getTime()) ? null : d.toISOString();
+        }
       }
     }
 
@@ -390,8 +392,13 @@ export async function getTreatmentsForAppointment(
 export async function getAllTreatments(filters?: {
   page?: number;
   limit?: number;
+  /** Free-text search across patient name + phone. */
   search?: string;
   status?: string;
+  /** Treatment type partial match. */
+  treatmentType?: string;
+  dateFrom?: string;
+  dateTo?: string;
 }): Promise<ActionResult<{ treatments: Treatment[]; total: number }>> {
   try {
     const { db, profile } = await resolveSession();
@@ -404,6 +411,31 @@ export async function getAllTreatments(filters?: {
     const limit = Math.min(filters?.limit ?? 20, 100);
     const from = (page - 1) * limit;
     const to = from + limit - 1;
+
+    // Guard: inverted date range → return empty immediately
+    if (filters?.dateFrom && filters?.dateTo && filters.dateFrom > filters.dateTo) {
+      return { data: { treatments: [], total: 0 }, error: null };
+    }
+
+    const search = filters?.search?.trim();
+
+    // Free-text search: resolve matching patient IDs first, then filter treatments.
+    // This pattern mirrors getAppointments() and avoids PostgREST join filter ambiguity.
+    let patientIdFilter: string[] | null = null;
+    if (search && search.length >= 1) {
+      const escaped = search.replace(/[%,()]/g, " ");
+      const { data: matched } = await db
+        .from("patients")
+        .select("id")
+        .eq("clinic_id", profile.clinic_id)
+        .is("deleted_at", null)
+        .or(`name.ilike.%${escaped}%,phone.ilike.%${escaped}%`)
+        .limit(500);
+      patientIdFilter = ((matched ?? []) as { id: string }[]).map((p) => p.id);
+      if (patientIdFilter.length === 0) {
+        return { data: { treatments: [], total: 0 }, error: null };
+      }
+    }
 
     let query = db
       .from("treatments")
@@ -418,9 +450,16 @@ export async function getAllTreatments(filters?: {
       query = query.eq("status", filters.status);
     }
 
-    if (filters?.search && filters.search.trim().length >= 2) {
-      query = query.ilike("treatment_type", `%${filters.search.trim()}%`);
+    if (filters?.treatmentType && filters.treatmentType.trim().length >= 1) {
+      query = query.ilike("treatment_type", `%${filters.treatmentType.trim()}%`);
     }
+
+    if (patientIdFilter !== null) {
+      query = query.in("patient_id", patientIdFilter);
+    }
+
+    if (filters?.dateFrom) query = query.gte("created_at", `${filters.dateFrom}T00:00:00`);
+    if (filters?.dateTo)   query = query.lte("created_at", `${filters.dateTo}T23:59:59`);
 
     const { data, error, count } = await query
       .order("created_at", { ascending: false })

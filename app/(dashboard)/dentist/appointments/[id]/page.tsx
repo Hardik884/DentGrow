@@ -7,6 +7,7 @@ import { AppointmentHistoryTimeline } from "@/components/shared/AppointmentHisto
 import { AppointmentStatusBadge } from "@/components/shared/AppointmentStatusBadge";
 import { AppointmentTreatmentsSection } from "@/components/dentist/AppointmentTreatmentsSection";
 import { AppointmentPaymentsSection } from "@/components/dentist/AppointmentPaymentsSection";
+import { AppointmentFollowUpsSection } from "@/components/dentist/AppointmentFollowUpsSection";
 import { getAppointment } from "@/actions/appointments";
 import { createServerClient } from "@/lib/supabase/server";
 import { formatDateTimeInTimezone, APPOINTMENT_SOURCE_LABELS, calculateAge } from "@/lib/utils";
@@ -130,22 +131,12 @@ export default async function DentistAppointmentDetailPage({ params }: Props) {
         patientId={appt.patient_id}
       />
 
-      {/* ── New Follow-Up action ─────────────────────────────── */}
-      <div className="bg-white border rounded-lg p-4 flex items-center justify-between gap-3">
-        <div>
-          <h3 className="font-semibold text-gray-900">Follow-Up</h3>
-          <p className="text-xs text-gray-500 mt-0.5">
-            Schedule a follow-up for this patient. A new appointment is created
-            automatically from the follow-up date and time.
-          </p>
-        </div>
-        <Link
-          href={`/dentist/follow-ups/new?patient=${appt.patient_id}&patientName=${encodeURIComponent(appt.patient.name)}&appointment=${appt.id}`}
-          className="px-3 py-1.5 text-sm font-medium bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors whitespace-nowrap"
-        >
-          + New Follow-Up
-        </Link>
-      </div>
+      {/* ── Follow-Ups for this appointment ─────────────────── */}
+      <AppointmentFollowUpsSection
+        appointmentId={appt.id}
+        patientId={appt.patient_id}
+        patientName={appt.patient.name}
+      />
 
       {/* ── Payments for this appointment ───────────────────── */}
       <AppointmentPaymentsSection

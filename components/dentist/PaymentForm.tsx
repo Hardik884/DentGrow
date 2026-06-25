@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
@@ -34,6 +34,8 @@ export function PaymentForm({
   const [serverError, setServerError] = useState<string | null>(null);
   const [selectedPatientId, setSelectedPatientId] = useState(initialPatientId ?? "");
   const [selectedPatientName, setSelectedPatientName] = useState(initialPatientName ?? "");
+  const patientRef = useRef<HTMLDivElement>(null);
+  const amountRef  = useRef<HTMLDivElement>(null);
 
   const today = new Date().toISOString().split("T")[0];
 
@@ -79,7 +81,15 @@ export function PaymentForm({
   }
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)}>
+    <form onSubmit={handleSubmit(onSubmit, (errs) => {
+      // Scroll to first invalid field on validation failure
+      if (errs.patient_id) {
+        patientRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      } else if (errs.amount) {
+        amountRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+        amountRef.current?.querySelector("input")?.focus();
+      }
+    })}>
       {serverError && (
         <div className="mb-4 rounded-lg bg-[#FEF2F2] border border-[#FECACA] px-4 py-3 text-xs text-[#DC2626]">
           {serverError}
@@ -91,7 +101,7 @@ export function PaymentForm({
           <h2 className="text-sm font-semibold text-[#09090B]">Record Payment</h2>
 
           {/* Patient */}
-          <div className="space-y-1.5">
+          <div className="space-y-1.5" ref={patientRef}>
             <label className="block text-sm font-medium text-[#09090B]">
               Patient <span className="text-[#DC2626]" aria-hidden>*</span>
             </label>
@@ -131,17 +141,19 @@ export function PaymentForm({
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Field label="Amount (₹)" htmlFor="amount" required error={(errors as Record<string, {message?: string}>).amount?.message}>
-              <Input
-                id="amount"
-                type="number"
-                min={0.01}
-                step="0.01"
-                {...register("amount", { valueAsNumber: true })}
-                placeholder="0.00"
-                hasError={!!(errors as Record<string, unknown>).amount}
-              />
-            </Field>
+            <div ref={amountRef}>
+              <Field label="Amount (₹)" htmlFor="amount" required error={(errors as Record<string, {message?: string}>).amount?.message ?? (errors.amount ? "Amount must be greater than zero." : undefined)}>
+                <Input
+                  id="amount"
+                  type="number"
+                  min={0.01}
+                  step="0.01"
+                  {...register("amount", { valueAsNumber: true })}
+                  placeholder="0.00"
+                  hasError={!!(errors as Record<string, unknown>).amount}
+                />
+              </Field>
+            </div>
 
             <Field label="Payment Method" htmlFor="method" required>
               <Select id="method" {...register("method")}>

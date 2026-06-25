@@ -73,6 +73,25 @@ interface FollowUpFormProps {
   initialData?: FollowUpWithRelations;
   onSuccess?: () => void;
   role?: "dentist" | "receptionist";
+  /**
+   * URL to redirect to after successful creation.
+   * Defaults to the follow-up detail page.
+   */
+  successRedirect?: string;
+  /**
+   * When true, hides the Related Appointment and Related Treatment dropdowns.
+   * Used when the form is launched from an appointment context — those
+   * relationships are inferred from the URL params, not chosen manually.
+   */
+  hideRelatedFields?: boolean;
+}
+
+// ── Field-level validation errors ────────────────────────────────────────────
+
+interface FormErrors {
+  patient?: string;
+  followUpType?: string;
+  dueDate?: string;
 }
 
 // =============================================================================
@@ -88,9 +107,16 @@ export function FollowUpForm({
   initialData,
   onSuccess,
   role = "dentist",
+  successRedirect,
+  hideRelatedFields = false,
 }: FollowUpFormProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
+
+  // ── Refs for scroll-to-error ────────────────────────────────────────────────
+  const patientRef     = useRef<HTMLDivElement>(null);
+  const followUpTypeRef = useRef<HTMLDivElement>(null);
+  const dueDateRef     = useRef<HTMLDivElement>(null);
 
   // ── Form state ──────────────────────────────────────────────────────────────
   const [followUpType, setFollowUpType] = useState(
@@ -101,6 +127,7 @@ export function FollowUpForm({
   const [notes, setNotes]       = useState(initialData?.notes ?? "");
   const [formError, setFormError]     = useState<string | null>(null);
   const [formSuccess, setFormSuccess] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<FormErrors>({});
 
   // ── Patient selection ───────────────────────────────────────────────────────
   const resolvedInitialPatient: PatientOption | null = initialData?.patient
@@ -153,31 +180,23 @@ export function FollowUpForm({
         getPatientAppointmentsForFollowUp(pid),
         getPatientTreatmentsForFollowUp(pid),
       ]);
-      if (apptResult.error) {
-        console.error("[FollowUpForm] appointments fetch error:", apptResult.error);
-      }
-      if (txResult.error) {
-        console.error("[FollowUpForm] treatments fetch error:", txResult.error);
-        setRelatedError(txResult.error);
-      }
-      // Always update options — null data falls back to [] so dropdown renders cleanly
       setAppointmentOptions((apptResult.data ?? []) as AppointmentOption[]);
       setTreatmentOptions((txResult.data ?? []) as TreatmentOption[]);
-    } catch (err) {
-      console.error("[FollowUpForm] loadRelatedOptions unexpected:", err);
+      if (txResult.error) setRelatedError(txResult.error);
+    } catch {
       setRelatedError("Could not load related records.");
       setAppointmentOptions([]);
       setTreatmentOptions([]);
     } finally {
       setLoadingRelated(false);
     }
-  }, []); // no deps — all setters are stable React dispatch functions
+  }, []);
 
   useEffect(() => {
-    if (selectedPatient?.id) {
+    if (selectedPatient?.id && !hideRelatedFields) {
       loadRelatedOptions(selectedPatient.id);
     }
-  }, [selectedPatient?.id, loadRelatedOptions]);
+  }, [selectedPatient?.id, loadRelatedOptions, hideRelatedFields]);
 
   // ── Sync initialData if editing ─────────────────────────────────────────────
   useEffect(() => {
@@ -200,6 +219,7 @@ export function FollowUpForm({
       setAppointmentOptions([]);
       setTreatmentOptions([]);
       setRelatedError(null);
+      setFieldErrors((prev) => ({ ...prev, patient: undefined }));
 
       if (patientSearchTimerRef.current) {
         clearTimeout(patientSearchTimerRef.current);
@@ -220,7 +240,7 @@ export function FollowUpForm({
         setPatientLoading(false);
       }, 300);
     },
-    [] // no deps — uses ref for timer, all setters are stable
+    []
   );
 
   function handleSelectPatient(p: Patient) {
@@ -228,9 +248,37 @@ export function FollowUpForm({
     setPatientQuery(p.name);
     setPatientResults([]);
     setPatientDropOpen(false);
-    // reset relation selections whenever patient changes
     setSelectedAppointmentId("");
     setSelectedTreatmentId("");
+    setFieldErrors((prev) => ({ ...prev, patient: undefined }));
+  }
+
+  // ── Field validation ────────────────────────────────────────────────────────
+  function validate(): boolean {
+    const errors: FormErrors = {};
+    const patId = selectedPatient?.id ?? initialData?.patient_id ?? "";
+
+    if (!patId) errors.patient = "Please select a patient.";
+    if (!followUpType) errors.followUpType = "Please select a follow-up type.";
+    if (!dueDate) errors.dueDate = "Due date is required.";
+
+    setFieldErrors(errors);
+
+    if (Object.keys(errors).length > 0) {
+      // Scroll to first invalid field
+      if (errors.patient) {
+        patientRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+        patientRef.current?.querySelector("input")?.focus();
+      } else if (errors.followUpType) {
+        followUpTypeRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+        followUpTypeRef.current?.querySelector("select")?.focus();
+      } else if (errors.dueDate) {
+        dueDateRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+        dueDateRef.current?.querySelector("button")?.focus();
+      }
+      return false;
+    }
+    return true;
   }
 
   // ── Submit ──────────────────────────────────────────────────────────────────
@@ -239,20 +287,9 @@ export function FollowUpForm({
     setFormError(null);
     setFormSuccess(null);
 
-    const patId = selectedPatient?.id ?? initialData?.patient_id ?? "";
+    if (!validate()) return;
 
-    if (!patId) {
-      setFormError("Please select a patient.");
-      return;
-    }
-    if (!followUpType) {
-      setFormError("Please select a follow-up type.");
-      return;
-    }
-    if (!dueDate) {
-      setFormError("Due date is required.");
-      return;
-    }
+    const patId = selectedPatient?.id ?? initialData?.patient_id ?? "";
 
     const input = {
       patient_id:     patId,
@@ -277,7 +314,10 @@ export function FollowUpForm({
       setFormSuccess(followUpId ? "Follow-up updated." : "Follow-up created.");
 
       if (!followUpId && result.data) {
-        router.push(`/dentist/follow-ups/${result.data.id}`);
+        // Redirect to successRedirect if provided, otherwise fall back to detail page
+        const target = successRedirect ?? `/dentist/follow-ups/${result.data.id}`;
+        router.push(target);
+        router.refresh();
         return;
       }
       onSuccess?.();
@@ -304,8 +344,6 @@ export function FollowUpForm({
 
   const isEditable = !currentStatus || currentStatus === "pending";
   const isReadOnly = !isEditable || isPending;
-
-  // ── Patient is locked when editing an existing follow-up ─────────────────────
   const patientLocked = !!followUpId;
 
   return (
@@ -328,21 +366,18 @@ export function FollowUpForm({
         )}
 
         <div className="px-6 py-5 space-y-5">
-          <form onSubmit={handleSubmit} className="space-y-5">
+          <form onSubmit={handleSubmit} className="space-y-5" noValidate>
 
             {/* ── Patient ── */}
-            <Field
-              label="Patient"
-              htmlFor="patient_search"
-              required
-              hint={
-                patientLocked
-                  ? undefined
-                  : "Search by name or phone number"
-              }
-            >
+            <div ref={patientRef}>
+              <Field
+                label="Patient"
+                htmlFor="patient_search"
+                required
+                error={fieldErrors.patient}
+                hint={patientLocked ? undefined : "Search by name or phone number"}
+              >
               {patientLocked ? (
-                /* Edit mode: show patient as read-only card */
                 <div className="flex items-center gap-3 rounded-lg border border-border bg-[#FAFAFA] px-3 py-2">
                   <PatientAvatar
                     name={selectedPatient?.name ?? initialData?.patient?.name ?? "?"}
@@ -367,7 +402,6 @@ export function FollowUpForm({
                   </Link>
                 </div>
               ) : (
-                /* Create mode: patient search */
                 <div className="relative">
                   <div className="relative">
                     <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary">
@@ -381,6 +415,7 @@ export function FollowUpForm({
                       placeholder="Search by name or phone…"
                       autoComplete="off"
                       disabled={isReadOnly}
+                      hasError={!!fieldErrors.patient}
                       className="pl-9"
                       onBlur={() => setTimeout(() => setPatientDropOpen(false), 150)}
                       onFocus={() => patientResults.length > 0 && setPatientDropOpen(true)}
@@ -391,8 +426,6 @@ export function FollowUpForm({
                       </span>
                     )}
                   </div>
-
-                  {/* Selected patient chip */}
                   {selectedPatient && (
                     <div className="mt-2 flex items-center gap-2 rounded-lg border border-border bg-[#FAFAFA] px-3 py-2">
                       <PatientAvatar name={selectedPatient.name} size="sm" />
@@ -420,8 +453,6 @@ export function FollowUpForm({
                       </button>
                     </div>
                   )}
-
-                  {/* Search results dropdown */}
                   {patientDropOpen && patientResults.length > 0 && (
                     <ul className="absolute z-20 w-full mt-1 bg-white border border-border rounded-xl shadow-lg max-h-60 overflow-y-auto">
                       {patientResults.map((p) => (
@@ -435,16 +466,13 @@ export function FollowUpForm({
                             <PatientAvatar name={p.name} size="sm" />
                             <div className="flex-1 min-w-0">
                               <p className="text-sm font-medium text-text-primary truncate">{p.name}</p>
-                              {p.phone && (
-                                <p className="text-xs text-text-secondary">{p.phone}</p>
-                              )}
+                              {p.phone && <p className="text-xs text-text-secondary">{p.phone}</p>}
                             </div>
                           </button>
                         </li>
                       ))}
                     </ul>
                   )}
-
                   {patientDropOpen && !patientLoading && patientQuery.trim().length >= 2 && patientResults.length === 0 && (
                     <div className="absolute z-20 w-full mt-1 bg-white border border-border rounded-xl shadow-lg p-4">
                       <p className="text-sm text-text-secondary text-center">No patients found</p>
@@ -452,42 +480,53 @@ export function FollowUpForm({
                   )}
                 </div>
               )}
-            </Field>
+              </Field>
+            </div>
 
             {/* ── Follow-Up Type + Due Date + Due Time ── */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <Field label="Follow-Up Type" htmlFor="follow_up_type" required>
-                <Select
-                  id="follow_up_type"
-                  value={followUpType}
-                  onChange={(e) => setFollowUpType(e.target.value)}
-                  disabled={isReadOnly}
-                  hasError={!followUpType && !!formError}
-                >
-                  <option value="" disabled>Select type…</option>
-                  {FOLLOW_UP_TYPE_OPTIONS.map((opt) => (
-                    <option key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </Select>
-              </Field>
+              <div ref={followUpTypeRef}>
+                <Field label="Follow-Up Type" htmlFor="follow_up_type" required error={fieldErrors.followUpType}>
+                  <Select
+                    id="follow_up_type"
+                    value={followUpType}
+                    onChange={(e) => {
+                      setFollowUpType(e.target.value);
+                      setFieldErrors((prev) => ({ ...prev, followUpType: undefined }));
+                    }}
+                    disabled={isReadOnly}
+                    hasError={!!fieldErrors.followUpType}
+                  >
+                    <option value="" disabled>Select type…</option>
+                    {FOLLOW_UP_TYPE_OPTIONS.map((opt) => (
+                      <option key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </Select>
+                </Field>
+              </div>
 
-              <Field label="Due Date" htmlFor="due_date" required>
-                <CalendarPicker
-                  id="due_date"
-                  value={dueDate}
-                  onChange={(d) => setDueDate(d ?? "")}
-                  disabled={isReadOnly}
-                  placeholder="Select due date"
-                  clearable
-                />
-              </Field>
+              <div ref={dueDateRef}>
+                <Field label="Due Date" htmlFor="due_date" required error={fieldErrors.dueDate}>
+                  <CalendarPicker
+                    id="due_date"
+                    value={dueDate}
+                    onChange={(d) => {
+                      setDueDate(d ?? "");
+                      setFieldErrors((prev) => ({ ...prev, dueDate: undefined }));
+                    }}
+                    disabled={isReadOnly}
+                    placeholder="Select due date"
+                    clearable
+                  />
+                </Field>
+              </div>
 
               <Field
                 label="Time"
                 htmlFor="due_time"
-                hint={followUpId ? undefined : "An appointment is auto-created at this time"}
+                hint={followUpId ? undefined : "Auto-creates next appointment"}
               >
                 <Input
                   id="due_time"
@@ -500,92 +539,96 @@ export function FollowUpForm({
               </Field>
             </div>
 
-            {/* ── Optional: Related Appointment ── */}
-            <Field
-              label="Related Appointment"
-              htmlFor="appointment_id"
-              hint="Optional — link to the appointment that prompted this follow-up"
-            >
-              {loadingRelated ? (
-                <div className="flex items-center gap-2 h-9 text-sm text-text-secondary">
-                  <LoadingSpinner size="sm" />
-                  <span>Loading appointments…</span>
-                </div>
-              ) : (
-                <div className="relative">
-                  <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary">
-                    <Calendar className="h-3.5 w-3.5" aria-hidden />
-                  </span>
-                  <Select
-                    id="appointment_id"
-                    value={selectedAppointmentId}
-                    onChange={(e) => setSelectedAppointmentId(e.target.value)}
-                    disabled={isReadOnly || (!selectedPatient && !patientLocked)}
-                    className="pl-9"
-                  >
-                    <option value="">None</option>
-                    {appointmentOptions.map((appt) => (
-                      <option key={appt.id} value={appt.id}>
-                        {formatDateTime(appt.scheduled_at)} — {appt.status}
-                      </option>
-                    ))}
-                  </Select>
-                </div>
-              )}
-            </Field>
+            {/* ── Optional: Related Appointment + Related Treatment ── */}
+            {/* Hidden when hideRelatedFields=true (launched from appointment context) */}
+            {!hideRelatedFields && (
+              <>
+                <Field
+                  label="Related Appointment"
+                  htmlFor="appointment_id"
+                  hint="Optional — link to the appointment that prompted this follow-up"
+                >
+                  {loadingRelated ? (
+                    <div className="flex items-center gap-2 h-9 text-sm text-text-secondary">
+                      <LoadingSpinner size="sm" />
+                      <span>Loading appointments…</span>
+                    </div>
+                  ) : (
+                    <div className="relative">
+                      <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary">
+                        <Calendar className="h-3.5 w-3.5" aria-hidden />
+                      </span>
+                      <Select
+                        id="appointment_id"
+                        value={selectedAppointmentId}
+                        onChange={(e) => setSelectedAppointmentId(e.target.value)}
+                        disabled={isReadOnly || (!selectedPatient && !patientLocked)}
+                        className="pl-9"
+                      >
+                        <option value="">None</option>
+                        {appointmentOptions.map((appt) => (
+                          <option key={appt.id} value={appt.id}>
+                            {formatDateTime(appt.scheduled_at)} — {appt.status}
+                          </option>
+                        ))}
+                      </Select>
+                    </div>
+                  )}
+                </Field>
 
-            {/* ── Optional: Related Treatment ── */}
-            <Field
-              label="Related Treatment"
-              htmlFor="treatment_id"
-              hint="Optional — link to the specific treatment this follow-up is for"
-            >
-              {loadingRelated ? (
-                <div className="flex items-center gap-2 h-9 text-sm text-text-secondary">
-                  <LoadingSpinner size="sm" />
-                  <span>Loading treatments…</span>
-                </div>
-              ) : (
-                <div className="space-y-1">
-                  <div className="relative">
-                    <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary">
-                      <Stethoscope className="h-3.5 w-3.5" aria-hidden />
-                    </span>
-                    <Select
-                      id="treatment_id"
-                      value={selectedTreatmentId}
-                      onChange={(e) => setSelectedTreatmentId(e.target.value)}
-                      disabled={isReadOnly || (!selectedPatient && !patientLocked)}
-                      className="pl-9"
-                    >
-                      <option value="">None</option>
-                      {treatmentOptions.map((tx) => (
-                        <option key={tx.id} value={tx.id}>
-                          {tx.treatment_type} — {tx.status}
-                        </option>
-                      ))}
-                    </Select>
-                  </div>
-                  {relatedError && (
-                    <div className="flex items-center gap-2">
-                      <p className="text-xs text-danger">{relatedError}</p>
-                      {selectedPatient?.id && (
-                        <button
-                          type="button"
-                          onClick={() => loadRelatedOptions(selectedPatient.id)}
-                          className="text-xs text-blue-600 hover:underline"
+                <Field
+                  label="Related Treatment"
+                  htmlFor="treatment_id"
+                  hint="Optional — link to the specific treatment this follow-up is for"
+                >
+                  {loadingRelated ? (
+                    <div className="flex items-center gap-2 h-9 text-sm text-text-secondary">
+                      <LoadingSpinner size="sm" />
+                      <span>Loading treatments…</span>
+                    </div>
+                  ) : (
+                    <div className="space-y-1">
+                      <div className="relative">
+                        <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary">
+                          <Stethoscope className="h-3.5 w-3.5" aria-hidden />
+                        </span>
+                        <Select
+                          id="treatment_id"
+                          value={selectedTreatmentId}
+                          onChange={(e) => setSelectedTreatmentId(e.target.value)}
+                          disabled={isReadOnly || (!selectedPatient && !patientLocked)}
+                          className="pl-9"
                         >
-                          Retry
-                        </button>
+                          <option value="">None</option>
+                          {treatmentOptions.map((tx) => (
+                            <option key={tx.id} value={tx.id}>
+                              {tx.treatment_type} — {tx.status}
+                            </option>
+                          ))}
+                        </Select>
+                      </div>
+                      {relatedError && (
+                        <div className="flex items-center gap-2">
+                          <p className="text-xs text-danger">{relatedError}</p>
+                          {selectedPatient?.id && (
+                            <button
+                              type="button"
+                              onClick={() => loadRelatedOptions(selectedPatient.id)}
+                              className="text-xs text-blue-600 hover:underline"
+                            >
+                              Retry
+                            </button>
+                          )}
+                        </div>
+                      )}
+                      {!relatedError && selectedPatient && treatmentOptions.length === 0 && !loadingRelated && (
+                        <p className="text-xs text-text-secondary">No treatments on record for this patient.</p>
                       )}
                     </div>
                   )}
-                  {!relatedError && selectedPatient && treatmentOptions.length === 0 && !loadingRelated && (
-                    <p className="text-xs text-text-secondary">No treatments on record for this patient.</p>
-                  )}
-                </div>
-              )}
-            </Field>
+                </Field>
+              </>
+            )}
 
             {/* ── Notes ── */}
             <Field
@@ -619,7 +662,7 @@ export function FollowUpForm({
               </div>
             )}
 
-            {/* ── Error / Success messages ── */}
+            {/* ── Server error ── */}
             {formError && (
               <div
                 role="alert"

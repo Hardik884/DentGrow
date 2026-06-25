@@ -290,7 +290,8 @@ export const CreateTreatmentSchema = z.object({
   status: z.enum(["planned", "in_progress", "completed", "cancelled"]).default("planned"),
   // Accepts "YYYY-MM-DD", "YYYY-MM-DDTHH:mm", or full ISO strings.
   // The server action normalises this to a proper timestamptz before inserting.
-  performed_at: z.string().min(1).optional(),
+  // Truly optional — can be omitted or left blank without validation failure.
+  performed_at: z.string().optional().or(z.literal("")).transform(v => v || undefined),
 });
 export type CreateTreatmentInput = z.infer<typeof CreateTreatmentSchema>;
 

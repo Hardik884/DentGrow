@@ -184,20 +184,36 @@ export async function createFollowUp(
 
     const followUp = data as FollowUp;
 
-    // ── Auto-create an appointment from the follow-up date + time ──────────
-    // When a time is supplied, schedule a real appointment so the follow-up
-    // shows up on the calendar/queue. The new appointment is linked back to
-    // the follow-up via appointment_id. Failure here is non-fatal — the
-    // follow-up still exists; we just report the issue.
-    if (parsed.data.due_time && !parsed.data.appointment_id) {
+    // ── Auto-create the patient's next appointment from the follow-up ───────
+    // Always auto-create an appointment when due_time is provided.
+    // Uses the current user's dentist ID (or the clinic's dentist for
+    // receptionists). Links the new appointment back to the follow-up record.
+    // Failure here is non-fatal — the follow-up still exists.
+    if (parsed.data.due_time) {
       try {
-        // Resolve clinic timezone + the clinic's dentist.
-        const [{ data: settings }, { data: dentist }] = await Promise.all([
-          db.from("clinic_settings").select("timezone").eq("clinic_id", profile.clinic_id).maybeSingle(),
-          db.from("profiles").select("id").eq("clinic_id", profile.clinic_id).eq("role", "dentist").limit(1).single(),
-        ]);
+        // Resolve clinic timezone.
+        const { data: settings } = await db
+          .from("clinic_settings")
+          .select("timezone")
+          .eq("clinic_id", profile.clinic_id)
+          .maybeSingle();
         const tz = (settings as { timezone?: string } | null)?.timezone ?? "Asia/Kolkata";
-        const dentistId = (dentist as { id: string } | null)?.id;
+
+        // Resolve dentist: use the caller's own profile if they are a dentist,
+        // otherwise find the clinic's dentist.
+        let dentistId: string | null = null;
+        if (profile.role === "dentist") {
+          dentistId = profile.id;
+        } else {
+          const { data: dentist } = await db
+            .from("profiles")
+            .select("id")
+            .eq("clinic_id", profile.clinic_id)
+            .eq("role", "dentist")
+            .limit(1)
+            .single();
+          dentistId = (dentist as { id: string } | null)?.id ?? null;
+        }
 
         if (dentistId) {
           const localDateTime = `${parsed.data.due_date}T${parsed.data.due_time}:00`;
@@ -206,27 +222,29 @@ export async function createFollowUp(
           const { data: appt } = await db
             .from("appointments")
             .insert({
-              clinic_id: profile.clinic_id,
-              patient_id: parsed.data.patient_id,
-              dentist_id: dentistId,
-              scheduled_at: scheduledAtUtc,
+              clinic_id:        profile.clinic_id,
+              patient_id:       parsed.data.patient_id,
+              dentist_id:       dentistId,
+              scheduled_at:     scheduledAtUtc,
               duration_minutes: 30,
-              source: "other",
-              status: "scheduled",
-              notes: `Auto-created from follow-up${parsed.data.notes ? `: ${parsed.data.notes}` : ""}`,
-              created_by: profile.id,
+              source:           "other",
+              status:           "scheduled",
+              notes:            `Follow-up appointment${parsed.data.notes ? `: ${parsed.data.notes}` : ""}`,
+              created_by:       profile.id,
             })
             .select("id")
             .single();
 
           const newApptId = (appt as { id: string } | null)?.id;
           if (newApptId) {
+            // Link the new appointment back to the follow-up record.
             await db
               .from("follow_ups")
               .update({ appointment_id: newApptId, updated_at: new Date().toISOString() })
               .eq("id", followUp.id);
             followUp.appointment_id = newApptId;
-            revalidatePath(`/${profile.role}/appointments`);
+            revalidatePath(`/dentist/appointments`);
+            revalidatePath(`/dentist/appointments/${newApptId}`);
           }
         }
       } catch (apptErr) {
@@ -236,6 +254,12 @@ export async function createFollowUp(
 
     revalidatePath("/dentist/follow-ups");
     revalidatePath(`/dentist/patients/${parsed.data.patient_id}`);
+
+    // Revalidate the source appointment page so the new follow-up appears
+    // immediately when the dentist navigates back.
+    if (parsed.data.appointment_id) {
+      revalidatePath(`/dentist/appointments/${parsed.data.appointment_id}`);
+    }
 
     return { data: followUp, error: null };
   } catch (err) {
@@ -351,6 +375,9 @@ export async function updateFollowUp(
     revalidatePath("/dentist/follow-ups");
     revalidatePath(`/dentist/follow-ups/${id}`);
     revalidatePath(`/dentist/patients/${followUp.patient_id}`);
+    if (followUp.appointment_id) {
+      revalidatePath(`/dentist/appointments/${followUp.appointment_id}`);
+    }
 
     return { data: followUp, error: null };
   } catch (err) {
@@ -496,6 +523,47 @@ export async function getFollowUp(
 }
 
 // =============================================================================
+// getFollowUpsForAppointment — all follow-ups linked to a specific appointment
+// =============================================================================
+
+export async function getFollowUpsForAppointment(
+  appointmentId: string
+): Promise<ActionResult<FollowUpWithRelations[]>> {
+  try {
+    if (!appointmentId) return { data: [], error: null };
+
+    const { db, profile } = await resolveSession();
+    if (!profile) return { data: null, error: "Unauthorized" };
+    if (profile.role === "patient") {
+      return { data: null, error: "Forbidden" };
+    }
+
+    const { data, error } = await db
+      .from("follow_ups")
+      .select(
+        "*, " +
+        "patient:patients(id, name, phone), " +
+        "appointment:appointments(id, scheduled_at, status), " +
+        "treatment:treatments(id, treatment_type, status)"
+      )
+      .eq("appointment_id", appointmentId)
+      .eq("clinic_id", profile.clinic_id)
+      .is("deleted_at", null)
+      .order("due_date", { ascending: true });
+
+    if (error) {
+      console.error("[getFollowUpsForAppointment]", error);
+      return { data: null, error: "Failed to fetch follow-ups." };
+    }
+
+    return { data: (data ?? []) as FollowUpWithRelations[], error: null };
+  } catch (err) {
+    console.error("[getFollowUpsForAppointment] unexpected:", err);
+    return { data: null, error: "Unexpected error" };
+  }
+}
+
+// =============================================================================
 // getFollowUpsForPatient — all follow-ups for a patient profile (staff)
 // =============================================================================
 
@@ -546,6 +614,10 @@ export async function getAllFollowUps(filters?: {
   status?: "pending" | "completed" | "cancelled" | "overdue";
   page?: number;
   limit?: number;
+  /** Free-text search across patient name + phone. */
+  search?: string;
+  dateFrom?: string;
+  dateTo?: string;
 }): Promise<ActionResult<{ followUps: FollowUpWithRelations[]; total: number }>> {
   try {
     const { db, profile } = await resolveSession();
@@ -559,7 +631,31 @@ export async function getAllFollowUps(filters?: {
     const from  = (page - 1) * limit;
     const to    = from + limit - 1;
 
+    // Guard: inverted date range → return empty immediately
+    if (filters?.dateFrom && filters?.dateTo && filters.dateFrom > filters.dateTo) {
+      return { data: { followUps: [], total: 0 }, error: null };
+    }
+
     const today = await todayForClinic(db, profile.clinic_id);
+    const search = filters?.search?.trim();
+
+    // Free-text search: resolve matching patient IDs first.
+    // Mirrors the pattern from getAppointments().
+    let patientIdFilter: string[] | null = null;
+    if (search && search.length >= 1) {
+      const escaped = search.replace(/[%,()]/g, " ");
+      const { data: matched } = await db
+        .from("patients")
+        .select("id")
+        .eq("clinic_id", profile.clinic_id)
+        .is("deleted_at", null)
+        .or(`name.ilike.%${escaped}%,phone.ilike.%${escaped}%`)
+        .limit(500);
+      patientIdFilter = ((matched ?? []) as { id: string }[]).map((p) => p.id);
+      if (patientIdFilter.length === 0) {
+        return { data: { followUps: [], total: 0 }, error: null };
+      }
+    }
 
     let query = db
       .from("follow_ups")
@@ -578,6 +674,13 @@ export async function getAllFollowUps(filters?: {
     } else if (filters?.status) {
       query = query.eq("status", filters.status);
     }
+
+    if (patientIdFilter !== null) {
+      query = query.in("patient_id", patientIdFilter);
+    }
+
+    if (filters?.dateFrom) query = query.gte("due_date", filters.dateFrom);
+    if (filters?.dateTo)   query = query.lte("due_date", filters.dateTo);
 
     const { data, error, count } = await query
       .order("due_date", { ascending: true })

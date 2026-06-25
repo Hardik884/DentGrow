@@ -178,7 +178,14 @@ export function AppointmentForm({
   }
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} noValidate>
+    <form onSubmit={handleSubmit(onSubmit, (errs) => {
+      // Scroll to first invalid field
+      const first = document.querySelector("[aria-invalid='true'], [data-invalid='true']");
+      if (first) {
+        first.scrollIntoView({ behavior: "smooth", block: "center" });
+        (first as HTMLElement).focus?.();
+      }
+    })} noValidate>
       {errors.root && (
         <div
           role="alert"

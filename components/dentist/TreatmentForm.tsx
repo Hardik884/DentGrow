@@ -320,14 +320,16 @@ export function TreatmentForm({ treatmentId, appointmentId, patientId, onSuccess
                       aria-label="Dosage"
                       {...register(`medications.${index}.dosage` as never)}
                     />
-                    <Select
-                      aria-label="Number"
-                      {...register(`medications.${index}.number` as never, { valueAsNumber: true })}
-                    >
-                      <option value={1}>1</option>
-                      <option value={2}>2</option>
-                      <option value={3}>3</option>
-                    </Select>
+                    {/* Number — same increment/decrement stepper as Days */}
+                    <NumberCounter
+                      defaultValue={(fieldItem as { number?: number }).number ?? 1}
+                      min={1}
+                      max={3}
+                      onStep={(next) => {
+                        setValue(`medications.${index}.number` as never, next as never, { shouldValidate: true });
+                      }}
+                      ariaLabel="Number of units"
+                    />
 
                     {/* Days — increment counter */}
                     <DaysCounter
@@ -472,6 +474,59 @@ function DaysCounter({
         onClick={() => commit(value + 1)}
         className="h-9 w-8 flex items-center justify-center rounded-r-lg border border-[#E4E4E7] text-[#52525B] hover:bg-[#F4F4F5]"
         aria-label="Increase days"
+      >
+        <Plus className="h-3 w-3" />
+      </button>
+    </div>
+  );
+}
+
+/** Generic increment/decrement stepper — identical styling to DaysCounter. */
+function NumberCounter({
+  defaultValue,
+  min,
+  max,
+  onStep,
+  ariaLabel,
+}: {
+  defaultValue: number;
+  min: number;
+  max: number;
+  onStep: (next: number) => void;
+  ariaLabel?: string;
+}) {
+  const [value, setValue] = useState<number>(defaultValue || min);
+
+  function commit(next: number) {
+    const clamped = Math.min(max, Math.max(min, next));
+    setValue(clamped);
+    onStep(clamped);
+  }
+
+  return (
+    <div className="flex items-center">
+      <button
+        type="button"
+        onClick={() => commit(value - 1)}
+        className="h-9 w-8 flex items-center justify-center rounded-l-lg border border-[#E4E4E7] text-[#52525B] hover:bg-[#F4F4F5]"
+        aria-label={`Decrease ${ariaLabel ?? "value"}`}
+      >
+        <Minus className="h-3 w-3" />
+      </button>
+      <input
+        type="number"
+        min={min}
+        max={max}
+        value={value}
+        onChange={(e) => commit(parseInt(e.target.value, 10) || min)}
+        className="h-9 w-12 text-center text-sm border-y border-[#E4E4E7] outline-none focus:ring-1 focus:ring-[#18181B] text-[#09090B] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+        aria-label={ariaLabel ?? "value"}
+      />
+      <button
+        type="button"
+        onClick={() => commit(value + 1)}
+        className="h-9 w-8 flex items-center justify-center rounded-r-lg border border-[#E4E4E7] text-[#52525B] hover:bg-[#F4F4F5]"
+        aria-label={`Increase ${ariaLabel ?? "value"}`}
       >
         <Plus className="h-3 w-3" />
       </button>

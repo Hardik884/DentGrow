@@ -64,7 +64,26 @@ export function PatientForm({ patient, successRedirect, cancelHref }: PatientFor
   }
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-0" noValidate>
+    <form onSubmit={handleSubmit(onSubmit, (errs) => {
+      // Scroll to the first invalid field
+      const firstKey = Object.keys(errs)[0];
+      if (firstKey) {
+        const el = document.getElementById(
+          firstKey === "name" ? "name" :
+          firstKey === "phone" ? "phone" :
+          firstKey === "date_of_birth" ? "dob" :
+          firstKey === "gender" ? "gender" :
+          firstKey === "address" ? "address" :
+          firstKey === "emergency_contact_name" ? "ec-name" :
+          firstKey === "emergency_contact_phone" ? "ec-phone" :
+          firstKey === "notes" ? "notes" : firstKey
+        );
+        if (el) {
+          el.scrollIntoView({ behavior: "smooth", block: "center" });
+          el.focus();
+        }
+      }
+    })} className="space-y-0" noValidate>
       {/* Root error */}
       {errors.root && (
         <div
