@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createServerClient } from "@/lib/supabase/server";
-import { getTodayInTimezone } from "@/lib/utils";
+import { getTodayInTimezone, zonedDateToUTC } from "@/lib/utils";
 import {
   CreateFollowUpSchema,
   UpdateFollowUpSchema,
@@ -182,10 +182,62 @@ export async function createFollowUp(
       return { data: null, error: "Failed to create follow-up." };
     }
 
+    const followUp = data as FollowUp;
+
+    // ── Auto-create an appointment from the follow-up date + time ──────────
+    // When a time is supplied, schedule a real appointment so the follow-up
+    // shows up on the calendar/queue. The new appointment is linked back to
+    // the follow-up via appointment_id. Failure here is non-fatal — the
+    // follow-up still exists; we just report the issue.
+    if (parsed.data.due_time && !parsed.data.appointment_id) {
+      try {
+        // Resolve clinic timezone + the clinic's dentist.
+        const [{ data: settings }, { data: dentist }] = await Promise.all([
+          db.from("clinic_settings").select("timezone").eq("clinic_id", profile.clinic_id).maybeSingle(),
+          db.from("profiles").select("id").eq("clinic_id", profile.clinic_id).eq("role", "dentist").limit(1).single(),
+        ]);
+        const tz = (settings as { timezone?: string } | null)?.timezone ?? "Asia/Kolkata";
+        const dentistId = (dentist as { id: string } | null)?.id;
+
+        if (dentistId) {
+          const localDateTime = `${parsed.data.due_date}T${parsed.data.due_time}:00`;
+          const scheduledAtUtc = zonedDateToUTC(localDateTime, tz).toISOString();
+
+          const { data: appt } = await db
+            .from("appointments")
+            .insert({
+              clinic_id: profile.clinic_id,
+              patient_id: parsed.data.patient_id,
+              dentist_id: dentistId,
+              scheduled_at: scheduledAtUtc,
+              duration_minutes: 30,
+              source: "other",
+              status: "scheduled",
+              notes: `Auto-created from follow-up${parsed.data.notes ? `: ${parsed.data.notes}` : ""}`,
+              created_by: profile.id,
+            })
+            .select("id")
+            .single();
+
+          const newApptId = (appt as { id: string } | null)?.id;
+          if (newApptId) {
+            await db
+              .from("follow_ups")
+              .update({ appointment_id: newApptId, updated_at: new Date().toISOString() })
+              .eq("id", followUp.id);
+            followUp.appointment_id = newApptId;
+            revalidatePath(`/${profile.role}/appointments`);
+          }
+        }
+      } catch (apptErr) {
+        console.error("[createFollowUp] auto-appointment failed:", apptErr);
+      }
+    }
+
     revalidatePath("/dentist/follow-ups");
     revalidatePath(`/dentist/patients/${parsed.data.patient_id}`);
 
-    return { data: data as FollowUp, error: null };
+    return { data: followUp, error: null };
   } catch (err) {
     console.error("[createFollowUp] unexpected:", err);
     return { data: null, error: "Unexpected error" };

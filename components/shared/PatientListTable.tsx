@@ -5,7 +5,6 @@ import { EmptyState } from "@/components/ui/empty-state";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { Button } from "@/components/ui/button";
 import { Users } from "lucide-react";
 import type { Patient } from "@/types";
 
@@ -46,14 +45,7 @@ export function PatientListTable({
           description={
             search
               ? `No patients match "${search}". Try a different search.`
-              : "Add your first patient to get started."
-          }
-          action={
-            !search ? (
-              <Button asChild size="sm">
-                <Link href={`${baseHref}/patients/new`}>Add Patient</Link>
-              </Button>
-            ) : undefined
+              : "Patients are added through portal sign-up or when booking an appointment."
           }
         />
       </div>

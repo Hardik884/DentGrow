@@ -67,7 +67,7 @@ export async function PatientPaymentsTab({
           valueClass="text-green-600"
         />
         <SummaryCard
-          label="Outstanding"
+          label="Remaining"
           value={formatCurrency(balance)}
           valueClass={balance > 0 ? "text-red-600" : "text-green-600"}
         />

@@ -23,7 +23,6 @@ import {
   Plus,
   CheckCircle2,
   AlertCircle,
-  Clock,
   Users,
 } from "lucide-react";
 import type { TreatmentStatus } from "@/types";
@@ -210,7 +209,7 @@ export async function PortalDashboard() {
         <StatCard
           label="Balance"
           value={balance > 0 ? formatCurrency(balance) : "All clear"}
-          sub={balance > 0 ? "Outstanding" : "No balance due"}
+          sub={balance > 0 ? "Remaining" : "No balance due"}
           icon={<CreditCard className="h-3.5 w-3.5" aria-hidden />}
           href="/portal/payments"
           accent={balance > 0 ? "danger" : "success"}
@@ -425,7 +424,7 @@ export async function PortalDashboard() {
                   </div>
                   <div>
                     <p className="text-sm font-semibold text-[#16A34A]">
-                      No outstanding balance
+                      No remaining balance
                     </p>
                     <p className="text-xs text-[#71717A] mt-0.5">
                       Your account is all clear.
@@ -440,7 +439,7 @@ export async function PortalDashboard() {
                     </div>
                     <div className="flex-1">
                       <p className="text-xs font-medium text-[#71717A]">
-                        Outstanding Balance
+                        Remaining Balance
                       </p>
                       <p className="text-2xl font-semibold text-[#09090B] tracking-tight tabular-nums mt-0.5">
                         {formatCurrency(balance)}

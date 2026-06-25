@@ -11,7 +11,6 @@ import {
   CalendarDays,
   ListOrdered,
   Stethoscope,
-  CreditCard,
   Bell,
   BarChart3,
   Settings,
@@ -30,7 +29,6 @@ const DENTIST_NAV: NavItem[] = [
   { label: "Appointments", href: "/dentist/appointments", icon: CalendarDays },
   { label: "Queue",        href: "/dentist/queue",        icon: ListOrdered },
   { label: "Treatments",   href: "/dentist/treatments",   icon: Stethoscope },
-  { label: "Payments",     href: "/dentist/payments",     icon: CreditCard },
   { label: "Follow-Ups",   href: "/dentist/follow-ups",   icon: Bell },
   { label: "Analytics",    href: "/dentist/analytics",    icon: BarChart3 },
   { label: "Settings",     href: "/dentist/settings",     icon: Settings },
@@ -41,7 +39,6 @@ const RECEPTIONIST_NAV: NavItem[] = [
   { label: "Patients",     href: "/receptionist/patients",     icon: Users },
   { label: "Appointments", href: "/receptionist/appointments", icon: CalendarDays },
   { label: "Queue",        href: "/receptionist/queue",        icon: ListOrdered },
-  { label: "Payments",     href: "/receptionist/payments",     icon: CreditCard },
 ];
 
 interface DashboardSidebarProps {

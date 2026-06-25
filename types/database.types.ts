@@ -257,6 +257,7 @@ export type Database = {
           cost: number;
           status: "planned" | "in_progress" | "completed" | "cancelled";
           performed_at: string | null;
+          medications: Json;
           deleted_at: string | null;
           created_at: string;
           updated_at: string;
@@ -273,6 +274,7 @@ export type Database = {
           cost?: number;
           status?: "planned" | "in_progress" | "completed" | "cancelled";
           performed_at?: string | null;
+          medications?: Json;
           deleted_at?: string | null;
           created_at?: string;
           updated_at?: string;
@@ -289,10 +291,49 @@ export type Database = {
           cost?: number;
           status?: "planned" | "in_progress" | "completed" | "cancelled";
           performed_at?: string | null;
+          medications?: Json;
           deleted_at?: string | null;
           created_at?: string;
           updated_at?: string;
           created_by?: string | null;
+        };
+      };
+      treatment_documents: {
+        Row: {
+          id: string;
+          clinic_id: string;
+          patient_id: string;
+          treatment_id: string;
+          file_name: string;
+          file_path: string;
+          file_type: string;
+          file_size: number | null;
+          created_by: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          clinic_id: string;
+          patient_id: string;
+          treatment_id: string;
+          file_name: string;
+          file_path: string;
+          file_type: string;
+          file_size?: number | null;
+          created_by?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          clinic_id?: string;
+          patient_id?: string;
+          treatment_id?: string;
+          file_name?: string;
+          file_path?: string;
+          file_type?: string;
+          file_size?: number | null;
+          created_by?: string | null;
+          created_at?: string;
         };
       };
       payments: {

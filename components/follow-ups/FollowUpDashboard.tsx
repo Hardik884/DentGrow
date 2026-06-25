@@ -53,11 +53,10 @@ export async function FollowUpDashboard() {
     <div className="space-y-8">
 
       {/* ── KPI Cards ── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard label="Pending"   value={stats.pending}   description="Total open follow-ups" variant="default" />
-        <StatCard label="Overdue"   value={stats.overdue}   description="Past due date"         variant="error" />
-        <StatCard label="Upcoming"  value={stats.upcoming}  description="Due today or later"    variant="warning" />
-        <StatCard label="Completed" value={stats.completed} description="All time"              variant="success" />
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <StatCard label="Pending"   value={stats.pending}   description="Open follow-ups (incl. overdue)" variant="default" />
+        <StatCard label="Overdue"   value={stats.overdue}   description="Past due date"                  variant="error" />
+        <StatCard label="Completed" value={stats.completed} description="All time"                        variant="success" />
       </div>
 
       {/* ── Overdue Follow-Ups ── */}
@@ -67,9 +66,9 @@ export async function FollowUpDashboard() {
         </Section>
       )}
 
-      {/* ── Upcoming Follow-Ups ── */}
+      {/* ── Pending Follow-Ups (non-overdue) ── */}
       {upcoming.length > 0 && (
-        <Section title="Upcoming" href="/dentist/follow-ups?status=pending" count={stats.upcoming}>
+        <Section title="Pending" href="/dentist/follow-ups?status=pending" count={stats.upcoming}>
           <FollowUpTable followUps={upcoming} today={today} />
         </Section>
       )}

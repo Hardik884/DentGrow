@@ -999,13 +999,13 @@ export async function getAppointment(
     const appointmentQuery = isPatient
       ? db
           .from("appointments")
-          .select("*, patient:patients(id, name, phone)")
+          .select("*, patient:patients(id, name, phone, date_of_birth, gender)")
           .eq("id", id)
           .is("deleted_at", null)
           .single()
       : db
           .from("appointments")
-          .select("*, patient:patients(id, name, phone)")
+          .select("*, patient:patients(id, name, phone, date_of_birth, gender)")
           .eq("id", id)
           .eq("clinic_id", profile.clinic_id)
           .is("deleted_at", null)
@@ -1054,6 +1054,8 @@ export async function getAppointments(filters?: {
   timeFrom?: string;
   /** Optional time-of-day upper bound, e.g. "18:00". Combined with dateTo. */
   timeTo?: string;
+  /** Free-text search across patient name + phone. */
+  search?: string;
   patientId?: string;
   page?: number;
   limit?: number;
@@ -1067,9 +1069,17 @@ export async function getAppointments(filters?: {
     const from = (page - 1) * limit;
     const to = from + limit - 1;
 
+    // Guard: an inverted date range (from > to) can never match — return empty
+    // rather than running an impossible query.
+    if (filters?.dateFrom && filters?.dateTo && filters.dateFrom > filters.dateTo) {
+      return { data: { appointments: [], total: 0 }, error: null };
+    }
+
+    const search = filters?.search?.trim();
+
     let query = db
       .from("appointments")
-      .select("*, patient:patients(id, name, phone)", { count: "exact" })
+      .select("*, patient:patients(id, name, phone, date_of_birth, gender)", { count: "exact" })
       .is("deleted_at", null)
       .order("scheduled_at", { ascending: false });
 
@@ -1090,6 +1100,25 @@ export async function getAppointments(filters?: {
       query = query.eq("patient_id", portalPatientId);
     } else {
       query = query.eq("clinic_id", profile.clinic_id);
+
+      // Free-text search on patient name or phone: resolve matching patient
+      // ids first, then filter appointments by them. This is reliable across
+      // PostgREST versions and avoids embedded-resource filter ambiguity.
+      if (search && search.length >= 1) {
+        const escaped = search.replace(/[%,()]/g, " ");
+        const { data: matched } = await db
+          .from("patients")
+          .select("id")
+          .eq("clinic_id", profile.clinic_id)
+          .is("deleted_at", null)
+          .or(`name.ilike.%${escaped}%,phone.ilike.%${escaped}%`)
+          .limit(500);
+        const ids = ((matched ?? []) as { id: string }[]).map((p) => p.id);
+        if (ids.length === 0) {
+          return { data: { appointments: [], total: 0 }, error: null };
+        }
+        query = query.in("patient_id", ids);
+      }
     }
 
     if (filters?.status) query = query.eq("status", filters.status);

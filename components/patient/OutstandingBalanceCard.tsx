@@ -19,7 +19,7 @@ export async function OutstandingBalanceCard() {
       <div className="border border-[#BBF7D0] rounded-xl p-4 bg-[#F0FDF4] flex items-center gap-3">
         <CheckCircle2 className="h-5 w-5 text-[#16A34A] shrink-0" aria-hidden />
         <div>
-          <p className="text-sm font-medium text-[#16A34A]">No outstanding balance</p>
+          <p className="text-sm font-medium text-[#16A34A]">No remaining balance</p>
           <p className="text-xs text-[#71717A] mt-0.5">Your account is all clear.</p>
         </div>
       </div>
@@ -31,7 +31,7 @@ export async function OutstandingBalanceCard() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <AlertCircle className="h-4 w-4 text-[#DC2626] shrink-0" aria-hidden />
-          <p className="text-sm font-medium text-[#DC2626]">Outstanding Balance</p>
+          <p className="text-sm font-medium text-[#DC2626]">Remaining Balance</p>
         </div>
         <p className="text-lg font-semibold text-[#09090B]">{formatCurrency(balance)}</p>
       </div>

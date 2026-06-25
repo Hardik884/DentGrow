@@ -97,6 +97,7 @@ export function FollowUpForm({
     initialData?.follow_up_type ?? ""
   );
   const [dueDate, setDueDate]   = useState(initialData?.due_date ?? "");
+  const [dueTime, setDueTime]   = useState("");
   const [notes, setNotes]       = useState(initialData?.notes ?? "");
   const [formError, setFormError]     = useState<string | null>(null);
   const [formSuccess, setFormSuccess] = useState<string | null>(null);
@@ -259,6 +260,7 @@ export function FollowUpForm({
       appointment_id: selectedAppointmentId || undefined,
       treatment_id:   selectedTreatmentId   || undefined,
       due_date:       dueDate,
+      due_time:       dueTime || undefined,
       notes:          notes.trim() || undefined,
     };
 
@@ -452,8 +454,8 @@ export function FollowUpForm({
               )}
             </Field>
 
-            {/* ── Follow-Up Type + Due Date (side by side on md+) ── */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* ── Follow-Up Type + Due Date + Due Time ── */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <Field label="Follow-Up Type" htmlFor="follow_up_type" required>
                 <Select
                   id="follow_up_type"
@@ -479,6 +481,21 @@ export function FollowUpForm({
                   disabled={isReadOnly}
                   placeholder="Select due date"
                   clearable
+                />
+              </Field>
+
+              <Field
+                label="Time"
+                htmlFor="due_time"
+                hint={followUpId ? undefined : "An appointment is auto-created at this time"}
+              >
+                <Input
+                  id="due_time"
+                  type="time"
+                  value={dueTime}
+                  onChange={(e) => setDueTime(e.target.value)}
+                  disabled={isReadOnly}
+                  aria-label="Follow-up time"
                 />
               </Field>
             </div>

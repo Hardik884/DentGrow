@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import {
@@ -12,7 +12,12 @@ import {
   type Treatment,
   TreatmentStatus,
 } from "@/types";
-import { createTreatment, getTreatment, updateTreatment } from "@/actions/treatments";
+import {
+  createTreatment,
+  getTreatment,
+  updateTreatment,
+  uploadTreatmentDocument,
+} from "@/actions/treatments";
 import { TREATMENT_STATUS_LABELS } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
@@ -21,7 +26,7 @@ import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { SkeletonCard } from "@/components/ui/skeleton";
 import { CalendarPicker } from "@/components/ui/calendar-picker";
-import { Lock, Eye } from "lucide-react";
+import { Eye, Plus, Trash2, Minus, Upload, FileText, Pill } from "lucide-react";
 
 interface TreatmentFormProps {
   treatmentId?: string;
@@ -30,15 +35,14 @@ interface TreatmentFormProps {
   onSuccess?: (treatment: Treatment) => void;
 }
 
+const ACCEPTED_FILE_TYPES = ".pdf,.jpg,.jpeg,.png";
+const ACCEPTED_MIME = ["application/pdf", "image/jpeg", "image/jpg", "image/png"];
+
 /** Split an ISO datetime string into its "YYYY-MM-DD" and "HH:mm" parts. */
 function splitDatetime(iso: string | null | undefined): { date: string; time: string } {
   if (!iso) return { date: "", time: "" };
-  // Handle both "YYYY-MM-DDTHH:mm" and full ISO strings
   const [datePart, timePart = ""] = iso.split("T");
-  return {
-    date: datePart ?? "",
-    time: timePart.slice(0, 5), // "HH:mm"
-  };
+  return { date: datePart ?? "", time: timePart.slice(0, 5) };
 }
 
 export function TreatmentForm({ treatmentId, appointmentId, patientId, onSuccess }: TreatmentFormProps) {
@@ -47,9 +51,12 @@ export function TreatmentForm({ treatmentId, appointmentId, patientId, onSuccess
   const [serverError, setServerError] = useState<string | null>(null);
   const [loading, setLoading] = useState(!!treatmentId);
 
-  // Separate controlled state for the date picker fields
   const [performedDate, setPerformedDate] = useState("");
   const [performedTime, setPerformedTime] = useState("");
+
+  // Files staged for upload (uploaded after the treatment is created)
+  const [files, setFiles] = useState<File[]>([]);
+  const [fileError, setFileError] = useState<string | null>(null);
 
   const isEdit = !!treatmentId;
   const schema = isEdit ? UpdateTreatmentSchema : CreateTreatmentSchema;
@@ -58,6 +65,7 @@ export function TreatmentForm({ treatmentId, appointmentId, patientId, onSuccess
     register,
     handleSubmit,
     reset,
+    control,
     setValue,
     formState: { errors },
   } = useForm<CreateTreatmentInput | UpdateTreatmentInput>({
@@ -66,12 +74,17 @@ export function TreatmentForm({ treatmentId, appointmentId, patientId, onSuccess
       appointment_id: appointmentId ?? "",
       patient_id: patientId ?? "",
       treatment_type: "",
-      internal_notes: "",
       patient_visible_notes: "",
+      medications: [],
       cost: 0,
       status: TreatmentStatus.PLANNED,
       performed_at: undefined,
     },
+  });
+
+  const { fields, append, remove } = useFieldArray({
+    control,
+    name: "medications" as never,
   });
 
   useEffect(() => {
@@ -83,8 +96,10 @@ export function TreatmentForm({ treatmentId, appointmentId, patientId, onSuccess
         setPerformedTime(time);
         reset({
           treatment_type: result.data.treatment_type,
-          internal_notes: result.data.internal_notes ?? "",
           patient_visible_notes: result.data.patient_visible_notes ?? "",
+          medications: Array.isArray(result.data.medications)
+            ? (result.data.medications as CreateTreatmentInput["medications"])
+            : [],
           cost: Number(result.data.cost),
           status: result.data.status,
           performed_at: date ? (time ? `${date}T${time}` : date) : undefined,
@@ -94,7 +109,6 @@ export function TreatmentForm({ treatmentId, appointmentId, patientId, onSuccess
     });
   }, [treatmentId, reset]);
 
-  // Keep performed_at in sync whenever the date or time changes
   function handleDateChange(date: string) {
     setPerformedDate(date);
     const combined = date ? (performedTime ? `${date}T${performedTime}` : date) : undefined;
@@ -106,6 +120,39 @@ export function TreatmentForm({ treatmentId, appointmentId, patientId, onSuccess
     setPerformedTime(time);
     const combined = performedDate ? (time ? `${performedDate}T${time}` : performedDate) : undefined;
     setValue("performed_at" as keyof CreateTreatmentInput, combined);
+  }
+
+  function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    setFileError(null);
+    const selected = Array.from(e.target.files ?? []);
+    const valid: File[] = [];
+    for (const f of selected) {
+      if (!ACCEPTED_MIME.includes(f.type)) {
+        setFileError(`"${f.name}" is not a supported type (PDF, JPG, JPEG, PNG).`);
+        continue;
+      }
+      if (f.size > 10 * 1024 * 1024) {
+        setFileError(`"${f.name}" exceeds the 10 MB limit.`);
+        continue;
+      }
+      valid.push(f);
+    }
+    setFiles((prev) => [...prev, ...valid]);
+    e.target.value = "";
+  }
+
+  async function uploadFiles(tId: string, pId: string) {
+    for (const file of files) {
+      const fd = new FormData();
+      fd.append("file", file);
+      fd.append("treatment_id", tId);
+      fd.append("patient_id", pId);
+      const res = await uploadTreatmentDocument(fd);
+      if (res.error) {
+        // Surface but don't abort the rest — treatment is already created
+        setFileError(`Upload failed for "${file.name}": ${res.error}`);
+      }
+    }
   }
 
   function onSubmit(values: CreateTreatmentInput | UpdateTreatmentInput) {
@@ -121,12 +168,20 @@ export function TreatmentForm({ treatmentId, appointmentId, patientId, onSuccess
       }
 
       if (result.data) {
+        // Upload any staged documents now that we have a treatment id
+        if (files.length > 0) {
+          await uploadFiles(result.data.id, result.data.patient_id);
+        }
+
         if (onSuccess) {
           onSuccess(result.data);
         } else {
-          const target = patientId
-            ? `/dentist/patients/${patientId}/treatments`
-            : "/dentist/treatments";
+          // After creation, route to the appointment details page.
+          const target = appointmentId
+            ? `/dentist/appointments/${appointmentId}`
+            : patientId
+              ? `/dentist/patients/${patientId}/treatments`
+              : "/dentist/treatments";
           router.push(target);
           router.refresh();
         }
@@ -135,6 +190,9 @@ export function TreatmentForm({ treatmentId, appointmentId, patientId, onSuccess
   }
 
   if (loading) return <SkeletonCard className="h-64" />;
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const medErrors = (errors as any).medications as Array<Record<string, { message?: string }>> | undefined;
 
   return (
     <form onSubmit={handleSubmit(onSubmit)}>
@@ -157,7 +215,6 @@ export function TreatmentForm({ treatmentId, appointmentId, patientId, onSuccess
             </>
           )}
 
-          {/* performed_at is managed via controlled state above; register keeps it in RHF */}
           <input type="hidden" {...register("performed_at" as keyof CreateTreatmentInput)} />
 
           <Field label="Treatment Type" htmlFor="treatment-type" required error={(errors as Record<string, {message?: string}>).treatment_type?.message}>
@@ -213,31 +270,91 @@ export function TreatmentForm({ treatmentId, appointmentId, patientId, onSuccess
           </Field>
         </div>
 
-        {/* Notes */}
+        {/* ── Medications ─────────────────────────────────────── */}
         <div className="px-6 py-5 space-y-4">
-          <div>
-            <h3 className="text-sm font-semibold text-[#09090B]">Notes</h3>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-1.5">
+              <Pill className="h-4 w-4 text-[#71717A]" aria-hidden />
+              <h3 className="text-sm font-semibold text-[#09090B]">Medications</h3>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => append({ name: "", dosage: "", number: 1, days: 1 })}
+            >
+              <Plus className="h-3.5 w-3.5" aria-hidden />
+              Add Medicine
+            </Button>
           </div>
 
-          <Field
-            label="Internal Notes"
-            htmlFor="internal-notes"
-            hint="Dentist only — never shown to the patient"
-          >
-            <div className="space-y-1.5">
-              <div className="flex items-center gap-1.5 text-xs text-[#71717A]">
-                <Lock className="h-3 w-3" aria-hidden />
-                <span>Dentist-only</span>
+          {fields.length === 0 ? (
+            <p className="text-xs text-[#A1A1AA]">No medications added.</p>
+          ) : (
+            <div className="space-y-3">
+              {/* Column headers (md+) */}
+              <div className="hidden md:grid grid-cols-[1fr_120px_90px_130px_36px] gap-2 text-xs font-medium text-[#71717A] uppercase tracking-wide px-1">
+                <span>Medicine</span>
+                <span>Dosage</span>
+                <span>Number</span>
+                <span>Days</span>
+                <span className="sr-only">Remove</span>
               </div>
-              <Textarea
-                id="internal-notes"
-                {...register("internal_notes")}
-                rows={4}
-                placeholder="Clinical observations, dentist-only details…"
-              />
-            </div>
-          </Field>
 
+              {fields.map((fieldItem, index) => {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const current = (fieldItem as any) as { days?: number };
+                return (
+                  <div
+                    key={fieldItem.id}
+                    className="grid grid-cols-1 md:grid-cols-[1fr_120px_90px_130px_36px] gap-2 items-start"
+                  >
+                    <Input
+                      placeholder=""
+                      aria-label="Medicine name"
+                      {...register(`medications.${index}.name` as never)}
+                      hasError={!!medErrors?.[index]?.name}
+                    />
+                    <Input
+                      placeholder="od"
+                      aria-label="Dosage"
+                      {...register(`medications.${index}.dosage` as never)}
+                    />
+                    <Select
+                      aria-label="Number"
+                      {...register(`medications.${index}.number` as never, { valueAsNumber: true })}
+                    >
+                      <option value={1}>1</option>
+                      <option value={2}>2</option>
+                      <option value={3}>3</option>
+                    </Select>
+
+                    {/* Days — increment counter */}
+                    <DaysCounter
+                      defaultValue={current.days ?? 1}
+                      onStep={(next) => {
+                        setValue(`medications.${index}.days` as never, next as never, { shouldValidate: true });
+                      }}
+                    />
+
+                    <button
+                      type="button"
+                      onClick={() => remove(index)}
+                      className="h-9 w-9 flex items-center justify-center rounded-lg border border-[#E4E4E7] text-[#DC2626] hover:bg-[#FEF2F2] transition-colors"
+                      aria-label="Remove medicine"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* ── Notes (patient-visible only) ────────────────────── */}
+        <div className="px-6 py-5 space-y-4">
+          <h3 className="text-sm font-semibold text-[#09090B]">Notes</h3>
           <Field
             label="Patient-Visible Notes"
             htmlFor="patient-notes"
@@ -258,6 +375,50 @@ export function TreatmentForm({ treatmentId, appointmentId, patientId, onSuccess
           </Field>
         </div>
 
+        {/* ── Documents ───────────────────────────────────────── */}
+        <div className="px-6 py-5 space-y-3">
+          <div className="flex items-center gap-1.5">
+            <Upload className="h-4 w-4 text-[#71717A]" aria-hidden />
+            <h3 className="text-sm font-semibold text-[#09090B]">Documents</h3>
+          </div>
+          <p className="text-xs text-[#71717A]">Attach PDF, JPG, JPEG or PNG files (max 10 MB each).</p>
+
+          <label className="inline-flex items-center gap-2 px-3 py-2 text-sm border border-dashed border-[#D4D4D8] rounded-lg cursor-pointer hover:bg-[#FAFAFA] text-[#52525B]">
+            <Upload className="h-3.5 w-3.5" aria-hidden />
+            Choose files
+            <input
+              type="file"
+              accept={ACCEPTED_FILE_TYPES}
+              multiple
+              onChange={handleFileSelect}
+              className="hidden"
+            />
+          </label>
+
+          {fileError && <p className="text-xs text-[#DC2626]">{fileError}</p>}
+
+          {files.length > 0 && (
+            <ul className="space-y-1.5">
+              {files.map((f, i) => (
+                <li key={`${f.name}-${i}`} className="flex items-center justify-between gap-2 text-sm bg-[#FAFAFA] border border-[#E4E4E7] rounded-lg px-3 py-2">
+                  <span className="flex items-center gap-2 min-w-0">
+                    <FileText className="h-3.5 w-3.5 text-[#A1A1AA] shrink-0" aria-hidden />
+                    <span className="truncate text-[#52525B]">{f.name}</span>
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setFiles((prev) => prev.filter((_, idx) => idx !== i))}
+                    className="text-[#A1A1AA] hover:text-[#DC2626] shrink-0"
+                    aria-label={`Remove ${f.name}`}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+
         <div className="px-6 py-4 bg-[#FAFAFA] flex items-center justify-end gap-3">
           <Button variant="outline" size="sm" type="button" onClick={() => router.back()}>
             Cancel
@@ -268,5 +429,52 @@ export function TreatmentForm({ treatmentId, appointmentId, patientId, onSuccess
         </div>
       </div>
     </form>
+  );
+}
+
+/** Days field with +/- increment buttons. Value is pushed to RHF via onStep. */
+function DaysCounter({
+  defaultValue,
+  onStep,
+}: {
+  defaultValue: number;
+  onStep: (next: number) => void;
+}) {
+  const [value, setValue] = useState<number>(defaultValue || 1);
+
+  function commit(next: number) {
+    const clamped = Math.min(365, Math.max(1, next));
+    setValue(clamped);
+    onStep(clamped);
+  }
+
+  return (
+    <div className="flex items-center">
+      <button
+        type="button"
+        onClick={() => commit(value - 1)}
+        className="h-9 w-8 flex items-center justify-center rounded-l-lg border border-[#E4E4E7] text-[#52525B] hover:bg-[#F4F4F5]"
+        aria-label="Decrease days"
+      >
+        <Minus className="h-3 w-3" />
+      </button>
+      <input
+        type="number"
+        min={1}
+        max={365}
+        value={value}
+        onChange={(e) => commit(parseInt(e.target.value, 10) || 1)}
+        className="h-9 w-12 text-center text-sm border-y border-[#E4E4E7] outline-none focus:ring-1 focus:ring-[#18181B] text-[#09090B] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+        aria-label="Days"
+      />
+      <button
+        type="button"
+        onClick={() => commit(value + 1)}
+        className="h-9 w-8 flex items-center justify-center rounded-r-lg border border-[#E4E4E7] text-[#52525B] hover:bg-[#F4F4F5]"
+        aria-label="Increase days"
+      >
+        <Plus className="h-3 w-3" />
+      </button>
+    </div>
   );
 }

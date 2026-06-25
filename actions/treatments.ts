@@ -5,11 +5,17 @@ import { createServerClient } from "@/lib/supabase/server";
 import {
   CreateTreatmentSchema,
   UpdateTreatmentSchema,
+  CreateTreatmentDocumentSchema,
   type ActionResult,
   type Treatment,
+  type TreatmentDocument,
   type TreatmentForReceptionist,
   type TreatmentForPatient,
 } from "@/types";
+import {
+  DOCUMENT_BUCKET,
+  ALLOWED_DOCUMENT_TYPES,
+} from "@/lib/treatments/constants";
 
 /**
  * Treatment Server Actions
@@ -102,9 +108,11 @@ export async function createTreatment(
         treatment_type: parsed.data.treatment_type,
         internal_notes: parsed.data.internal_notes ?? null,
         patient_visible_notes: parsed.data.patient_visible_notes ?? null,
+        medications: parsed.data.medications ?? [],
         cost: parsed.data.cost,
         status: parsed.data.status ?? "planned",
         performed_at: performedAt,
+        created_by: profile.id,
       })
       .select()
       .single();
@@ -158,6 +166,7 @@ export async function updateTreatment(
     if (parsed.data.treatment_type !== undefined) updates.treatment_type = parsed.data.treatment_type;
     if (parsed.data.internal_notes !== undefined) updates.internal_notes = parsed.data.internal_notes ?? null;
     if (parsed.data.patient_visible_notes !== undefined) updates.patient_visible_notes = parsed.data.patient_visible_notes ?? null;
+    if (parsed.data.medications !== undefined) updates.medications = parsed.data.medications ?? [];
     if (parsed.data.cost !== undefined) updates.cost = parsed.data.cost;
     if (parsed.data.status !== undefined) updates.status = parsed.data.status;
     if (parsed.data.performed_at !== undefined) {
@@ -480,6 +489,260 @@ export async function getPatientTreatments(
     return { data: (data ?? []) as TreatmentForPatient[], error: null };
   } catch (err) {
     console.error("[getPatientTreatments] unexpected:", err);
+    return { data: null, error: "Unexpected error" };
+  }
+}
+
+// =============================================================================
+// createTreatmentDocument — dentist only — records metadata after upload
+// =============================================================================
+
+export async function createTreatmentDocument(
+  input: unknown
+): Promise<ActionResult<TreatmentDocument>> {
+  try {
+    const parsed = CreateTreatmentDocumentSchema.safeParse(input);
+    if (!parsed.success) {
+      return { data: null, error: parsed.error.errors[0]?.message ?? "Invalid input" };
+    }
+
+    if (!ALLOWED_DOCUMENT_TYPES.includes(parsed.data.file_type as (typeof ALLOWED_DOCUMENT_TYPES)[number])) {
+      return { data: null, error: "Unsupported file type. Allowed: PDF, JPG, JPEG, PNG." };
+    }
+
+    const { db, profile } = await resolveSession();
+    if (!profile) return { data: null, error: "Unauthorized" };
+    if (profile.role !== "dentist") {
+      return { data: null, error: "Forbidden: only dentists can upload documents." };
+    }
+
+    // Verify the treatment belongs to this clinic + resolve patient_id
+    const { data: treatment } = await db
+      .from("treatments")
+      .select("id, patient_id")
+      .eq("id", parsed.data.treatment_id)
+      .eq("clinic_id", profile.clinic_id)
+      .is("deleted_at", null)
+      .single();
+
+    if (!treatment) {
+      return { data: null, error: "Treatment not found." };
+    }
+
+    const { data, error } = await db
+      .from("treatment_documents")
+      .insert({
+        clinic_id: profile.clinic_id,
+        patient_id: parsed.data.patient_id,
+        treatment_id: parsed.data.treatment_id,
+        file_name: parsed.data.file_name,
+        file_path: parsed.data.file_path,
+        file_type: parsed.data.file_type,
+        file_size: parsed.data.file_size ?? null,
+        created_by: profile.id,
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error("[createTreatmentDocument]", error);
+      return { data: null, error: "Failed to save document." };
+    }
+
+    revalidatePath(`/dentist/treatments/${parsed.data.treatment_id}`);
+    revalidatePath(`/dentist/patients/${parsed.data.patient_id}/treatments`);
+
+    return { data: data as TreatmentDocument, error: null };
+  } catch (err) {
+    console.error("[createTreatmentDocument] unexpected:", err);
+    return { data: null, error: "Unexpected error" };
+  }
+}
+
+// =============================================================================
+// uploadTreatmentDocument — dentist only — uploads file + records metadata
+//
+// Accepts FormData: { file, treatment_id, patient_id }. The file is uploaded
+// to the patient-documents bucket using the user's session (RLS-scoped to the
+// dentist's clinic folder) and the metadata row is then inserted.
+// =============================================================================
+
+export async function uploadTreatmentDocument(
+  formData: FormData
+): Promise<ActionResult<TreatmentDocument>> {
+  try {
+    const file = formData.get("file");
+    const treatmentId = String(formData.get("treatment_id") ?? "");
+    const patientId = String(formData.get("patient_id") ?? "");
+
+    if (!(file instanceof File) || !treatmentId || !patientId) {
+      return { data: null, error: "Missing file or identifiers." };
+    }
+
+    if (!ALLOWED_DOCUMENT_TYPES.includes(file.type as (typeof ALLOWED_DOCUMENT_TYPES)[number])) {
+      return { data: null, error: "Unsupported file type. Allowed: PDF, JPG, JPEG, PNG." };
+    }
+
+    // 10 MB cap
+    if (file.size > 10 * 1024 * 1024) {
+      return { data: null, error: "File too large (max 10 MB)." };
+    }
+
+    const { db, profile } = await resolveSession();
+    if (!profile) return { data: null, error: "Unauthorized" };
+    if (profile.role !== "dentist") {
+      return { data: null, error: "Forbidden: only dentists can upload documents." };
+    }
+
+    // Verify treatment belongs to this clinic
+    const { data: treatment } = await db
+      .from("treatments")
+      .select("id")
+      .eq("id", treatmentId)
+      .eq("clinic_id", profile.clinic_id)
+      .is("deleted_at", null)
+      .single();
+    if (!treatment) return { data: null, error: "Treatment not found." };
+
+    // Build clinic-isolated storage path: {clinic}/{patient}/{treatment}/{ts-name}
+    const safeName = file.name.replace(/[^\w.\-]/g, "_");
+    const path = `${profile.clinic_id}/${patientId}/${treatmentId}/${Date.now()}-${safeName}`;
+
+    const { error: uploadErr } = await db.storage
+      .from(DOCUMENT_BUCKET)
+      .upload(path, file, { contentType: file.type, upsert: false });
+
+    if (uploadErr) {
+      console.error("[uploadTreatmentDocument] upload:", uploadErr);
+      return { data: null, error: "Failed to upload file." };
+    }
+
+    const { data, error } = await db
+      .from("treatment_documents")
+      .insert({
+        clinic_id: profile.clinic_id,
+        patient_id: patientId,
+        treatment_id: treatmentId,
+        file_name: file.name,
+        file_path: path,
+        file_type: file.type,
+        file_size: file.size,
+        created_by: profile.id,
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error("[uploadTreatmentDocument] metadata:", error);
+      // Best-effort cleanup of the orphaned object
+      await db.storage.from(DOCUMENT_BUCKET).remove([path]);
+      return { data: null, error: "Failed to save document metadata." };
+    }
+
+    revalidatePath(`/dentist/treatments/${treatmentId}`);
+
+    return { data: data as TreatmentDocument, error: null };
+  } catch (err) {
+    console.error("[uploadTreatmentDocument] unexpected:", err);
+    return { data: null, error: "Unexpected error" };
+  }
+}
+
+// =============================================================================
+// getTreatmentDocuments — staff + patient (role-aware), with signed URLs
+// =============================================================================
+
+export async function getTreatmentDocuments(
+  treatmentId: string
+): Promise<ActionResult<Array<TreatmentDocument & { url: string | null }>>> {
+  try {
+    if (!treatmentId) return { data: [], error: null };
+
+    const { db, profile } = await resolveSession();
+    if (!profile) return { data: null, error: "Unauthorized" };
+
+    let query = db
+      .from("treatment_documents")
+      .select("*")
+      .eq("treatment_id", treatmentId)
+      .order("created_at", { ascending: false });
+
+    // Staff scope by clinic; patient path relies on RLS (auth_patient_id()).
+    if (profile.role !== "patient") {
+      query = query.eq("clinic_id", profile.clinic_id);
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+      console.error("[getTreatmentDocuments]", error);
+      return { data: null, error: "Failed to fetch documents." };
+    }
+
+    const docs = (data ?? []) as TreatmentDocument[];
+
+    // Generate short-lived signed URLs for each document (private bucket).
+    const withUrls = await Promise.all(
+      docs.map(async (doc) => {
+        const { data: signed } = await db.storage
+          .from(DOCUMENT_BUCKET)
+          .createSignedUrl(doc.file_path, 60 * 60); // 1 hour
+        return { ...doc, url: signed?.signedUrl ?? null };
+      })
+    );
+
+    return { data: withUrls, error: null };
+  } catch (err) {
+    console.error("[getTreatmentDocuments] unexpected:", err);
+    return { data: null, error: "Unexpected error" };
+  }
+}
+
+// =============================================================================
+// deleteTreatmentDocument — dentist only — removes metadata + storage object
+// =============================================================================
+
+export async function deleteTreatmentDocument(
+  id: string
+): Promise<ActionResult<null>> {
+  try {
+    if (!id) return { data: null, error: "Document ID is required" };
+
+    const { db, profile } = await resolveSession();
+    if (!profile) return { data: null, error: "Unauthorized" };
+    if (profile.role !== "dentist") {
+      return { data: null, error: "Forbidden: only dentists can delete documents." };
+    }
+
+    const { data: doc } = await db
+      .from("treatment_documents")
+      .select("id, file_path, treatment_id, patient_id")
+      .eq("id", id)
+      .eq("clinic_id", profile.clinic_id)
+      .single();
+
+    if (!doc) return { data: null, error: "Document not found." };
+
+    // Remove the storage object (best-effort) then the metadata row.
+    await db.storage.from(DOCUMENT_BUCKET).remove([doc.file_path]);
+
+    const { error } = await db
+      .from("treatment_documents")
+      .delete()
+      .eq("id", id)
+      .eq("clinic_id", profile.clinic_id);
+
+    if (error) {
+      console.error("[deleteTreatmentDocument]", error);
+      return { data: null, error: "Failed to delete document." };
+    }
+
+    revalidatePath(`/dentist/treatments/${doc.treatment_id}`);
+    revalidatePath(`/dentist/patients/${doc.patient_id}/treatments`);
+
+    return { data: null, error: null };
+  } catch (err) {
+    console.error("[deleteTreatmentDocument] unexpected:", err);
     return { data: null, error: "Unexpected error" };
   }
 }

@@ -29,6 +29,7 @@ export type Appointment     = Database["public"]["Tables"]["appointments"]["Row"
 export type AppointmentHistory = Database["public"]["Tables"]["appointment_history"]["Row"];
 export type QueueEntry      = Database["public"]["Tables"]["queue_entries"]["Row"];
 export type Treatment       = Database["public"]["Tables"]["treatments"]["Row"];
+export type TreatmentDocument = Database["public"]["Tables"]["treatment_documents"]["Row"];
 export type Payment         = Database["public"]["Tables"]["payments"]["Row"];
 export type FollowUp        = Database["public"]["Tables"]["follow_ups"]["Row"];
 export type PatientPortalLink = Database["public"]["Tables"]["patient_portal_links"]["Row"];
@@ -160,11 +161,11 @@ export type PatientFull = Patient & {
 };
 
 export type AppointmentWithPatient = Appointment & {
-  patient: Pick<Patient, "id" | "name" | "phone">;
+  patient: Pick<Patient, "id" | "name" | "phone" | "date_of_birth" | "gender">;
 };
 
 export type AppointmentWithHistory = Appointment & {
-  patient: Pick<Patient, "id" | "name" | "phone">;
+  patient: Pick<Patient, "id" | "name" | "phone" | "date_of_birth" | "gender">;
   history: AppointmentHistory[];
 };
 
@@ -263,12 +264,28 @@ export type UpdateAppointmentStatusInput = z.infer<typeof UpdateAppointmentStatu
 
 // ── Treatment ─────────────────────────────────────────────────────────────────
 
+/**
+ * Medication line item attached to a treatment.
+ *  - name:   medicine name (free text)
+ *  - dosage: frequency, e.g. "od", "bd", "tds"
+ *  - number: units per intake — restricted to 1, 2 or 3
+ *  - days:   number of days to take it (increment counter)
+ */
+export const MedicationSchema = z.object({
+  name: z.string().min(1, "Medicine name is required").max(120),
+  dosage: z.string().max(40).optional().or(z.literal("")),
+  number: z.coerce.number().int().min(1).max(3),
+  days: z.coerce.number().int().min(1).max(365),
+});
+export type MedicationInput = z.infer<typeof MedicationSchema>;
+
 export const CreateTreatmentSchema = z.object({
   appointment_id: z.string().uuid(),
   patient_id: z.string().uuid(),
   treatment_type: z.string().min(1).max(100),
   internal_notes: z.string().max(5000).optional(),
   patient_visible_notes: z.string().max(2000).optional(),
+  medications: z.array(MedicationSchema).max(30).optional(),
   cost: z.number().nonnegative(),
   status: z.enum(["planned", "in_progress", "completed", "cancelled"]).default("planned"),
   // Accepts "YYYY-MM-DD", "YYYY-MM-DDTHH:mm", or full ISO strings.
@@ -279,6 +296,17 @@ export type CreateTreatmentInput = z.infer<typeof CreateTreatmentSchema>;
 
 export const UpdateTreatmentSchema = CreateTreatmentSchema.omit({ appointment_id: true, patient_id: true }).partial();
 export type UpdateTreatmentInput = z.infer<typeof UpdateTreatmentSchema>;
+
+/** Metadata recorded after a file is uploaded to storage */
+export const CreateTreatmentDocumentSchema = z.object({
+  treatment_id: z.string().uuid(),
+  patient_id: z.string().uuid(),
+  file_name: z.string().min(1).max(255),
+  file_path: z.string().min(1).max(500),
+  file_type: z.string().min(1).max(120),
+  file_size: z.number().int().nonnegative().optional(),
+});
+export type CreateTreatmentDocumentInput = z.infer<typeof CreateTreatmentDocumentSchema>;
 
 // ── Payment ───────────────────────────────────────────────────────────────────
 
@@ -312,6 +340,8 @@ export const CreateFollowUpSchema = z.object({
     invalid_type_error: "Invalid follow-up type",
   }),
   due_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Valid due date is required"),
+  /** Time-of-day for the auto-created appointment, "HH:MM" (24h). */
+  due_time: z.string().regex(/^\d{2}:\d{2}$/, "Valid time is required (HH:MM)").optional().or(z.literal("")).transform(v => v || undefined),
   appointment_id: z.string().uuid().optional().or(z.literal("")).transform(v => v || undefined),
   treatment_id: z.string().uuid().optional().or(z.literal("")).transform(v => v || undefined),
   notes: z.string().max(1000).optional(),

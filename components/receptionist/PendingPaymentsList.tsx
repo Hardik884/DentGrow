@@ -12,7 +12,7 @@ export async function PendingPaymentsList() {
     <div className="bg-white border border-[#E4E4E7] rounded-xl overflow-hidden">
       <div className="px-5 py-4 border-b border-[#E4E4E7] flex items-center justify-between">
         <div>
-          <h2 className="text-sm font-semibold text-[#09090B]">Outstanding Balances</h2>
+          <h2 className="text-sm font-semibold text-[#09090B]">Remaining Balances</h2>
           <p className="text-xs text-[#71717A] mt-0.5">Patients with unpaid amounts</p>
         </div>
         {pendingPatients.length > 0 && (
@@ -30,7 +30,7 @@ export async function PendingPaymentsList() {
         <EmptyState
           icon={<CreditCard className="h-5 w-5" aria-hidden />}
           title="All clear"
-          description="No outstanding balances."
+          description="No remaining balances."
         />
       ) : (
         <div className="divide-y divide-[#F4F4F5]">

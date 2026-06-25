@@ -111,12 +111,17 @@ export default async function AnalyticsDashboardPage({
   return (
     <div className="space-y-8">
 
+      {/* ── INSIGHTS (top of dashboard) ─────────────────────────────── */}
+      <section>
+        <h2 className="text-xs font-semibold text-[#71717A] uppercase tracking-wider mb-3">Insights</h2>
+        <AnalyticsInsightsPanel insights={insights} />
+      </section>
+
       {/* ── APPOINTMENTS ─────────────────────────────────────────────── */}
       <section>
         <h2 className="text-sm font-semibold text-[#09090B] mb-3 uppercase tracking-wider text-[#71717A]">Appointments</h2>
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <MetricCard label="Total" value={summary.totalAppointments} />
-          <MetricCard label="Today" value={summary.appointmentsToday} accent="blue" />
           <MetricCard label="Completed" value={summary.completedAppointments} accent="green" />
           <MetricCard label="Cancelled" value={summary.cancelledAppointments} accent="red" />
           <MetricCard label="No-Shows" value={summary.noShowAppointments} accent="amber" />
@@ -167,7 +172,7 @@ export default async function AnalyticsDashboardPage({
             accent="blue"
           />
           <MetricCard
-            label="Outstanding"
+            label="Remaining"
             value={formatCurrency(summary.outstandingBalances)}
             accent={summary.outstandingBalances > 0 ? "red" : "default"}
           />
@@ -259,25 +264,6 @@ export default async function AnalyticsDashboardPage({
             <FollowUpAnalyticsChart data={followUpAnalytics.completedOverTime} />
           </ChartCard>
         </div>
-      </section>
-
-      {/* ── QUEUE ───────────────────────────────────────────────────── */}
-      <section>
-        <h2 className="text-xs font-semibold text-[#71717A] uppercase tracking-wider mb-3">Queue</h2>
-        <div className="grid grid-cols-3 gap-3">
-          <MetricCard
-            label="Avg Wait Time"
-            value={summary.avgWaitTimeMinutes > 0 ? `${summary.avgWaitTimeMinutes} min` : "—"}
-          />
-          <MetricCard label="Served Today" value={summary.patientsServedToday} accent="green" />
-          <MetricCard label="Currently Waiting" value={summary.currentWaitingCount} accent="blue" />
-        </div>
-      </section>
-
-      {/* ── INSIGHTS ────────────────────────────────────────────────── */}
-      <section>
-        <h2 className="text-xs font-semibold text-[#71717A] uppercase tracking-wider mb-3">Insights</h2>
-        <AnalyticsInsightsPanel insights={insights} />
       </section>
 
     </div>

@@ -86,7 +86,7 @@ export async function PatientProfileHeader({ patientId, role, baseHref }: Patien
         />
         {isDentist && (
           <StatCell
-            label="Outstanding"
+            label="Remaining"
             value={formatCurrency(patient.outstandingBalance)}
             valueClass={patient.outstandingBalance > 0 ? "text-[#DC2626]" : "text-[#16A34A]"}
           />

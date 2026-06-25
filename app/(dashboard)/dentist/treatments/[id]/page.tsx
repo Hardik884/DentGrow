@@ -8,13 +8,14 @@ import { StatusBadge } from "@/components/shared/StatusBadge";
 import { getTreatment } from "@/actions/treatments";
 import { getPatientPayments } from "@/actions/payments";
 import { PaymentList } from "@/components/dentist/PaymentList";
+import { TreatmentDocumentsSection } from "@/components/dentist/TreatmentDocumentsSection";
 import {
   formatDate,
   formatDateTime,
   formatCurrency,
   TREATMENT_STATUS_LABELS,
 } from "@/lib/utils";
-import type { TreatmentStatus, Payment } from "@/types";
+import type { TreatmentStatus, Payment, MedicationInput } from "@/types";
 
 export const metadata: Metadata = {
   title: "Treatment — DentGrow",
@@ -35,7 +36,7 @@ const STATUS_VARIANT_MAP: Record<TreatmentStatus, "default" | "info" | "success"
  * /dentist/treatments/[id]
  *
  * Treatment detail + edit — dentist view.
- * Shows both internal_notes and patient_visible_notes.
+ * Shows patient-visible notes, medications, and uploaded documents.
  * Includes payment summary for this treatment's appointment.
  */
 export default async function DentistTreatmentDetailPage({ params }: Props) {
@@ -46,6 +47,9 @@ export default async function DentistTreatmentDetailPage({ params }: Props) {
   if (!result.data) notFound();
 
   const treatment = result.data;
+  const medications: MedicationInput[] = Array.isArray(treatment.medications)
+    ? (treatment.medications as unknown as MedicationInput[])
+    : [];
 
   // Fetch appointment-level payments for payment summary
   const paymentsResult = await getPatientPayments(treatment.patient_id);
@@ -94,14 +98,33 @@ export default async function DentistTreatmentDetailPage({ params }: Props) {
           <Detail label="Added" value={formatDate(treatment.created_at)} />
         </div>
 
-        {treatment.internal_notes && (
+        {medications.length > 0 && (
           <div className="pt-4 border-t">
-            <p className="text-xs font-medium text-yellow-700 uppercase tracking-wide mb-1">
-              Internal Notes (dentist only)
+            <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">
+              Medications
             </p>
-            <p className="text-sm text-gray-700 whitespace-pre-wrap bg-yellow-50 border border-yellow-100 rounded p-3">
-              {treatment.internal_notes}
-            </p>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-left text-xs text-gray-400 uppercase tracking-wide">
+                    <th className="py-1 pr-4">Medicine</th>
+                    <th className="py-1 pr-4">Dosage</th>
+                    <th className="py-1 pr-4">Number</th>
+                    <th className="py-1">Days</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {medications.map((m, i) => (
+                    <tr key={i}>
+                      <td className="py-1.5 pr-4 text-gray-900">{m.name}</td>
+                      <td className="py-1.5 pr-4 text-gray-600">{m.dosage || "—"}</td>
+                      <td className="py-1.5 pr-4 text-gray-600">{m.number}</td>
+                      <td className="py-1.5 text-gray-600">{m.days}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
 
@@ -116,6 +139,9 @@ export default async function DentistTreatmentDetailPage({ params }: Props) {
           </div>
         )}
       </div>
+
+      {/* ── Documents ─────────────────────────────────────────── */}
+      <TreatmentDocumentsSection treatmentId={id} />
 
       {/* ── Edit form ─────────────────────────────────────────── */}
       <TreatmentForm

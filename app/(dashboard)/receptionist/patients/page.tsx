@@ -4,7 +4,7 @@ import { PatientListTable } from "@/components/shared/PatientListTable";
 import { getPatients } from "@/actions/patients";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Plus, Search, X } from "lucide-react";
+import { Search, X } from "lucide-react";
 import Link from "next/link";
 
 export const metadata: Metadata = {
@@ -28,7 +28,6 @@ export default async function ReceptionistPatientsPage({ searchParams }: Props) 
       <PageHeader
         title="Patients"
         description={`${total} patient${total !== 1 ? "s" : ""} in total`}
-        action={{ label: "Add Patient", href: "/receptionist/patients/new", icon: <Plus className="h-3.5 w-3.5" /> }}
       />
 
       <form method="GET" className="flex gap-2 mb-5">

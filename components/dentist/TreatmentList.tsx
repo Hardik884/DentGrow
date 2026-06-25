@@ -87,12 +87,6 @@ export function TreatmentList({
             </div>
 
             {/* Notes */}
-            {isDentist && full.internal_notes && (
-              <div className="text-xs text-gray-500 bg-yellow-50 border border-yellow-100 rounded px-2 py-1">
-                <span className="font-medium text-yellow-700">Internal: </span>
-                {full.internal_notes}
-              </div>
-            )}
             {treatment.patient_visible_notes && (
               <p className="text-xs text-gray-500">{treatment.patient_visible_notes}</p>
             )}

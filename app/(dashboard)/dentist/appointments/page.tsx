@@ -16,6 +16,7 @@ export const metadata: Metadata = {
 interface Props {
   searchParams: Promise<{
     status?: string;
+    search?: string;
     dateFrom?: string;
     dateTo?: string;
     timeFrom?: string;
@@ -75,6 +76,7 @@ export default async function DentistAppointmentsPage({ searchParams }: Props) {
   // is a cached read — not a new network round-trip.
   const result = await getAppointments({
     status: params.status as AppointmentStatus | undefined,
+    search: params.search,
     dateFrom: params.dateFrom,
     dateTo: params.dateTo,
     timeFrom: params.timeFrom,
@@ -89,6 +91,7 @@ export default async function DentistAppointmentsPage({ searchParams }: Props) {
   function pageHref(p: number) {
     const sp = new URLSearchParams();
     if (params.status)   sp.set("status",   params.status);
+    if (params.search)   sp.set("search",   params.search);
     if (params.dateFrom) sp.set("dateFrom", params.dateFrom);
     if (params.dateTo)   sp.set("dateTo",   params.dateTo);
     if (params.timeFrom) sp.set("timeFrom", params.timeFrom);
@@ -108,6 +111,7 @@ export default async function DentistAppointmentsPage({ searchParams }: Props) {
       <Suspense>
         <AppointmentFilters
           today={today}
+          initialSearch={params.search ?? ""}
           initialStatus={params.status ?? ""}
           initialDateFrom={params.dateFrom ?? today}
           initialDateTo={params.dateTo ?? today}

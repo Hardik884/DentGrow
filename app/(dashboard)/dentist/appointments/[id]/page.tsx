@@ -6,9 +6,10 @@ import { AppointmentStatusControl } from "@/components/dentist/AppointmentStatus
 import { AppointmentHistoryTimeline } from "@/components/shared/AppointmentHistoryTimeline";
 import { AppointmentStatusBadge } from "@/components/shared/AppointmentStatusBadge";
 import { AppointmentTreatmentsSection } from "@/components/dentist/AppointmentTreatmentsSection";
+import { AppointmentPaymentsSection } from "@/components/dentist/AppointmentPaymentsSection";
 import { getAppointment } from "@/actions/appointments";
 import { createServerClient } from "@/lib/supabase/server";
-import { formatDateTimeInTimezone, APPOINTMENT_SOURCE_LABELS } from "@/lib/utils";
+import { formatDateTimeInTimezone, APPOINTMENT_SOURCE_LABELS, calculateAge } from "@/lib/utils";
 import type { AppointmentStatus } from "@/types";
 
 export const metadata: Metadata = {
@@ -38,6 +39,10 @@ export default async function DentistAppointmentDetailPage({ params }: Props) {
   if (!result.data) notFound();
 
   const appt = result.data;
+  const age = calculateAge(appt.patient.date_of_birth);
+  const genderLabel = appt.patient.gender
+    ? appt.patient.gender.charAt(0).toUpperCase() + appt.patient.gender.slice(1)
+    : "—";
 
   // Fetch clinic timezone for correct date/time display and for RescheduleModal
   const supabase = await createServerClient();
@@ -93,22 +98,22 @@ export default async function DentistAppointmentDetailPage({ params }: Props) {
 
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-4 border-t">
           <Detail label="Date & Time" value={formatDateTimeInTimezone(appt.scheduled_at, clinicTimezone)} />
-          <Detail label="Duration" value={`${appt.duration_minutes} min`} />
           <Detail
             label="Source"
             value={APPOINTMENT_SOURCE_LABELS[appt.source] ?? appt.source}
           />
-          <Detail label="Patient" value={appt.patient.name} />
+          <Detail label="Age" value={age !== null ? `${age} years` : "—"} />
+          <Detail label="Gender" value={genderLabel} />
         </div>
 
-        {appt.notes && (
-          <div className="pt-4 border-t">
-            <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">
-              Notes
-            </p>
-            <p className="text-sm text-gray-700">{appt.notes}</p>
-          </div>
-        )}
+        <div className="pt-4 border-t">
+          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">
+            Appointment Notes
+          </p>
+          <p className="text-sm text-gray-700">
+            {appt.notes ? appt.notes : <span className="text-gray-400">No notes</span>}
+          </p>
+        </div>
       </div>
 
       {/* ── Status controls ──────────────────────────────────── */}
@@ -123,6 +128,30 @@ export default async function DentistAppointmentDetailPage({ params }: Props) {
       <AppointmentTreatmentsSection
         appointmentId={appt.id}
         patientId={appt.patient_id}
+      />
+
+      {/* ── New Follow-Up action ─────────────────────────────── */}
+      <div className="bg-white border rounded-lg p-4 flex items-center justify-between gap-3">
+        <div>
+          <h3 className="font-semibold text-gray-900">Follow-Up</h3>
+          <p className="text-xs text-gray-500 mt-0.5">
+            Schedule a follow-up for this patient. A new appointment is created
+            automatically from the follow-up date and time.
+          </p>
+        </div>
+        <Link
+          href={`/dentist/follow-ups/new?patient=${appt.patient_id}&patientName=${encodeURIComponent(appt.patient.name)}&appointment=${appt.id}`}
+          className="px-3 py-1.5 text-sm font-medium bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors whitespace-nowrap"
+        >
+          + New Follow-Up
+        </Link>
+      </div>
+
+      {/* ── Payments for this appointment ───────────────────── */}
+      <AppointmentPaymentsSection
+        appointmentId={appt.id}
+        patientId={appt.patient_id}
+        patientName={appt.patient.name}
       />
 
       {/* ── Audit history timeline ───────────────────────────── */}

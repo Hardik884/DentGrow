@@ -120,6 +120,40 @@ export async function recordPayment(
 }
 
 // =============================================================================
+// getPaymentsForAppointment — payments linked to a specific appointment (staff)
+// =============================================================================
+
+export async function getPaymentsForAppointment(
+  appointmentId: string
+): Promise<ActionResult<Payment[]>> {
+  try {
+    if (!appointmentId) return { data: [], error: null };
+
+    const { db, profile } = await resolveSession();
+    if (!profile) return { data: null, error: "Unauthorized" };
+    if (profile.role === "patient") return { data: null, error: "Forbidden" };
+
+    const { data, error } = await db
+      .from("payments")
+      .select("*")
+      .eq("appointment_id", appointmentId)
+      .eq("clinic_id", profile.clinic_id)
+      .is("deleted_at", null)
+      .order("payment_date", { ascending: false });
+
+    if (error) {
+      console.error("[getPaymentsForAppointment]", error);
+      return { data: null, error: "Failed to fetch payments." };
+    }
+
+    return { data: (data ?? []) as Payment[], error: null };
+  } catch (err) {
+    console.error("[getPaymentsForAppointment] unexpected:", err);
+    return { data: null, error: "Unexpected error" };
+  }
+}
+
+// =============================================================================
 // getPatientPayments — full ledger for a patient (staff path)
 // =============================================================================
 

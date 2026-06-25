@@ -6,17 +6,26 @@
  * Client component filter bar for the dentist appointments list.
  * Drives URL search params so the Server Component re-fetches filtered data.
  *
+ * Behaviour:
+ *   - Filters are staged locally and only applied when "Apply Filters" is
+ *     clicked (search-as-you-type is debounced and applies on Enter / button).
+ *   - From / To dates are independent: a future From date is allowed. When
+ *     From > To the server returns no results (handled server-side).
+ *
  * Filters:
+ *   - Search (patient name or phone)
  *   - Status (select)
  *   - Date From / Date To (CalendarPicker)
- *   - Time From / Time To (time selects — optional, refines within the date range)
+ *   - Time From / Time To (time selects)
  */
 
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { useCallback, useState, useTransition } from "react";
 import { CalendarPicker } from "@/components/ui/calendar-picker";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { SlidersHorizontal, X } from "lucide-react";
+import { SlidersHorizontal, X, Search } from "lucide-react";
 
 const STATUS_OPTIONS = [
   { value: "", label: "All statuses" },
@@ -46,6 +55,7 @@ const TIME_OPTIONS: { value: string; label: string }[] = (() => {
 
 interface AppointmentFiltersProps {
   today: string;
+  initialSearch?: string;
   initialStatus?: string;
   initialDateFrom?: string;
   initialDateTo?: string;
@@ -53,8 +63,15 @@ interface AppointmentFiltersProps {
   initialTimeTo?: string;
 }
 
+const selectClasses = cn(
+  "w-full h-9 px-3 py-2 text-sm border border-[#E4E4E7] rounded-lg bg-white",
+  "outline-none focus:ring-2 focus:ring-[#18181B] focus:ring-offset-1 focus:border-[#18181B]",
+  "text-[#09090B] cursor-pointer"
+);
+
 export function AppointmentFilters({
   today,
+  initialSearch = "",
   initialStatus = "",
   initialDateFrom = "",
   initialDateTo = "",
@@ -64,45 +81,35 @@ export function AppointmentFilters({
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const [, startTransition] = useTransition();
+  const [isPending, startTransition] = useTransition();
 
-  const [status, setStatus] = useState(initialStatus);
+  const [search, setSearch]     = useState(initialSearch);
+  const [status, setStatus]     = useState(initialStatus);
   const [dateFrom, setDateFrom] = useState(initialDateFrom || today);
-  const [dateTo, setDateTo] = useState(initialDateTo || today);
+  const [dateTo, setDateTo]     = useState(initialDateTo || today);
   const [timeFrom, setTimeFrom] = useState(initialTimeFrom);
-  const [timeTo, setTimeTo] = useState(initialTimeTo);
+  const [timeTo, setTimeTo]     = useState(initialTimeTo);
 
-  const apply = useCallback(
-    (overrides: Partial<{
-      status: string;
-      dateFrom: string;
-      dateTo: string;
-      timeFrom: string;
-      timeTo: string;
-    }> = {}) => {
-      const s = overrides.status ?? status;
-      const df = overrides.dateFrom ?? dateFrom;
-      const dt = overrides.dateTo ?? dateTo;
-      const tf = overrides.timeFrom ?? timeFrom;
-      const tt = overrides.timeTo ?? timeTo;
+  // Only writes to the URL when explicitly invoked (button / Enter / reset).
+  const apply = useCallback(() => {
+    const sp = new URLSearchParams(searchParams.toString());
+    sp.delete("page"); // reset to page 1 on filter change
 
-      const sp = new URLSearchParams(searchParams.toString());
-      sp.delete("page"); // reset to page 1 on filter change
+    const s = search.trim();
+    if (s) sp.set("search", s); else sp.delete("search");
+    if (status) sp.set("status", status); else sp.delete("status");
+    if (dateFrom) sp.set("dateFrom", dateFrom); else sp.delete("dateFrom");
+    if (dateTo) sp.set("dateTo", dateTo); else sp.delete("dateTo");
+    if (timeFrom) sp.set("timeFrom", timeFrom); else sp.delete("timeFrom");
+    if (timeTo) sp.set("timeTo", timeTo); else sp.delete("timeTo");
 
-      if (s) sp.set("status", s); else sp.delete("status");
-      if (df) sp.set("dateFrom", df); else sp.delete("dateFrom");
-      if (dt) sp.set("dateTo", dt); else sp.delete("dateTo");
-      if (tf) sp.set("timeFrom", tf); else sp.delete("timeFrom");
-      if (tt) sp.set("timeTo", tt); else sp.delete("timeTo");
-
-      startTransition(() => {
-        router.push(`${pathname}?${sp.toString()}`);
-      });
-    },
-    [status, dateFrom, dateTo, timeFrom, timeTo, router, pathname, searchParams]
-  );
+    startTransition(() => {
+      router.push(`${pathname}?${sp.toString()}`);
+    });
+  }, [search, status, dateFrom, dateTo, timeFrom, timeTo, router, pathname, searchParams]);
 
   function handleReset() {
+    setSearch("");
     setStatus("");
     setDateFrom(today);
     setDateTo(today);
@@ -113,7 +120,10 @@ export function AppointmentFilters({
     });
   }
 
+  const rangeInvalid = !!dateFrom && !!dateTo && dateFrom > dateTo;
+
   const hasActiveFilters =
+    !!search ||
     !!status ||
     dateFrom !== today ||
     dateTo !== today ||
@@ -138,6 +148,20 @@ export function AppointmentFilters({
         )}
       </div>
 
+      {/* Search */}
+      <div className="relative max-w-md">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#A1A1AA]" aria-hidden />
+        <Input
+          type="search"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); apply(); } }}
+          placeholder="Search by patient name or phone…"
+          aria-label="Search appointments by patient name or phone"
+          className="pl-9"
+        />
+      </div>
+
       {/* Filter controls */}
       <div className="flex flex-wrap gap-4 items-end">
         {/* Status */}
@@ -148,15 +172,8 @@ export function AppointmentFilters({
           <select
             id="appt-status"
             value={status}
-            onChange={(e) => {
-              setStatus(e.target.value);
-              apply({ status: e.target.value });
-            }}
-            className={cn(
-              "w-full h-9 px-3 py-2 text-sm border border-[#E4E4E7] rounded-lg bg-white",
-              "outline-none focus:ring-2 focus:ring-[#18181B] focus:ring-offset-1 focus:border-[#18181B]",
-              "text-[#09090B] cursor-pointer"
-            )}
+            onChange={(e) => setStatus(e.target.value)}
+            className={selectClasses}
           >
             {STATUS_OPTIONS.map((s) => (
               <option key={s.value} value={s.value}>{s.label}</option>
@@ -164,37 +181,27 @@ export function AppointmentFilters({
           </select>
         </div>
 
-        {/* Date From */}
+        {/* Date From — future dates allowed, independent of To */}
         <div className="space-y-1.5">
           <label className="text-xs font-medium text-[#71717A] uppercase tracking-wide block">
             From Date
           </label>
           <CalendarPicker
             value={dateFrom}
-            max={dateTo || undefined}
-            onChange={(d) => {
-              if (!d) return;
-              setDateFrom(d);
-              apply({ dateFrom: d });
-            }}
+            onChange={(d) => { if (d) setDateFrom(d); }}
             placeholder="From date"
             className="w-40"
           />
         </div>
 
-        {/* Date To */}
+        {/* Date To — independent of From */}
         <div className="space-y-1.5">
           <label className="text-xs font-medium text-[#71717A] uppercase tracking-wide block">
             To Date
           </label>
           <CalendarPicker
             value={dateTo}
-            min={dateFrom || undefined}
-            onChange={(d) => {
-              if (!d) return;
-              setDateTo(d);
-              apply({ dateTo: d });
-            }}
+            onChange={(d) => { if (d) setDateTo(d); }}
             placeholder="To date"
             className="w-40"
           />
@@ -208,15 +215,8 @@ export function AppointmentFilters({
           <select
             id="appt-time-from"
             value={timeFrom}
-            onChange={(e) => {
-              setTimeFrom(e.target.value);
-              apply({ timeFrom: e.target.value });
-            }}
-            className={cn(
-              "w-full h-9 px-3 py-2 text-sm border border-[#E4E4E7] rounded-lg bg-white",
-              "outline-none focus:ring-2 focus:ring-[#18181B] focus:ring-offset-1 focus:border-[#18181B]",
-              "text-[#09090B] cursor-pointer"
-            )}
+            onChange={(e) => setTimeFrom(e.target.value)}
+            className={selectClasses}
           >
             {TIME_OPTIONS.map((t) => (
               <option key={t.value} value={t.value}>{t.label}</option>
@@ -232,72 +232,29 @@ export function AppointmentFilters({
           <select
             id="appt-time-to"
             value={timeTo}
-            onChange={(e) => {
-              setTimeTo(e.target.value);
-              apply({ timeTo: e.target.value });
-            }}
-            className={cn(
-              "w-full h-9 px-3 py-2 text-sm border border-[#E4E4E7] rounded-lg bg-white",
-              "outline-none focus:ring-2 focus:ring-[#18181B] focus:ring-offset-1 focus:border-[#18181B]",
-              "text-[#09090B] cursor-pointer"
-            )}
+            onChange={(e) => setTimeTo(e.target.value)}
+            className={selectClasses}
           >
             {TIME_OPTIONS.map((t) => (
               <option key={t.value} value={t.value}>{t.label}</option>
             ))}
           </select>
         </div>
+
+        {/* Apply button */}
+        <div className="space-y-1.5">
+          <Button type="button" size="sm" onClick={apply} isLoading={isPending}>
+            <Search className="h-3.5 w-3.5" aria-hidden />
+            Apply Filters
+          </Button>
+        </div>
       </div>
 
-      {/* Active filter pills */}
-      {hasActiveFilters && (
-        <div className="flex flex-wrap gap-1.5 pt-1 border-t border-[#F4F4F5]">
-          {status && (
-            <FilterPill
-              label={STATUS_OPTIONS.find((s) => s.value === status)?.label ?? status}
-              onRemove={() => { setStatus(""); apply({ status: "" }); }}
-            />
-          )}
-          {(dateFrom !== today || dateTo !== today) && (
-            <FilterPill
-              label={dateFrom === dateTo ? dateFrom : `${dateFrom} → ${dateTo}`}
-              onRemove={() => {
-                setDateFrom(today);
-                setDateTo(today);
-                apply({ dateFrom: today, dateTo: today });
-              }}
-            />
-          )}
-          {timeFrom && (
-            <FilterPill
-              label={`After ${TIME_OPTIONS.find((t) => t.value === timeFrom)?.label ?? timeFrom}`}
-              onRemove={() => { setTimeFrom(""); apply({ timeFrom: "" }); }}
-            />
-          )}
-          {timeTo && (
-            <FilterPill
-              label={`Before ${TIME_OPTIONS.find((t) => t.value === timeTo)?.label ?? timeTo}`}
-              onRemove={() => { setTimeTo(""); apply({ timeTo: "" }); }}
-            />
-          )}
-        </div>
+      {rangeInvalid && (
+        <p className="text-xs text-[#DC2626]">
+          From date is after To date — no appointments will match this range.
+        </p>
       )}
     </div>
-  );
-}
-
-function FilterPill({ label, onRemove }: { label: string; onRemove: () => void }) {
-  return (
-    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-[#F4F4F5] text-xs text-[#09090B]">
-      {label}
-      <button
-        type="button"
-        onClick={onRemove}
-        className="text-[#A1A1AA] hover:text-[#09090B] transition-colors"
-        aria-label={`Remove ${label} filter`}
-      >
-        <X className="h-2.5 w-2.5" />
-      </button>
-    </span>
   );
 }
