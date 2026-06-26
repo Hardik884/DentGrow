@@ -21,6 +21,7 @@
  */
 
 import { useState, useRef, useEffect, useCallback, useId } from "react";
+import { createPortal } from "react-dom";
 import { ChevronLeft, ChevronRight, Calendar, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -372,7 +373,13 @@ export function CalendarPicker({
 
   const popoverRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
-  const [popoverSide, setPopoverSide] = useState<"left" | "right">("left");
+  // Portal-based positioning: track the trigger's exact viewport coords so the
+  // popover renders via a portal on <body> and escapes any overflow:hidden ancestor.
+  const [popoverPos, setPopoverPos] = useState<{
+    top: number;
+    left: number;
+    minWidth: number;
+  } | null>(null);
 
   // Keep view in sync when value changes externally
   useEffect(() => {
@@ -394,6 +401,7 @@ export function CalendarPicker({
         !triggerRef.current.contains(e.target as Node)
       ) {
         setOpen(false);
+        setPopoverPos(null);
       }
     }
     document.addEventListener("mousedown", handler);
@@ -406,6 +414,7 @@ export function CalendarPicker({
     function handler(e: KeyboardEvent) {
       if (e.key === "Escape") {
         setOpen(false);
+        setPopoverPos(null);
         triggerRef.current?.focus();
       }
     }
@@ -466,12 +475,20 @@ export function CalendarPicker({
           onClick={() => {
             setOpen((o) => {
               if (!o && triggerRef.current) {
-                // Measure how much space is to the right of the trigger.
-                // The calendar is ~288px wide (min-w-72 = 18rem). If there
-                // isn't enough room to the right, anchor to the right edge instead.
+                // Measure the trigger's position in the viewport so we can
+                // portal-render the popover at the exact right spot, escaping
+                // any overflow:hidden ancestor (e.g. the card's rounded-xl).
                 const rect = triggerRef.current.getBoundingClientRect();
-                const spaceRight = window.innerWidth - rect.left;
-                setPopoverSide(spaceRight >= 300 ? "left" : "right");
+                const CALENDAR_WIDTH = 312; // ~w-72 (288) + padding (24)
+                const top = rect.bottom + window.scrollY + 6;
+                // Prefer left-aligned; flip right if it would overflow viewport.
+                const fitsRight = rect.left + CALENDAR_WIDTH <= window.innerWidth - 8;
+                const left = fitsRight
+                  ? rect.left + window.scrollX
+                  : rect.right + window.scrollX - CALENDAR_WIDTH;
+                setPopoverPos({ top, left, minWidth: rect.width });
+              } else if (o) {
+                setPopoverPos(null);
               }
               return !o;
             });
@@ -507,19 +524,26 @@ export function CalendarPicker({
         )}
       </div>
 
-      {/* Popover */}
-      {open && (
+      {/* Popover — rendered in a portal on <body> so it escapes overflow:hidden ancestors */}
+      {open && popoverPos && typeof document !== "undefined" && createPortal(
         <div
           ref={popoverRef}
           role="dialog"
           aria-label="Date picker"
+          style={{
+            position: "fixed",
+            top: popoverPos.top - window.scrollY,
+            left: popoverPos.left - window.scrollX,
+            minWidth: popoverPos.minWidth,
+          }}
           className={cn(
-            "absolute z-50 mt-1.5 rounded-xl border border-border bg-white shadow-lg p-3 animate-in fade-in-0 zoom-in-95 duration-100 min-w-max",
-            popoverSide === "left" ? "left-0" : "right-0"
+            "z-[9999] rounded-xl border border-border bg-white shadow-lg p-3",
+            "animate-in fade-in-0 zoom-in-95 duration-100"
           )}
         >
           {grid}
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
