@@ -28,6 +28,7 @@ export type Database = {
           name: string;
           phone: string | null;
           address: string | null;
+          dentist_name: string | null;
           created_at: string;
         };
         Insert: {
@@ -35,6 +36,7 @@ export type Database = {
           name: string;
           phone?: string | null;
           address?: string | null;
+          dentist_name?: string | null;
           created_at?: string;
         };
         Update: {
@@ -42,6 +44,7 @@ export type Database = {
           name?: string;
           phone?: string | null;
           address?: string | null;
+          dentist_name?: string | null;
           created_at?: string;
         };
       };

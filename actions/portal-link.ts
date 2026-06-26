@@ -4,6 +4,8 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createServerClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getClinicById } from "@/actions/clinics";
+import { clearSignupClinic, clearSignupPhone } from "@/lib/clinic-session";
 import {
   LinkPortalAccountSchema,
   type ActionResult,
@@ -126,6 +128,15 @@ export async function linkPortalAccount(
       redirect("/portal");
     }
 
+    // Validate the selected clinic. Every subsequent lookup/creation is scoped
+    // to this clinic so a phone number registered in another clinic is never
+    // matched (clinic isolation requirement).
+    const clinicCheck = await getClinicById(parsed.data.clinicId);
+    if (!clinicCheck.data) {
+      return { data: null, error: clinicCheck.error ?? "Invalid clinic selection." };
+    }
+    const selectedClinicId = clinicCheck.data.id;
+
     // Use the admin client for the patient phone lookup.
     //
     // At this point in the flow the user has NO profile row and NO portal link.
@@ -140,14 +151,17 @@ export async function linkPortalAccount(
     //
     // The admin client (service role) bypasses RLS and is the correct pattern
     // here — this is a privileged onboarding lookup, not a patient data read.
+    // The lookup is explicitly scoped to selectedClinicId so cross-clinic phone
+    // collisions can never match.
     const admin: AdminClient = createAdminClient();
 
     const phone = normalizePhone(parsed.data.phone.trim());
 
-    // ── PATH A: try to find an existing patient by phone ──────────────────────
+    // ── PATH A: try to find an existing patient by phone IN THIS CLINIC ───────
     const { data: matches, error: searchErr } = await admin
       .from("patients")
       .select("id, name, clinic_id, phone")
+      .eq("clinic_id", selectedClinicId)
       .ilike("phone", `%${phone}`)
       .is("deleted_at", null)
       .limit(5);
@@ -176,7 +190,12 @@ export async function linkPortalAccount(
         return { data: null, error: "Please enter your full name (at least 2 characters)." };
       }
 
-      return await _createAndLinkNewPatient({ user, phone, name });
+      return await _createAndLinkNewPatient({
+        user,
+        phone,
+        name,
+        clinicId: selectedClinicId,
+      });
     }
 
     // ── PATH A continued: existing record found ───────────────────────────────
@@ -219,6 +238,19 @@ export async function linkPortalAccount(
 // =============================================================================
 
 type AuthUser = { id: string; email?: string };
+
+/**
+ * Clears the signup carry-through cookies once portal linking has completed.
+ * Failures are non-fatal — the link already succeeded.
+ */
+async function _clearSignupCookies(): Promise<void> {
+  try {
+    await clearSignupClinic();
+    await clearSignupPhone();
+  } catch {
+    // Cookie store may be unavailable in some execution contexts — ignore.
+  }
+}
 
 /**
  * Links an authenticated portal user to an existing patient record.
@@ -280,6 +312,7 @@ async function _linkExistingPatient({
     };
   }
 
+  await _clearSignupCookies();
   revalidatePath("/portal");
   return { data: { status: "linked" }, error: null };
 }
@@ -287,34 +320,23 @@ async function _linkExistingPatient({
 /**
  * Creates a new patient record for a self-registering user, then links it.
  *
- * clinic_id resolution: fetches the first (and in the single-clinic MVP, only)
- * clinic from the clinics table. Multi-clinic support would require the user
- * to select a clinic first.
+ * clinic_id is the clinic the patient selected at signup — passed in by the
+ * caller after validation. There is no "first clinic" fallback: in a
+ * multi-clinic deployment the clinic must always be explicit so records land
+ * in the correct tenant and phone numbers stay isolated per clinic.
  */
 async function _createAndLinkNewPatient({
   user,
   phone,
   name,
+  clinicId,
 }: {
   user: AuthUser;
   phone: string;
   name: string;
+  clinicId: string;
 }): Promise<ActionResult<PortalLinkResult>> {
   const admin: AdminClient = createAdminClient();
-
-  // Resolve clinic_id — single-clinic MVP: use the first active clinic.
-  const { data: clinicRow, error: clinicErr } = await admin
-    .from("clinics")
-    .select("id")
-    .limit(1)
-    .single();
-
-  if (clinicErr || !clinicRow) {
-    console.error("[linkPortalAccount] clinic lookup:", clinicErr);
-    return { data: null, error: "Unable to find clinic. Please try again." };
-  }
-
-  const clinicId: string = clinicRow.id;
 
   // Guard: don't create a duplicate patient if this phone already exists in the
   // clinic (race condition between two concurrent signups with the same number).
@@ -396,6 +418,7 @@ async function _createAndLinkNewPatient({
     };
   }
 
+  await _clearSignupCookies();
   revalidatePath("/portal");
   return { data: { status: "linked" }, error: null };
 }

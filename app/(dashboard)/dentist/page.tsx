@@ -4,6 +4,7 @@ import { PageHeader } from "@/components/layouts/PageHeader";
 import { DashboardKPIs } from "@/components/dentist/DashboardKPIs";
 import { QueueWidget } from "@/components/queue/QueueWidget";
 import { UpcomingAppointments } from "@/components/dentist/UpcomingAppointments";
+import { ClinicDentistName } from "@/components/shared/ClinicDentistName";
 import { getTodayQueue } from "@/actions/queue";
 import { Plus } from "lucide-react";
 
@@ -52,6 +53,9 @@ export default async function DentistDashboardPage() {
           description="Overview of today's clinic activity"
           action={{ label: "New Appointment", href: "/dentist/appointments/new", icon: <Plus className="h-3.5 w-3.5" /> }}
         />
+
+        {/* Clinic dentist name (data-driven from clinics.dentist_name) */}
+        <ClinicDentistName />
 
         {/* KPI Cards — receives pre-resolved clinicId + timezone, fires no extra queries */}
         <DashboardKPIs clinicId={clinicId} timezone={timezone} />

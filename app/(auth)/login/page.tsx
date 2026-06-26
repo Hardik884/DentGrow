@@ -1,13 +1,16 @@
 import type { Metadata } from "next";
 import { LoginForm } from "./LoginForm";
 import { DentGrowLogo } from "@/components/shared/DentGrowLogo";
+import { getClinics } from "@/actions/clinics";
 
 export const metadata: Metadata = {
   title: "Sign In",
   description: "Sign in to your DentGrow account.",
 };
 
-export default function LoginPage() {
+export default async function LoginPage() {
+  const { data: clinics } = await getClinics();
+
   return (
     <div className="space-y-8">
       {/* Brand */}
@@ -20,7 +23,7 @@ export default function LoginPage() {
 
       {/* Card */}
       <div className="bg-white border border-[#E4E4E7] rounded-xl p-6 shadow-sm">
-        <LoginForm />
+        <LoginForm clinics={clinics ?? []} />
       </div>
 
       <p className="text-center text-xs text-[#71717A]">

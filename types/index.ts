@@ -400,6 +400,12 @@ export type CreateAvailabilityRuleInput = z.infer<typeof CreateAvailabilityRuleS
 // ── Portal Link ───────────────────────────────────────────────────────────────
 
 export const LinkPortalAccountSchema = z.object({
+  /**
+   * The clinic the patient selected at signup. Every lookup, link and
+   * patient creation in the linking flow is scoped to this clinic, so the
+   * same phone number in a different clinic is never matched.
+   */
+  clinicId: z.string().uuid("A clinic must be selected"),
   phone: z.string().regex(phoneRegex, "Invalid phone number format"),
   /**
    * Required only for the "new patient" path — when no existing record matches

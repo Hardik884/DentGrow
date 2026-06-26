@@ -1,16 +1,25 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { signUp } from "@/actions/auth";
 import type { ActionResult } from "@/types";
+import type { ClinicOption } from "@/actions/clinics";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 import { Field } from "@/components/ui/field";
 
 const initialState: ActionResult<null> = { data: null, error: null };
 
-export function SignupForm() {
+interface SignupFormProps {
+  clinics: ClinicOption[];
+}
+
+export function SignupForm({ clinics }: SignupFormProps) {
   const [state, formAction, isPending] = useActionState(signUp, initialState);
+
+  // Clinic selection is required before an account can be created.
+  const [clinicId, setClinicId] = useState("");
 
   return (
     <form action={formAction} className="space-y-4" noValidate>
@@ -26,6 +35,26 @@ export function SignupForm() {
         </div>
       )}
 
+      <Field label="Clinic" htmlFor="clinic_id" required>
+        <Select
+          id="clinic_id"
+          name="clinic_id"
+          required
+          disabled={isPending}
+          value={clinicId}
+          onChange={(e) => setClinicId(e.target.value)}
+        >
+          <option value="" disabled>
+            Select a clinic…
+          </option>
+          {clinics.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.name}
+            </option>
+          ))}
+        </Select>
+      </Field>
+
       <Field label="Email address" htmlFor="email">
         <Input
           id="email"
@@ -35,6 +64,18 @@ export function SignupForm() {
           required
           disabled={isPending}
           placeholder="you@example.com"
+        />
+      </Field>
+
+      <Field label="Phone" htmlFor="phone" hint="Used to find your clinic record">
+        <Input
+          id="phone"
+          name="phone"
+          type="tel"
+          inputMode="tel"
+          autoComplete="tel"
+          disabled={isPending}
+          placeholder="+91 98765 43210"
         />
       </Field>
 
@@ -62,7 +103,12 @@ export function SignupForm() {
         />
       </Field>
 
-      <Button type="submit" className="w-full mt-2" isLoading={isPending}>
+      <Button
+        type="submit"
+        className="w-full mt-2"
+        isLoading={isPending}
+        disabled={isPending || !clinicId}
+      >
         {isPending ? "Creating account…" : "Create account"}
       </Button>
 
@@ -72,4 +118,3 @@ export function SignupForm() {
     </form>
   );
 }
-

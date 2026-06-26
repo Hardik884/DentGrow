@@ -3,32 +3,51 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { linkPortalAccount } from "@/actions/portal-link";
+import type { ClinicOption } from "@/actions/clinics";
+
+interface PortalLinkFormProps {
+  /** Clinics available to choose from (populated from the clinics table). */
+  clinics: ClinicOption[];
+  /** Clinic chosen at signup — when present the selector is locked to it. */
+  presetClinicId?: string;
+  /** Phone entered at signup — prefilled so the user need not retype it. */
+  presetPhone?: string;
+}
 
 /**
  * PortalLinkForm
  *
- * Handles both onboarding paths:
+ * Handles both onboarding paths, always scoped to a single clinic:
+ *
+ * Step 0 — Clinic
+ *   The clinic chosen at signup is carried through and locked. If it is
+ *   missing, the user selects one from the clinics table. The selected clinic
+ *   is sent to the server so the patient lookup/creation is scoped to it — a
+ *   phone number registered in another clinic is never matched.
  *
  * Step 1 — Phone lookup
  *   User enters their phone number and submits.
- *   Server action searches for an existing patient record.
+ *   Server action searches for an existing patient record IN THE SELECTED CLINIC.
  *
- * Step 2a — Existing patient found
- *   Link is created immediately. User is redirected to /portal.
- *
- * Step 2b — No record found
- *   Form transitions to a "new patient" confirmation UI.
- *   User enters their name and confirms. Server action creates a new patient
- *   record and links it. User is redirected to /portal.
- *
- * No dead ends — new patients are never blocked.
+ * Step 2a — Existing patient found → link created, redirect to /portal.
+ * Step 2b — No record found → confirm name → new patient created in the
+ *   selected clinic, then linked. No dead ends.
  */
-export function PortalLinkForm() {
+export function PortalLinkForm({
+  clinics,
+  presetClinicId,
+  presetPhone,
+}: PortalLinkFormProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
+  // Clinic is locked when carried from signup; otherwise the user picks it.
+  const clinicLocked = Boolean(presetClinicId);
+  const [clinicId, setClinicId] = useState(presetClinicId ?? "");
+  const presetClinicName = clinics.find((c) => c.id === presetClinicId)?.name;
+
   // Form field values
-  const [phone, setPhone] = useState("");
+  const [phone, setPhone] = useState(presetPhone ?? "");
   const [name, setName] = useState("");
 
   // UI state machine
@@ -42,11 +61,15 @@ export function PortalLinkForm() {
 
   function handlePhoneSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (!clinicId) {
+      setError("Please select your clinic.");
+      return;
+    }
     if (!phone.trim()) return;
     setError(null);
 
     startTransition(async () => {
-      const result = await linkPortalAccount({ phone: phone.trim() });
+      const result = await linkPortalAccount({ clinicId, phone: phone.trim() });
 
       if (result?.error) {
         setError(result.error);
@@ -78,6 +101,7 @@ export function PortalLinkForm() {
 
     startTransition(async () => {
       const result = await linkPortalAccount({
+        clinicId,
         phone: confirmedPhone,
         name: name.trim(),
         confirmNew: true,
@@ -109,11 +133,45 @@ export function PortalLinkForm() {
     );
   }
 
+  // Shared clinic selector block (locked label or dropdown).
+  const clinicBlock = (
+    <div className="space-y-1.5">
+      <label htmlFor="clinic" className="block text-sm font-medium text-gray-700">
+        Clinic
+      </label>
+      {clinicLocked ? (
+        <div className="w-full border border-gray-200 bg-gray-50 rounded-lg px-3 py-2 text-sm text-gray-700">
+          {presetClinicName ?? "Selected clinic"}
+        </div>
+      ) : (
+        <select
+          id="clinic"
+          required
+          value={clinicId}
+          onChange={(e) => setClinicId(e.target.value)}
+          disabled={isPending}
+          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 disabled:bg-gray-50 disabled:text-gray-400"
+        >
+          <option value="" disabled>
+            Select a clinic…
+          </option>
+          {clinics.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.name}
+            </option>
+          ))}
+        </select>
+      )}
+    </div>
+  );
+
   // ── Render: step 1 — phone ─────────────────────────────────────────────────
 
   if (step === "phone") {
     return (
       <form onSubmit={handlePhoneSubmit} className="space-y-4">
+        {clinicBlock}
+
         <div className="space-y-1.5">
           <label
             htmlFor="phone"
@@ -146,7 +204,7 @@ export function PortalLinkForm() {
 
         <button
           type="submit"
-          disabled={isPending || !phone.trim()}
+          disabled={isPending || !phone.trim() || !clinicId}
           className="w-full py-2.5 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
           {isPending ? "Checking…" : "Continue"}
