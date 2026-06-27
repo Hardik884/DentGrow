@@ -265,17 +265,35 @@ export type UpdateAppointmentStatusInput = z.infer<typeof UpdateAppointmentStatu
 // ── Treatment ─────────────────────────────────────────────────────────────────
 
 /**
+ * Standard prescription frequency codes used in the dosage dropdown.
+ * Displayed as-is in the UI; stored verbatim in the medication JSONB record.
+ */
+export const DOSAGE_OPTIONS = [
+  "OD",
+  "BD",
+  "TDS",
+  "QID",
+  "SOS",
+  "HS",
+  "TSP",
+  "Locally Apply",
+] as const;
+export type DosageOption = (typeof DOSAGE_OPTIONS)[number];
+
+/**
  * Medication line item attached to a treatment.
- *  - name:   medicine name (free text)
- *  - dosage: frequency, e.g. "od", "bd", "tds"
- *  - number: units per intake — restricted to 1, 2 or 3
- *  - days:   number of days to take it (increment counter)
+ *  - name:         medicine name (free text)
+ *  - dosage:       frequency code — one of DOSAGE_OPTIONS, or legacy free text
+ *  - number:       units per intake — restricted to 1, 2 or 3
+ *  - days:         number of days to take it (increment counter)
+ *  - instructions: optional free-text instructions for the patient/pharmacist
  */
 export const MedicationSchema = z.object({
   name: z.string().min(1, "Medicine name is required").max(120),
   dosage: z.string().max(40).optional().or(z.literal("")),
   number: z.coerce.number().int().min(1).max(3),
   days: z.coerce.number().int().min(1).max(365),
+  instructions: z.string().max(1000).optional().or(z.literal("")),
 });
 export type MedicationInput = z.infer<typeof MedicationSchema>;
 

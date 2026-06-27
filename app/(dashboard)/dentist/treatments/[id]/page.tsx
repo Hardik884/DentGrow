@@ -110,7 +110,8 @@ export default async function DentistTreatmentDetailPage({ params }: Props) {
                     <th className="py-1 pr-4">Medicine</th>
                     <th className="py-1 pr-4">Dosage</th>
                     <th className="py-1 pr-4">Number</th>
-                    <th className="py-1">Days</th>
+                    <th className="py-1 pr-4">Days</th>
+                    <th className="py-1">Instructions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
@@ -119,7 +120,10 @@ export default async function DentistTreatmentDetailPage({ params }: Props) {
                       <td className="py-1.5 pr-4 text-gray-900">{m.name}</td>
                       <td className="py-1.5 pr-4 text-gray-600">{m.dosage || "—"}</td>
                       <td className="py-1.5 pr-4 text-gray-600">{m.number}</td>
-                      <td className="py-1.5 text-gray-600">{m.days}</td>
+                      <td className="py-1.5 pr-4 text-gray-600">{m.days}</td>
+                      <td className="py-1.5 text-gray-600 whitespace-pre-wrap">
+                        {m.instructions || "—"}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -131,7 +135,7 @@ export default async function DentistTreatmentDetailPage({ params }: Props) {
         {treatment.patient_visible_notes && (
           <div className="pt-4 border-t">
             <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">
-              Patient-Visible Notes
+              Clinical Notes
             </p>
             <p className="text-sm text-gray-700 whitespace-pre-wrap">
               {treatment.patient_visible_notes}

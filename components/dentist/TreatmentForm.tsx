@@ -11,6 +11,7 @@ import {
   type UpdateTreatmentInput,
   type Treatment,
   TreatmentStatus,
+  DOSAGE_OPTIONS,
 } from "@/types";
 import {
   createTreatment,
@@ -281,7 +282,7 @@ export function TreatmentForm({ treatmentId, appointmentId, patientId, onSuccess
               type="button"
               variant="outline"
               size="sm"
-              onClick={() => append({ name: "", dosage: "", number: 1, days: 1 })}
+              onClick={() => append({ name: "", dosage: "", number: 1, days: 1, instructions: "" })}
             >
               <Plus className="h-3.5 w-3.5" aria-hidden />
               Add Medicine
@@ -293,7 +294,7 @@ export function TreatmentForm({ treatmentId, appointmentId, patientId, onSuccess
           ) : (
             <div className="space-y-3">
               {/* Column headers (md+) */}
-              <div className="hidden md:grid grid-cols-[1fr_120px_90px_130px_36px] gap-2 text-xs font-medium text-[#71717A] uppercase tracking-wide px-1">
+              <div className="hidden md:grid grid-cols-[1fr_140px_90px_130px_36px] gap-2 text-xs font-medium text-[#71717A] uppercase tracking-wide px-1">
                 <span>Medicine</span>
                 <span>Dosage</span>
                 <span>Number</span>
@@ -305,48 +306,68 @@ export function TreatmentForm({ treatmentId, appointmentId, patientId, onSuccess
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const current = (fieldItem as any) as { days?: number };
                 return (
-                  <div
-                    key={fieldItem.id}
-                    className="grid grid-cols-1 md:grid-cols-[1fr_120px_90px_130px_36px] gap-2 items-start"
-                  >
-                    <Input
-                      placeholder=""
-                      aria-label="Medicine name"
-                      {...register(`medications.${index}.name` as never)}
-                      hasError={!!medErrors?.[index]?.name}
-                    />
-                    <Input
-                      placeholder="od"
-                      aria-label="Dosage"
-                      {...register(`medications.${index}.dosage` as never)}
-                    />
-                    {/* Number — same increment/decrement stepper as Days */}
-                    <NumberCounter
-                      defaultValue={(fieldItem as { number?: number }).number ?? 1}
-                      min={1}
-                      max={3}
-                      onStep={(next) => {
-                        setValue(`medications.${index}.number` as never, next as never, { shouldValidate: true });
-                      }}
-                      ariaLabel="Number of units"
-                    />
-
-                    {/* Days — increment counter */}
-                    <DaysCounter
-                      defaultValue={current.days ?? 1}
-                      onStep={(next) => {
-                        setValue(`medications.${index}.days` as never, next as never, { shouldValidate: true });
-                      }}
-                    />
-
-                    <button
-                      type="button"
-                      onClick={() => remove(index)}
-                      className="h-9 w-9 flex items-center justify-center rounded-lg border border-[#E4E4E7] text-[#DC2626] hover:bg-[#FEF2F2] transition-colors"
-                      aria-label="Remove medicine"
+                  <div key={fieldItem.id} className="space-y-2">
+                    {/* Main row: name | dosage | number | days | remove */}
+                    <div
+                      className="grid grid-cols-1 md:grid-cols-[1fr_140px_90px_130px_36px] gap-2 items-start"
                     >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </button>
+                      <Input
+                        placeholder="Medicine name"
+                        aria-label="Medicine name"
+                        {...register(`medications.${index}.name` as never)}
+                        hasError={!!medErrors?.[index]?.name}
+                      />
+
+                      {/* Dosage — shadcn Select dropdown */}
+                      <Select
+                        id={`medications-${index}-dosage`}
+                        aria-label="Dosage frequency"
+                        {...register(`medications.${index}.dosage` as never)}
+                        defaultValue={(fieldItem as { dosage?: string }).dosage ?? ""}
+                      >
+                        <option value="">Select…</option>
+                        {DOSAGE_OPTIONS.map((opt) => (
+                          <option key={opt} value={opt}>{opt}</option>
+                        ))}
+                      </Select>
+
+                      {/* Number — same increment/decrement stepper as Days */}
+                      <NumberCounter
+                        defaultValue={(fieldItem as { number?: number }).number ?? 1}
+                        min={1}
+                        max={3}
+                        onStep={(next) => {
+                          setValue(`medications.${index}.number` as never, next as never, { shouldValidate: true });
+                        }}
+                        ariaLabel="Number of units"
+                      />
+
+                      {/* Days — increment counter */}
+                      <DaysCounter
+                        defaultValue={current.days ?? 1}
+                        onStep={(next) => {
+                          setValue(`medications.${index}.days` as never, next as never, { shouldValidate: true });
+                        }}
+                      />
+
+                      <button
+                        type="button"
+                        onClick={() => remove(index)}
+                        className="h-9 w-9 flex items-center justify-center rounded-lg border border-[#E4E4E7] text-[#DC2626] hover:bg-[#FEF2F2] transition-colors"
+                        aria-label="Remove medicine"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+
+                    {/* Instructions — optional multi-line textarea */}
+                    <Textarea
+                      placeholder="Instructions (optional)"
+                      aria-label="Medication instructions"
+                      rows={2}
+                      {...register(`medications.${index}.instructions` as never)}
+                      className="text-sm text-[#52525B] placeholder:text-[#A1A1AA]"
+                    />
                   </div>
                 );
               })}
@@ -354,11 +375,13 @@ export function TreatmentForm({ treatmentId, appointmentId, patientId, onSuccess
           )}
         </div>
 
-        {/* ── Notes (patient-visible only) ────────────────────── */}
+        {/* ── Notes ──────────────────────────────────────────── */}
         <div className="px-6 py-5 space-y-4">
           <h3 className="text-sm font-semibold text-[#09090B]">Notes</h3>
+
+          {/* Patient-Visible Notes — shown in the patient portal */}
           <Field
-            label="Patient-Visible Notes"
+            label="Clinical Notes"
             htmlFor="patient-notes"
             hint="Visible to the patient in their portal"
           >
