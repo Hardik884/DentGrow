@@ -117,47 +117,7 @@ export default async function AnalyticsDashboardPage({
         <AnalyticsInsightsPanel insights={insights} />
       </section>
 
-      {/* ── APPOINTMENTS ─────────────────────────────────────────────── */}
-      <section>
-        <h2 className="text-sm font-semibold text-[#09090B] mb-3 uppercase tracking-wider text-[#71717A]">Appointments</h2>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <MetricCard label="Total" value={summary.totalAppointments} />
-          <MetricCard label="Completed" value={summary.completedAppointments} accent="green" />
-          <MetricCard label="Cancelled" value={summary.cancelledAppointments} accent="red" />
-          <MetricCard label="No-Shows" value={summary.noShowAppointments} accent="amber" />
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4">
-          <ChartCard title="Appointments by Status">
-            <AppointmentsByStatusChart data={appointmentAnalytics.byStatus} />
-          </ChartCard>
-          <ChartCard title="Peak Hours">
-            <PeakHoursHeatmap data={appointmentAnalytics.peakHours} />
-          </ChartCard>
-        </div>
-      </section>
-
-      {/* ── PATIENTS ─────────────────────────────────────────────────── */}
-      <section>
-        <h2 className="text-xs font-semibold text-[#71717A] uppercase tracking-wider mb-3">Patients</h2>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <MetricCard label="Total Patients" value={summary.totalPatients} />
-          <MetricCard label="New This Month" value={summary.newPatientsThisMonth} accent="blue" />
-          <MetricCard label="Returning" value={summary.returningPatients} accent="green" />
-          <MetricCard label="Active" value={summary.activePatients} />
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4">
-          <ChartCard title="New Patients Over Time">
-            <PatientGrowthChart data={patientAnalytics.newPatientsOverTime} />
-          </ChartCard>
-          <ChartCard title="Gender Distribution">
-            <GenderBreakdownChart data={patientAnalytics.genderBreakdown} />
-          </ChartCard>
-        </div>
-      </section>
-
-      {/* ── REVENUE ──────────────────────────────────────────────────── */}
+      {/* ── REVENUE (Revenue Summary + Revenue Over Time, below Insights) ── */}
       <section>
         <h2 className="text-xs font-semibold text-[#71717A] uppercase tracking-wider mb-3">Revenue</h2>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -213,6 +173,46 @@ export default async function AnalyticsDashboardPage({
         </div>
       </section>
 
+      {/* ── APPOINTMENTS ─────────────────────────────────────────────── */}
+      <section>
+        <h2 className="text-sm font-semibold text-[#09090B] mb-3 uppercase tracking-wider text-[#71717A]">Appointments</h2>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <MetricCard label="Total" value={summary.totalAppointments} />
+          <MetricCard label="Completed" value={summary.completedAppointments} accent="green" />
+          <MetricCard label="Cancelled" value={summary.cancelledAppointments} accent="red" />
+          <MetricCard label="No-Shows" value={summary.noShowAppointments} accent="amber" />
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4">
+          <ChartCard title="Appointments by Status">
+            <AppointmentsByStatusChart data={appointmentAnalytics.byStatus} />
+          </ChartCard>
+          <ChartCard title="Peak Hours">
+            <PeakHoursHeatmap data={appointmentAnalytics.peakHours} />
+          </ChartCard>
+        </div>
+      </section>
+
+      {/* ── PATIENTS ─────────────────────────────────────────────────── */}
+      <section>
+        <h2 className="text-xs font-semibold text-[#71717A] uppercase tracking-wider mb-3">Patients</h2>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <MetricCard label="Total Patients" value={summary.totalPatients} />
+          <MetricCard label="New This Month" value={summary.newPatientsThisMonth} accent="blue" />
+          <MetricCard label="Returning" value={summary.returningPatients} accent="green" />
+          <MetricCard label="Active" value={summary.activePatients} />
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4">
+          <ChartCard title="New Patients Over Time">
+            <PatientGrowthChart data={patientAnalytics.newPatientsOverTime} />
+          </ChartCard>
+          <ChartCard title="Gender Distribution">
+            <GenderBreakdownChart data={patientAnalytics.genderBreakdown} />
+          </ChartCard>
+        </div>
+      </section>
+
       {/* ── SOURCE ANALYTICS ────────────────────────────────────────── */}
       <section>
         <h2 className="text-xs font-semibold text-[#71717A] uppercase tracking-wider mb-3">Acquisition Sources</h2>
@@ -249,13 +249,18 @@ export default async function AnalyticsDashboardPage({
       {/* ── FOLLOW-UPS ──────────────────────────────────────────────── */}
       <section>
         <h2 className="text-xs font-semibold text-[#71717A] uppercase tracking-wider mb-3">Follow-Ups</h2>
-        <div className="grid grid-cols-3 gap-3 mb-4">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
           <MetricCard label="Pending" value={summary.pendingFollowUps} accent="amber" />
           <MetricCard label="Completed" value={summary.completedFollowUps} accent="green" />
           <MetricCard
             label="Overdue"
             value={summary.overdueFollowUps}
             accent={summary.overdueFollowUps > 0 ? "red" : "default"}
+          />
+          <MetricCard
+            label="Completion Rate"
+            value={`${followUpAnalytics.completionRate}%`}
+            accent="blue"
           />
         </div>
 

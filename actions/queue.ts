@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@supabase/supabase-js";
 import { createServerClient } from "@/lib/supabase/server";
 import { getTodayInTimezone } from "@/lib/utils";
+import { completeLinkedFollowUps } from "@/lib/follow-ups/complete-linked";
 import type { ActionResult, QueueEntry, QueueEntryWithPatient } from "@/types";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -290,6 +291,11 @@ export async function advanceQueue(): Promise<ActionResult<null>> {
           .eq("id", current.appointment_id)
           .eq("clinic_id", cid),
       ]);
+
+      // Auto-complete any follow-ups linked to the completed appointment.
+      // Mirrors the dentist status-control completion path so the behaviour is
+      // identical regardless of how the appointment is completed.
+      await completeLinkedFollowUps(db, current.appointment_id, cid);
 
       // Update patient visit count — patient_id comes from the queue entry
       // directly, avoiding the previous sequential appointment→patient fetch.

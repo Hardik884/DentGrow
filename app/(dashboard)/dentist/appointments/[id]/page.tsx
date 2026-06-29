@@ -8,6 +8,8 @@ import { AppointmentStatusBadge } from "@/components/shared/AppointmentStatusBad
 import { AppointmentTreatmentsSection } from "@/components/dentist/AppointmentTreatmentsSection";
 import { AppointmentPaymentsSection } from "@/components/dentist/AppointmentPaymentsSection";
 import { AppointmentFollowUpsSection } from "@/components/dentist/AppointmentFollowUpsSection";
+import { AppointmentPatientHistorySection } from "@/components/dentist/AppointmentPatientHistorySection";
+import { AppointmentNotesEditor } from "@/components/dentist/AppointmentNotesEditor";
 import { getAppointment } from "@/actions/appointments";
 import { createServerClient } from "@/lib/supabase/server";
 import { formatDateTimeInTimezone, APPOINTMENT_SOURCE_LABELS, calculateAge } from "@/lib/utils";
@@ -107,14 +109,10 @@ export default async function DentistAppointmentDetailPage({ params }: Props) {
           <Detail label="Gender" value={genderLabel} />
         </div>
 
-        <div className="pt-4 border-t">
-          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">
-            Appointment Notes
-          </p>
-          <p className="text-sm text-gray-700">
-            {appt.notes ? appt.notes : <span className="text-gray-400">No notes</span>}
-          </p>
-        </div>
+        <AppointmentNotesEditor
+          appointmentId={appt.id}
+          initialNotes={appt.notes}
+        />
       </div>
 
       {/* ── Status controls ──────────────────────────────────── */}
@@ -143,6 +141,12 @@ export default async function DentistAppointmentDetailPage({ params }: Props) {
         appointmentId={appt.id}
         patientId={appt.patient_id}
         patientName={appt.patient.name}
+      />
+
+      {/* ── Past treatment history for this patient ─────────── */}
+      <AppointmentPatientHistorySection
+        patientId={appt.patient_id}
+        currentAppointmentId={appt.id}
       />
 
       {/* ── Audit history timeline ───────────────────────────── */}

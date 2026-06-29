@@ -219,6 +219,25 @@ export type TreatmentForPatientWithSignature = TreatmentForPatient & {
   signature: TreatmentSignature | null;
 };
 
+/**
+ * Past treatment history row shown on the appointment detail page.
+ * Enriched with the performing dentist's display name (resolved at read time
+ * via the treatment's appointment → dentist profile).
+ */
+export type TreatmentHistoryItem = Pick<
+  Treatment,
+  | "id"
+  | "treatment_type"
+  | "status"
+  | "cost"
+  | "performed_at"
+  | "created_at"
+  | "patient_visible_notes"
+  | "appointment_id"
+> & {
+  dentistName: string | null;
+};
+
 // =============================================================================
 // SECTION 4 — SERVER ACTION RESULT TYPE
 // =============================================================================
@@ -295,22 +314,62 @@ export const DOSAGE_OPTIONS = [
   "SOS",
   "HS",
   "TSP",
-  "Locally Apply",
 ] as const;
 export type DosageOption = (typeof DOSAGE_OPTIONS)[number];
+
+/**
+ * Canonical treatment type options.
+ *
+ * Single source of truth shared by BOTH the Treatment Type dropdown and the
+ * Follow-Up Type dropdown (CLAUDE.md task: the two must reuse the same list).
+ * Stored verbatim in `treatments.treatment_type` (text) and
+ * `follow_ups.follow_up_type` (text). Both columns are free text, so existing
+ * legacy records (e.g. "Root Canal", "review") remain valid and editable —
+ * the forms surface the legacy value as an extra option when it is not in this
+ * list so saving never silently rewrites it.
+ */
+export const TREATMENT_TYPE_OPTIONS = [
+  "OPD",
+  "Scaling",
+  "Restoration",
+  "Root Canal Treatment",
+  "Crown Treatment",
+  "Orthodontic Treatment",
+  "Bleaching",
+  "Extraction",
+  "Denture",
+  "Surgical Extraction",
+  "Implant",
+] as const;
+export type TreatmentTypeOption = (typeof TREATMENT_TYPE_OPTIONS)[number];
+
+/**
+ * Standard medication instruction options for the Instructions dropdown.
+ * Stored verbatim in the medication JSONB record. Optional — legacy free-text
+ * instructions remain valid and are preserved when editing.
+ */
+export const MEDICATION_INSTRUCTION_OPTIONS = [
+  "Before Breakfast",
+  "After Breakfast",
+  "After Lunch",
+  "After Dinner",
+  "Apply Locally",
+] as const;
+export type MedicationInstructionOption = (typeof MEDICATION_INSTRUCTION_OPTIONS)[number];
 
 /**
  * Medication line item attached to a treatment.
  *  - name:         medicine name (free text)
  *  - dosage:       frequency code — one of DOSAGE_OPTIONS, or legacy free text
- *  - number:       units per intake — restricted to 1, 2 or 3
+ *  - number:       units per intake — 0.5 ("1/2"), 1, 2 or 3
  *  - days:         number of days to take it (increment counter)
- *  - instructions: optional free-text instructions for the patient/pharmacist
+ *  - instructions: optional instruction — one of MEDICATION_INSTRUCTION_OPTIONS,
+ *                  or legacy free text
  */
 export const MedicationSchema = z.object({
   name: z.string().min(1, "Medicine name is required").max(120),
   dosage: z.string().max(40).optional().or(z.literal("")),
-  number: z.coerce.number().int().min(1).max(3),
+  number: z.coerce.number().min(0.5).max(3),
   days: z.coerce.number().int().min(1).max(365),
   instructions: z.string().max(1000).optional().or(z.literal("")),
 });
@@ -360,23 +419,15 @@ export type RecordPaymentInput = z.infer<typeof RecordPaymentSchema>;
 
 // ── Follow-Up ─────────────────────────────────────────────────────────────────
 
-const FOLLOW_UP_TYPE_VALUES = [
-  "review",
-  "cleaning",
-  "crown_check",
-  "root_canal_review",
-  "implant_review",
-  "payment_reminder",
-  "consultation",
-  "custom",
-] as const;
-
+/**
+ * follow_up_type is a free-text column. The UI sources its options from
+ * TREATMENT_TYPE_OPTIONS (shared with the Treatment Type dropdown), but the
+ * schema accepts any non-empty string so legacy values (review, cleaning, …)
+ * remain valid and editable.
+ */
 export const CreateFollowUpSchema = z.object({
   patient_id: z.string().uuid("Patient is required"),
-  follow_up_type: z.enum(FOLLOW_UP_TYPE_VALUES, {
-    required_error: "Follow-up type is required",
-    invalid_type_error: "Invalid follow-up type",
-  }),
+  follow_up_type: z.string().min(1, "Follow-up type is required").max(100),
   due_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Valid due date is required"),
   /** Time-of-day for the auto-created appointment, "HH:MM" (24h). */
   due_time: z.string().regex(/^\d{2}:\d{2}$/, "Valid time is required (HH:MM)").optional().or(z.literal("")).transform(v => v || undefined),
@@ -387,7 +438,7 @@ export const CreateFollowUpSchema = z.object({
 export type CreateFollowUpInput = z.infer<typeof CreateFollowUpSchema>;
 
 export const UpdateFollowUpSchema = z.object({
-  follow_up_type: z.enum(FOLLOW_UP_TYPE_VALUES).optional(),
+  follow_up_type: z.string().min(1).max(100).optional(),
   due_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   appointment_id: z.string().uuid().optional().or(z.literal("")).transform(v => v || undefined),
   treatment_id: z.string().uuid().optional().or(z.literal("")).transform(v => v || undefined),

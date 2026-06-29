@@ -12,6 +12,8 @@ import {
   type Treatment,
   TreatmentStatus,
   DOSAGE_OPTIONS,
+  TREATMENT_TYPE_OPTIONS,
+  MEDICATION_INSTRUCTION_OPTIONS,
 } from "@/types";
 import {
   createTreatment,
@@ -68,6 +70,7 @@ export function TreatmentForm({ treatmentId, appointmentId, patientId, onSuccess
     reset,
     control,
     setValue,
+    watch,
     formState: { errors },
   } = useForm<CreateTreatmentInput | UpdateTreatmentInput>({
     resolver: zodResolver(schema),
@@ -88,6 +91,23 @@ export function TreatmentForm({ treatmentId, appointmentId, patientId, onSuccess
     name: "medications" as never,
   });
 
+  // Watched values used to preserve legacy/free-text dropdown selections so
+  // editing older records never silently rewrites them.
+  const treatmentTypeValue = watch("treatment_type") as string | undefined;
+  const medicationValues = watch("medications") as
+    | Array<{ dosage?: string; instructions?: string }>
+    | undefined;
+
+  // "Other" mode — true when the stored value is not one of the preset options.
+  // In that case the Select shows "Other" and a free-text input is revealed.
+  const isStandardType =
+    !treatmentTypeValue ||
+    (TREATMENT_TYPE_OPTIONS as readonly string[]).includes(treatmentTypeValue);
+  const [showCustomType, setShowCustomType] = useState(!isStandardType);
+  const [customTypeValue, setCustomTypeValue] = useState(
+    isStandardType ? "" : (treatmentTypeValue ?? "")
+  );
+
   useEffect(() => {
     if (!treatmentId) return;
     getTreatment(treatmentId).then((result) => {
@@ -95,6 +115,12 @@ export function TreatmentForm({ treatmentId, appointmentId, patientId, onSuccess
         const { date, time } = splitDatetime(result.data.performed_at);
         setPerformedDate(date);
         setPerformedTime(time);
+        const tt = result.data.treatment_type;
+        const isStd = (TREATMENT_TYPE_OPTIONS as readonly string[]).includes(tt);
+        if (!isStd) {
+          setShowCustomType(true);
+          setCustomTypeValue(tt);
+        }
         reset({
           treatment_type: result.data.treatment_type,
           patient_visible_notes: result.data.patient_visible_notes ?? "",
@@ -219,13 +245,47 @@ export function TreatmentForm({ treatmentId, appointmentId, patientId, onSuccess
           <input type="hidden" {...register("performed_at" as keyof CreateTreatmentInput)} />
 
           <Field label="Treatment Type" htmlFor="treatment-type" required error={(errors as Record<string, {message?: string}>).treatment_type?.message}>
-            <Input
+            <Select
               id="treatment-type"
-              type="text"
-              {...register("treatment_type")}
-              placeholder="e.g. Root Canal, Cleaning, Extraction"
+              value={showCustomType ? "__other__" : (treatmentTypeValue ?? "")}
+              onChange={(e) => {
+                const val = e.target.value;
+                if (val === "__other__") {
+                  setShowCustomType(true);
+                  setCustomTypeValue("");
+                  setValue("treatment_type" as keyof CreateTreatmentInput, "" as never);
+                } else {
+                  setShowCustomType(false);
+                  setCustomTypeValue("");
+                  setValue("treatment_type" as keyof CreateTreatmentInput, val as never);
+                }
+              }}
               hasError={!!(errors as Record<string, unknown>).treatment_type}
-            />
+            >
+              <option value="" disabled>Select treatment type…</option>
+              {TREATMENT_TYPE_OPTIONS.map((opt) => (
+                <option key={opt} value={opt}>{opt}</option>
+              ))}
+              <option value="__other__">Other</option>
+            </Select>
+            {showCustomType && (
+              <Input
+                id="treatment-type-custom"
+                type="text"
+                className="mt-2"
+                placeholder="Describe the treatment type…"
+                value={customTypeValue}
+                onChange={(e) => {
+                  setCustomTypeValue(e.target.value);
+                  setValue(
+                    "treatment_type" as keyof CreateTreatmentInput,
+                    e.target.value as never
+                  );
+                }}
+                hasError={!!(errors as Record<string, unknown>).treatment_type}
+                autoFocus
+              />
+            )}
           </Field>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -293,11 +353,12 @@ export function TreatmentForm({ treatmentId, appointmentId, patientId, onSuccess
             <p className="text-xs text-[#A1A1AA]">No medications added.</p>
           ) : (
             <div className="space-y-3">
-              {/* Column headers (md+) */}
-              <div className="hidden md:grid grid-cols-[1fr_140px_90px_130px_36px] gap-2 text-xs font-medium text-[#71717A] uppercase tracking-wide px-1">
+              {/* Column headers (md+) — order: Medicine | Number | Dosage | Instructions | Days */}
+              <div className="hidden md:grid grid-cols-[1fr_90px_120px_160px_130px_36px] gap-2 text-xs font-medium text-[#71717A] uppercase tracking-wide px-1">
                 <span>Medicine</span>
-                <span>Dosage</span>
                 <span>Number</span>
+                <span>Dosage</span>
+                <span>Instructions</span>
                 <span>Days</span>
                 <span className="sr-only">Remove</span>
               </div>
@@ -305,11 +366,13 @@ export function TreatmentForm({ treatmentId, appointmentId, patientId, onSuccess
               {fields.map((fieldItem, index) => {
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const current = (fieldItem as any) as { days?: number };
+                const dosageValue = medicationValues?.[index]?.dosage;
+                const instructionsValue = medicationValues?.[index]?.instructions;
                 return (
                   <div key={fieldItem.id} className="space-y-2">
-                    {/* Main row: name | dosage | number | days | remove */}
+                    {/* Main row: name | number | dosage | instructions | days | remove */}
                     <div
-                      className="grid grid-cols-1 md:grid-cols-[1fr_140px_90px_130px_36px] gap-2 items-start"
+                      className="grid grid-cols-1 md:grid-cols-[1fr_90px_120px_160px_130px_36px] gap-2 items-start"
                     >
                       <Input
                         placeholder="Medicine name"
@@ -318,29 +381,44 @@ export function TreatmentForm({ treatmentId, appointmentId, patientId, onSuccess
                         hasError={!!medErrors?.[index]?.name}
                       />
 
+                      {/* Number — dropdown: 1/2, 1, 2, 3 (0.5 stored for "1/2") */}
+                      <Select
+                        id={`medications-${index}-number`}
+                        aria-label="Number of units"
+                        {...register(`medications.${index}.number` as never, { valueAsNumber: true })}
+                        hasError={!!medErrors?.[index]?.number}
+                      >
+                        <option value="0.5">1/2</option>
+                        <option value="1">1</option>
+                        <option value="2">2</option>
+                        <option value="3">3</option>
+                      </Select>
+
                       {/* Dosage — shadcn Select dropdown */}
                       <Select
                         id={`medications-${index}-dosage`}
                         aria-label="Dosage frequency"
                         {...register(`medications.${index}.dosage` as never)}
-                        defaultValue={(fieldItem as { dosage?: string }).dosage ?? ""}
                       >
                         <option value="">Select…</option>
+                        <ExtraOption value={dosageValue} among={DOSAGE_OPTIONS} />
                         {DOSAGE_OPTIONS.map((opt) => (
                           <option key={opt} value={opt}>{opt}</option>
                         ))}
                       </Select>
 
-                      {/* Number — same increment/decrement stepper as Days */}
-                      <NumberCounter
-                        defaultValue={(fieldItem as { number?: number }).number ?? 1}
-                        min={1}
-                        max={3}
-                        onStep={(next) => {
-                          setValue(`medications.${index}.number` as never, next as never, { shouldValidate: true });
-                        }}
-                        ariaLabel="Number of units"
-                      />
+                      {/* Instructions — optional dropdown */}
+                      <Select
+                        id={`medications-${index}-instructions`}
+                        aria-label="Medication instructions"
+                        {...register(`medications.${index}.instructions` as never)}
+                      >
+                        <option value="">Select…</option>
+                        <ExtraOption value={instructionsValue} among={MEDICATION_INSTRUCTION_OPTIONS} />
+                        {MEDICATION_INSTRUCTION_OPTIONS.map((opt) => (
+                          <option key={opt} value={opt}>{opt}</option>
+                        ))}
+                      </Select>
 
                       {/* Days — increment counter */}
                       <DaysCounter
@@ -359,15 +437,6 @@ export function TreatmentForm({ treatmentId, appointmentId, patientId, onSuccess
                         <Trash2 className="h-3.5 w-3.5" />
                       </button>
                     </div>
-
-                    {/* Instructions — optional multi-line textarea */}
-                    <Textarea
-                      placeholder="Instructions (optional)"
-                      aria-label="Medication instructions"
-                      rows={2}
-                      {...register(`medications.${index}.instructions` as never)}
-                      className="text-sm text-[#52525B] placeholder:text-[#A1A1AA]"
-                    />
                   </div>
                 );
               })}
@@ -505,54 +574,17 @@ function DaysCounter({
 }
 
 /** Generic increment/decrement stepper — identical styling to DaysCounter. */
-function NumberCounter({
-  defaultValue,
-  min,
-  max,
-  onStep,
-  ariaLabel,
+function ExtraOption({
+  value,
+  among,
 }: {
-  defaultValue: number;
-  min: number;
-  max: number;
-  onStep: (next: number) => void;
-  ariaLabel?: string;
+  value?: string | number | null;
+  among: readonly string[];
 }) {
-  const [value, setValue] = useState<number>(defaultValue || min);
-
-  function commit(next: number) {
-    const clamped = Math.min(max, Math.max(min, next));
-    setValue(clamped);
-    onStep(clamped);
-  }
-
-  return (
-    <div className="flex items-center">
-      <button
-        type="button"
-        onClick={() => commit(value - 1)}
-        className="h-9 w-8 flex items-center justify-center rounded-l-lg border border-[#E4E4E7] text-[#52525B] hover:bg-[#F4F4F5]"
-        aria-label={`Decrease ${ariaLabel ?? "value"}`}
-      >
-        <Minus className="h-3 w-3" />
-      </button>
-      <input
-        type="number"
-        min={min}
-        max={max}
-        value={value}
-        onChange={(e) => commit(parseInt(e.target.value, 10) || min)}
-        className="h-9 w-12 text-center text-sm border-y border-[#E4E4E7] outline-none focus:ring-1 focus:ring-[#18181B] text-[#09090B] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-        aria-label={ariaLabel ?? "value"}
-      />
-      <button
-        type="button"
-        onClick={() => commit(value + 1)}
-        className="h-9 w-8 flex items-center justify-center rounded-r-lg border border-[#E4E4E7] text-[#52525B] hover:bg-[#F4F4F5]"
-        aria-label={`Increase ${ariaLabel ?? "value"}`}
-      >
-        <Plus className="h-3 w-3" />
-      </button>
-    </div>
-  );
+  if (value === undefined || value === null || value === "") return null;
+  const v = String(value);
+  if (among.includes(v)) return null;
+  // Render a legacy/free-text value as a selectable option so editing an older
+  // record keeps its original value instead of silently dropping it.
+  return <option value={v}>{v}</option>;
 }

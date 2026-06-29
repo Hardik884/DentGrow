@@ -28,20 +28,16 @@ import { Field } from "@/components/ui/field";
 import { CalendarPicker } from "@/components/ui/calendar-picker";
 import Link from "next/link";
 import { CheckCircle2, X, User, Calendar, Stethoscope } from "lucide-react";
+import { TREATMENT_TYPE_OPTIONS } from "@/types";
 import type { FollowUpWithRelations, Patient } from "@/types";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-const FOLLOW_UP_TYPE_OPTIONS = [
-  { value: "review",            label: "Review" },
-  { value: "cleaning",          label: "Cleaning" },
-  { value: "crown_check",       label: "Crown Check" },
-  { value: "root_canal_review", label: "Root Canal Review" },
-  { value: "implant_review",    label: "Implant Review" },
-  { value: "payment_reminder",  label: "Payment Reminder" },
-  { value: "consultation",      label: "Consultation" },
-  { value: "custom",            label: "Custom" },
-] as const;
+/**
+ * Follow-Up Type options reuse the canonical TREATMENT_TYPE_OPTIONS list
+ * (single source of truth shared with the Treatment Type dropdown).
+ */
+const FOLLOW_UP_TYPE_OPTIONS = TREATMENT_TYPE_OPTIONS;
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -119,8 +115,20 @@ export function FollowUpForm({
   const dueDateRef     = useRef<HTMLDivElement>(null);
 
   // ── Form state ──────────────────────────────────────────────────────────────
+  const initialIsCustomType =
+    !!initialData?.follow_up_type &&
+    !(FOLLOW_UP_TYPE_OPTIONS as readonly string[]).includes(
+      initialData.follow_up_type
+    );
+
   const [followUpType, setFollowUpType] = useState(
     initialData?.follow_up_type ?? ""
+  );
+  const [showCustomFollowUpType, setShowCustomFollowUpType] = useState(
+    initialIsCustomType
+  );
+  const [customFollowUpType, setCustomFollowUpType] = useState(
+    initialIsCustomType ? (initialData?.follow_up_type ?? "") : ""
   );
   const [dueDate, setDueDate]   = useState(initialData?.due_date ?? "");
   const [dueTime, setDueTime]   = useState("");
@@ -201,7 +209,11 @@ export function FollowUpForm({
   // ── Sync initialData if editing ─────────────────────────────────────────────
   useEffect(() => {
     if (initialData) {
-      setFollowUpType(initialData.follow_up_type ?? "");
+      const ft = initialData.follow_up_type ?? "";
+      const isCustom = !!ft && !(FOLLOW_UP_TYPE_OPTIONS as readonly string[]).includes(ft);
+      setFollowUpType(ft);
+      setShowCustomFollowUpType(isCustom);
+      setCustomFollowUpType(isCustom ? ft : "");
       setDueDate(initialData.due_date);
       setNotes(initialData.notes ?? "");
       if (initialData.appointment_id) setSelectedAppointmentId(initialData.appointment_id);
@@ -314,8 +326,17 @@ export function FollowUpForm({
       setFormSuccess(followUpId ? "Follow-up updated." : "Follow-up created.");
 
       if (!followUpId && result.data) {
-        // Redirect to successRedirect if provided, otherwise fall back to detail page
-        const target = successRedirect ?? `/dentist/follow-ups/${result.data.id}`;
+        // Task 8 fix — when the follow-up was launched from an appointment and
+        // a (new or linked) appointment is attached, navigate to that
+        // appointment's detail page so the newly created/linked appointment and
+        // its follow-up are immediately visible. router.refresh() guarantees the
+        // server components re-fetch without a manual reload.
+        const launchedFromAppointment = !!prefillAppointmentId;
+        const linkedApptId = result.data.appointment_id;
+        const target =
+          launchedFromAppointment && linkedApptId
+            ? `/dentist/appointments/${linkedApptId}`
+            : successRedirect ?? `/dentist/follow-ups/${result.data.id}`;
         router.push(target);
         router.refresh();
         return;
@@ -489,21 +510,48 @@ export function FollowUpForm({
                 <Field label="Follow-Up Type" htmlFor="follow_up_type" required error={fieldErrors.followUpType}>
                   <Select
                     id="follow_up_type"
-                    value={followUpType}
+                    value={showCustomFollowUpType ? "__other__" : followUpType}
                     onChange={(e) => {
-                      setFollowUpType(e.target.value);
+                      const val = e.target.value;
                       setFieldErrors((prev) => ({ ...prev, followUpType: undefined }));
+                      if (val === "__other__") {
+                        setShowCustomFollowUpType(true);
+                        setCustomFollowUpType("");
+                        setFollowUpType("");
+                      } else {
+                        setShowCustomFollowUpType(false);
+                        setCustomFollowUpType("");
+                        setFollowUpType(val);
+                      }
                     }}
                     disabled={isReadOnly}
                     hasError={!!fieldErrors.followUpType}
                   >
                     <option value="" disabled>Select type…</option>
                     {FOLLOW_UP_TYPE_OPTIONS.map((opt) => (
-                      <option key={opt.value} value={opt.value}>
-                        {opt.label}
+                      <option key={opt} value={opt}>
+                        {opt}
                       </option>
                     ))}
+                    <option value="__other__">Other</option>
                   </Select>
+                  {showCustomFollowUpType && (
+                    <Input
+                      id="follow_up_type_custom"
+                      type="text"
+                      className="mt-2"
+                      placeholder="Describe the follow-up type…"
+                      value={customFollowUpType}
+                      onChange={(e) => {
+                        setCustomFollowUpType(e.target.value);
+                        setFollowUpType(e.target.value);
+                        setFieldErrors((prev) => ({ ...prev, followUpType: undefined }));
+                      }}
+                      disabled={isReadOnly}
+                      hasError={!!fieldErrors.followUpType}
+                      autoFocus
+                    />
+                  )}
                 </Field>
               </div>
 

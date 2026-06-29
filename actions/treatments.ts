@@ -12,6 +12,7 @@ import {
   type TreatmentForReceptionist,
   type TreatmentForPatient,
   type TreatmentForPatientWithSignature,
+  type TreatmentHistoryItem,
 } from "@/types";
 import {
   DOCUMENT_BUCKET,
@@ -382,6 +383,97 @@ export async function getTreatmentsForAppointment(
     return { data: (data ?? []) as Treatment[], error: null };
   } catch (err) {
     console.error("[getTreatmentsForAppointment] unexpected:", err);
+    return { data: null, error: "Unexpected error" };
+  }
+}
+
+// =============================================================================
+// getPatientTreatmentHistory — past treatments for a patient (staff)
+//
+// Used by the appointment detail page "Past Treatment History" section.
+// Returns non-deleted treatments for the patient, newest first, enriched with
+// the performing dentist's name (resolved via appointment → dentist profile).
+// Clinic isolation is enforced by the clinic_id filter.
+// =============================================================================
+
+export async function getPatientTreatmentHistory(
+  patientId: string
+): Promise<ActionResult<TreatmentHistoryItem[]>> {
+  try {
+    if (!patientId) return { data: [], error: null };
+
+    const { db, profile } = await resolveSession();
+    if (!profile) return { data: null, error: "Unauthorized" };
+    if (profile.role === "patient") {
+      return { data: null, error: "Forbidden" };
+    }
+
+    const { data, error } = await db
+      .from("treatments")
+      .select(
+        "id, treatment_type, status, cost, performed_at, created_at, patient_visible_notes, appointment_id"
+      )
+      .eq("patient_id", patientId)
+      .eq("clinic_id", profile.clinic_id)
+      .is("deleted_at", null)
+      .order("performed_at", { ascending: false, nullsFirst: false })
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error("[getPatientTreatmentHistory]", error);
+      return { data: null, error: "Failed to fetch treatment history." };
+    }
+
+    const rows = (data ?? []) as Array<
+      Omit<TreatmentHistoryItem, "dentistName">
+    >;
+
+    // Resolve dentist names via the linked appointments (clinic-scoped).
+    const apptIds = Array.from(
+      new Set(rows.map((r) => r.appointment_id).filter(Boolean) as string[])
+    );
+
+    const dentistNameByAppt = new Map<string, string>();
+    if (apptIds.length > 0) {
+      const { data: appts } = await db
+        .from("appointments")
+        .select("id, dentist_id")
+        .in("id", apptIds)
+        .eq("clinic_id", profile.clinic_id);
+
+      const apptRows = (appts ?? []) as { id: string; dentist_id: string }[];
+      const dentistIds = Array.from(new Set(apptRows.map((a) => a.dentist_id)));
+
+      if (dentistIds.length > 0) {
+        const { data: dentists } = await db
+          .from("profiles")
+          .select("id, full_name")
+          .in("id", dentistIds);
+
+        const nameById = new Map(
+          ((dentists ?? []) as { id: string; full_name: string }[]).map((d) => [
+            d.id,
+            d.full_name,
+          ])
+        );
+
+        for (const a of apptRows) {
+          const name = nameById.get(a.dentist_id);
+          if (name) dentistNameByAppt.set(a.id, name);
+        }
+      }
+    }
+
+    const enriched: TreatmentHistoryItem[] = rows.map((r) => ({
+      ...r,
+      dentistName: r.appointment_id
+        ? dentistNameByAppt.get(r.appointment_id) ?? null
+        : null,
+    }));
+
+    return { data: enriched, error: null };
+  } catch (err) {
+    console.error("[getPatientTreatmentHistory] unexpected:", err);
     return { data: null, error: "Unexpected error" };
   }
 }

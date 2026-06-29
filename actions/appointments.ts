@@ -22,6 +22,7 @@ import {
 } from "@/lib/scheduling/slots";
 import { zonedDateToUTC, getTodayInTimezone, getUtcBoundariesForLocalDate } from "@/lib/utils";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { completeLinkedFollowUps } from "@/lib/follow-ups/complete-linked";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type DbClient = any;
@@ -504,6 +505,22 @@ export async function updateAppointmentStatus(
       return { data: null, error: "Failed to update appointment status." };
     }
 
+    // ── On completed: auto-complete any follow-ups linked to this appointment ─
+    // Runs from the dentist status-control completion path. The queue
+    // advancement path calls the same helper. Only pending follow-ups are
+    // touched (idempotent — no duplicate completion).
+    if (newStatus === "completed") {
+      const completedCount = await completeLinkedFollowUps(
+        db,
+        parsed.data.appointment_id,
+        profile.clinic_id
+      );
+      if (completedCount > 0) {
+        revalidatePath(`/${profile.role}/follow-ups`);
+        revalidatePath(`/${profile.role}/patients/${currentAppt.patient_id}`);
+      }
+    }
+
     // ── On checked_in: create queue_entries row ────────────────────────────
     // The receptionist path uses checkInPatient() directly (which also calls
     // this transition). The dentist path uses AppointmentStatusControl →
@@ -922,6 +939,73 @@ export async function cancelAppointment(
     return { data: null, error: null };
   } catch (err) {
     console.error("[cancelAppointment] unexpected:", err);
+    return { data: null, error: "Unexpected error" };
+  }
+}
+
+// =============================================================================
+// updateAppointmentNotes — edit appointment-level notes at any time
+//
+// Notes are editable independently of the appointment lifecycle (any status,
+// including terminal states). Only the `notes` field is touched — no other
+// appointment data is affected. Staff only (dentist + receptionist), scoped to
+// the caller's clinic. Permissions mirror the existing appointment mutations.
+// =============================================================================
+
+export async function updateAppointmentNotes(
+  appointmentId: string,
+  notes: string
+): Promise<ActionResult<Appointment>> {
+  try {
+    if (!appointmentId) return { data: null, error: "Appointment ID is required" };
+
+    if (typeof notes !== "string") {
+      return { data: null, error: "Invalid notes" };
+    }
+    if (notes.length > 1000) {
+      return { data: null, error: "Notes must be 1000 characters or fewer." };
+    }
+
+    const { db, profile } = await resolveSession();
+    if (!profile) return { data: null, error: "Unauthorized" };
+    if (profile.role !== "dentist" && profile.role !== "receptionist") {
+      return { data: null, error: "Forbidden" };
+    }
+
+    // Verify the appointment exists and belongs to the caller's clinic.
+    const { data: existing } = await db
+      .from("appointments")
+      .select("id")
+      .eq("id", appointmentId)
+      .eq("clinic_id", profile.clinic_id)
+      .is("deleted_at", null)
+      .single();
+
+    if (!existing) return { data: null, error: "Appointment not found." };
+
+    const trimmed = notes.trim();
+
+    const { data: updated, error: updateErr } = await db
+      .from("appointments")
+      .update({
+        notes: trimmed.length > 0 ? trimmed : null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", appointmentId)
+      .eq("clinic_id", profile.clinic_id)
+      .select()
+      .single();
+
+    if (updateErr || !updated) {
+      console.error("[updateAppointmentNotes]", updateErr);
+      return { data: null, error: "Failed to update notes." };
+    }
+
+    revalidatePath(`/${profile.role}/appointments/${appointmentId}`);
+
+    return { data: updated as Appointment, error: null };
+  } catch (err) {
+    console.error("[updateAppointmentNotes] unexpected:", err);
     return { data: null, error: "Unexpected error" };
   }
 }

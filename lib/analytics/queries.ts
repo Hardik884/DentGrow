@@ -913,7 +913,7 @@ export async function generateBasicInsights(
 ): Promise<Insight[]> {
   const { clinicId, dateFrom, dateTo } = filter;
 
-  const [apptRes, treatmentsRes, followUpsRes] = await Promise.all([
+  const [apptRes, treatmentsRes] = await Promise.all([
     supabase
       .from("appointments")
       .select("source, status, scheduled_at, duration_minutes")
@@ -924,16 +924,10 @@ export async function generateBasicInsights(
       .from("treatments")
       .select("treatment_type, cost, status")
       .eq("clinic_id", clinicId).is("deleted_at", null),
-
-    supabase
-      .from("follow_ups")
-      .select("status")
-      .eq("clinic_id", clinicId).is("deleted_at", null),
   ]);
 
   const appts = (apptRes.data ?? []) as ApptRow[];
   const treatments = (treatmentsRes.data ?? []) as TreatmentRow[];
-  const followUps = (followUpsRes.data ?? []) as Pick<FollowUpRow, "status">[];
 
   const insights: Insight[] = [];
 
@@ -983,17 +977,9 @@ export async function generateBasicInsights(
     });
   }
 
-  // Follow-up completion rate
-  const total = followUps.length;
-  const completed = followUps.filter((f) => f.status === "completed").length;
-  if (total > 0) {
-    const rate = Math.round((completed / total) * 100);
-    insights.push({
-      title: "Follow-up Completion Rate",
-      value: `${rate}%`,
-      description: `${completed} of ${total} follow-ups have been completed.`,
-    });
-  }
+  // NOTE: The follow-up completion/creation rate is intentionally NOT surfaced
+  // here. It belongs with the other follow-up metrics in the Follow-Up
+  // Analytics section, keeping Insights focused on the most important KPIs.
 
   return insights;
 }
