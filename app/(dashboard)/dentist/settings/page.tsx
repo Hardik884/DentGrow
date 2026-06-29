@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import { PageHeader } from "@/components/layouts/PageHeader";
 import { ClinicSettingsForm } from "@/components/dentist/ClinicSettingsForm";
+import { SignatureSettings } from "@/components/dentist/SignatureSettings";
 import { getClinicSettings } from "@/actions/clinic-settings";
+import { getMySignature } from "@/actions/signature";
 
 export const metadata: Metadata = {
   title: "Clinic Settings — DentGrow",
@@ -20,14 +22,22 @@ export const metadata: Metadata = {
  *   - Patient AI Assistant clinic information
  *
  * Submits to actions/clinic-settings.ts → updateClinicSettings()
+ *
+ * Also hosts the Digital Signature section: the dentist uploads their signature
+ * once here and it is automatically applied to every completed treatment shown
+ * to patients (actions/signature.ts).
  */
 export default async function ClinicSettingsPage() {
-  const { data: settings } = await getClinicSettings();
+  const [{ data: settings }, { data: signature }] = await Promise.all([
+    getClinicSettings(),
+    getMySignature(),
+  ]);
 
   return (
     <div className="p-6 space-y-6">
       <PageHeader title="Clinic Settings" />
       <ClinicSettingsForm initialSettings={settings} />
+      <SignatureSettings initialUrl={signature?.url ?? null} />
     </div>
   );
 }

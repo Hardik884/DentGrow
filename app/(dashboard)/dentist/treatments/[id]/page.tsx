@@ -9,6 +9,7 @@ import { getTreatment } from "@/actions/treatments";
 import { getPatientPayments } from "@/actions/payments";
 import { PaymentList } from "@/components/dentist/PaymentList";
 import { TreatmentDocumentsSection } from "@/components/dentist/TreatmentDocumentsSection";
+import { MedicationTable } from "@/components/shared/MedicationTable";
 import {
   formatDate,
   formatDateTime,
@@ -103,32 +104,7 @@ export default async function DentistTreatmentDetailPage({ params }: Props) {
             <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">
               Medications
             </p>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="text-left text-xs text-gray-400 uppercase tracking-wide">
-                    <th className="py-1 pr-4">Medicine</th>
-                    <th className="py-1 pr-4">Dosage</th>
-                    <th className="py-1 pr-4">Number</th>
-                    <th className="py-1 pr-4">Days</th>
-                    <th className="py-1">Instructions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {medications.map((m, i) => (
-                    <tr key={i}>
-                      <td className="py-1.5 pr-4 text-gray-900">{m.name}</td>
-                      <td className="py-1.5 pr-4 text-gray-600">{m.dosage || "—"}</td>
-                      <td className="py-1.5 pr-4 text-gray-600">{m.number}</td>
-                      <td className="py-1.5 pr-4 text-gray-600">{m.days}</td>
-                      <td className="py-1.5 text-gray-600 whitespace-pre-wrap">
-                        {m.instructions || "—"}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <MedicationTable medications={medications} />
           </div>
         )}
 

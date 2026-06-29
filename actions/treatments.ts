@@ -11,6 +11,7 @@ import {
   type TreatmentDocument,
   type TreatmentForReceptionist,
   type TreatmentForPatient,
+  type TreatmentForPatientWithSignature,
 } from "@/types";
 import {
   DOCUMENT_BUCKET,
@@ -485,11 +486,17 @@ export async function getAllTreatments(filters?: {
 
 // =============================================================================
 // getPatientTreatments — patient portal path; patient_visible_notes only
+//
+// Every treatment is automatically enriched with the performing dentist's
+// digital signature (resolved from the dentist's profile via the appointment),
+// regardless of treatment status. The signature is NEVER stored on the
+// treatment — it is resolved at read time. If the dentist has no signature
+// uploaded, `signature` is null and the portal hides the signature block.
 // =============================================================================
 
 export async function getPatientTreatments(
   _patientId: string
-): Promise<ActionResult<TreatmentForPatient[]>> {
+): Promise<ActionResult<TreatmentForPatientWithSignature[]>> {
   try {
     const supabase = await createServerClient();
     const db: DbClient = supabase;
@@ -514,7 +521,7 @@ export async function getPatientTreatments(
     const { data, error } = await db
       .from("treatments")
       .select(
-        "id, clinic_id, appointment_id, patient_id, treatment_type, patient_visible_notes, cost, status, performed_at, created_at"
+        "id, clinic_id, appointment_id, patient_id, treatment_type, patient_visible_notes, medications, cost, status, performed_at, created_at"
       )
       .eq("patient_id", link.patient_id)
       .is("deleted_at", null)
@@ -525,7 +532,78 @@ export async function getPatientTreatments(
       return { data: null, error: "Failed to fetch treatments." };
     }
 
-    return { data: (data ?? []) as TreatmentForPatient[], error: null };
+    const treatments = (data ?? []) as TreatmentForPatient[];
+
+    // Resolve dentist signatures for ALL treatments (any status). Map each
+    // treatment → appointment → dentist profile (full_name + signature_url).
+    const apptIds = Array.from(
+      new Set(
+        treatments
+          .filter((t) => t.appointment_id)
+          .map((t) => t.appointment_id as string)
+      )
+    );
+
+    // appointment_id -> dentist signature info
+    const signatureByAppointment = new Map<
+      string,
+      { dentistName: string; signatureUrl: string }
+    >();
+
+    if (apptIds.length > 0) {
+      // Patient can read their own appointments (RLS via auth_patient_id) and
+      // the dentist's profile (RLS: profiles readable within the same clinic).
+      const { data: appts } = await db
+        .from("appointments")
+        .select("id, dentist_id")
+        .in("id", apptIds);
+
+      const apptRows = (appts ?? []) as { id: string; dentist_id: string }[];
+      const dentistIds = Array.from(new Set(apptRows.map((a) => a.dentist_id)));
+
+      if (dentistIds.length > 0) {
+        const { data: dentists } = await db
+          .from("profiles")
+          .select("id, full_name, signature_url")
+          .in("id", dentistIds);
+
+        const dentistById = new Map(
+          ((dentists ?? []) as {
+            id: string;
+            full_name: string;
+            signature_url: string | null;
+          }[]).map((d) => [d.id, d])
+        );
+
+        for (const appt of apptRows) {
+          const dentist = dentistById.get(appt.dentist_id);
+          if (dentist?.signature_url) {
+            signatureByAppointment.set(appt.id, {
+              dentistName: dentist.full_name,
+              signatureUrl: dentist.signature_url,
+            });
+          }
+        }
+      }
+    }
+
+    const enriched: TreatmentForPatientWithSignature[] = treatments.map((t) => {
+      const sig = t.appointment_id
+        ? signatureByAppointment.get(t.appointment_id)
+        : undefined;
+
+      return {
+        ...t,
+        signature: sig
+          ? {
+              dentistName: sig.dentistName,
+              signatureUrl: sig.signatureUrl,
+            }
+          : null,
+      };
+    });
+
+    return { data: enriched, error: null };
   } catch (err) {
     console.error("[getPatientTreatments] unexpected:", err);
     return { data: null, error: "Unexpected error" };

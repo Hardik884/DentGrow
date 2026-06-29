@@ -54,6 +54,7 @@ export type Database = {
           clinic_id: string;
           full_name: string;
           role: "dentist" | "receptionist" | "patient";
+          signature_url: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -62,6 +63,7 @@ export type Database = {
           clinic_id: string;
           full_name: string;
           role: "dentist" | "receptionist" | "patient";
+          signature_url?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -70,6 +72,7 @@ export type Database = {
           clinic_id?: string;
           full_name?: string;
           role?: "dentist" | "receptionist" | "patient";
+          signature_url?: string | null;
           created_at?: string;
           updated_at?: string;
         };

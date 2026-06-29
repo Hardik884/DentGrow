@@ -194,11 +194,30 @@ export type TreatmentForPatient = Pick<
   | "patient_id"
   | "treatment_type"
   | "patient_visible_notes"
+  | "medications"
   | "cost"
   | "status"
   | "performed_at"
   | "created_at"
 >;
+
+/**
+ * Resolved dentist signature shown in the patient portal. The signature is NOT
+ * stored on the treatment — it is resolved at read time from the dentist's
+ * profile (via appointments.dentist_id) and applies to EVERY treatment status
+ * (planned, in_progress, completed, cancelled). `null` only when the dentist
+ * has never uploaded a signature, in which case the signature block is hidden
+ * entirely. Treatment status and date are rendered from the treatment itself.
+ */
+export type TreatmentSignature = {
+  dentistName: string;
+  signatureUrl: string;
+};
+
+/** Patient portal treatment enriched with an optional resolved dentist signature. */
+export type TreatmentForPatientWithSignature = TreatmentForPatient & {
+  signature: TreatmentSignature | null;
+};
 
 // =============================================================================
 // SECTION 4 — SERVER ACTION RESULT TYPE

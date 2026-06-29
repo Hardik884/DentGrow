@@ -6,6 +6,11 @@ interface TreatmentDocumentsSectionProps {
   treatmentId: string;
   /** When false, hides delete controls (e.g. patient-facing). */
   canDelete?: boolean;
+  /**
+   * When true, renders nothing if there are no documents (patient portal —
+   * the section is hidden entirely instead of showing an empty-state message).
+   */
+  hideWhenEmpty?: boolean;
 }
 
 function formatSize(bytes: number | null): string {
@@ -24,9 +29,15 @@ function formatSize(bytes: number | null): string {
 export async function TreatmentDocumentsSection({
   treatmentId,
   canDelete = true,
+  hideWhenEmpty = false,
 }: TreatmentDocumentsSectionProps) {
   const result = await getTreatmentDocuments(treatmentId);
   const docs = result.data ?? [];
+
+  // Patient portal: render nothing when there are no documents.
+  if (hideWhenEmpty && docs.length === 0 && !result.error) {
+    return null;
+  }
 
   return (
     <div className="bg-white border rounded-lg p-4 space-y-3">
