@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { createServerClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getAppUrl } from "@/lib/app-url";
 import { getClinicById } from "@/actions/clinics";
 import {
   setSelectedClinic,
@@ -180,8 +181,10 @@ export async function signUp(
     email,
     password,
     options: {
-      // Redirect after email confirmation — handled by Supabase Auth
-      emailRedirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/portal/setup`,
+      // Redirect after email confirmation — handled by Supabase Auth.
+      // Origin is resolved from the live request so the link is correct per
+      // environment (never a build-time-baked localhost URL in production).
+      emailRedirectTo: await getAppUrl("/portal/setup"),
     },
   });
 
@@ -311,7 +314,10 @@ export async function requestPasswordReset(
     if (await isPasswordResetEligible(email)) {
       const supabase = await createServerClient();
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/auth/callback?next=/reset-password`,
+        // Origin is resolved from the live request at runtime, so production
+        // emails always point at the deployed domain and dev emails at
+        // localhost — never a build-time-inlined NEXT_PUBLIC_APP_URL value.
+        redirectTo: await getAppUrl("/auth/callback?next=/reset-password"),
       });
       // A genuine send failure is a system problem, not an existence signal.
       if (error) {
