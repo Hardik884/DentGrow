@@ -8,7 +8,12 @@ export const metadata: Metadata = {
   description: "Sign in to your DentGrow account.",
 };
 
-export default async function LoginPage() {
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ reset?: string }>;
+}) {
+  const { reset } = await searchParams;
   const { data: clinics } = await getClinics();
 
   return (
@@ -23,7 +28,7 @@ export default async function LoginPage() {
 
       {/* Card */}
       <div className="bg-white border border-[#E4E4E7] rounded-xl p-6 shadow-sm">
-        <LoginForm clinics={clinics ?? []} />
+        <LoginForm clinics={clinics ?? []} resetSuccess={reset === "1"} />
       </div>
 
       <p className="text-center text-xs text-[#71717A]">

@@ -53,6 +53,19 @@ export async function updateSession(request: NextRequest) {
 
   const { pathname } = request.nextUrl;
 
+  // ── Public auth-recovery routes ────────────────────────────────────────────
+  // The patient password-reset flow must be reachable without an existing app
+  // session: /forgot-password (logged-out patient requesting a link),
+  // /auth/callback (exchanges the recovery code → sets the recovery session),
+  // and /reset-password (renders within that recovery session). Skipping the
+  // auth gate here prevents the "unauthenticated → /login" redirect from
+  // breaking the flow. Reset itself still relies on the authenticated Supabase
+  // account, never on any clinic selection.
+  const PUBLIC_AUTH_PATHS = ["/forgot-password", "/reset-password", "/auth/callback"];
+  if (PUBLIC_AUTH_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`))) {
+    return supabaseResponse;
+  }
+
   // ── Root redirect ──────────────────────────────────────────────────────────
   if (pathname === "/") {
     if (!user) {
@@ -150,20 +163,6 @@ async function resolveRole(
 
   const row = data as { role: "dentist" | "receptionist" | "patient" } | null;
   return row?.role ?? null;
-}
-
-/**
- * Fetch the user's profile and redirect to the appropriate home route.
- * Falls back to /login if no profile exists.
- */
-async function redirectByRole(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  supabase: any,
-  userId: string,
-  request: NextRequest
-): Promise<NextResponse> {
-  const role = await resolveRole(supabase, userId);
-  return redirectByKnownRole(role, request);
 }
 
 /** Map a known role value to its home route and return a redirect. */

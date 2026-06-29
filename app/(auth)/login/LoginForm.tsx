@@ -13,9 +13,10 @@ const initialState: ActionResult<null> = { data: null, error: null };
 
 interface LoginFormProps {
   clinics: ClinicOption[];
+  resetSuccess?: boolean;
 }
 
-export function LoginForm({ clinics }: LoginFormProps) {
+export function LoginForm({ clinics, resetSuccess }: LoginFormProps) {
   const [state, formAction, isPending] = useActionState(signIn, initialState);
 
   // Clinic selection is required before sign-in is allowed.
@@ -23,6 +24,19 @@ export function LoginForm({ clinics }: LoginFormProps) {
 
   return (
     <form action={formAction} className="space-y-4" noValidate>
+      {/* Success banner — shown after a completed password reset */}
+      {resetSuccess && (
+        <div
+          role="status"
+          className="rounded-lg bg-[#F0FDF4] border border-[#BBF7D0] px-3.5 py-3 text-xs text-[#16A34A] flex items-start gap-2"
+        >
+          <svg className="h-4 w-4 shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20" aria-hidden>
+            <path fillRule="evenodd" d="M16.704 5.29a1 1 0 0 1 .006 1.414l-7.5 7.555a1 1 0 0 1-1.42.001L3.29 10.36a1 1 0 1 1 1.42-1.41l3.29 3.31 6.79-6.84a1 1 0 0 1 1.414-.13Z" clipRule="evenodd" />
+          </svg>
+          Password updated successfully. Please sign in.
+        </div>
+      )}
+
       {/* Error banner */}
       {state.error && (
         <div
@@ -78,6 +92,14 @@ export function LoginForm({ clinics }: LoginFormProps) {
           disabled={isPending}
           placeholder="••••••••"
         />
+        <div className="flex justify-end pt-0.5">
+          <a
+            href="/forgot-password"
+            className="text-xs text-[#71717A] hover:text-[#09090B] hover:underline underline-offset-4"
+          >
+            Forgot password?
+          </a>
+        </div>
       </Field>
 
       <Button
