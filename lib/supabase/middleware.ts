@@ -121,9 +121,18 @@ export async function updateSession(request: NextRequest) {
     return supabaseResponse;
   }
 
-  // ── /portal/* — any authenticated user; check portal link ─────────────────
+  // ── /portal/* — patient portal; staff are redirected to their dashboard ───
   if (pathname.startsWith("/portal")) {
-    // /portal/setup is always accessible to authenticated users
+    // Staff (dentist/receptionist) must not enter the portal flow — sending
+    // them to /portal/setup would invite them to overwrite their own profile
+    // (the linking action upserts role = 'patient'). Bounce them to their
+    // dashboard instead.
+    const role = await resolveRole(supabase, user.id);
+    if (role === "dentist" || role === "receptionist") {
+      return redirectByKnownRole(role, request);
+    }
+
+    // /portal/setup is always accessible to authenticated non-staff users
     if (pathname === "/portal/setup") {
       return supabaseResponse;
     }

@@ -128,6 +128,28 @@ export async function linkPortalAccount(
       redirect("/portal");
     }
 
+    // Guard: staff accounts (dentist/receptionist) must never go through portal
+    // linking. The linking flow upserts profiles.role = 'patient', which would
+    // overwrite a staff member's profile and demote them — corrupting their
+    // access. A staff user who lands here (e.g. by manually visiting
+    // /portal/setup) is refused before any write happens.
+    const { data: existingProfile } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    if (
+      existingProfile &&
+      (existingProfile as { role: string }).role !== "patient"
+    ) {
+      return {
+        data: null,
+        error:
+          "This is a staff account and cannot be linked to the patient portal.",
+      };
+    }
+
     // Validate the selected clinic. Every subsequent lookup/creation is scoped
     // to this clinic so a phone number registered in another clinic is never
     // matched (clinic isolation requirement).
@@ -575,7 +597,6 @@ export async function getPortalProfile(): Promise<
 
 import {
   UpdatePortalProfileSchema,
-  type UpdatePortalProfileInput,
 } from "@/lib/portal-profile";
 import type { PatientUpdate } from "@/types";
 

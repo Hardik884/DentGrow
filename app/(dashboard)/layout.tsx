@@ -2,6 +2,12 @@ import { redirect } from "next/navigation";
 import { resolveSession } from "@/lib/auth/session";
 import { DashboardSidebar } from "@/components/layouts/DashboardSidebar";
 
+// Every dashboard route is authenticated and reads request cookies, so it is
+// inherently per-request dynamic. Declaring it here prevents Next from
+// attempting (and failing) static prerendering during the build, which
+// otherwise logs DYNAMIC_SERVER_USAGE errors via the data-layer catch blocks.
+export const dynamic = "force-dynamic";
+
 export default async function DashboardLayout({
   children,
 }: {

@@ -50,7 +50,6 @@ export function QueuePositionCard({
       if (!cancelled && result.data) setStatus(result.data);
     })();
     return () => { cancelled = true; };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [queue.length, myEntryStatus, patientId]);
 
   const myEntry = queue.find((e) => e.patient_id === patientId);

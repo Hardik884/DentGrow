@@ -3,6 +3,11 @@ import { createServerClient } from "@/lib/supabase/server";
 import { PortalNav } from "@/components/layouts/PortalNav";
 import { PatientAssistant } from "@/components/ai/PatientAssistant";
 
+// Portal routes are authenticated and read request cookies — inherently
+// per-request dynamic. Declaring it prevents the build from attempting static
+// prerendering and emitting DYNAMIC_SERVER_USAGE errors.
+export const dynamic = "force-dynamic";
+
 export default async function PortalLayout({
   children,
 }: {

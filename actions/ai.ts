@@ -24,6 +24,7 @@ import {
 } from "@/lib/ai/patient-tools";
 import type { ActionResult, CopilotMessage } from "@/types";
 import { computeOutstandingBalance } from "@/lib/billing/balance";
+import { getTodayInTimezone, getUtcBoundariesForLocalDate } from "@/lib/utils";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type DbClient = any;
@@ -640,54 +641,107 @@ export async function generateInsights(): Promise<ActionResult<string[]>> {
 
     const cid = profile.clinic_id;
     const now = new Date();
-    const todayStr = now.toISOString().split("T")[0];
-    const todayStart = `${todayStr}T00:00:00.000Z`;
-    const todayEnd = `${todayStr}T23:59:59.999Z`;
 
-    const [todayAppts, lastWeekPayments, thisWeekPayments, overdueRes, settingsRes] =
-      await Promise.all([
-        db
-          .from("appointments")
-          .select("status, source")
-          .eq("clinic_id", cid)
-          .gte("scheduled_at", todayStart)
-          .lte("scheduled_at", todayEnd)
-          .is("deleted_at", null),
-        db
-          .from("payments")
-          .select("amount")
-          .eq("clinic_id", cid)
-          .gte("payment_date", new Date(now.getTime() - 14 * 86400000).toISOString().split("T")[0])
-          .lt("payment_date", new Date(now.getTime() - 7 * 86400000).toISOString().split("T")[0])
-          .is("deleted_at", null),
-        db
-          .from("payments")
-          .select("amount")
-          .eq("clinic_id", cid)
-          .gte("payment_date", new Date(now.getTime() - 7 * 86400000).toISOString().split("T")[0])
-          .is("deleted_at", null),
-        db
-          .from("follow_ups")
-          .select("id")
-          .eq("clinic_id", cid)
-          .eq("status", "pending")
-          .lt("due_date", todayStr)
-          .is("deleted_at", null),
-        db
-          .from("clinic_settings")
-          .select("clinic_name")
-          .eq("clinic_id", cid)
-          .maybeSingle(),
-      ]);
+    // Resolve the clinic timezone so "today" and the week windows line up with
+    // the rest of the app (dashboard KPIs, queue) instead of drifting by the
+    // UTC offset for clinics behind/ahead of UTC.
+    const { data: tzRow } = await db
+      .from("clinic_settings")
+      .select("timezone")
+      .eq("clinic_id", cid)
+      .maybeSingle();
+    const tz = (tzRow as { timezone?: string } | null)?.timezone ?? "Asia/Kolkata";
+
+    const todayStr = getTodayInTimezone(tz);
+    const { start: todayStart, end: todayEnd } = getUtcBoundariesForLocalDate(
+      todayStr,
+      tz
+    );
+
+    // Week windows: this-week = last 7 days, last-week = the 7 days before that.
+    const dayMs = 86400000;
+    const sevenDaysAgoIso = new Date(now.getTime() - 7 * dayMs).toISOString();
+    const fourteenDaysAgoIso = new Date(now.getTime() - 14 * dayMs).toISOString();
+    const sevenDaysAgoDate = sevenDaysAgoIso.split("T")[0];
+    const fourteenDaysAgoDate = fourteenDaysAgoIso.split("T")[0];
+
+    const [
+      todayAppts,
+      thisWeekAppts,
+      lastWeekAppts,
+      todayPayments,
+      lastWeekPayments,
+      thisWeekPayments,
+      overdueRes,
+      settingsRes,
+    ] = await Promise.all([
+      db
+        .from("appointments")
+        .select("status, source")
+        .eq("clinic_id", cid)
+        .gte("scheduled_at", todayStart)
+        .lte("scheduled_at", todayEnd)
+        .is("deleted_at", null),
+      db
+        .from("appointments")
+        .select("status, source")
+        .eq("clinic_id", cid)
+        .gte("scheduled_at", sevenDaysAgoIso)
+        .is("deleted_at", null),
+      db
+        .from("appointments")
+        .select("status, source")
+        .eq("clinic_id", cid)
+        .gte("scheduled_at", fourteenDaysAgoIso)
+        .lt("scheduled_at", sevenDaysAgoIso)
+        .is("deleted_at", null),
+      db
+        .from("payments")
+        .select("amount")
+        .eq("clinic_id", cid)
+        .eq("payment_date", todayStr)
+        .is("deleted_at", null),
+      db
+        .from("payments")
+        .select("amount")
+        .eq("clinic_id", cid)
+        .gte("payment_date", fourteenDaysAgoDate)
+        .lt("payment_date", sevenDaysAgoDate)
+        .is("deleted_at", null),
+      db
+        .from("payments")
+        .select("amount")
+        .eq("clinic_id", cid)
+        .gte("payment_date", sevenDaysAgoDate)
+        .is("deleted_at", null),
+      db
+        .from("follow_ups")
+        .select("id")
+        .eq("clinic_id", cid)
+        .eq("status", "pending")
+        .lt("due_date", todayStr)
+        .is("deleted_at", null),
+      db
+        .from("clinic_settings")
+        .select("clinic_name")
+        .eq("clinic_id", cid)
+        .maybeSingle(),
+    ]);
 
     const appts = (todayAppts.data ?? []) as { status: string; source: string }[];
-    const revenueToday = 0;
-    const revenueLastWeek = (
-      (lastWeekPayments.data ?? []) as { amount: number }[]
-    ).reduce((s, p) => s + Number(p.amount ?? 0), 0);
-    const revenueThisWeek = (
-      (thisWeekPayments.data ?? []) as { amount: number }[]
-    ).reduce((s, p) => s + Number(p.amount ?? 0), 0);
+    const weekAppts = (thisWeekAppts.data ?? []) as { status: string; source: string }[];
+    const prevWeekAppts = (lastWeekAppts.data ?? []) as { status: string; source: string }[];
+
+    const sumAmount = (rows: { amount: number }[] | null | undefined) =>
+      (rows ?? []).reduce((s, p) => s + Number(p.amount ?? 0), 0);
+
+    const revenueToday = sumAmount(todayPayments.data as { amount: number }[] | null);
+    const revenueLastWeek = sumAmount(
+      lastWeekPayments.data as { amount: number }[] | null
+    );
+    const revenueThisWeek = sumAmount(
+      thisWeekPayments.data as { amount: number }[] | null
+    );
 
     const model = getGeminiModel();
     const result = await withAITimeout(async () => {
@@ -705,10 +759,10 @@ export async function generateInsights(): Promise<ActionResult<string[]>> {
             walkInsToday: appts.filter((a) => a.source === "walk_in").length,
             revenueToday,
             revenueLastWeek,
-            noShowsThisWeek: 0,
-            noShowsLastWeek: 0,
-            walkInsThisWeek: appts.filter((a) => a.source === "walk_in").length,
-            walkInsLastWeek: 0,
+            noShowsThisWeek: weekAppts.filter((a) => a.status === "no_show").length,
+            noShowsLastWeek: prevWeekAppts.filter((a) => a.status === "no_show").length,
+            walkInsThisWeek: weekAppts.filter((a) => a.source === "walk_in").length,
+            walkInsLastWeek: prevWeekAppts.filter((a) => a.source === "walk_in").length,
             busiestHourThisWeek: null,
           },
           // Add revenue comparison
