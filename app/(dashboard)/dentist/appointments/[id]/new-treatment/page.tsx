@@ -27,7 +27,7 @@ export default async function NewTreatmentPage({ params, searchParams }: Props) 
   if (!appointmentId || !patientId) notFound();
 
   return (
-    <div className="p-6 space-y-6 max-w-2xl">
+    <div className="p-6 space-y-6 max-w-4xl">
       <PageHeader
         title="New Treatment"
         backHref={`/dentist/appointments/${appointmentId}`}

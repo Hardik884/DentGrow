@@ -224,12 +224,17 @@ export async function createFollowUp(
 
           const newApptId = (appt as { id: string } | null)?.id;
           if (newApptId) {
-            // Link the new appointment back to the follow-up record.
-            await db
-              .from("follow_ups")
-              .update({ appointment_id: newApptId, updated_at: new Date().toISOString() })
-              .eq("id", followUp.id);
-            followUp.appointment_id = newApptId;
+            // Keep the follow-up linked to its ORIGINATING appointment when one
+            // was provided (e.g. created from an appointment detail page), so it
+            // continues to appear under that appointment. Only fall back to the
+            // auto-created appointment when the follow-up had no source appointment.
+            if (!parsed.data.appointment_id) {
+              await db
+                .from("follow_ups")
+                .update({ appointment_id: newApptId, updated_at: new Date().toISOString() })
+                .eq("id", followUp.id);
+              followUp.appointment_id = newApptId;
+            }
             revalidatePath(`/dentist/appointments`);
             revalidatePath(`/dentist/appointments/${newApptId}`);
           }

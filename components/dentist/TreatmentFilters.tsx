@@ -50,7 +50,6 @@ interface TreatmentFiltersProps {
 }
 
 export function TreatmentFilters({
-  today,
   initialSearch = "",
   initialStatus = "",
   initialTreatmentType = "",

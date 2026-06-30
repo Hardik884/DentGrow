@@ -2,7 +2,9 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { updateAppointmentStatus, cancelAppointment } from "@/actions/appointments";
+import { queryKeys } from "@/lib/query/keys";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { RescheduleModal } from "@/components/shared/RescheduleModal";
 import { VALID_APPOINTMENT_TRANSITIONS } from "@/types";
@@ -31,6 +33,7 @@ export function AppointmentStatusControl({
   const [confirmAction, setConfirmAction] = useState<AppointmentStatus | null>(null);
   const [showReschedule, setShowReschedule] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
 
   const validNext = VALID_APPOINTMENT_TRANSITIONS[currentStatus];
 
@@ -44,7 +47,10 @@ export function AppointmentStatusControl({
         result = await updateAppointmentStatus({ appointment_id: appointmentId, new_status: newStatus });
       }
       if (result.error) setError(result.error);
-      else router.refresh();
+      else {
+        queryClient.invalidateQueries({ queryKey: queryKeys.appointments.all });
+        router.refresh();
+      }
       setConfirmAction(null);
     });
   }

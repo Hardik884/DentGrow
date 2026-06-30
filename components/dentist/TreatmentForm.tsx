@@ -4,6 +4,7 @@ import { useEffect, useState, useTransition } from "react";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   CreateTreatmentSchema,
   UpdateTreatmentSchema,
@@ -22,6 +23,7 @@ import {
   uploadTreatmentDocument,
 } from "@/actions/treatments";
 import { TREATMENT_STATUS_LABELS } from "@/lib/utils";
+import { queryKeys } from "@/lib/query/keys";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
@@ -50,6 +52,7 @@ function splitDatetime(iso: string | null | undefined): { date: string; time: st
 
 export function TreatmentForm({ treatmentId, appointmentId, patientId, onSuccess }: TreatmentFormProps) {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [isPending, startTransition] = useTransition();
   const [serverError, setServerError] = useState<string | null>(null);
   const [loading, setLoading] = useState(!!treatmentId);
@@ -199,6 +202,9 @@ export function TreatmentForm({ treatmentId, appointmentId, patientId, onSuccess
         if (files.length > 0) {
           await uploadFiles(result.data.id, result.data.patient_id);
         }
+
+        // Invalidate only the treatments cache.
+        queryClient.invalidateQueries({ queryKey: queryKeys.treatments.all });
 
         if (onSuccess) {
           onSuccess(result.data);
@@ -354,7 +360,7 @@ export function TreatmentForm({ treatmentId, appointmentId, patientId, onSuccess
           ) : (
             <div className="space-y-3">
               {/* Column headers (md+) — order: Medicine | Number | Dosage | Instructions | Days */}
-              <div className="hidden md:grid grid-cols-[1fr_90px_120px_160px_130px_36px] gap-2 text-xs font-medium text-[#71717A] uppercase tracking-wide px-1">
+              <div className="hidden md:grid grid-cols-[minmax(200px,2fr)_90px_120px_160px_130px_36px] gap-2 text-xs font-medium text-[#71717A] uppercase tracking-wide px-1">
                 <span>Medicine</span>
                 <span>Number</span>
                 <span>Dosage</span>
@@ -372,7 +378,7 @@ export function TreatmentForm({ treatmentId, appointmentId, patientId, onSuccess
                   <div key={fieldItem.id} className="space-y-2">
                     {/* Main row: name | number | dosage | instructions | days | remove */}
                     <div
-                      className="grid grid-cols-1 md:grid-cols-[1fr_90px_120px_160px_130px_36px] gap-2 items-start"
+                      className="grid grid-cols-1 md:grid-cols-[minmax(200px,2fr)_90px_120px_160px_130px_36px] gap-2 items-start"
                     >
                       <Input
                         placeholder="Medicine name"

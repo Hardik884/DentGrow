@@ -1,14 +1,11 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { Suspense } from "react";
 import { PageHeader } from "@/components/layouts/PageHeader";
-import { AppointmentStatusBadge } from "@/components/shared/AppointmentStatusBadge";
 import { AppointmentFilters } from "@/components/dentist/AppointmentFilters";
+import { AppointmentsView } from "@/components/dentist/AppointmentsView";
 import { NewInquiryButton } from "@/components/dentist/NewInquiryButton";
-import { getAppointments } from "@/actions/appointments";
 import { getClinicTimezone } from "@/lib/clinic/config";
-import { formatDateTimeInTimezone, getTodayInTimezone, APPOINTMENT_SOURCE_LABELS } from "@/lib/utils";
-import type { AppointmentStatus } from "@/types";
+import { getTodayInTimezone } from "@/lib/utils";
 
 export const metadata: Metadata = {
   title: "Appointments — DentGrow",
@@ -29,46 +26,19 @@ interface Props {
 /**
  * /dentist/appointments
  *
- * Server Component — appointment list with status + date range + time filters.
- * AppointmentFilters is a client component that drives URL search params.
- * Timezone-aware: date boundaries are converted to UTC before querying.
+ * Server Component shell — resolves clinic timezone + today (cheap, cached
+ * session) and renders the filter bar. The appointment list itself is rendered
+ * by AppointmentsView, a Client Component backed by TanStack Query, so return
+ * navigation is instant from cache. `getAppointments` remains the source of
+ * truth and all mutations stay on the existing Server Actions.
  */
 export default async function DentistAppointmentsPage({ searchParams }: Props) {
   const params = await searchParams;
   const page = Math.max(1, parseInt(params.page ?? "1", 10) || 1);
   const limit = 20;
 
-  // Clinic timezone + today's local date from the request-scoped cached
-  // resolver. getAppointments below reuses the same cached session, so the
-  // whole page render shares a single auth + profile lookup.
   const clinicTimezone = await getClinicTimezone();
   const today = getTodayInTimezone(clinicTimezone);
-
-  const result = await getAppointments({
-    status: params.status as AppointmentStatus | undefined,
-    search: params.search,
-    dateFrom: params.dateFrom,
-    dateTo: params.dateTo,
-    timeFrom: params.timeFrom,
-    timeTo: params.timeTo,
-    page,
-    limit,
-  });
-
-  const { appointments, total } = result.data ?? { appointments: [], total: 0 };
-  const totalPages = Math.ceil(total / limit);
-
-  function pageHref(p: number) {
-    const sp = new URLSearchParams();
-    if (params.status)   sp.set("status",   params.status);
-    if (params.search)   sp.set("search",   params.search);
-    if (params.dateFrom) sp.set("dateFrom", params.dateFrom);
-    if (params.dateTo)   sp.set("dateTo",   params.dateTo);
-    if (params.timeFrom) sp.set("timeFrom", params.timeFrom);
-    if (params.timeTo)   sp.set("timeTo",   params.timeTo);
-    sp.set("page", String(p));
-    return `?${sp.toString()}`;
-  }
 
   return (
     <div className="p-6 space-y-6">
@@ -79,7 +49,7 @@ export default async function DentistAppointmentsPage({ searchParams }: Props) {
         <NewInquiryButton />
       </PageHeader>
 
-      {/* ── Filters (client component, drives URL params) ──── */}
+      {/* Filters (client component, drives URL params) */}
       <Suspense>
         <AppointmentFilters
           today={today}
@@ -92,97 +62,18 @@ export default async function DentistAppointmentsPage({ searchParams }: Props) {
         />
       </Suspense>
 
-      {/* ── Results count ──────────────────────────────────── */}
-      <p className="text-sm text-[#71717A]">
-        {total} appointment{total !== 1 ? "s" : ""} found
-      </p>
-
-      {/* ── Table ─────────────────────────────────────────── */}
-      {appointments.length === 0 ? (
-        <div className="bg-white border border-[#E4E4E7] rounded-xl p-12 text-center">
-          <p className="text-[#71717A] text-sm">No appointments match your filters.</p>
-          <p className="text-[#A1A1AA] text-xs mt-1">Try adjusting the date range or clearing filters.</p>
-        </div>
-      ) : (
-        <div className="bg-white border border-[#E4E4E7] rounded-xl overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-[#F4F4F5] bg-[#FAFAFA] text-left text-xs font-semibold text-[#71717A] uppercase tracking-wide">
-                  <th className="px-4 py-3">Patient</th>
-                  <th className="px-4 py-3">Date &amp; Time</th>
-                  <th className="px-4 py-3">Duration</th>
-                  <th className="px-4 py-3">Source</th>
-                  <th className="px-4 py-3">Status</th>
-                  <th className="px-4 py-3 sr-only">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[#F4F4F5]">
-                {appointments.map((appt) => (
-                  <tr
-                    key={appt.id}
-                    className="hover:bg-[#FAFAFA] transition-colors"
-                  >
-                    <td className="px-4 py-3 font-medium text-[#09090B]">
-                      <Link
-                        href={`/dentist/patients/${appt.patient_id}`}
-                        className="hover:text-blue-600 transition-colors"
-                      >
-                        {appt.patient.name}
-                      </Link>
-                    </td>
-                    <td className="px-4 py-3 text-[#52525B]">
-                      {formatDateTimeInTimezone(appt.scheduled_at, clinicTimezone)}
-                    </td>
-                    <td className="px-4 py-3 text-[#52525B]">
-                      {appt.duration_minutes} min
-                    </td>
-                    <td className="px-4 py-3 text-[#52525B]">
-                      {APPOINTMENT_SOURCE_LABELS[appt.source] ?? appt.source}
-                    </td>
-                    <td className="px-4 py-3">
-                      <AppointmentStatusBadge status={appt.status as AppointmentStatus} />
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      <Link
-                        href={`/dentist/appointments/${appt.id}`}
-                        className="text-blue-600 hover:underline text-xs font-medium"
-                      >
-                        View
-                      </Link>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {/* ── Pagination ─────────────────────────────────────── */}
-      {totalPages > 1 && (
-        <div className="flex items-center justify-between text-sm text-[#71717A]">
-          <span>Page {page} of {totalPages}</span>
-          <div className="flex gap-1">
-            {page > 1 && (
-              <Link
-                href={pageHref(page - 1)}
-                className="px-3 py-1 border border-[#E4E4E7] rounded-lg hover:bg-[#FAFAFA] text-[#09090B]"
-              >
-                ← Prev
-              </Link>
-            )}
-            {page < totalPages && (
-              <Link
-                href={pageHref(page + 1)}
-                className="px-3 py-1 border border-[#E4E4E7] rounded-lg hover:bg-[#FAFAFA] text-[#09090B]"
-              >
-                Next →
-              </Link>
-            )}
-          </div>
-        </div>
-      )}
+      {/* List (client component, TanStack Query cache) */}
+      <AppointmentsView
+        page={page}
+        limit={limit}
+        clinicTimezone={clinicTimezone}
+        search={params.search}
+        status={params.status}
+        dateFrom={params.dateFrom}
+        dateTo={params.dateTo}
+        timeFrom={params.timeFrom}
+        timeTo={params.timeTo}
+      />
     </div>
   );
 }

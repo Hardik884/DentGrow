@@ -3,7 +3,9 @@
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useQueryClient } from "@tanstack/react-query";
 import { createPatient, updatePatient } from "@/actions/patients";
+import { queryKeys } from "@/lib/query/keys";
 import {
   CreatePatientSchema,
   type CreatePatientInput,
@@ -32,6 +34,7 @@ interface PatientFormProps {
 
 export function PatientForm({ patient, successRedirect, cancelHref, onSuccess, hideCancel }: PatientFormProps) {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const isEdit = Boolean(patient);
 
   const {
@@ -66,6 +69,9 @@ export function PatientForm({ patient, successRedirect, cancelHref, onSuccess, h
       setError("root", { message: result.error });
       return;
     }
+
+    // Invalidate only the patients cache so the list reflects the change.
+    queryClient.invalidateQueries({ queryKey: queryKeys.patients.all });
 
     if (onSuccess && result.data) {
       // Modal / callback path — let caller decide what to do next.

@@ -60,7 +60,7 @@ export default async function DentistTreatmentDetailPage({ params }: Props) {
     : [];
 
   return (
-    <div className="p-6 space-y-6 max-w-3xl">
+    <div className="p-6 space-y-6 max-w-4xl">
       <PageHeader
         title="Treatment"
         backHref={`/dentist/patients/${treatment.patient_id}/treatments`}

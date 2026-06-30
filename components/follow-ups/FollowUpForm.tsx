@@ -2,6 +2,7 @@
 
 import { useState, useTransition, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   createFollowUp,
   updateFollowUp,
@@ -11,6 +12,7 @@ import {
   getPatientTreatmentsForFollowUp,
 } from "@/actions/follow-ups";
 import { searchPatients } from "@/actions/patients";
+import { queryKeys } from "@/lib/query/keys";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { PatientAvatar } from "@/components/shared/PatientAvatar";
@@ -107,6 +109,7 @@ export function FollowUpForm({
   hideRelatedFields = false,
 }: FollowUpFormProps) {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [isPending, startTransition] = useTransition();
 
   // ── Refs for scroll-to-error ────────────────────────────────────────────────
@@ -325,6 +328,9 @@ export function FollowUpForm({
 
       setFormSuccess(followUpId ? "Follow-up updated." : "Follow-up created.");
 
+      // Invalidate only the follow-ups cache.
+      queryClient.invalidateQueries({ queryKey: queryKeys.followUps.all });
+
       if (!followUpId && result.data) {
         // Task 8 fix — when the follow-up was launched from an appointment and
         // a (new or linked) appointment is attached, navigate to that
@@ -359,6 +365,7 @@ export function FollowUpForm({
         setFormError(result.error);
         return;
       }
+      queryClient.invalidateQueries({ queryKey: queryKeys.followUps.all });
       router.refresh();
     });
   }

@@ -2,7 +2,9 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { cancelAppointment } from "@/actions/appointments";
+import { queryKeys } from "@/lib/query/keys";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { Button } from "@/components/ui/button";
 import { X } from "lucide-react";
@@ -14,6 +16,7 @@ interface CancelAppointmentButtonProps {
 
 export function CancelAppointmentButton({ appointmentId, redirectHref }: CancelAppointmentButtonProps) {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -24,6 +27,7 @@ export function CancelAppointmentButton({ appointmentId, redirectHref }: CancelA
       const result = await cancelAppointment(appointmentId);
       if (result.error) { setError(result.error); setOpen(false); return; }
       setOpen(false);
+      queryClient.invalidateQueries({ queryKey: queryKeys.appointments.all });
       if (redirectHref) router.push(redirectHref);
       else router.refresh();
     });

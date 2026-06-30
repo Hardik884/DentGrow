@@ -2,7 +2,9 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { softDeleteTreatment } from "@/actions/treatments";
+import { queryKeys } from "@/lib/query/keys";
 
 interface DeleteTreatmentButtonProps {
   treatmentId: string;
@@ -23,6 +25,7 @@ export function DeleteTreatmentButton({
 }: DeleteTreatmentButtonProps) {
   const router = useRouter();
   const [confirming, setConfirming] = useState(false);
+  const queryClient = useQueryClient();
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
@@ -37,6 +40,7 @@ export function DeleteTreatmentButton({
       }
       router.push(`/dentist/patients/${patientId}/treatments`);
       router.refresh();
+      queryClient.invalidateQueries({ queryKey: queryKeys.treatments.all });
     });
   }
 

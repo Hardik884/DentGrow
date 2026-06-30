@@ -4,9 +4,11 @@ import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useQueryClient } from "@tanstack/react-query";
 import { createAppointment } from "@/actions/appointments";
 import { searchPatients, createPatient } from "@/actions/patients";
 import { getAvailableSlots } from "@/actions/availability";
+import { queryKeys } from "@/lib/query/keys";
 import {
   CreateAppointmentSchema,
   CreatePatientSchema,
@@ -48,6 +50,7 @@ export function AppointmentForm({
   clinicToday,
 }: AppointmentFormProps) {
   const router = useRouter();
+  const queryClient = useQueryClient();
 
   const [patientQuery, setPatientQuery] = useState(preselectedPatient?.name ?? "");
   const [patientResults, setPatientResults] = useState<Pick<Patient, "id" | "name" | "phone">[]>([]);
@@ -165,6 +168,8 @@ export function AppointmentForm({
     }
     selectPatient({ id: result.data.id, name: result.data.name });
     newPatientForm.reset();
+    // A new patient was created inline — refresh the patients cache.
+    queryClient.invalidateQueries({ queryKey: queryKeys.patients.all });
   }
 
   async function onSubmit(values: AppointmentFormValues) {
@@ -173,12 +178,14 @@ export function AppointmentForm({
       setError("root", { message: result.error });
       return;
     }
+    // Refresh the appointments cache so the new booking appears.
+    queryClient.invalidateQueries({ queryKey: queryKeys.appointments.all });
     router.push(successRedirect);
     router.refresh();
   }
 
   return (
-    <form onSubmit={handleSubmit(onSubmit, (errs) => {
+    <form onSubmit={handleSubmit(onSubmit, () => {
       // Scroll to first invalid field
       const first = document.querySelector("[aria-invalid='true'], [data-invalid='true']");
       if (first) {

@@ -2,7 +2,9 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { softDeletePatient } from "@/actions/patients";
+import { queryKeys } from "@/lib/query/keys";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 
 interface DeletePatientButtonProps {
@@ -26,6 +28,7 @@ export function DeletePatientButton({
   patientName,
 }: DeletePatientButtonProps) {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -39,6 +42,12 @@ export function DeletePatientButton({
         return;
       }
       setOpen(false);
+      // A patient soft-delete cascades to appointments, treatments, payments,
+      // and follow-ups — invalidate every affected cached list.
+      queryClient.invalidateQueries({ queryKey: queryKeys.patients.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.appointments.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.treatments.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.followUps.all });
       router.push("/dentist/patients");
       router.refresh();
     });
