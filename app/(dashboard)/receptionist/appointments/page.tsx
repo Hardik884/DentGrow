@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { PageHeader } from "@/components/layouts/PageHeader";
 import { TodayAppointmentList } from "@/components/receptionist/TodayAppointmentList";
+import { NewInquiryButton } from "@/components/dentist/NewInquiryButton";
 
 export const metadata: Metadata = {
   title: "Appointments — DentGrow",
@@ -16,8 +17,10 @@ export default async function ReceptionistAppointmentsPage() {
     <div className="p-6 space-y-6">
       <PageHeader
         title="Appointments"
-        action={{ label: "New Appointment", href: "/receptionist/appointments/new" }}
-      />
+        action={{ label: "Book New Appointment", href: "/receptionist/appointments/new" }}
+      >
+        <NewInquiryButton />
+      </PageHeader>
       <TodayAppointmentList />
     </div>
   );

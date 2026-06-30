@@ -36,13 +36,21 @@ export const getAvailableSlotsInputSchema = z.object({
 });
 
 // =============================================================================
-// createAppointment — MUTATING, requires confirmed: true
+// createAppointment — MUTATING
+//
+// Two-step, backend-enforced confirmation:
+//   1. First call (no confirmationToken) → backend returns requiresConfirmation
+//      plus a server-issued confirmationToken. NO booking happens.
+//   2. After the patient explicitly confirms in a later message, call again
+//      passing that confirmationToken → backend executes the booking.
+// The backend rejects a token that was issued in the same turn, so a booking
+// can never happen without a real patient confirmation turn.
 // =============================================================================
 
 export const createAppointmentDeclaration: FunctionDeclaration = {
   name: "createAppointment",
   description:
-    "Books a new appointment for the patient. Only call this after the patient has explicitly confirmed the booking details.",
+    "Books a new appointment for the patient. Call WITHOUT confirmationToken first to get the confirmation details, present them to the patient, and only call again WITH the returned confirmationToken after the patient explicitly confirms.",
   parameters: {
     type: SchemaType.OBJECT,
     properties: {
@@ -55,34 +63,30 @@ export const createAppointmentDeclaration: FunctionDeclaration = {
         type: SchemaType.STRING,
         description: "Optional patient notes for the appointment.",
       },
-      confirmed: {
-        type: SchemaType.BOOLEAN,
+      confirmationToken: {
+        type: SchemaType.STRING,
         description:
-          "Must be true — patient has explicitly confirmed the booking.",
+          "The token returned by a previous createAppointment call that required confirmation. Only supply this AFTER the patient has explicitly confirmed.",
       },
     },
-    required: ["scheduledAt", "confirmed"],
+    required: ["scheduledAt"],
   },
 };
 
 export const createAppointmentInputSchema = z.object({
   scheduledAt: z.string().min(1),
   notes: z.string().max(500).optional(),
-  confirmed: z.literal(true, {
-    errorMap: () => ({
-      message: "Patient confirmation is required before booking.",
-    }),
-  }),
+  confirmationToken: z.string().optional(),
 });
 
 // =============================================================================
-// rescheduleAppointment — MUTATING, requires confirmed: true
+// rescheduleAppointment — MUTATING (backend-enforced confirmation)
 // =============================================================================
 
 export const rescheduleAppointmentDeclaration: FunctionDeclaration = {
   name: "rescheduleAppointment",
   description:
-    "Moves an existing appointment to a new time slot. Only call after patient confirms.",
+    "Moves an existing appointment to a new time slot. Call WITHOUT confirmationToken first to get confirmation details, present them, then call again WITH the returned confirmationToken after the patient confirms.",
   parameters: {
     type: SchemaType.OBJECT,
     properties: {
@@ -95,29 +99,30 @@ export const rescheduleAppointmentDeclaration: FunctionDeclaration = {
         description:
           "ISO 8601 datetime for the new slot. Example: 2026-06-25T10:00:00",
       },
-      confirmed: {
-        type: SchemaType.BOOLEAN,
-        description: "Must be true — patient has explicitly confirmed.",
+      confirmationToken: {
+        type: SchemaType.STRING,
+        description:
+          "Token from a previous rescheduleAppointment call that required confirmation. Only supply AFTER the patient explicitly confirms.",
       },
     },
-    required: ["appointmentId", "newScheduledAt", "confirmed"],
+    required: ["appointmentId", "newScheduledAt"],
   },
 };
 
 export const rescheduleAppointmentInputSchema = z.object({
   appointmentId: z.string().uuid(),
   newScheduledAt: z.string().min(1),
-  confirmed: z.literal(true),
+  confirmationToken: z.string().optional(),
 });
 
 // =============================================================================
-// cancelAppointment — MUTATING, requires confirmed: true
+// cancelAppointment — MUTATING (backend-enforced confirmation)
 // =============================================================================
 
 export const cancelAppointmentDeclaration: FunctionDeclaration = {
   name: "cancelAppointment",
   description:
-    "Cancels a future appointment owned by the patient. Only call after patient confirms.",
+    "Cancels a future appointment owned by the patient. Call WITHOUT confirmationToken first to get confirmation details, present them, then call again WITH the returned confirmationToken after the patient confirms.",
   parameters: {
     type: SchemaType.OBJECT,
     properties: {
@@ -125,18 +130,19 @@ export const cancelAppointmentDeclaration: FunctionDeclaration = {
         type: SchemaType.STRING,
         description: "UUID of the appointment to cancel.",
       },
-      confirmed: {
-        type: SchemaType.BOOLEAN,
-        description: "Must be true — patient has explicitly confirmed.",
+      confirmationToken: {
+        type: SchemaType.STRING,
+        description:
+          "Token from a previous cancelAppointment call that required confirmation. Only supply AFTER the patient explicitly confirms.",
       },
     },
-    required: ["appointmentId", "confirmed"],
+    required: ["appointmentId"],
   },
 };
 
 export const cancelAppointmentInputSchema = z.object({
   appointmentId: z.string().uuid(),
-  confirmed: z.literal(true),
+  confirmationToken: z.string().optional(),
 });
 
 // =============================================================================

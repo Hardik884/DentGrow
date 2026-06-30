@@ -35,7 +35,7 @@ export default async function ReceptionistDashboardPage() {
       <PageHeader
         title="Dashboard"
         description="Front-desk overview for today"
-        action={{ label: "New Appointment", href: "/receptionist/appointments/new", icon: <Plus className="h-3.5 w-3.5" /> }}
+        action={{ label: "Book New Appointment", href: "/receptionist/appointments/new", icon: <Plus className="h-3.5 w-3.5" /> }}
       />
 
       {/* Clinic dentist name (data-driven from clinics.dentist_name) */}

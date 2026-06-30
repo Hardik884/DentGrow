@@ -30,6 +30,7 @@ import type {
   PaymentMethod,
   AppointmentStatus,
 } from "@/types";
+import { sumBillableTreatmentCost } from "@/lib/billing/balance";
 
 export interface DateRangeFilter {
   clinicId: string;
@@ -317,7 +318,7 @@ export async function getAnalyticsSummary(
 
     supabase
       .from("treatments")
-      .select("cost, patient_id")
+      .select("cost, patient_id, status")
       .eq("clinic_id", clinicId).is("deleted_at", null),
 
     supabase
@@ -336,7 +337,7 @@ export async function getAnalyticsSummary(
   const appointmentsToday = (apptTodayRes.data ?? []) as Pick<ApptRow, "status" | "source">[];
   const patients = (patientsRes.data ?? []) as Pick<PatientRow, "id" | "created_at" | "total_visits" | "last_visit">[];
   const payments = (paymentsRes.data ?? []) as Pick<PaymentRow, "amount" | "patient_id" | "payment_date">[];
-  const treatments = (treatmentsRes.data ?? []) as Pick<TreatmentRow, "cost" | "patient_id">[];
+  const treatments = (treatmentsRes.data ?? []) as Pick<TreatmentRow, "cost" | "patient_id" | "status">[];
   const followUps = (followUpsRes.data ?? []) as Pick<FollowUpRow, "status" | "due_date">[];
   const queueToday = (queueTodayRes.data ?? []) as QueueRow[];
 
@@ -356,7 +357,7 @@ export async function getAnalyticsSummary(
     .filter((p) => p.payment_date >= monthStartDate)
     .reduce((sum, p) => sum + (p.amount ?? 0), 0);
 
-  const totalTreatmentCost = treatments.reduce((sum, t) => sum + Number(t.cost ?? 0), 0);
+  const totalTreatmentCost = sumBillableTreatmentCost(treatments);
   const totalPaid = payments.reduce((sum, p) => sum + (p.amount ?? 0), 0);
   const outstandingBalances = Math.max(0, totalTreatmentCost - totalPaid);
 
@@ -623,7 +624,7 @@ export async function getRevenueAnalytics(
 
     supabase
       .from("treatments")
-      .select("cost, patient_id")
+      .select("cost, patient_id, status")
       .eq("clinic_id", clinicId).is("deleted_at", null),
 
     supabase
@@ -668,7 +669,7 @@ export async function getRevenueAnalytics(
     amount,
   }));
 
-  const totalTreatmentCost = treatments.reduce((s, t) => s + Number(t.cost ?? 0), 0);
+  const totalTreatmentCost = sumBillableTreatmentCost(treatments);
   const totalPaid = payments.reduce((s, p) => s + (p.amount ?? 0), 0);
   const outstandingTotal = Math.max(0, totalTreatmentCost - totalPaid);
 

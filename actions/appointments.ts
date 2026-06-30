@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createServerClient } from "@/lib/supabase/server";
-import { createClient } from "@supabase/supabase-js";
+import { resolveSession as resolveCachedSession } from "@/lib/auth/session";
 import {
   CreateAppointmentSchema,
   RescheduleAppointmentSchema,
@@ -22,7 +22,8 @@ import {
 } from "@/lib/scheduling/slots";
 import { zonedDateToUTC, getTodayInTimezone, getUtcBoundariesForLocalDate } from "@/lib/utils";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { completeLinkedFollowUps } from "@/lib/follow-ups/complete-linked";
+import { writeAppointmentHistory } from "@/lib/appointments/history";
+import { completeAppointmentCascade } from "@/lib/appointments/complete";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type DbClient = any;
@@ -41,26 +42,12 @@ async function resolveSession(): Promise<{
   db: DbClient;
   profile: ResolvedProfile | null;
 }> {
-  const supabase = await createServerClient();
-  const db: DbClient = supabase;
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) return { db, profile: null };
-
-  const { data } = await db
-    .from("profiles")
-    .select("id, clinic_id, role")
-    .eq("id", user.id)
-    .single();
-
-  return { db, profile: (data as ResolvedProfile | null) ?? null };
+  const { db, profile } = await resolveCachedSession();
+  return { db, profile };
 }
 
 // =============================================================================
-// writeHistory — insert appointment_history row via service role
+// writeHistory — thin wrapper over the shared appointment_history writer.
 // Service-role bypasses RLS; appointment_history has no client write policy.
 // =============================================================================
 
@@ -71,24 +58,13 @@ async function writeHistory(row: {
   new_value?: Record<string, unknown> | null;
   performed_by: string | null;
 }) {
-  // Use service role for history inserts — history table has no write RLS
-  const serviceClient = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  );
-
-  const { error } = await serviceClient.from("appointment_history").insert({
-    appointment_id: row.appointment_id,
+  await writeAppointmentHistory({
+    appointmentId: row.appointment_id,
     action: row.action,
-    old_value: row.old_value ?? null,
-    new_value: row.new_value ?? null,
-    performed_by: row.performed_by,
+    oldValue: row.old_value ?? null,
+    newValue: row.new_value ?? null,
+    performedBy: row.performed_by,
   });
-
-  if (error) {
-    // History write failure is non-fatal — log but don't block the mutation
-    console.error("[writeHistory]", error);
-  }
 }
 
 // =============================================================================
@@ -466,31 +442,44 @@ export async function updateAppointmentStatus(
       };
     }
 
-    // Build update payload
+    // ── Completed: delegate to the single authoritative completion workflow ──
+    // This is the ONLY place visit counts / queue / follow-ups / history are
+    // mutated on completion, shared with the queue-advance path. It is fully
+    // idempotent, so a duplicate completion (e.g. status control + "Call Next")
+    // never double-increments visits or re-writes history.
+    if (newStatus === "completed") {
+      const res = await completeAppointmentCascade(db, {
+        appointmentId: parsed.data.appointment_id,
+        clinicId: profile.clinic_id,
+        performedBy: profile.id,
+      });
+
+      if (res.notFound) {
+        return { data: null, error: "Appointment not found." };
+      }
+
+      // Re-fetch the (now completed) appointment to return to the caller.
+      const { data: updated } = await db
+        .from("appointments")
+        .select("*")
+        .eq("id", parsed.data.appointment_id)
+        .eq("clinic_id", profile.clinic_id)
+        .single();
+
+      revalidatePath(`/${profile.role}/appointments`);
+      revalidatePath(`/${profile.role}/appointments/${parsed.data.appointment_id}`);
+      revalidatePath(`/${profile.role}/queue`);
+      revalidatePath(`/${profile.role}/follow-ups`);
+      revalidatePath(`/${profile.role}/patients/${currentAppt.patient_id}`);
+
+      return { data: updated as Appointment, error: null };
+    }
+
+    // Build update payload (non-completion transitions)
     const updatePayload: Record<string, unknown> = {
       status: newStatus,
       updated_at: new Date().toISOString(),
     };
-
-    // ── On completed: update patient total_visits + last_visit ────────────
-    if (newStatus === "completed") {
-      const { data: patientData } = await db
-        .from("patients")
-        .select("total_visits")
-        .eq("id", currentAppt.patient_id)
-        .single();
-
-      const currentVisits = (patientData as { total_visits: number } | null)?.total_visits ?? 0;
-
-      await db
-        .from("patients")
-        .update({
-          total_visits: currentVisits + 1,
-          last_visit: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", currentAppt.patient_id);
-    }
 
     const { data: updated, error: updateErr } = await db
       .from("appointments")
@@ -505,20 +494,21 @@ export async function updateAppointmentStatus(
       return { data: null, error: "Failed to update appointment status." };
     }
 
-    // ── On completed: auto-complete any follow-ups linked to this appointment ─
-    // Runs from the dentist status-control completion path. The queue
-    // advancement path calls the same helper. Only pending follow-ups are
-    // touched (idempotent — no duplicate completion).
-    if (newStatus === "completed") {
-      const completedCount = await completeLinkedFollowUps(
-        db,
-        parsed.data.appointment_id,
-        profile.clinic_id
-      );
-      if (completedCount > 0) {
-        revalidatePath(`/${profile.role}/follow-ups`);
-        revalidatePath(`/${profile.role}/patients/${currentAppt.patient_id}`);
+    // ── Cancelled / no_show: remove any active queue entry ────────────────
+    // A checked-in patient who is then cancelled / marked no-show must not be
+    // left as a stale waiting/in_progress queue row (which would block the
+    // queue and skew "patients ahead").
+    if (newStatus === "cancelled" || newStatus === "no_show") {
+      const { error: queueDelErr } = await db
+        .from("queue_entries")
+        .delete()
+        .eq("appointment_id", parsed.data.appointment_id)
+        .eq("clinic_id", profile.clinic_id)
+        .in("status", ["waiting", "in_progress"]);
+      if (queueDelErr) {
+        console.error("[updateAppointmentStatus] queue cleanup failed:", queueDelErr);
       }
+      revalidatePath(`/${profile.role}/queue`);
     }
 
     // ── On checked_in: create queue_entries row ────────────────────────────
@@ -558,14 +548,6 @@ export async function updateAppointmentStatus(
 
         const nextPosition = ((posData as { position: number } | null)?.position ?? 0) + 1;
 
-        console.log("[updateAppointmentStatus → checked_in] inserting queue entry:", {
-          clinic_id: profile.clinic_id,
-          appointment_id: parsed.data.appointment_id,
-          patient_id: currentAppt.patient_id,
-          position: nextPosition,
-          queue_date: qDate,
-        });
-
         const { error: queueInsertErr } = await db
           .from("queue_entries")
           .insert({
@@ -590,12 +572,10 @@ export async function updateAppointmentStatus(
           return { data: null, error: `Check-in failed: ${queueInsertErr.message}` };
         }
 
-        console.log("[updateAppointmentStatus → checked_in] queue entry created, position:", nextPosition);
         revalidatePath(`/${profile.role}/queue`);
       } else {
         // Entry already exists (e.g. receptionist checked in before dentist
         // attempted the same transition). Not an error — idempotent.
-        console.log("[updateAppointmentStatus → checked_in] queue entry already exists for this appointment, skipping insert");
       }
     }
 
@@ -932,8 +912,22 @@ export async function cancelAppointment(
       revalidatePath("/portal/appointments");
       revalidatePath(`/portal/appointments/${appointmentId}`);
     } else {
+      // ── Remove any active queue entry for this appointment ──────────────
+      // Cancelling a checked-in patient must drop them from today's queue so
+      // the queue never contains cancelled patients and metrics stay correct.
+      const { error: queueDelErr } = await db
+        .from("queue_entries")
+        .delete()
+        .eq("appointment_id", appointmentId)
+        .eq("clinic_id", profile.clinic_id)
+        .in("status", ["waiting", "in_progress"]);
+      if (queueDelErr) {
+        console.error("[cancelAppointment] queue cleanup failed:", queueDelErr);
+      }
+
       revalidatePath(`/${profile.role}/appointments`);
       revalidatePath(`/${profile.role}/appointments/${appointmentId}`);
+      revalidatePath(`/${profile.role}/queue`);
     }
 
     return { data: null, error: null };

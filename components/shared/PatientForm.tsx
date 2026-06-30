@@ -18,11 +18,19 @@ import { CalendarPicker } from "@/components/ui/calendar-picker";
 
 interface PatientFormProps {
   patient?: Patient;
-  successRedirect: string;
-  cancelHref: string;
+  successRedirect?: string;
+  cancelHref?: string;
+  /**
+   * Called after a successful patient creation/update.
+   * When provided, the form does NOT navigate — the caller handles that.
+   * Falls back to successRedirect navigation when omitted (existing behaviour).
+   */
+  onSuccess?: (patient: Patient) => void;
+  /** When true the cancel button is hidden (e.g. inside a modal). */
+  hideCancel?: boolean;
 }
 
-export function PatientForm({ patient, successRedirect, cancelHref }: PatientFormProps) {
+export function PatientForm({ patient, successRedirect, cancelHref, onSuccess, hideCancel }: PatientFormProps) {
   const router = useRouter();
   const isEdit = Boolean(patient);
 
@@ -59,8 +67,17 @@ export function PatientForm({ patient, successRedirect, cancelHref }: PatientFor
       return;
     }
 
-    router.push(successRedirect);
-    router.refresh();
+    if (onSuccess && result.data) {
+      // Modal / callback path — let caller decide what to do next.
+      onSuccess(result.data);
+      return;
+    }
+
+    // Default navigation path (existing behaviour, unchanged).
+    if (successRedirect) {
+      router.push(successRedirect);
+      router.refresh();
+    }
   }
 
   return (
@@ -223,9 +240,11 @@ export function PatientForm({ patient, successRedirect, cancelHref }: PatientFor
 
         {/* ── Actions ──────────────────────────────────────────── */}
         <div className="px-6 py-4 bg-[#FAFAFA] flex items-center justify-end gap-3">
-          <Button variant="outline" size="sm" asChild>
-            <a href={cancelHref}>Cancel</a>
-          </Button>
+          {!hideCancel && (
+            <Button variant="outline" size="sm" asChild>
+              <a href={cancelHref}>Cancel</a>
+            </Button>
+          )}
           <Button type="submit" size="sm" isLoading={isSubmitting}>
             {isSubmitting
               ? isEdit ? "Saving…" : "Creating…"

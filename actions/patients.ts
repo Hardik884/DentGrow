@@ -1,8 +1,9 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createServerClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { resolveSession as resolveCachedSession } from "@/lib/auth/session";
+import { computeOutstandingBalance } from "@/lib/billing/balance";
 import {
   CreatePatientSchema,
   UpdatePatientSchema,
@@ -49,25 +50,8 @@ async function resolveSession(): Promise<{
   db: DbClient;
   profile: ResolvedProfile | null;
 }> {
-  const supabase = await createServerClient();
-  const db: DbClient = supabase;
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) return { db, profile: null };
-
-  const { data } = await db
-    .from("profiles")
-    .select("id, clinic_id, role")
-    .eq("id", user.id)
-    .single();
-
-  return {
-    db,
-    profile: (data as ResolvedProfile | null) ?? null,
-  };
+  const { db, profile } = await resolveCachedSession();
+  return { db, profile };
 }
 
 // =============================================================================
@@ -285,6 +269,23 @@ export async function softDeletePatient(
       return { data: null, error: `Failed to cascade delete (${msg}).` };
     }
 
+    // Remove the patient portal link (if any). The link table has no
+    // soft-delete column and its patient_id/user_id are UNIQUE. Leaving a
+    // dangling link pointing at a soft-deleted patient would let the linked
+    // auth account log into a broken portal (every patient-scoped query filters
+    // deleted_at IS NULL, so the patient would resolve to "not found"). Hard-
+    // delete the link so the account is cleanly unlinked. The patient's
+    // clinical rows are retained (soft-deleted) for audit.
+    const { error: linkErr } = await admin
+      .from("patient_portal_links")
+      .delete()
+      .eq("patient_id", id);
+    if (linkErr) {
+      const msg = `patient_portal_links: ${linkErr.message ?? linkErr.code ?? JSON.stringify(linkErr)}`;
+      console.error("[softDeletePatient]", msg, linkErr);
+      return { data: null, error: `Failed to cascade delete (${msg}).` };
+    }
+
     const { error: patErr } = await admin
       .from("patients")
       .update({ deleted_at: now })
@@ -390,12 +391,12 @@ export async function getPatient(
       return { data: null, error: "Patient not found." };
     }
 
-    // Compute outstanding balance server-side:
-    // SUM(treatments.cost) - SUM(payments.amount)
+    // Compute outstanding balance server-side via the shared helper:
+    // SUM(billable treatments.cost) - SUM(payments.amount).
     const [{ data: treatmentRows }, { data: paymentRows }] = await Promise.all([
       db
         .from("treatments")
-        .select("cost")
+        .select("cost, status")
         .eq("patient_id", id)
         .eq("clinic_id", profile.clinic_id)
         .is("deleted_at", null),
@@ -407,15 +408,10 @@ export async function getPatient(
         .is("deleted_at", null),
     ]);
 
-    const totalCost = ((treatmentRows ?? []) as { cost: number }[]).reduce(
-      (sum, t) => sum + Number(t.cost ?? 0),
-      0
+    const outstandingBalance = computeOutstandingBalance(
+      (treatmentRows ?? []) as { cost: number; status: string }[],
+      (paymentRows ?? []) as { amount: number }[]
     );
-    const totalPaid = ((paymentRows ?? []) as { amount: number }[]).reduce(
-      (sum, p) => sum + Number(p.amount ?? 0),
-      0
-    );
-    const outstandingBalance = Math.max(0, totalCost - totalPaid);
 
     // Fetch pending follow-ups
     const { data: followUps } = await db
@@ -513,7 +509,7 @@ export async function getOutstandingBalance(
     const [{ data: treatmentRows }, { data: paymentRows }] = await Promise.all([
       db
         .from("treatments")
-        .select("cost")
+        .select("cost, status")
         .eq("patient_id", patientId)
         .eq("clinic_id", profile.clinic_id)
         .is("deleted_at", null),
@@ -525,16 +521,13 @@ export async function getOutstandingBalance(
         .is("deleted_at", null),
     ]);
 
-    const totalCost = ((treatmentRows ?? []) as { cost: number }[]).reduce(
-      (s, t) => s + Number(t.cost ?? 0),
-      0
-    );
-    const totalPaid = ((paymentRows ?? []) as { amount: number }[]).reduce(
-      (s, p) => s + Number(p.amount ?? 0),
-      0
-    );
-
-    return { data: Math.max(0, totalCost - totalPaid), error: null };
+    return {
+      data: computeOutstandingBalance(
+        (treatmentRows ?? []) as { cost: number; status: string }[],
+        (paymentRows ?? []) as { amount: number }[]
+      ),
+      error: null,
+    };
   } catch (err) {
     console.error("[getOutstandingBalance] unexpected:", err);
     return { data: null, error: "Unexpected error" };

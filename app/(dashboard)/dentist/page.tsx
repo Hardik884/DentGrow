@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
-import { createServerClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/layouts/PageHeader";
 import { DashboardKPIs } from "@/components/dentist/DashboardKPIs";
 import { QueueWidget } from "@/components/queue/QueueWidget";
 import { UpcomingAppointments } from "@/components/dentist/UpcomingAppointments";
 import { ClinicDentistName } from "@/components/shared/ClinicDentistName";
 import { getTodayQueue } from "@/actions/queue";
+import { getClinicConfig } from "@/lib/clinic/config";
 import { Plus } from "lucide-react";
 
 export const metadata: Metadata = {
@@ -13,45 +13,25 @@ export const metadata: Metadata = {
 };
 
 export default async function DentistDashboardPage() {
-  const supabase = await createServerClient();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const db: any = supabase;
+  // clinicId + timezone come from the request-scoped cached resolvers
+  // (getClinicConfig → resolveSession). getTodayQueue reuses the same cached
+  // session, so auth + profile are resolved once for the whole render — not
+  // once per data source. clinicId/timezone are passed down so child
+  // components fire no further auth/profile/settings lookups.
+  const [{ clinicId, timezone }, queueRes] = await Promise.all([
+    getClinicConfig(),
+    getTodayQueue(),
+  ]);
 
-  // Resolve auth + profile + timezone + queue in parallel — single set of DB hits.
-  // clinicId and timezone are passed down to child components so they don't
-  // each fire their own redundant auth/profile/settings lookups.
-  const { data: { user } } = await supabase.auth.getUser();
-
-  let clinicId = "";
-  let timezone = "Asia/Kolkata";
-
-  if (user) {
-    // Fetch profile and clinic settings in parallel
-    const [profileRes, queueRes] = await Promise.all([
-      db.from("profiles").select("clinic_id").eq("id", user.id).single(),
-      getTodayQueue(),
-    ]);
-
-    clinicId = (profileRes.data as { clinic_id: string } | null)?.clinic_id ?? "";
-
-    // Fetch timezone only if we have a clinicId
-    if (clinicId) {
-      const { data: settings } = await db
-        .from("clinic_settings")
-        .select("timezone")
-        .eq("clinic_id", clinicId)
-        .maybeSingle();
-      timezone = (settings as { timezone?: string } | null)?.timezone ?? "Asia/Kolkata";
-    }
-
+  if (clinicId) {
     const initialQueue = queueRes.data ?? [];
 
     return (
       <div className="p-6 max-w-screen-xl">
         <PageHeader
-          title="Dashboard"
+          title="Today's Dashboard"
           description="Overview of today's clinic activity"
-          action={{ label: "New Appointment", href: "/dentist/appointments/new", icon: <Plus className="h-3.5 w-3.5" /> }}
+          action={{ label: "Book New Appointment", href: "/dentist/appointments/new", icon: <Plus className="h-3.5 w-3.5" /> }}
         />
 
         {/* Clinic dentist name (data-driven from clinics.dentist_name) */}
@@ -79,13 +59,13 @@ export default async function DentistDashboardPage() {
   }
 
   // Fallback for unauthenticated (middleware handles redirect, but be defensive)
-  const queueResult = await getTodayQueue();
+  const queueResult = queueRes;
   return (
     <div className="p-6 max-w-screen-xl">
       <PageHeader
-        title="Dashboard"
+        title="Today's Dashboard"
         description="Overview of today's clinic activity"
-        action={{ label: "New Appointment", href: "/dentist/appointments/new", icon: <Plus className="h-3.5 w-3.5" /> }}
+        action={{ label: "Book New Appointment", href: "/dentist/appointments/new", icon: <Plus className="h-3.5 w-3.5" /> }}
       />
       <DashboardKPIs />
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-4">

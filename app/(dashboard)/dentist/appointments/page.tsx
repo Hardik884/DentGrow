@@ -1,12 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
-import { createServerClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/layouts/PageHeader";
 import { AppointmentStatusBadge } from "@/components/shared/AppointmentStatusBadge";
 import { AppointmentFilters } from "@/components/dentist/AppointmentFilters";
+import { NewInquiryButton } from "@/components/dentist/NewInquiryButton";
 import { getAppointments } from "@/actions/appointments";
-import { formatDateTimeInTimezone, APPOINTMENT_SOURCE_LABELS } from "@/lib/utils";
+import { getClinicTimezone } from "@/lib/clinic/config";
+import { formatDateTimeInTimezone, getTodayInTimezone, APPOINTMENT_SOURCE_LABELS } from "@/lib/utils";
 import type { AppointmentStatus } from "@/types";
 
 export const metadata: Metadata = {
@@ -37,43 +38,12 @@ export default async function DentistAppointmentsPage({ searchParams }: Props) {
   const page = Math.max(1, parseInt(params.page ?? "1", 10) || 1);
   const limit = 20;
 
-  // Fetch clinic timezone and appointments in parallel — previously sequential.
-  const supabase = await createServerClient();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const db: any = supabase;
-  const { data: { user } } = await supabase.auth.getUser();
+  // Clinic timezone + today's local date from the request-scoped cached
+  // resolver. getAppointments below reuses the same cached session, so the
+  // whole page render shares a single auth + profile lookup.
+  const clinicTimezone = await getClinicTimezone();
+  const today = getTodayInTimezone(clinicTimezone);
 
-  let clinicTimezone = "Asia/Kolkata";
-  let today = new Date().toISOString().split("T")[0];
-
-  // Resolve profile first (need clinicId for settings), then fetch timezone +
-  // appointments in parallel to avoid a 3-query waterfall.
-  if (user) {
-    const { data: profile } = await db
-      .from("profiles")
-      .select("clinic_id")
-      .eq("id", user.id)
-      .single();
-    const clinicId = (profile as { clinic_id: string } | null)?.clinic_id;
-    if (clinicId) {
-      const { data: settings } = await db
-        .from("clinic_settings")
-        .select("timezone")
-        .eq("clinic_id", clinicId)
-        .maybeSingle();
-      clinicTimezone = (settings as { timezone?: string } | null)?.timezone ?? "Asia/Kolkata";
-      today = new Intl.DateTimeFormat("en-CA", {
-        timeZone: clinicTimezone,
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit",
-      }).format(new Date());
-    }
-  }
-
-  // getAppointments calls resolveSession() internally, but the Supabase SSR
-  // client caches the session cookie for the request lifetime so auth.getUser()
-  // is a cached read — not a new network round-trip.
   const result = await getAppointments({
     status: params.status as AppointmentStatus | undefined,
     search: params.search,
@@ -104,8 +74,10 @@ export default async function DentistAppointmentsPage({ searchParams }: Props) {
     <div className="p-6 space-y-6">
       <PageHeader
         title="Appointments"
-        action={{ label: "+ New Appointment", href: "/dentist/appointments/new" }}
-      />
+        action={{ label: "+ Book New Appointment", href: "/dentist/appointments/new" }}
+      >
+        <NewInquiryButton />
+      </PageHeader>
 
       {/* ── Filters (client component, drives URL params) ──── */}
       <Suspense>

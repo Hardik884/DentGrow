@@ -3,6 +3,7 @@ import { getPatientPayments, getOutstandingBalance } from "@/actions/payments";
 import { getTreatmentsForPatient } from "@/actions/treatments";
 import { PaymentList } from "@/components/dentist/PaymentList";
 import { formatCurrency } from "@/lib/utils";
+import { sumBillableTreatmentCost } from "@/lib/billing/balance";
 import type { Payment } from "@/types";
 
 interface PatientPaymentsTabProps {
@@ -33,9 +34,11 @@ export async function PatientPaymentsTab({
   const balance = balanceResult.data ?? 0;
   const treatments = treatmentsResult.data ?? [];
 
-  const totalCost = treatments.reduce(
-    (sum, t) => sum + Number(t.cost ?? 0),
-    0
+  // "Total Cost" reflects billable treatments only (completed / in_progress),
+  // so the three summary cards stay internally consistent:
+  //   Total Cost - Total Paid == Remaining (outstanding balance).
+  const totalCost = sumBillableTreatmentCost(
+    treatments as { cost: number | null; status?: string | null }[]
   );
   const totalPaid = payments.reduce(
     (sum, p) => sum + Number(p.amount ?? 0),

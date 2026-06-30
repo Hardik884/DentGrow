@@ -23,6 +23,7 @@ import {
   type PatientToolName,
 } from "@/lib/ai/patient-tools";
 import type { ActionResult, CopilotMessage } from "@/types";
+import { computeOutstandingBalance } from "@/lib/billing/balance";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type DbClient = any;
@@ -110,6 +111,92 @@ function isTopicAllowed(message: string): boolean {
 }
 
 // =============================================================================
+// Backend-enforced confirmation for mutating appointment actions.
+//
+// State-changing tools (book / reschedule / cancel) must NEVER execute on the
+// first call. The backend:
+//   1. On a call WITHOUT a valid confirmationToken → stores a pending action
+//      and returns requiresConfirmation + a server-issued token. No mutation.
+//   2. On a call WITH a matching token → executes, but ONLY if the token was
+//      issued in an EARLIER message turn (a different invocationId). This
+//      guarantees a real patient confirmation turn happened between proposal
+//      and execution — the model cannot self-confirm in a single turn.
+//
+// In-memory store (per-process, like the rate limiter). Adequate for the pilot.
+// =============================================================================
+
+type MutatingToolName =
+  | "createAppointment"
+  | "rescheduleAppointment"
+  | "cancelAppointment";
+
+type PendingAiAction = {
+  token: string;
+  toolName: MutatingToolName;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  args: Record<string, any>;
+  createdInvocationId: string;
+  expiresAt: number;
+};
+
+const PENDING_AI_ACTIONS = new Map<string, PendingAiAction>();
+const PENDING_ACTION_TTL_MS = 10 * 60_000;
+
+function newConfirmationId(): string {
+  const c = (globalThis as { crypto?: { randomUUID?: () => string } }).crypto;
+  return c?.randomUUID
+    ? c.randomUUID()
+    : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
+/**
+ * Stores a pending mutating action and returns the confirmation token the
+ * model must echo back (in a later turn) to execute it.
+ */
+function proposeMutatingAction(
+  userId: string,
+  toolName: MutatingToolName,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  args: Record<string, any>,
+  invocationId: string
+): string {
+  const token = newConfirmationId();
+  PENDING_AI_ACTIONS.set(userId, {
+    token,
+    toolName,
+    args,
+    createdInvocationId: invocationId,
+    expiresAt: Date.now() + PENDING_ACTION_TTL_MS,
+  });
+  return token;
+}
+
+/**
+ * Validates and consumes a pending action. Returns the stored action only when
+ * the token matches, has not expired, and was issued in an EARLIER turn.
+ * Returns null otherwise (caller must then (re-)propose).
+ */
+function consumeConfirmedAction(
+  userId: string,
+  toolName: MutatingToolName,
+  token: string | undefined,
+  invocationId: string
+): PendingAiAction | null {
+  if (!token) return null;
+  const pending = PENDING_AI_ACTIONS.get(userId);
+  if (!pending) return null;
+  if (pending.token !== token || pending.toolName !== toolName) return null;
+  if (pending.expiresAt < Date.now()) {
+    PENDING_AI_ACTIONS.delete(userId);
+    return null;
+  }
+  // Must be confirmed in a LATER message turn than it was proposed.
+  if (pending.createdInvocationId === invocationId) return null;
+  PENDING_AI_ACTIONS.delete(userId);
+  return pending;
+}
+
+// =============================================================================
 // resolvePortalSession — resolves patient_id + clinic_id for portal users
 // =============================================================================
 
@@ -161,7 +248,8 @@ async function executePatientTool(
   toolName: PatientToolName,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   args: Record<string, any>,
-  session: PortalSession
+  session: PortalSession,
+  invocationId: string
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
 ): Promise<any> {
   const { db, patientId, clinicId } = session;
@@ -181,13 +269,39 @@ async function executePatientTool(
 
     case "createAppointment": {
       const input = createAppointmentInputSchema.parse(args);
+      const confirmed = consumeConfirmedAction(
+        session.userId,
+        "createAppointment",
+        input.confirmationToken,
+        invocationId
+      );
+
+      if (!confirmed) {
+        // Step 1 — propose only. No mutation happens here.
+        const confirmationToken = proposeMutatingAction(
+          session.userId,
+          "createAppointment",
+          { scheduledAt: input.scheduledAt, notes: input.notes ?? null },
+          invocationId
+        );
+        return {
+          requiresConfirmation: true,
+          action: "book",
+          proposed: { scheduledAt: input.scheduledAt, notes: input.notes ?? null },
+          confirmationToken,
+          message:
+            "Booking not yet made. Show the patient the proposed date/time and ask them to confirm. Only after they explicitly confirm, call createAppointment again with this confirmationToken.",
+        };
+      }
+
+      // Step 2 — patient confirmed in an earlier turn. Execute the booking.
       const { createAppointment } = await import("@/actions/appointments");
       const result = await createAppointment({
         patient_id: patientId,
-        scheduled_at: input.scheduledAt,
+        scheduled_at: confirmed.args.scheduledAt,
         duration_minutes: 30,
         source: "website",
-        notes: input.notes,
+        notes: confirmed.args.notes ?? undefined,
       });
       if (result.error) return { error: result.error };
       return {
@@ -200,10 +314,40 @@ async function executePatientTool(
 
     case "rescheduleAppointment": {
       const input = rescheduleAppointmentInputSchema.parse(args);
+      const confirmed = consumeConfirmedAction(
+        session.userId,
+        "rescheduleAppointment",
+        input.confirmationToken,
+        invocationId
+      );
+
+      if (!confirmed) {
+        const confirmationToken = proposeMutatingAction(
+          session.userId,
+          "rescheduleAppointment",
+          {
+            appointmentId: input.appointmentId,
+            newScheduledAt: input.newScheduledAt,
+          },
+          invocationId
+        );
+        return {
+          requiresConfirmation: true,
+          action: "reschedule",
+          proposed: {
+            appointmentId: input.appointmentId,
+            newScheduledAt: input.newScheduledAt,
+          },
+          confirmationToken,
+          message:
+            "Reschedule not yet applied. Confirm the new date/time with the patient, then call rescheduleAppointment again with this confirmationToken.",
+        };
+      }
+
       const { rescheduleAppointment } = await import("@/actions/appointments");
       const result = await rescheduleAppointment({
-        appointment_id: input.appointmentId,
-        new_scheduled_at: input.newScheduledAt,
+        appointment_id: confirmed.args.appointmentId,
+        new_scheduled_at: confirmed.args.newScheduledAt,
       });
       if (result.error) return { error: result.error };
       return {
@@ -215,8 +359,32 @@ async function executePatientTool(
 
     case "cancelAppointment": {
       const input = cancelAppointmentInputSchema.parse(args);
+      const confirmed = consumeConfirmedAction(
+        session.userId,
+        "cancelAppointment",
+        input.confirmationToken,
+        invocationId
+      );
+
+      if (!confirmed) {
+        const confirmationToken = proposeMutatingAction(
+          session.userId,
+          "cancelAppointment",
+          { appointmentId: input.appointmentId },
+          invocationId
+        );
+        return {
+          requiresConfirmation: true,
+          action: "cancel",
+          proposed: { appointmentId: input.appointmentId },
+          confirmationToken,
+          message:
+            "Cancellation not yet performed. Confirm with the patient that they want to cancel, then call cancelAppointment again with this confirmationToken.",
+        };
+      }
+
       const { cancelAppointment } = await import("@/actions/appointments");
-      const result = await cancelAppointment(input.appointmentId);
+      const result = await cancelAppointment(confirmed.args.appointmentId);
       if (result.error) return { error: result.error };
       return { success: true, message: "Appointment cancelled successfully." };
     }
@@ -290,19 +458,16 @@ async function executePatientTool(
           .limit(10),
         db
           .from("treatments")
-          .select("cost")
+          .select("cost, status")
           .eq("patient_id", patientId)
           .is("deleted_at", null),
       ]);
-      const totalCost = (
-        (treatmentsResult.data ?? []) as { cost: number }[]
-      ).reduce((s, t) => s + Number(t.cost ?? 0), 0);
-      const totalPaid = (
-        (paymentsResult.data ?? []) as { amount: number }[]
-      ).reduce((s, p) => s + Number(p.amount ?? 0), 0);
       return {
         payments: paymentsResult.data ?? [],
-        outstandingBalance: Math.max(0, totalCost - totalPaid),
+        outstandingBalance: computeOutstandingBalance(
+          (treatmentsResult.data ?? []) as { cost: number; status: string }[],
+          (paymentsResult.data ?? []) as { amount: number }[]
+        ),
         currency: "₹",
       };
     }
@@ -392,7 +557,7 @@ export async function generatePatientSummary(
     const [txCostRes, paymentRes] = await Promise.all([
       db
         .from("treatments")
-        .select("cost")
+        .select("cost, status")
         .eq("patient_id", patientId)
         .is("deleted_at", null),
       db
@@ -402,13 +567,10 @@ export async function generatePatientSummary(
         .is("deleted_at", null),
     ]);
 
-    const totalCost = (
-      (txCostRes.data ?? []) as { cost: number }[]
-    ).reduce((s: number, t: { cost: number }) => s + Number(t.cost ?? 0), 0);
-    const totalPaid = (
+    const balance = computeOutstandingBalance(
+      (txCostRes.data ?? []) as { cost: number; status: string }[],
       (paymentRes.data ?? []) as { amount: number }[]
-    ).reduce((s: number, t: { amount: number }) => s + Number(t.amount ?? 0), 0);
-    const balance = Math.max(0, totalCost - totalPaid);
+    );
 
     const model = getGeminiModel();
     const result = await withAITimeout(async () => {
@@ -698,6 +860,11 @@ export async function sendPatientAssistantMessage(
 
     const model = getGeminiModel();
 
+    // A unique id for THIS message turn. Used to enforce that a mutating
+    // action proposed during this turn cannot be confirmed within the same
+    // turn — the patient must reply (a new turn) to confirm.
+    const invocationId = newConfirmationId();
+
     const result = await withAITimeout(
       async () => {
         // Tool declarations — FunctionDeclarationsTool[] shape required by SDK
@@ -750,7 +917,8 @@ export async function sendPatientAssistantMessage(
                 const toolResult = await executePatientTool(
                   toolName,
                   toolArgs,
-                  session
+                  session,
+                  invocationId
                 );
                 return {
                   functionResponse: {

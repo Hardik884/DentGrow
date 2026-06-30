@@ -2,7 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 import { createServerClient } from "@/lib/supabase/server";
+import { resolveSession as resolveCachedSession } from "@/lib/auth/session";
 import { getTodayInTimezone } from "@/lib/utils";
+import { computeOutstandingBalance, isBillableTreatment } from "@/lib/billing/balance";
 import {
   RecordPaymentSchema,
   type ActionResult,
@@ -14,9 +16,12 @@ import {
  *
  * Security rules (enforced in every action):
  * - clinic_id is ALWAYS sourced from the server session.
- * - Outstanding balance is ALWAYS computed server-side.
- *   Formula: SUM(treatments.cost WHERE deleted_at IS NULL)
+ * - Outstanding balance is ALWAYS computed server-side via
+ *   lib/billing/balance.ts (single shared implementation).
+ *   Formula: SUM(billable treatments.cost WHERE deleted_at IS NULL)
  *            - SUM(payments.amount WHERE deleted_at IS NULL)
+ *   Billable = status in ('completed','in_progress'). Cancelled and planned
+ *   treatments never contribute.
  * - Only staff (dentist + receptionist) can record payments.
  * - Patients can read their own payment history via portal link.
  */
@@ -34,22 +39,8 @@ async function resolveSession(): Promise<{
   db: DbClient;
   profile: ResolvedProfile | null;
 }> {
-  const supabase = await createServerClient();
-  const db: DbClient = supabase;
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) return { db, profile: null };
-
-  const { data } = await db
-    .from("profiles")
-    .select("id, clinic_id, role")
-    .eq("id", user.id)
-    .single();
-
-  return { db, profile: (data as ResolvedProfile | null) ?? null };
+  const { db, profile } = await resolveCachedSession();
+  return { db, profile };
 }
 
 // =============================================================================
@@ -314,7 +305,7 @@ export async function getOutstandingBalance(
 
     let treatmentQuery = db
       .from("treatments")
-      .select("cost")
+      .select("cost, status")
       .eq("patient_id", resolvedPatientId)
       .is("deleted_at", null);
 
@@ -334,16 +325,13 @@ export async function getOutstandingBalance(
       paymentQuery,
     ]);
 
-    const totalCost = ((treatmentRows ?? []) as { cost: number }[]).reduce(
-      (sum, t) => sum + Number(t.cost ?? 0),
-      0
-    );
-    const totalPaid = ((paymentRows ?? []) as { amount: number }[]).reduce(
-      (sum, p) => sum + Number(p.amount ?? 0),
-      0
-    );
-
-    return { data: Math.max(0, totalCost - totalPaid), error: null };
+    return {
+      data: computeOutstandingBalance(
+        (treatmentRows ?? []) as { cost: number; status: string }[],
+        (paymentRows ?? []) as { amount: number }[]
+      ),
+      error: null,
+    };
   } catch (err) {
     console.error("[getOutstandingBalance] unexpected:", err);
     return { data: null, error: "Unexpected error" };
@@ -378,7 +366,7 @@ export async function getPortalOutstandingBalance(): Promise<ActionResult<number
     const [{ data: treatmentRows }, { data: paymentRows }] = await Promise.all([
       db
         .from("treatments")
-        .select("cost")
+        .select("cost, status")
         .eq("patient_id", link.patient_id)
         .eq("clinic_id", clinicId)
         .is("deleted_at", null),
@@ -390,16 +378,13 @@ export async function getPortalOutstandingBalance(): Promise<ActionResult<number
         .is("deleted_at", null),
     ]);
 
-    const totalCost = ((treatmentRows ?? []) as { cost: number }[]).reduce(
-      (s, t) => s + Number(t.cost ?? 0),
-      0
-    );
-    const totalPaid = ((paymentRows ?? []) as { amount: number }[]).reduce(
-      (s, p) => s + Number(p.amount ?? 0),
-      0
-    );
-
-    return { data: Math.max(0, totalCost - totalPaid), error: null };
+    return {
+      data: computeOutstandingBalance(
+        (treatmentRows ?? []) as { cost: number; status: string }[],
+        (paymentRows ?? []) as { amount: number }[]
+      ),
+      error: null,
+    };
   } catch (err) {
     console.error("[getPortalOutstandingBalance] unexpected:", err);
     return { data: null, error: "Unexpected error" };
@@ -481,7 +466,7 @@ export async function getPatientsWithOutstandingBalance(): Promise<
           .is("deleted_at", null),
         db
           .from("treatments")
-          .select("patient_id, cost")
+          .select("patient_id, cost, status")
           .eq("clinic_id", cid)
           .is("deleted_at", null),
         db
@@ -493,11 +478,12 @@ export async function getPatientsWithOutstandingBalance(): Promise<
 
     if (!patients) return { data: [], error: null };
 
-    // Aggregate per patient
+    // Aggregate per patient — only billable treatments contribute to dues.
     const costMap = new Map<string, number>();
     const paidMap = new Map<string, number>();
 
-    for (const t of (treatmentTotals ?? []) as { patient_id: string; cost: number }[]) {
+    for (const t of (treatmentTotals ?? []) as { patient_id: string; cost: number; status: string }[]) {
+      if (!isBillableTreatment(t.status)) continue;
       costMap.set(t.patient_id, (costMap.get(t.patient_id) ?? 0) + Number(t.cost ?? 0));
     }
 

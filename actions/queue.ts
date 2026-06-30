@@ -3,8 +3,9 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@supabase/supabase-js";
 import { createServerClient } from "@/lib/supabase/server";
+import { resolveSession as resolveCachedSession } from "@/lib/auth/session";
 import { getTodayInTimezone } from "@/lib/utils";
-import { completeLinkedFollowUps } from "@/lib/follow-ups/complete-linked";
+import { completeAppointmentCascade } from "@/lib/appointments/complete";
 import type { ActionResult, QueueEntry, QueueEntryWithPatient } from "@/types";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -24,22 +25,8 @@ async function resolveSession(): Promise<{
   db: DbClient;
   profile: ResolvedProfile | null;
 }> {
-  const supabase = await createServerClient();
-  const db: DbClient = supabase;
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) return { db, profile: null };
-
-  const { data } = await db
-    .from("profiles")
-    .select("id, clinic_id, role")
-    .eq("id", user.id)
-    .single();
-
-  return { db, profile: (data as ResolvedProfile | null) ?? null };
+  const { db, profile } = await resolveCachedSession();
+  return { db, profile };
 }
 
 // =============================================================================
@@ -164,8 +151,6 @@ export async function checkInPatient(
     // We scope by queue_date so a past-day entry does not block today's check-in.
     const qDateEarly = await todayForClinic(db, profile.clinic_id);
 
-    console.log("[checkInPatient] appointmentId:", appointmentId, "queue_date:", qDateEarly, "clinic_id:", profile.clinic_id, "role:", profile.role);
-
     // Check for any existing queue entry for this appointment regardless of date.
     // The uq_queue_appointment DB constraint is NOT scoped to queue_date,
     // so we must check globally to give a clean error instead of a constraint violation.
@@ -200,8 +185,6 @@ export async function checkInPatient(
 
     const nextPosition = ((posData as { position: number } | null)?.position ?? 0) + 1;
 
-    console.log("[checkInPatient] inserting: position:", nextPosition, "queue_date:", qDate, "patient_id:", appointment.patient_id);
-
     // Insert queue entry
     const { data: entry, error: insertErr } = await db
       .from("queue_entries")
@@ -217,8 +200,6 @@ export async function checkInPatient(
       .select()
       .single();
 
-    console.log("[checkInPatient] insert result:", { entry, insertErr });
-
     if (insertErr || !entry) {
       console.error("[checkInPatient] insert failed:", insertErr);
       return { data: null, error: insertErr?.message ?? "Failed to check in patient." };
@@ -233,8 +214,6 @@ export async function checkInPatient(
         .eq("clinic_id", profile.clinic_id);
       if (apptUpdateErr) {
         console.error("[checkInPatient] appointment status update failed:", apptUpdateErr);
-      } else {
-        console.log("[checkInPatient] appointment status updated to checked_in");
       }
     }
 
@@ -279,43 +258,16 @@ export async function advanceQueue(): Promise<ActionResult<null>> {
     if (currentData) {
       const current = currentData as { id: string; appointment_id: string; patient_id: string };
 
-      // Complete the current in_progress entry + update appointment status in parallel.
-      await Promise.all([
-        db
-          .from("queue_entries")
-          .update({ status: "completed" })
-          .eq("id", current.id),
-        db
-          .from("appointments")
-          .update({ status: "completed", updated_at: new Date().toISOString() })
-          .eq("id", current.appointment_id)
-          .eq("clinic_id", cid),
-      ]);
-
-      // Auto-complete any follow-ups linked to the completed appointment.
-      // Mirrors the dentist status-control completion path so the behaviour is
-      // identical regardless of how the appointment is completed.
-      await completeLinkedFollowUps(db, current.appointment_id, cid);
-
-      // Update patient visit count — patient_id comes from the queue entry
-      // directly, avoiding the previous sequential appointment→patient fetch.
-      const { data: patientData } = await db
-        .from("patients")
-        .select("total_visits")
-        .eq("id", current.patient_id)
-        .single();
-
-      const currentVisits =
-        (patientData as { total_visits: number } | null)?.total_visits ?? 0;
-
-      await db
-        .from("patients")
-        .update({
-          total_visits: currentVisits + 1,
-          last_visit: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", current.patient_id);
+      // Complete the current appointment via the single authoritative
+      // workflow. This updates the appointment status, increments the visit
+      // count exactly once, marks the queue entry completed, auto-completes
+      // linked follow-ups, and writes audit history — identical behaviour to
+      // the dentist status-control path, and fully idempotent.
+      await completeAppointmentCascade(db, {
+        appointmentId: current.appointment_id,
+        clinicId: cid,
+        performedBy: profile.id,
+      });
     }
 
     // Find the first waiting entry (lowest position) and promote to in_progress
@@ -346,6 +298,8 @@ export async function advanceQueue(): Promise<ActionResult<null>> {
     }
 
     revalidatePath(`/${profile.role}/queue`);
+    revalidatePath(`/${profile.role}/appointments`);
+    revalidatePath(`/${profile.role}/follow-ups`);
 
     return { data: null, error: null };
   } catch (err) {
@@ -496,7 +450,6 @@ export async function getTodayQueue(): Promise<
     // Staff path
     if (profile && (profile.role === "dentist" || profile.role === "receptionist")) {
       const qDate = await todayForClinic(db, profile.clinic_id);
-      console.log("[getTodayQueue] staff query: clinic_id:", profile.clinic_id, "queue_date:", qDate, "role:", profile.role);
 
       const { data, error } = await db
         .from("queue_entries")
@@ -506,8 +459,6 @@ export async function getTodayQueue(): Promise<
         .eq("clinic_id", profile.clinic_id)
         .eq("queue_date", qDate)
         .order("position", { ascending: true });
-
-      console.log("[getTodayQueue] raw result:", { rowCount: (data ?? []).length, error });
 
       if (error) {
         console.error("[getTodayQueue] query error:", error);
@@ -524,7 +475,6 @@ export async function getTodayQueue(): Promise<
         })
       );
 
-      console.log("[getTodayQueue] returning", entries.length, "entries:", entries.map((e: QueueEntryWithPatient) => ({ id: e.id, status: e.status, position: e.position, queue_date: (e as unknown as Record<string,unknown>).queue_date })));
       return { data: entries as QueueEntryWithPatient[], error: null };
     }
 

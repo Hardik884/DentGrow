@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createServerClient } from "@/lib/supabase/server";
+import { resolveSession as resolveCachedSession } from "@/lib/auth/session";
 import {
   CreateTreatmentSchema,
   UpdateTreatmentSchema,
@@ -45,22 +46,8 @@ async function resolveSession(): Promise<{
   db: DbClient;
   profile: ResolvedProfile | null;
 }> {
-  const supabase = await createServerClient();
-  const db: DbClient = supabase;
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) return { db, profile: null };
-
-  const { data } = await db
-    .from("profiles")
-    .select("id, clinic_id, role")
-    .eq("id", user.id)
-    .single();
-
-  return { db, profile: (data as ResolvedProfile | null) ?? null };
+  const { db, profile } = await resolveCachedSession();
+  return { db, profile };
 }
 
 // =============================================================================
