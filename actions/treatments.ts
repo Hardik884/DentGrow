@@ -613,8 +613,9 @@ export async function getPatientTreatments(
 
     const treatments = (data ?? []) as TreatmentForPatient[];
 
-    // Resolve dentist signatures for ALL treatments (any status). Map each
-    // treatment → appointment → dentist profile (full_name + signature_url).
+    // Resolve dentist signatures AND registration number for ALL treatments (any status). 
+    // Map each treatment → appointment → dentist profile (full_name + signature_url).
+    // Registration number comes from clinic_settings (clinic-level, not per-treatment).
     const apptIds = Array.from(
       new Set(
         treatments
@@ -622,6 +623,20 @@ export async function getPatientTreatments(
           .map((t) => t.appointment_id as string)
       )
     );
+
+    // Fetch registration number from clinic_settings (one query per patient's clinic)
+    let registrationNumber: string | null = null;
+    if (treatments.length > 0) {
+      const clinicId = treatments[0]?.clinic_id;
+      if (clinicId) {
+        const { data: settings } = await db
+          .from("clinic_settings")
+          .select("registration_number")
+          .eq("clinic_id", clinicId)
+          .maybeSingle();
+        registrationNumber = settings?.registration_number ?? null;
+      }
+    }
 
     // appointment_id -> dentist signature info
     const signatureByAppointment = new Map<
@@ -677,6 +692,7 @@ export async function getPatientTreatments(
           ? {
               dentistName: sig.dentistName,
               signatureUrl: sig.signatureUrl,
+              registrationNumber,
             }
           : null,
       };

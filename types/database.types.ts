@@ -461,6 +461,7 @@ export type Database = {
           clinic_hours: Json | null;
           average_appointment_duration: number;
           timezone: string;
+          registration_number: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -473,6 +474,7 @@ export type Database = {
           clinic_hours?: Json | null;
           average_appointment_duration?: number;
           timezone?: string;
+          registration_number?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -485,6 +487,7 @@ export type Database = {
           clinic_hours?: Json | null;
           average_appointment_duration?: number;
           timezone?: string;
+          registration_number?: string | null;
           created_at?: string;
           updated_at?: string;
         };

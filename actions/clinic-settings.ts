@@ -99,6 +99,7 @@ export async function updateClinicSettings(
           address: parsed.data.address || null,
           average_appointment_duration: parsed.data.average_appointment_duration,
           timezone: parsed.data.timezone,
+          registration_number: parsed.data.registration_number || null,
           clinic_hours: parsed.data.clinic_hours ?? null,
           updated_at: new Date().toISOString(),
         },

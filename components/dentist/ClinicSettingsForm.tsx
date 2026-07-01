@@ -70,6 +70,7 @@ export function ClinicSettingsForm({ initialSettings }: ClinicSettingsFormProps)
       address: initialSettings?.address ?? "",
       average_appointment_duration: initialSettings?.average_appointment_duration ?? 30,
       timezone: initialSettings?.timezone ?? "Asia/Kolkata",
+      registration_number: initialSettings?.registration_number ?? "",
       clinic_hours: defaultHours,
     },
   });
@@ -125,6 +126,20 @@ export function ClinicSettingsForm({ initialSettings }: ClinicSettingsFormProps)
 
           <Field label="Address" htmlFor="address">
             <Textarea id="address" {...register("address")} rows={2} disabled={isSubmitting} placeholder="123 Dental Street, City, State" />
+          </Field>
+
+          <Field 
+            label="Doctor Registration Number" 
+            htmlFor="registration_number"
+            hint="Displayed on patient treatment records (e.g., A-12345, DCI-987654)"
+          >
+            <Input 
+              id="registration_number" 
+              type="text" 
+              {...register("registration_number")} 
+              disabled={isSubmitting} 
+              placeholder="A-12345" 
+            />
           </Field>
         </div>
 
@@ -196,7 +211,7 @@ export function ClinicSettingsForm({ initialSettings }: ClinicSettingsFormProps)
                       "disabled:cursor-not-allowed",
                       isOpen ? "bg-[#18181B]" : "bg-[#E4E4E7]"
                     )}
-                    aria-pressed={isOpen}
+                    aria-pressed={isOpen ? "true" : "false"}
                     aria-label={`${day.label}: ${isOpen ? "open" : "closed"}`}
                   >
                     <span

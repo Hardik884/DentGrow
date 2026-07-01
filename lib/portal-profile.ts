@@ -28,15 +28,19 @@ const phoneRegex = /^[+]?[\d\s\-().]{7,15}$/;
 export const UpdatePortalProfileSchema = z.object({
   phone: z
     .string()
-    .regex(phoneRegex, "Invalid phone number format")
-    .optional()
-    .or(z.literal("")),
+    .refine(
+      (val) => val === "" || phoneRegex.test(val),
+      "Invalid phone number format"
+    )
+    .optional(),
   address: z.string().max(500).optional(),
   emergency_contact_name: z.string().max(100).optional(),
   emergency_contact_phone: z
     .string()
-    .regex(phoneRegex, "Invalid emergency contact phone")
-    .optional()
-    .or(z.literal("")),
+    .refine(
+      (val) => val === "" || phoneRegex.test(val),
+      "Invalid emergency contact phone"
+    )
+    .optional(),
 });
 export type UpdatePortalProfileInput = z.infer<typeof UpdatePortalProfileSchema>;

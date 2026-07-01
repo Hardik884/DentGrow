@@ -136,23 +136,24 @@ export async function TreatmentHistoryList() {
                     <PenLine className="h-3 w-3" aria-hidden />
                     Digitally Signed By
                   </div>
-                  <div className="mt-2 flex items-center gap-4">
+                  <div className="mt-3 space-y-2">
+                    <p className="text-sm font-medium text-[#09090B]">
+                      {treatment.signature.dentistName}
+                    </p>
+                    {treatment.signature.registrationNumber && (
+                      <p className="text-xs text-[#71717A]">
+                        Registration No: {treatment.signature.registrationNumber}
+                      </p>
+                    )}
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={treatment.signature.signatureUrl}
                       alt={`Signature of ${treatment.signature.dentistName}`}
                       className="max-h-14 max-w-[180px] object-contain"
                     />
-                    <div className="space-y-0.5">
-                      <p className="text-sm font-medium text-[#09090B]">
-                        {treatment.signature.dentistName}
-                      </p>
-                      <p className="text-xs text-[#71717A]">
-                        Status: {statusLabel}
-                      </p>
-                      <p className="text-xs text-[#71717A]">
-                        Treatment Date: {treatmentDate}
-                      </p>
+                    <div className="space-y-0.5 text-xs text-[#71717A]">
+                      <p>Status: {statusLabel}</p>
+                      <p>Treatment Date: {treatmentDate}</p>
                     </div>
                   </div>
                 </div>

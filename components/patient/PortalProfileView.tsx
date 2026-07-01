@@ -119,49 +119,52 @@ export function PortalProfileView({ profile }: PortalProfileViewProps) {
         </div>
       )}
 
-      {/* Editable contact details */}
-      <form onSubmit={handleSave}>
-        <div className="bg-white border rounded-xl p-5 space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="font-semibold text-gray-900">Contact Information</h2>
-            {!isEditing ? (
+      {/* Single form wrapping both sections */}
+      <form onSubmit={handleSave} className="space-y-5">
+        {/* Unified action buttons at the top */}
+        <div className="flex justify-end gap-3">
+          {!isEditing ? (
+            <button
+              type="button"
+              onClick={() => { setIsEditing(true); setSaved(false); }}
+              className="px-4 py-2 text-sm font-medium text-blue-600 hover:text-blue-700 border border-blue-200 rounded-lg hover:bg-blue-50 transition-colors"
+            >
+              Edit Profile
+            </button>
+          ) : (
+            <>
               <button
                 type="button"
-                onClick={() => { setIsEditing(true); setSaved(false); }}
-                className="text-sm font-medium text-blue-600 hover:text-blue-700"
+                onClick={handleCancel}
+                disabled={isPending}
+                className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 transition-colors"
               >
-                Edit
+                Cancel
               </button>
-            ) : (
-              <div className="flex gap-3">
-                <button
-                  type="button"
-                  onClick={handleCancel}
-                  disabled={isPending}
-                  className="text-sm font-medium text-gray-500 hover:text-gray-700 disabled:opacity-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={isPending}
-                  className="text-sm font-medium text-blue-600 hover:text-blue-700 disabled:opacity-50"
-                >
-                  {isPending ? "Saving…" : "Save"}
-                </button>
-              </div>
-            )}
-          </div>
-
-          {error && (
-            <p
-              role="alert"
-              className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-md px-3 py-2"
-            >
-              {error}
-            </p>
+              <button
+                type="submit"
+                disabled={isPending}
+                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                {isPending ? "Saving…" : "Save Changes"}
+              </button>
+            </>
           )}
+        </div>
 
+        {/* Error display */}
+        {error && (
+          <div
+            role="alert"
+            className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-md px-4 py-3"
+          >
+            {error}
+          </div>
+        )}
+
+        {/* Contact Information section */}
+        <div className="bg-white border rounded-xl p-5 space-y-4">
+          <h2 className="font-semibold text-gray-900">Contact Information</h2>
           <div className="space-y-3">
             <EditableField
               label="Phone Number"
@@ -185,8 +188,8 @@ export function PortalProfileView({ profile }: PortalProfileViewProps) {
           </div>
         </div>
 
-        {/* Emergency contact — separate card */}
-        <div className="bg-white border rounded-xl p-5 space-y-3 mt-5">
+        {/* Emergency Contact section */}
+        <div className="bg-white border rounded-xl p-5 space-y-3">
           <h2 className="font-semibold text-gray-900">Emergency Contact</h2>
           <div className="space-y-3">
             <EditableField

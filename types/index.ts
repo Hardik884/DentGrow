@@ -208,10 +208,12 @@ export type TreatmentForPatient = Pick<
  * (planned, in_progress, completed, cancelled). `null` only when the dentist
  * has never uploaded a signature, in which case the signature block is hidden
  * entirely. Treatment status and date are rendered from the treatment itself.
+ * Registration number is resolved from clinic_settings.
  */
 export type TreatmentSignature = {
   dentistName: string;
   signatureUrl: string;
+  registrationNumber: string | null;
 };
 
 /** Patient portal treatment enriched with an optional resolved dentist signature. */
@@ -462,6 +464,7 @@ export const UpdateClinicSettingsSchema = z.object({
   address: z.string().max(500).optional(),
   average_appointment_duration: z.number().int().positive(),
   timezone: z.string().min(1),
+  registration_number: z.string().max(100).optional().or(z.literal("")),
   clinic_hours: z.object({
     monday: ClinicDayHoursSchema,
     tuesday: ClinicDayHoursSchema,

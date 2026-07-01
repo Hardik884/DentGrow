@@ -606,9 +606,12 @@ export async function updatePortalProfile(
   try {
     const parsed = UpdatePortalProfileSchema.safeParse(input);
     if (!parsed.success) {
+      const firstError = parsed.error.errors[0];
+      const fieldName = firstError?.path[0] || "field";
+      const message = firstError?.message || "Invalid input";
       return {
         data: null,
-        error: parsed.error.errors[0]?.message ?? "Invalid input",
+        error: `${String(fieldName)}: ${message}`,
       };
     }
 
@@ -623,13 +626,14 @@ export async function updatePortalProfile(
     if (!user) return { data: null, error: "Unauthorized" };
 
     // Resolve patient via portal link
-    const { data: link } = await db
+    const { data: link, error: linkError } = await db
       .from("patient_portal_links")
       .select("patient_id")
       .eq("user_id", user.id)
       .single();
 
-    if (!link?.patient_id) {
+    if (linkError || !link?.patient_id) {
+      console.error("[updatePortalProfile] portal link lookup:", linkError);
       return { data: null, error: "Portal account not linked." };
     }
 
@@ -656,16 +660,42 @@ export async function updatePortalProfile(
       )
       .single();
 
-    if (error || !data) {
-      console.error("[updatePortalProfile]", error);
-      return { data: null, error: "Failed to update profile." };
+    if (error) {
+      console.error("[updatePortalProfile] update error:", error);
+      
+      // Provide more specific error messages based on the error code
+      if (error.code === "PGRST116") {
+        return { data: null, error: "Profile not found or access denied." };
+      }
+      if (error.code === "42501") {
+        return { data: null, error: "Permission denied. Unable to update profile." };
+      }
+      if (error.message) {
+        return { data: null, error: `Unable to update profile: ${error.message}` };
+      }
+      
+      return { data: null, error: "Unable to update profile. Please try again." };
+    }
+
+    if (!data) {
+      console.error("[updatePortalProfile] no data returned after update");
+      return { data: null, error: "Profile update failed. Please try again." };
     }
 
     revalidatePath("/portal/profile");
+    // Also revalidate dentist and receptionist patient views so changes appear instantly
+    revalidatePath("/dentist/patients");
+    revalidatePath("/receptionist/patients");
 
     return { data: data as PortalPatientProfile, error: null };
   } catch (err) {
-    console.error("[updatePortalProfile] unexpected:", err);
-    return { data: null, error: "Unexpected error" };
+    console.error("[updatePortalProfile] unexpected error:", err);
+    
+    // In development, expose the actual error for debugging
+    if (process.env.NODE_ENV === "development" && err instanceof Error) {
+      return { data: null, error: `Development error: ${err.message}` };
+    }
+    
+    return { data: null, error: "An unexpected error occurred. Please try again." };
   }
 }
