@@ -157,8 +157,20 @@ export async function updatePatient(
       .single();
 
     if (error) {
-      console.error("[updatePatient]", error);
-      return { data: null, error: "Failed to update patient." };
+      // Log the complete Supabase error with all details
+      console.error("[updatePatient] Supabase error:", {
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+        code: error.code,
+        patient_id: id,
+        clinic_id: profile.clinic_id,
+        role: profile.role,
+      });
+      
+      // Return a more informative error message
+      const errorMsg = error.message || error.details || error.hint || "Failed to update patient.";
+      return { data: null, error: `Update failed: ${errorMsg}` };
     }
     if (!data) return { data: null, error: "Patient not found." };
 
