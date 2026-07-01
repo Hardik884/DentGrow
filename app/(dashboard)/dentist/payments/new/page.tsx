@@ -3,7 +3,7 @@ import { PageHeader } from "@/components/layouts/PageHeader";
 import { PaymentForm } from "@/components/dentist/PaymentForm";
 
 export const metadata: Metadata = {
-  title: "Record Payment — DentGrow",
+  title: "Record Payment",
 };
 
 interface Props {

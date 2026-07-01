@@ -5,7 +5,7 @@ import { FollowUpFilters } from "@/components/follow-ups/FollowUpFilters";
 import { FollowUpsView } from "@/components/follow-ups/FollowUpsView";
 
 export const metadata: Metadata = {
-  title: "Follow-Ups — DentGrow",
+  title: "Follow-Ups",
 };
 
 interface Props {

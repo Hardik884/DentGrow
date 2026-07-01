@@ -4,7 +4,7 @@ import { TodayAppointmentList } from "@/components/receptionist/TodayAppointment
 import { NewInquiryButton } from "@/components/dentist/NewInquiryButton";
 
 export const metadata: Metadata = {
-  title: "Appointments — DentGrow",
+  title: "Appointments",
 };
 
 /**

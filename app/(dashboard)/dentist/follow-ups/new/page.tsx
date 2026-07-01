@@ -4,7 +4,7 @@ import { FollowUpForm } from "@/components/follow-ups/FollowUpForm";
 import { getPatient } from "@/actions/patients";
 
 export const metadata: Metadata = {
-  title: "New Follow-Up — DentGrow",
+  title: "New Follow-Up",
 };
 
 interface Props {

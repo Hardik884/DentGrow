@@ -5,7 +5,7 @@ import { getTodayQueue, getQueueStatus } from "@/actions/queue";
 import { QueuePositionCard } from "@/components/queue/QueuePositionCard";
 
 export const metadata: Metadata = {
-  title: "My Queue Position — DentGrow",
+  title: "My Queue Position",
 };
 
 /**

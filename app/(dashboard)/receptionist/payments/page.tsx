@@ -3,7 +3,7 @@ import { PageHeader } from "@/components/layouts/PageHeader";
 import { PendingPaymentsList } from "@/components/receptionist/PendingPaymentsList";
 
 export const metadata: Metadata = {
-  title: "Payments — DentGrow",
+  title: "Payments",
 };
 
 /**

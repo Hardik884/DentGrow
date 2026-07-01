@@ -19,7 +19,7 @@ import {
 import type { TreatmentStatus, Payment, MedicationInput } from "@/types";
 
 export const metadata: Metadata = {
-  title: "Treatment — DentGrow",
+  title: "Treatment",
 };
 
 interface Props {

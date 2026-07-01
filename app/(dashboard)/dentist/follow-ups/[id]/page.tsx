@@ -5,7 +5,7 @@ import { FollowUpForm } from "@/components/follow-ups/FollowUpForm";
 import { getFollowUp } from "@/actions/follow-ups";
 
 export const metadata: Metadata = {
-  title: "Follow-Up — DentGrow",
+  title: "Follow-Up",
 };
 
 interface Props {

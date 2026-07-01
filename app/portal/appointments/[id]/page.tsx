@@ -8,7 +8,7 @@ import { formatDateTimeInTimezone } from "@/lib/utils";
 import type { AppointmentStatus } from "@/types";
 
 export const metadata: Metadata = {
-  title: "Appointment — DentGrow",
+  title: "Appointment",
 };
 
 interface Props {

@@ -16,7 +16,7 @@ import { formatDateTimeInTimezone, APPOINTMENT_SOURCE_LABELS, calculateAge } fro
 import type { AppointmentStatus } from "@/types";
 
 export const metadata: Metadata = {
-  title: "Appointment — DentGrow",
+  title: "Appointment",
 };
 
 interface Props {

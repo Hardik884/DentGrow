@@ -5,7 +5,7 @@ import { PatientForm } from "@/components/shared/PatientForm";
 import { getPatient } from "@/actions/patients";
 
 export const metadata: Metadata = {
-  title: "Edit Patient — DentGrow",
+  title: "Edit Patient",
 };
 
 interface Props {

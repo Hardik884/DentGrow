@@ -8,7 +8,7 @@ import { PatientTreatmentsTab } from "@/components/dentist/PatientTreatmentsTab"
 import { PatientPaymentsTab } from "@/components/dentist/PatientPaymentsTab";
 
 export const metadata: Metadata = {
-  title: "Patient — DentGrow",
+  title: "Patient",
 };
 
 interface Props {

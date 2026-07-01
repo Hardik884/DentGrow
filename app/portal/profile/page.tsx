@@ -4,7 +4,7 @@ import { getPortalProfile } from "@/actions/portal-link";
 import { PortalProfileView } from "@/components/patient/PortalProfileView";
 
 export const metadata: Metadata = {
-  title: "My Profile — DentGrow",
+  title: "My Profile",
 };
 
 /**

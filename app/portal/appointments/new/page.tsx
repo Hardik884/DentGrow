@@ -4,7 +4,7 @@ import { createServerClient } from "@/lib/supabase/server";
 import { SlotPicker } from "@/components/patient/SlotPicker";
 
 export const metadata: Metadata = {
-  title: "Book Appointment — DentGrow",
+  title: "Book Appointment",
 };
 
 /**

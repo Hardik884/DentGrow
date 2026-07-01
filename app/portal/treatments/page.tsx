@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { TreatmentHistoryList } from "@/components/patient/TreatmentHistoryList";
 
 export const metadata: Metadata = {
-  title: "Treatment History — DentGrow",
+  title: "Treatment History",
 };
 
 /**

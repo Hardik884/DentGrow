@@ -4,7 +4,7 @@ import { PageHeader } from "@/components/layouts/PageHeader";
 import { TreatmentForm } from "@/components/dentist/TreatmentForm";
 
 export const metadata: Metadata = {
-  title: "New Treatment — DentGrow",
+  title: "New Treatment",
 };
 
 interface Props {

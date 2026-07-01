@@ -5,7 +5,7 @@ import { getPaymentsToday } from "@/actions/payments";
 import { formatCurrency } from "@/lib/utils";
 
 export const metadata: Metadata = {
-  title: "Payments — DentGrow",
+  title: "Payments",
 };
 
 /**

@@ -8,7 +8,7 @@ import { getClinicTimezone } from "@/lib/clinic/config";
 import { getTodayInTimezone } from "@/lib/utils";
 
 export const metadata: Metadata = {
-  title: "Appointments — DentGrow",
+  title: "Appointments",
 };
 
 interface Props {

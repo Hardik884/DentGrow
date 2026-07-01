@@ -5,7 +5,7 @@ import { StatusBadge } from "@/components/shared/StatusBadge";
 import { formatDate, FOLLOW_UP_STATUS_LABELS } from "@/lib/utils";
 
 export const metadata: Metadata = {
-  title: "My Follow-Ups — DentGrow",
+  title: "My Follow-Ups",
 };
 
 /**

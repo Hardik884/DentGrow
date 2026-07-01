@@ -6,7 +6,7 @@ import { getClinics } from "@/actions/clinics";
 import { getSignupClinic, getSignupPhone, getSelectedClinic } from "@/lib/clinic-session";
 
 export const metadata: Metadata = {
-  title: "Account Setup — DentGrow",
+  title: "Account Setup",
 };
 
 /**

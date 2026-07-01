@@ -6,7 +6,7 @@ import { TreatmentsView } from "@/components/dentist/TreatmentsView";
 import { createServerClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = {
-  title: "Treatments — DentGrow",
+  title: "Treatments",
 };
 
 interface Props {

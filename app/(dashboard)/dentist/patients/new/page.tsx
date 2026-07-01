@@ -3,7 +3,7 @@ import { PageHeader } from "@/components/layouts/PageHeader";
 import { PatientForm } from "@/components/shared/PatientForm";
 
 export const metadata: Metadata = {
-  title: "New Patient — DentGrow",
+  title: "New Patient",
 };
 
 /**

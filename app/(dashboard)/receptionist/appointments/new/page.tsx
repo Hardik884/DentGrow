@@ -4,7 +4,7 @@ import { PageHeader } from "@/components/layouts/PageHeader";
 import { AppointmentForm } from "@/components/shared/AppointmentForm";
 
 export const metadata: Metadata = {
-  title: "New Appointment — DentGrow",
+  title: "New Appointment",
 };
 
 /**

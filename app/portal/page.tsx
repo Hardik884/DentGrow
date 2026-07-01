@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { PortalDashboard } from "@/components/patient/PortalDashboard";
 
 export const metadata: Metadata = {
-  title: "My Dashboard — DentGrow",
+  title: "My Dashboard",
 };
 
 /**

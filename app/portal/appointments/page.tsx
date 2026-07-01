@@ -3,7 +3,7 @@ import Link from "next/link";
 import { AppointmentList } from "@/components/patient/AppointmentList";
 
 export const metadata: Metadata = {
-  title: "My Appointments — DentGrow",
+  title: "My Appointments",
 };
 
 /**

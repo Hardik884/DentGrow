@@ -5,7 +5,7 @@ import { getTodayQueue, getQueueMetrics } from "@/actions/queue";
 import { createServerClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = {
-  title: "Queue — DentGrow",
+  title: "Queue",
 };
 
 /**

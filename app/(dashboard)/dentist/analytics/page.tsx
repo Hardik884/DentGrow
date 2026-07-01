@@ -28,7 +28,7 @@ import { SourceBreakdownTable } from "@/components/analytics/SourceBreakdownTabl
 import { formatCurrency } from "@/lib/utils";
 
 export const metadata: Metadata = {
-  title: "Analytics — DentGrow",
+  title: "Analytics",
 };
 
 /**

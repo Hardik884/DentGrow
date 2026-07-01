@@ -6,7 +6,7 @@ import { getClinicSettings } from "@/actions/clinic-settings";
 import { getMySignature } from "@/actions/signature";
 
 export const metadata: Metadata = {
-  title: "Clinic Settings — DentGrow",
+  title: "Clinic Settings",
 };
 
 /**
