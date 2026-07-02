@@ -462,6 +462,7 @@ export type Database = {
           average_appointment_duration: number;
           timezone: string;
           registration_number: string | null;
+          allow_receptionist_payments: boolean;
           created_at: string;
           updated_at: string;
         };
@@ -475,6 +476,7 @@ export type Database = {
           average_appointment_duration?: number;
           timezone?: string;
           registration_number?: string | null;
+          allow_receptionist_payments?: boolean;
           created_at?: string;
           updated_at?: string;
         };
@@ -488,6 +490,7 @@ export type Database = {
           average_appointment_duration?: number;
           timezone?: string;
           registration_number?: string | null;
+          allow_receptionist_payments?: boolean;
           created_at?: string;
           updated_at?: string;
         };

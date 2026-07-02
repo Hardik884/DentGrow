@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { resolveSession } from "@/lib/auth/session";
+import { checkReceptionistPaymentAccess } from "@/actions/clinic-settings";
 import { DashboardSidebar } from "@/components/layouts/DashboardSidebar";
 
 // Every dashboard route is authenticated and reads request cookies, so it is
@@ -27,9 +28,18 @@ export default async function DashboardLayout({
     redirect("/login");
   }
 
+  // Check receptionist payment access for sidebar display
+  const allowReceptionistPayments = profile.role === "receptionist" 
+    ? await checkReceptionistPaymentAccess()
+    : false;
+
   return (
     <div className="flex h-screen overflow-hidden bg-[#FAFAFA]">
-      <DashboardSidebar role={profile.role} fullName={profile.full_name ?? ""} />
+      <DashboardSidebar 
+        role={profile.role} 
+        fullName={profile.full_name ?? ""} 
+        allowReceptionistPayments={allowReceptionistPayments}
+      />
       <main className="flex-1 overflow-y-auto">
         {children}
       </main>

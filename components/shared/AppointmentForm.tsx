@@ -17,7 +17,6 @@ import {
   type Patient,
 } from "@/types";
 import { cn, formatTime, APPOINTMENT_SOURCE_LABELS } from "@/lib/utils";
-import { TREATMENT_TEMPLATES, getDurationForTreatment } from "@/lib/treatment-templates";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
@@ -76,7 +75,6 @@ export function AppointmentForm({
   const [slots, setSlots] = useState<string[]>([]);
   const [slotsLoading, setSlotsLoading] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
-  const [selectedTreatmentType, setSelectedTreatmentType] = useState<string>("");
 
   const {
     register,
@@ -95,15 +93,6 @@ export function AppointmentForm({
       scheduled_at: "",
     },
   });
-
-  function handleTreatmentTypeChange(treatmentType: string) {
-    setSelectedTreatmentType(treatmentType);
-    if (treatmentType) {
-      const defaultDuration = getDurationForTreatment(treatmentType);
-      setValue("duration_minutes", defaultDuration, { shouldValidate: true });
-      fetchSlots(selectedDate, defaultDuration);
-    }
-  }
 
   const fetchSlots = useCallback(async (date: string, durationMinutes: number) => {
     setSlotsLoading(true);
@@ -455,36 +444,18 @@ export function AppointmentForm({
             <h3 className="text-sm font-semibold text-[#09090B]">Details</h3>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Field label="Treatment Type" htmlFor="treatment-type" hint="Auto-fills duration">
-              <Select
-                id="treatment-type"
-                value={selectedTreatmentType}
-                disabled={isSubmitting}
-                onChange={(e) => handleTreatmentTypeChange(e.target.value)}
-              >
-                <option value="">Select treatment…</option>
-                {TREATMENT_TEMPLATES.map((t) => (
-                  <option key={t.value} value={t.value}>
-                    {t.label} ({t.defaultDurationMinutes}m)
-                  </option>
-                ))}
-              </Select>
-            </Field>
-
-            <Field label="Booking Source" htmlFor="source" required error={errors.source?.message}>
-              <Select
-                id="source"
-                {...register("source")}
-                disabled={isSubmitting}
-                hasError={!!errors.source}
-              >
-                {Object.entries(APPOINTMENT_SOURCE_LABELS).map(([val, label]) => (
-                  <option key={val} value={val}>{label}</option>
-                ))}
-              </Select>
-            </Field>
-          </div>
+          <Field label="Booking Source" htmlFor="source" required error={errors.source?.message}>
+            <Select
+              id="source"
+              {...register("source")}
+              disabled={isSubmitting}
+              hasError={!!errors.source}
+            >
+              {Object.entries(APPOINTMENT_SOURCE_LABELS).map(([val, label]) => (
+                <option key={val} value={val}>{label}</option>
+              ))}
+            </Select>
+          </Field>
 
           <Field label="Duration" htmlFor="duration" hint="Changing duration refreshes available slots">
             <Select

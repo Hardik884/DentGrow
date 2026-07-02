@@ -71,6 +71,7 @@ export function ClinicSettingsForm({ initialSettings }: ClinicSettingsFormProps)
       average_appointment_duration: initialSettings?.average_appointment_duration ?? 30,
       timezone: initialSettings?.timezone ?? "Asia/Kolkata",
       registration_number: initialSettings?.registration_number ?? "",
+      allow_receptionist_payments: initialSettings?.allow_receptionist_payments ?? false,
       clinic_hours: defaultHours,
     },
   });
@@ -173,6 +174,46 @@ export function ClinicSettingsForm({ initialSettings }: ClinicSettingsFormProps)
                 ))}
               </Select>
             </Field>
+          </div>
+        </div>
+
+        {/* ── Access Control ─────────────────────────────────────── */}
+        <div className="px-6 py-5 space-y-4">
+          <h3 className="text-sm font-semibold text-[#09090B]">Access Control</h3>
+
+          <div className="flex items-start gap-3">
+            <button
+              type="button"
+              onClick={() => {
+                const current = watch("allow_receptionist_payments");
+                setValue("allow_receptionist_payments", !current);
+              }}
+              disabled={isSubmitting}
+              className={cn(
+                "relative inline-flex h-5 w-9 shrink-0 rounded-full border-2 border-transparent transition-colors",
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#18181B]",
+                "disabled:cursor-not-allowed",
+                watch("allow_receptionist_payments") ? "bg-[#18181B]" : "bg-[#E4E4E7]"
+              )}
+              aria-pressed={watch("allow_receptionist_payments") ? "true" : "false"}
+              aria-label="Allow Receptionist to Access Payments"
+            >
+              <span
+                className={cn(
+                  "pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow transform transition-transform",
+                  watch("allow_receptionist_payments") ? "translate-x-4" : "translate-x-0"
+                )}
+              />
+            </button>
+
+            <div>
+              <label className="text-sm font-medium text-[#09090B]">
+                Allow Receptionist to Access Payments
+              </label>
+              <p className="text-xs text-[#71717A] mt-0.5">
+                When enabled, receptionists can view and manage payments. When disabled, payment pages and actions are completely hidden from receptionists.
+              </p>
+            </div>
           </div>
         </div>
 

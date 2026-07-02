@@ -44,7 +44,7 @@ export default async function DentistAppointmentsPage({ searchParams }: Props) {
     <div className="p-6 space-y-6">
       <PageHeader
         title="Appointments"
-        action={{ label: "+ Book New Appointment", href: "/dentist/appointments/new" }}
+        action={{ label: "Book New Appointment", href: "/dentist/appointments/new" }}
       >
         <NewInquiryButton />
       </PageHeader>

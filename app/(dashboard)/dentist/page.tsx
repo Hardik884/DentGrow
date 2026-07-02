@@ -4,6 +4,7 @@ import { DashboardKPIs } from "@/components/dentist/DashboardKPIs";
 import { QueueWidget } from "@/components/queue/QueueWidget";
 import { UpcomingAppointments } from "@/components/dentist/UpcomingAppointments";
 import { ClinicDentistName } from "@/components/shared/ClinicDentistName";
+import { NewInquiryButton } from "@/components/dentist/NewInquiryButton";
 import { getTodayQueue } from "@/actions/queue";
 import { getClinicConfig } from "@/lib/clinic/config";
 import { Plus } from "lucide-react";
@@ -32,7 +33,9 @@ export default async function DentistDashboardPage() {
           title="Today's Dashboard"
           description="Overview of today's clinic activity"
           action={{ label: "Book New Appointment", href: "/dentist/appointments/new", icon: <Plus className="h-3.5 w-3.5" /> }}
-        />
+        >
+          <NewInquiryButton />
+        </PageHeader>
 
         {/* Clinic dentist name (data-driven from clinics.dentist_name) */}
         <ClinicDentistName />
@@ -66,7 +69,9 @@ export default async function DentistDashboardPage() {
         title="Today's Dashboard"
         description="Overview of today's clinic activity"
         action={{ label: "Book New Appointment", href: "/dentist/appointments/new", icon: <Plus className="h-3.5 w-3.5" /> }}
-      />
+      >
+        <NewInquiryButton />
+      </PageHeader>
       <DashboardKPIs />
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-4">
         <div className="lg:col-span-2 space-y-4">

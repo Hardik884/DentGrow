@@ -5,7 +5,7 @@ import { Slot } from "@radix-ui/react-slot";
 import { forwardRef } from "react";
 
 export type ButtonVariant = "default" | "secondary" | "ghost" | "outline" | "danger" | "link";
-export type ButtonSize = "sm" | "md" | "lg" | "icon";
+export type ButtonSize = "xs" | "sm" | "md" | "lg" | "icon";
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: ButtonVariant;
@@ -24,6 +24,7 @@ const variantClasses: Record<ButtonVariant, string> = {
 };
 
 const sizeClasses: Record<ButtonSize, string> = {
+  xs:   "h-7 px-2 text-xs rounded-[4px]",
   sm:   "h-8 px-3 text-xs rounded-[6px]",
   md:   "h-9 px-4 text-sm rounded-[8px]",
   lg:   "h-10 px-5 text-sm rounded-[8px]",

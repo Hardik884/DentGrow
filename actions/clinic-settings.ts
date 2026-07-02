@@ -65,6 +65,40 @@ export async function getClinicSettings(): Promise<ActionResult<ClinicSettings>>
 }
 
 // =============================================================================
+// checkReceptionistPaymentAccess — verify if receptionist can access payments
+// Returns: true if dentist OR receptionist with permission, false otherwise
+// =============================================================================
+
+export async function checkReceptionistPaymentAccess(): Promise<boolean> {
+  try {
+    const { db, profile } = await resolveSession();
+    if (!profile) return false;
+
+    // Dentists always have payment access
+    if (profile.role === "dentist") return true;
+
+    // Patients never have staff payment access
+    if (profile.role === "patient") return false;
+
+    // Receptionists: check clinic setting
+    if (profile.role === "receptionist") {
+      const { data } = await db
+        .from("clinic_settings")
+        .select("allow_receptionist_payments")
+        .eq("clinic_id", profile.clinic_id)
+        .maybeSingle();
+
+      return (data as { allow_receptionist_payments?: boolean } | null)?.allow_receptionist_payments ?? false;
+    }
+
+    return false;
+  } catch (err) {
+    console.error("[checkReceptionistPaymentAccess] unexpected:", err);
+    return false;
+  }
+}
+
+// =============================================================================
 // updateClinicSettings — dentist only
 // Upserts the clinic_settings row (creates it if it doesn't exist yet).
 // =============================================================================
@@ -100,6 +134,7 @@ export async function updateClinicSettings(
           average_appointment_duration: parsed.data.average_appointment_duration,
           timezone: parsed.data.timezone,
           registration_number: parsed.data.registration_number || null,
+          allow_receptionist_payments: parsed.data.allow_receptionist_payments ?? false,
           clinic_hours: parsed.data.clinic_hours ?? null,
           updated_at: new Date().toISOString(),
         },

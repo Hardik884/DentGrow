@@ -14,6 +14,7 @@ import {
   Bell,
   BarChart3,
   Settings,
+  CreditCard,
   type LucideIcon,
 } from "lucide-react";
 
@@ -24,31 +25,46 @@ interface NavItem {
 }
 
 const DENTIST_NAV: NavItem[] = [
-  { label: "Dashboard",    href: "/dentist",              icon: LayoutDashboard },
-  { label: "Patients",     href: "/dentist/patients",     icon: Users },
-  { label: "Appointments", href: "/dentist/appointments", icon: CalendarDays },
-  { label: "Queue",        href: "/dentist/queue",        icon: ListOrdered },
-  { label: "Treatments",   href: "/dentist/treatments",   icon: Stethoscope },
-  { label: "Follow-Ups",   href: "/dentist/follow-ups",   icon: Bell },
-  { label: "Analytics",    href: "/dentist/analytics",    icon: BarChart3 },
-  { label: "Settings",     href: "/dentist/settings",     icon: Settings },
+  { label: "Today's Dashboard", href: "/dentist",              icon: LayoutDashboard },
+  { label: "Patients",          href: "/dentist/patients",     icon: Users },
+  { label: "Appointments",      href: "/dentist/appointments", icon: CalendarDays },
+  { label: "Queue",             href: "/dentist/queue",        icon: ListOrdered },
+  { label: "Payments",          href: "/dentist/payments",     icon: CreditCard },
+  { label: "Treatments",        href: "/dentist/treatments",   icon: Stethoscope },
+  { label: "Follow-Ups",        href: "/dentist/follow-ups",   icon: Bell },
+  { label: "Analytics",         href: "/dentist/analytics",    icon: BarChart3 },
+  { label: "Settings",          href: "/dentist/settings",     icon: Settings },
 ];
 
-const RECEPTIONIST_NAV: NavItem[] = [
-  { label: "Dashboard",    href: "/receptionist",              icon: LayoutDashboard },
-  { label: "Patients",     href: "/receptionist/patients",     icon: Users },
-  { label: "Appointments", href: "/receptionist/appointments", icon: CalendarDays },
-  { label: "Queue",        href: "/receptionist/queue",        icon: ListOrdered },
+// Base receptionist nav (always shown)
+const BASE_RECEPTIONIST_NAV: NavItem[] = [
+  { label: "Today's Dashboard", href: "/receptionist",              icon: LayoutDashboard },
+  { label: "Patients",          href: "/receptionist/patients",     icon: Users },
+  { label: "Appointments",      href: "/receptionist/appointments", icon: CalendarDays },
 ];
+
+// Conditional payment nav item (shown only when allowed)
+const PAYMENTS_NAV_ITEM: NavItem = {
+  label: "Payments",
+  href: "/receptionist/payments",
+  icon: CreditCard,
+};
 
 interface DashboardSidebarProps {
   role: "dentist" | "receptionist" | "patient";
   fullName: string;
+  allowReceptionistPayments?: boolean;
 }
 
-export function DashboardSidebar({ role, fullName }: DashboardSidebarProps) {
+export function DashboardSidebar({ role, fullName, allowReceptionistPayments = false }: DashboardSidebarProps) {
   const pathname = usePathname();
-  const navItems = role === "dentist" ? DENTIST_NAV : RECEPTIONIST_NAV;
+  
+  // Build receptionist nav dynamically based on payment access
+  const receptionistNav = allowReceptionistPayments
+    ? [...BASE_RECEPTIONIST_NAV, PAYMENTS_NAV_ITEM]
+    : BASE_RECEPTIONIST_NAV;
+
+  const navItems = role === "dentist" ? DENTIST_NAV : receptionistNav;
 
   // Initials for avatar
   const initials = fullName

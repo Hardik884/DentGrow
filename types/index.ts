@@ -465,6 +465,7 @@ export const UpdateClinicSettingsSchema = z.object({
   average_appointment_duration: z.number().int().positive(),
   timezone: z.string().min(1),
   registration_number: z.string().max(100).optional().or(z.literal("")),
+  allow_receptionist_payments: z.boolean().default(false),
   clinic_hours: z.object({
     monday: ClinicDayHoursSchema,
     tuesday: ClinicDayHoursSchema,

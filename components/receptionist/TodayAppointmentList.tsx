@@ -1,6 +1,6 @@
 import { getAppointmentsToday } from "@/actions/appointments";
 import { getClinicSettings } from "@/actions/clinic-settings";
-import { AppointmentCard } from "@/components/shared/AppointmentCard";
+import { TodayAppointmentListWithActions } from "@/components/receptionist/TodayAppointmentListWithActions";
 import { EmptyState } from "@/components/ui/empty-state";
 import { CalendarDays } from "lucide-react";
 
@@ -11,6 +11,14 @@ export async function TodayAppointmentList() {
   ]);
   const appointments = result.data ?? [];
   const clinicTimezone = settingsResult.data?.timezone ?? "Asia/Kolkata";
+
+  // Get clinic today for reschedule date validation
+  const clinicToday = new Intl.DateTimeFormat("en-CA", {
+    timeZone: clinicTimezone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
 
   return (
     <div className="bg-white border border-[#E4E4E7] rounded-xl overflow-hidden">
@@ -28,16 +36,11 @@ export async function TodayAppointmentList() {
           description="Today's schedule is clear."
         />
       ) : (
-        <div className="divide-y divide-[#F4F4F5]">
-          {appointments.map((appointment) => (
-            <AppointmentCard
-              key={appointment.id}
-              appointment={appointment}
-              baseHref="/receptionist"
-              timezone={clinicTimezone}
-            />
-          ))}
-        </div>
+        <TodayAppointmentListWithActions
+          appointments={appointments}
+          timezone={clinicTimezone}
+          clinicToday={clinicToday}
+        />
       )}
     </div>
   );
