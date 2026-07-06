@@ -13,14 +13,11 @@ import {
 } from "@/actions/consultants";
 import { formatDate } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
-import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { CalendarPicker } from "@/components/ui/calendar-picker";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Users, Plus, Trash2, Pencil, CalendarOff, Clock, X, Check } from "lucide-react";
-
-const DAY_LABELS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
 function timeLabel(hhmmss: string): string {
   const [h, m] = hhmmss.split(":");
@@ -236,7 +233,7 @@ function ConsultantDirectory({ initial }: { initial: Consultant[] }) {
 
 function ConsultancyScheduleSection({ initial }: { initial: ConsultancySchedule[] }) {
   const [schedules, setSchedules] = useState<ConsultancySchedule[]>(initial);
-  const [day, setDay] = useState("2");
+  const [date, setDate] = useState("");
   const [start, setStart] = useState("14:00");
   const [end, setEnd] = useState("17:00");
   const [reason, setReason] = useState("");
@@ -245,9 +242,13 @@ function ConsultancyScheduleSection({ initial }: { initial: ConsultancySchedule[
 
   function add() {
     setError(null);
+    if (!date) {
+      setError("Select a date.");
+      return;
+    }
     startTransition(async () => {
       const res = await createConsultancySchedule({
-        day_of_week: parseInt(day, 10),
+        date,
         start_time: start,
         end_time: end,
         reason: reason.trim() || undefined,
@@ -256,7 +257,12 @@ function ConsultancyScheduleSection({ initial }: { initial: ConsultancySchedule[
         setError(res.error ?? "Failed to add schedule.");
         return;
       }
-      setSchedules((prev) => [...prev, res.data!]);
+      setSchedules((prev) =>
+        [...prev, res.data!].sort(
+          (a, b) => a.date.localeCompare(b.date) || a.start_time.localeCompare(b.start_time)
+        )
+      );
+      setDate("");
       setReason("");
     });
   }
@@ -281,7 +287,7 @@ function ConsultancyScheduleSection({ initial }: { initial: ConsultancySchedule[
           <h3 className="text-sm font-semibold text-[#09090B]">External Consultancy Schedule</h3>
         </div>
         <p className="text-xs text-[#71717A] mt-0.5">
-          Weekly time blocks when you consult elsewhere. These slots are removed from appointment booking.
+          Block a specific date and time range when you consult elsewhere. Those slots are removed from appointment booking.
         </p>
       </div>
 
@@ -293,14 +299,8 @@ function ConsultancyScheduleSection({ initial }: { initial: ConsultancySchedule[
         )}
 
         <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
-          <Field label="Day" htmlFor="cs-day">
-            <Select id="cs-day" value={day} onChange={(e) => setDay(e.target.value)}>
-              {DAY_LABELS.map((label, idx) => (
-                <option key={idx} value={idx}>
-                  {label}
-                </option>
-              ))}
-            </Select>
+          <Field label="Date" htmlFor="cs-date">
+            <CalendarPicker id="cs-date" value={date} onChange={setDate} placeholder="Select date" clearable />
           </Field>
           <Field label="Start" htmlFor="cs-start">
             <Input id="cs-start" type="time" value={start} onChange={(e) => setStart(e.target.value)} />
@@ -336,7 +336,7 @@ function ConsultancyScheduleSection({ initial }: { initial: ConsultancySchedule[
             {schedules.map((s) => (
               <div key={s.id} className="flex items-center justify-between gap-2 px-3 py-2.5">
                 <div className="text-sm text-[#09090B]">
-                  <span className="font-medium">{DAY_LABELS[s.day_of_week]}</span>
+                  <span className="font-medium">{formatDate(s.date)}</span>
                   <span className="text-[#71717A]">
                     {" "}
                     · {timeLabel(s.start_time)} – {timeLabel(s.end_time)}

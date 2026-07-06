@@ -1,28 +1,22 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import type { ConsultancyIncome } from "@/types";
-import { recordConsultancyIncome, deleteConsultancyIncome } from "@/actions/consultants";
-import { formatCurrency, formatDate } from "@/lib/utils";
+import { useRouter } from "next/navigation";
+import { recordConsultancyIncome } from "@/actions/consultants";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { CalendarPicker } from "@/components/ui/calendar-picker";
-import { EmptyState } from "@/components/ui/empty-state";
-import { Briefcase, Plus, Trash2, X } from "lucide-react";
-
-interface ConsultancyIncomePanelProps {
-  initial: ConsultancyIncome[];
-}
+import { Briefcase, X } from "lucide-react";
 
 /**
- * Record and review external consultancy income. This never creates a patient,
- * appointment, or clinic payment — it is tracked separately as part of the
- * dentist's total income.
+ * Record external consultancy income. Renders a single button that opens a
+ * form modal. Recording never creates a patient, appointment, or clinic
+ * payment — it is tracked separately as part of the dentist's total income.
  */
-export function ConsultancyIncomePanel({ initial }: ConsultancyIncomePanelProps) {
-  const [items, setItems] = useState<ConsultancyIncome[]>(initial);
+export function ConsultancyIncomePanel() {
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -32,8 +26,6 @@ export function ConsultancyIncomePanel({ initial }: ConsultancyIncomePanelProps)
   const [description, setDescription] = useState("");
   const [amount, setAmount] = useState("");
   const [notes, setNotes] = useState("");
-
-  const total = items.reduce((sum, i) => sum + Number(i.amount ?? 0), 0);
 
   function resetForm() {
     setDate("");
@@ -49,8 +41,8 @@ export function ConsultancyIncomePanel({ initial }: ConsultancyIncomePanelProps)
     startTransition(async () => {
       const res = await recordConsultancyIncome({
         date,
-        external_clinic: clinic.trim(),
-        description: description.trim(),
+        external_clinic: clinic.trim() || undefined,
+        description: description.trim() || undefined,
         amount: Number(amount),
         notes: notes.trim() || undefined,
       });
@@ -58,74 +50,18 @@ export function ConsultancyIncomePanel({ initial }: ConsultancyIncomePanelProps)
         setError(res.error ?? "Failed to record consultancy income.");
         return;
       }
-      setItems((prev) => [res.data!, ...prev]);
       resetForm();
       setOpen(false);
-    });
-  }
-
-  function remove(id: string) {
-    startTransition(async () => {
-      const res = await deleteConsultancyIncome(id);
-      if (res.error) {
-        setError(res.error);
-        return;
-      }
-      setItems((prev) => prev.filter((i) => i.id !== id));
+      router.refresh();
     });
   }
 
   return (
-    <div className="bg-white border border-[#E4E4E7] rounded-xl overflow-hidden">
-      <div className="px-6 py-5 border-b border-[#F4F4F5] flex items-center justify-between">
-        <div>
-          <div className="flex items-center gap-1.5">
-            <Briefcase className="h-4 w-4 text-[#71717A]" aria-hidden />
-            <h3 className="text-sm font-semibold text-[#09090B]">Consultancy Income</h3>
-          </div>
-          <p className="text-xs text-[#71717A] mt-0.5">
-            External earnings from consulting at other clinics. {formatCurrency(total)} total.
-          </p>
-        </div>
-        <Button type="button" size="sm" onClick={() => setOpen(true)}>
-          <Plus className="h-3.5 w-3.5" aria-hidden />
-          Record Consultancy Income
-        </Button>
-      </div>
-
-      <div className="px-6 py-5">
-        {items.length === 0 ? (
-          <EmptyState
-            icon={<Briefcase className="h-5 w-5" aria-hidden />}
-            title="No consultancy income"
-            description="Record earnings from external clinics to track your total income."
-          />
-        ) : (
-          <div className="divide-y divide-[#F4F4F5] border border-[#F4F4F5] rounded-lg">
-            {items.map((i) => (
-              <div key={i.id} className="flex items-center justify-between gap-3 px-3 py-2.5">
-                <div className="min-w-0">
-                  <p className="text-sm font-medium text-[#09090B] truncate">
-                    {i.external_clinic} · {formatCurrency(Number(i.amount))}
-                  </p>
-                  <p className="text-xs text-[#71717A] truncate">
-                    {formatDate(i.date)} · {i.description}
-                    {i.notes ? ` · ${i.notes}` : ""}
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => remove(i.id)}
-                  className="h-8 w-8 shrink-0 flex items-center justify-center rounded-lg border border-[#E4E4E7] text-[#DC2626] hover:bg-[#FEF2F2]"
-                  aria-label="Delete consultancy income"
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+    <>
+      <Button type="button" variant="outline" size="sm" onClick={() => setOpen(true)}>
+        <Briefcase className="h-3.5 w-3.5" aria-hidden />
+        Record Consultancy Income
+      </Button>
 
       {open && (
         <div
@@ -164,21 +100,21 @@ export function ConsultancyIncomePanel({ initial }: ConsultancyIncomePanelProps)
                 <CalendarPicker id="ci-date" value={date} onChange={setDate} placeholder="Select date" clearable />
               </Field>
 
-              <Field label="Clinic Name" htmlFor="ci-clinic" required>
+              <Field label="Clinic Name" htmlFor="ci-clinic">
                 <Input
                   id="ci-clinic"
                   value={clinic}
                   onChange={(e) => setClinic(e.target.value)}
-                  placeholder="e.g. Smile Care Dental"
+                  placeholder="Optional — e.g. Smile Care Dental"
                 />
               </Field>
 
-              <Field label="Treatment / Description" htmlFor="ci-desc" required>
+              <Field label="Treatment / Description" htmlFor="ci-desc">
                 <Input
                   id="ci-desc"
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  placeholder="e.g. Root canal consultation"
+                  placeholder="Optional — e.g. Root canal consultation"
                 />
               </Field>
 
@@ -216,6 +152,6 @@ export function ConsultancyIncomePanel({ initial }: ConsultancyIncomePanelProps)
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 }

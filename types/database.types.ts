@@ -577,8 +577,8 @@ export type Database = {
           clinic_id: string;
           dentist_id: string;
           date: string;
-          external_clinic: string;
-          description: string;
+          external_clinic: string | null;
+          description: string | null;
           amount: number;
           notes: string | null;
           created_at: string;
@@ -589,8 +589,8 @@ export type Database = {
           clinic_id: string;
           dentist_id: string;
           date: string;
-          external_clinic: string;
-          description: string;
+          external_clinic?: string | null;
+          description?: string | null;
           amount: number;
           notes?: string | null;
           created_at?: string;
@@ -601,8 +601,8 @@ export type Database = {
           clinic_id?: string;
           dentist_id?: string;
           date?: string;
-          external_clinic?: string;
-          description?: string;
+          external_clinic?: string | null;
+          description?: string | null;
           amount?: number;
           notes?: string | null;
           created_at?: string;
@@ -614,7 +614,7 @@ export type Database = {
           id: string;
           clinic_id: string;
           dentist_id: string | null;
-          day_of_week: number;
+          date: string;
           start_time: string;
           end_time: string;
           reason: string | null;
@@ -626,7 +626,7 @@ export type Database = {
           id?: string;
           clinic_id: string;
           dentist_id?: string | null;
-          day_of_week: number;
+          date: string;
           start_time: string;
           end_time: string;
           reason?: string | null;
@@ -638,7 +638,7 @@ export type Database = {
           id?: string;
           clinic_id?: string;
           dentist_id?: string | null;
-          day_of_week?: number;
+          date?: string;
           start_time?: string;
           end_time?: string;
           reason?: string | null;

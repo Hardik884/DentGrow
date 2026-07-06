@@ -515,18 +515,18 @@ export type UpdateConsultantInput = z.infer<typeof UpdateConsultantSchema>;
 
 export const RecordConsultancyIncomeSchema = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Valid date is required"),
-  external_clinic: z.string().trim().min(1, "Clinic name is required").max(200),
-  description: z.string().trim().min(1, "Description is required").max(500),
+  external_clinic: z.string().trim().max(200).optional().or(z.literal("")).transform((v) => v || undefined),
+  description: z.string().trim().max(500).optional().or(z.literal("")).transform((v) => v || undefined),
   amount: z.number().positive("Amount must be greater than zero"),
   notes: z.string().max(1000).optional().or(z.literal("")).transform((v) => v || undefined),
 });
 export type RecordConsultancyIncomeInput = z.infer<typeof RecordConsultancyIncomeSchema>;
 
-// ── Consultancy Schedule (recurring weekly blocks) ───────────────────────────
+// ── Consultancy Schedule (single-date time blocks) ───────────────────────────
 
 export const CreateConsultancyScheduleSchema = z
   .object({
-    day_of_week: z.number().int().min(0).max(6),
+    date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Valid date is required"),
     start_time: z.string().regex(/^\d{2}:\d{2}$/, "Valid start time required (HH:MM)"),
     end_time: z.string().regex(/^\d{2}:\d{2}$/, "Valid end time required (HH:MM)"),
     reason: z.string().max(200).optional().or(z.literal("")).transform((v) => v || undefined),
@@ -645,8 +645,6 @@ export type DashboardKPIs = {
   noShowsToday: number;
   /** Gross payments collected today. */
   revenueToday: number;
-  /** External consultancy income the dentist recorded for today. */
-  consultancyIncomeToday: number;
   newPatientsToday: number;
   walkInsToday: number;
 };

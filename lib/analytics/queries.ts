@@ -177,7 +177,7 @@ export async function getDashboardKPIs(
     timezone
   );
 
-  const [apptRes, queueRes, revenueRes, newPatientsRes, consultancyRes] = await Promise.all([
+  const [apptRes, queueRes, revenueRes, newPatientsRes] = await Promise.all([
     supabase
       .from("appointments")
       .select("status, source")
@@ -206,18 +206,11 @@ export async function getDashboardKPIs(
       .is("deleted_at", null)
       .gte("created_at", todayStartIso)
       .lte("created_at", todayEndIso),
-
-    supabase
-      .from("consultancy_income")
-      .select("amount")
-      .eq("clinic_id", clinicId)
-      .eq("date", todayDate),
   ]);
 
   const appointments = (apptRes.data ?? []) as Pick<ApptRow, "status" | "source">[];
   const queueEntries = (queueRes.data ?? []) as Pick<QueueRow, "status">[];
   const payments = (revenueRes.data ?? []) as Pick<PaymentRow, "amount">[];
-  const consultancyToday = (consultancyRes.data ?? []) as { amount: number }[];
 
   const totalAppointmentsToday = appointments.length;
   const seenPatientsToday = appointments.filter((a) => a.status === "completed").length;
@@ -225,7 +218,6 @@ export async function getDashboardKPIs(
   const walkInsToday = appointments.filter((a) => a.source === "walk_in").length;
   const waitingPatients = queueEntries.filter((q) => q.status === "waiting").length;
   const revenueToday = payments.reduce((sum, p) => sum + (p.amount ?? 0), 0);
-  const consultancyIncomeToday = consultancyToday.reduce((sum, c) => sum + Number(c.amount ?? 0), 0);
   const completionRateToday =
     totalAppointmentsToday > 0
       ? Math.round((seenPatientsToday / totalAppointmentsToday) * 100)
@@ -238,7 +230,6 @@ export async function getDashboardKPIs(
     waitingPatients,
     noShowsToday,
     revenueToday,
-    consultancyIncomeToday,
     newPatientsToday: newPatientsRes.count ?? 0,
     walkInsToday,
   };

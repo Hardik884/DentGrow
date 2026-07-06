@@ -11,7 +11,6 @@ import {
   DollarSign,
   UserPlus,
   Footprints,
-  Briefcase,
 } from "lucide-react";
 
 interface KPICardProps {
@@ -124,12 +123,6 @@ export async function DashboardKPIs({ clinicId: propClinicId, timezone: propTime
         value={formatCurrency(kpis.revenueToday)}
         icon={<DollarSign className="h-3.5 w-3.5" aria-hidden />}
         sub="Today"
-      />
-      <KPICard
-        label="Consultancy"
-        value={formatCurrency(kpis.consultancyIncomeToday)}
-        icon={<Briefcase className="h-3.5 w-3.5" aria-hidden />}
-        sub="External income today"
       />
       <KPICard
         label="New Patients"

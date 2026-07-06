@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { resolveSession as resolveCachedSession } from "@/lib/auth/session";
+import { getTodayInTimezone } from "@/lib/utils";
 import {
   CreateConsultantSchema,
   UpdateConsultantSchema,
@@ -191,35 +192,40 @@ export async function deleteConsultant(id: string): Promise<ActionResult<null>> 
 // CONSULTANCY INCOME (external earnings)
 // =============================================================================
 
-export async function getConsultancyIncome(filters?: {
-  dateFrom?: string;
-  dateTo?: string;
-}): Promise<ActionResult<ConsultancyIncome[]>> {
+/** Total external consultancy income the dentist recorded for today. */
+export async function getConsultancyRevenueToday(): Promise<ActionResult<number>> {
   try {
     const { db, profile } = await resolveSession();
     if (!profile) return { data: null, error: "Unauthorized" };
     if (profile.role !== "dentist") return { data: null, error: "Forbidden" };
 
-    let query = db
+    const { data: settings } = await db
+      .from("clinic_settings")
+      .select("timezone")
+      .eq("clinic_id", profile.clinic_id)
+      .maybeSingle();
+    const tz = (settings as { timezone?: string } | null)?.timezone ?? "Asia/Kolkata";
+    const today = getTodayInTimezone(tz);
+
+    const { data, error } = await db
       .from("consultancy_income")
-      .select("*")
+      .select("amount")
       .eq("clinic_id", profile.clinic_id)
       .eq("dentist_id", profile.id)
-      .order("date", { ascending: false });
-
-    if (filters?.dateFrom) query = query.gte("date", filters.dateFrom);
-    if (filters?.dateTo) query = query.lte("date", filters.dateTo);
-
-    const { data, error } = await query;
+      .eq("date", today);
 
     if (error) {
-      console.error("[getConsultancyIncome]", error);
-      return { data: null, error: "Failed to fetch consultancy income." };
+      console.error("[getConsultancyRevenueToday]", error);
+      return { data: null, error: "Failed to fetch consultancy revenue." };
     }
 
-    return { data: (data ?? []) as ConsultancyIncome[], error: null };
+    const total = ((data ?? []) as { amount: number }[]).reduce(
+      (sum, c) => sum + Number(c.amount ?? 0),
+      0
+    );
+    return { data: total, error: null };
   } catch (err) {
-    console.error("[getConsultancyIncome] unexpected:", err);
+    console.error("[getConsultancyRevenueToday] unexpected:", err);
     return { data: null, error: "Unexpected error" };
   }
 }
@@ -245,8 +251,8 @@ export async function recordConsultancyIncome(
         clinic_id: profile.clinic_id,
         dentist_id: profile.id,
         date: parsed.data.date,
-        external_clinic: parsed.data.external_clinic,
-        description: parsed.data.description,
+        external_clinic: parsed.data.external_clinic ?? null,
+        description: parsed.data.description ?? null,
         amount: parsed.data.amount,
         notes: parsed.data.notes ?? null,
       })
@@ -267,35 +273,6 @@ export async function recordConsultancyIncome(
   }
 }
 
-export async function deleteConsultancyIncome(id: string): Promise<ActionResult<null>> {
-  try {
-    if (!id) return { data: null, error: "Consultancy income ID is required" };
-
-    const { db, profile } = await resolveSession();
-    if (!profile) return { data: null, error: "Unauthorized" };
-    if (profile.role !== "dentist") return { data: null, error: "Forbidden" };
-
-    const { error } = await db
-      .from("consultancy_income")
-      .delete()
-      .eq("id", id)
-      .eq("clinic_id", profile.clinic_id)
-      .eq("dentist_id", profile.id);
-
-    if (error) {
-      console.error("[deleteConsultancyIncome]", error);
-      return { data: null, error: "Failed to delete consultancy income." };
-    }
-
-    revalidatePath("/dentist/payments");
-    revalidatePath("/dentist/analytics");
-    return { data: null, error: null };
-  } catch (err) {
-    console.error("[deleteConsultancyIncome] unexpected:", err);
-    return { data: null, error: "Unexpected error" };
-  }
-}
-
 // =============================================================================
 // CONSULTANCY SCHEDULES (recurring weekly blocks)
 // =============================================================================
@@ -312,7 +289,7 @@ export async function getConsultancySchedules(): Promise<
       .select("*")
       .eq("clinic_id", profile.clinic_id)
       .eq("is_active", true)
-      .order("day_of_week", { ascending: true })
+      .order("date", { ascending: true })
       .order("start_time", { ascending: true });
 
     if (error) {
@@ -347,7 +324,7 @@ export async function createConsultancySchedule(
       .insert({
         clinic_id: profile.clinic_id,
         dentist_id: profile.id,
-        day_of_week: parsed.data.day_of_week,
+        date: parsed.data.date,
         start_time: parsed.data.start_time,
         end_time: parsed.data.end_time,
         reason: parsed.data.reason ?? null,

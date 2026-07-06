@@ -6,7 +6,7 @@ import { PaymentFilters } from "@/components/dentist/PaymentFilters";
 import { PaymentsView } from "@/components/dentist/PaymentsView";
 import { ConsultancyIncomePanel } from "@/components/dentist/ConsultancyIncomePanel";
 import { getPaymentsToday } from "@/actions/payments";
-import { getConsultancyIncome } from "@/actions/consultants";
+import { getConsultancyRevenueToday } from "@/actions/consultants";
 import { formatCurrency } from "@/lib/utils";
 
 export const metadata: Metadata = {
@@ -34,20 +34,23 @@ export default async function DentistPaymentsPage({ searchParams }: Props) {
   const page = Math.max(1, parseInt(params.page ?? "1", 10) || 1);
   const limit = 20;
 
-  const [todayResult, consultancyResult] = await Promise.all([
+  const [todayResult, consultancyTodayResult] = await Promise.all([
     getPaymentsToday(),
-    getConsultancyIncome(),
+    getConsultancyRevenueToday(),
   ]);
   const revenueToday = todayResult.data ?? 0;
+  const consultancyRevenueToday = consultancyTodayResult.data ?? 0;
 
   return (
     <div className="p-6 space-y-6">
       <PageHeader
         title="Payments"
         action={{ label: "Record Payment", href: "/dentist/payments/new" }}
-      />
+      >
+        <ConsultancyIncomePanel />
+      </PageHeader>
 
-      {/* Revenue today */}
+      {/* Revenue today + consultancy revenue today */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="bg-white border rounded-lg p-4">
           <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">
@@ -55,6 +58,14 @@ export default async function DentistPaymentsPage({ searchParams }: Props) {
           </p>
           <p className="text-2xl font-bold text-green-600 mt-1">
             {formatCurrency(revenueToday)}
+          </p>
+        </div>
+        <div className="bg-white border rounded-lg p-4">
+          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+            Consultancy Revenue Today
+          </p>
+          <p className="text-2xl font-bold text-blue-600 mt-1">
+            {formatCurrency(consultancyRevenueToday)}
           </p>
         </div>
       </div>
@@ -68,9 +79,6 @@ export default async function DentistPaymentsPage({ searchParams }: Props) {
           initialDateTo={params.dateTo ?? ""}
         />
       </Suspense>
-
-      {/* External consultancy income (recorded separately, not clinic payments) */}
-      <ConsultancyIncomePanel initial={consultancyResult.data ?? []} />
 
       {/* Outstanding balances (now filtered by search) */}
       <PendingPaymentsList search={params.search} />

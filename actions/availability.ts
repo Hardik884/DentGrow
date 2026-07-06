@@ -378,12 +378,12 @@ export async function getAvailableSlots(
     }
 
     // ── External consultancy schedule blocks ────────────────────────────────
-    // Recurring weekly time ranges when the dentist consults elsewhere.
+    // Time ranges on this specific date when the dentist consults elsewhere.
     const { data: consultancyBlocks } = await db
       .from("consultancy_schedules")
       .select("start_time, end_time")
       .eq("clinic_id", resolvedClinicId)
-      .eq("day_of_week", dayOfWeek)
+      .eq("date", date)
       .eq("is_active", true);
 
     const blockedRanges: Array<{ start: string; end: string }> = (
