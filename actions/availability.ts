@@ -364,6 +364,35 @@ export async function getAvailableSlots(
     const { start: startBoundary, end: endBoundary } =
       getUtcBoundariesForLocalDate(date, timezone);
 
+    // ── Holiday / closure check ─────────────────────────────────────────────
+    // A full-day unavailable date blocks every slot for every booking channel.
+    const { data: unavailableData } = await db
+      .from("unavailable_dates")
+      .select("id")
+      .eq("clinic_id", resolvedClinicId)
+      .eq("date", date)
+      .limit(1);
+
+    if (unavailableData && unavailableData.length > 0) {
+      return { data: [], error: null };
+    }
+
+    // ── External consultancy schedule blocks ────────────────────────────────
+    // Recurring weekly time ranges when the dentist consults elsewhere.
+    const { data: consultancyBlocks } = await db
+      .from("consultancy_schedules")
+      .select("start_time, end_time")
+      .eq("clinic_id", resolvedClinicId)
+      .eq("day_of_week", dayOfWeek)
+      .eq("is_active", true);
+
+    const blockedRanges: Array<{ start: string; end: string }> = (
+      (consultancyBlocks ?? []) as { start_time: string; end_time: string }[]
+    ).map((b) => ({
+      start: b.start_time.slice(0, 5),
+      end: b.end_time.slice(0, 5),
+    }));
+
     const { data: occupied } = dentistId
       ? await db
           .from("appointments")
@@ -404,7 +433,8 @@ export async function getAvailableSlots(
       occupiedSlots,
       timezone,
       requestedDurationMinutes,
-      nowCutoffMinutes
+      nowCutoffMinutes,
+      blockedRanges
     );
 
     return { data: slots, error: null };

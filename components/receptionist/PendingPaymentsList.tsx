@@ -4,9 +4,23 @@ import { formatCurrency } from "@/lib/utils";
 import { EmptyState } from "@/components/ui/empty-state";
 import { CreditCard, ArrowRight } from "lucide-react";
 
-export async function PendingPaymentsList() {
+interface PendingPaymentsListProps {
+  search?: string;
+}
+
+export async function PendingPaymentsList({ search }: PendingPaymentsListProps) {
   const result = await getPatientsWithOutstandingBalance();
-  const pendingPatients = result.data ?? [];
+  let pendingPatients = result.data ?? [];
+
+  // Filter by search if provided
+  if (search && search.trim()) {
+    const searchLower = search.trim().toLowerCase();
+    pendingPatients = pendingPatients.filter(
+      (p) =>
+        p.name.toLowerCase().includes(searchLower) ||
+        p.phone?.toLowerCase().includes(searchLower)
+    );
+  }
 
   return (
     <div className="bg-white border border-[#E4E4E7] rounded-xl overflow-hidden">
@@ -30,7 +44,11 @@ export async function PendingPaymentsList() {
         <EmptyState
           icon={<CreditCard className="h-5 w-5" aria-hidden />}
           title="All clear"
-          description="No remaining balances."
+          description={
+            search
+              ? "No patients with remaining balances match your search."
+              : "No remaining balances."
+          }
         />
       ) : (
         <div className="divide-y divide-[#F4F4F5]">

@@ -2,6 +2,7 @@
 
 import { createServerClient } from "@/lib/supabase/server";
 import { AIError, getGeminiModel, withAITimeout } from "@/lib/ai/gemini";
+import { isPatientBookingEnabled, PATIENT_BOOKING_DISABLED_MESSAGE } from "@/lib/feature-flags";
 import {
   buildPatientSummaryPrompt,
   buildInsightsPrompt,
@@ -257,6 +258,11 @@ async function executePatientTool(
 
   switch (toolName) {
     case "getAvailableSlots": {
+      // Feature flag check — booking disabled
+      if (!isPatientBookingEnabled()) {
+        return { error: PATIENT_BOOKING_DISABLED_MESSAGE };
+      }
+      
       const input = getAvailableSlotsInputSchema.parse(args);
       // Reuse the existing server action — it handles auth internally
       const { getAvailableSlots } = await import("@/actions/availability");
@@ -269,6 +275,11 @@ async function executePatientTool(
     }
 
     case "createAppointment": {
+      // Feature flag check — booking disabled
+      if (!isPatientBookingEnabled()) {
+        return { error: PATIENT_BOOKING_DISABLED_MESSAGE };
+      }
+      
       const input = createAppointmentInputSchema.parse(args);
       const confirmed = consumeConfirmedAction(
         session.userId,
@@ -314,6 +325,11 @@ async function executePatientTool(
     }
 
     case "rescheduleAppointment": {
+      // Feature flag check — booking disabled (reschedule also disabled)
+      if (!isPatientBookingEnabled()) {
+        return { error: PATIENT_BOOKING_DISABLED_MESSAGE };
+      }
+      
       const input = rescheduleAppointmentInputSchema.parse(args);
       const confirmed = consumeConfirmedAction(
         session.userId,

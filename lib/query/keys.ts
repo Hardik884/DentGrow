@@ -50,6 +50,16 @@ export interface FollowUpsListFilters {
   dateTo?: string;
 }
 
+export interface PrescriptionsListFilters {
+  page: number;
+  search?: string;
+  treatmentType?: string;
+  dentistId?: string;
+  medicineName?: string;
+  dateFrom?: string;
+  dateTo?: string;
+}
+
 export const queryKeys = {
   patients: {
     all: ["patients"] as const,
@@ -70,5 +80,10 @@ export const queryKeys = {
     all: ["followUps"] as const,
     list: (filters: FollowUpsListFilters) =>
       ["followUps", "list", filters] as const,
+  },
+  prescriptions: {
+    all: ["prescriptions"] as const,
+    list: (filters: PrescriptionsListFilters) =>
+      ["prescriptions", "list", filters] as const,
   },
 } as const;

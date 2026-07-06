@@ -122,19 +122,39 @@ export default async function AnalyticsDashboardPage({
         <h2 className="text-xs font-semibold text-[#71717A] uppercase tracking-wider mb-3">Revenue</h2>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <MetricCard
-            label="Total Revenue"
-            value={formatCurrency(summary.totalRevenue)}
+            label="Clinic Revenue"
+            value={formatCurrency(summary.netClinicRevenue)}
             accent="green"
           />
           <MetricCard
-            label="This Month"
-            value={formatCurrency(summary.revenueThisMonth)}
+            label="Consultancy Income"
+            value={formatCurrency(summary.consultancyIncome)}
             accent="blue"
+          />
+          <MetricCard
+            label="Total Income"
+            value={formatCurrency(summary.totalIncome)}
+            accent="green"
           />
           <MetricCard
             label="Remaining"
             value={formatCurrency(summary.outstandingBalances)}
             accent={summary.outstandingBalances > 0 ? "red" : "default"}
+          />
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-3">
+          <MetricCard
+            label="Gross Revenue"
+            value={formatCurrency(summary.totalRevenue)}
+          />
+          <MetricCard
+            label="Consultant Payouts"
+            value={formatCurrency(summary.consultantPayouts)}
+            accent={summary.consultantPayouts > 0 ? "amber" : "default"}
+          />
+          <MetricCard
+            label="This Month (Gross)"
+            value={formatCurrency(summary.revenueThisMonth)}
           />
           <MetricCard
             label="Avg / Patient"

@@ -9,6 +9,7 @@ import {
   RecordPaymentSchema,
   type ActionResult,
   type Payment,
+  type Patient,
 } from "@/types";
 
 /**
@@ -504,6 +505,86 @@ export async function getPatientsWithOutstandingBalance(): Promise<
     return { data: result, error: null };
   } catch (err) {
     console.error("[getPatientsWithOutstandingBalance] unexpected:", err);
+    return { data: null, error: "Unexpected error" };
+  }
+}
+
+// =============================================================================
+// getAllPayments — paginated payment list with search and filters (staff)
+// =============================================================================
+
+type PaymentWithPatient = Payment & {
+  patient: Pick<Patient, "id" | "name" | "phone">;
+};
+
+export async function getAllPayments(params: {
+  page?: number;
+  limit?: number;
+  search?: string;
+  method?: string;
+  dateFrom?: string;
+  dateTo?: string;
+}): Promise<ActionResult<{ payments: PaymentWithPatient[]; total: number }>> {
+  try {
+    const { db, profile } = await resolveSession();
+    if (!profile) return { data: null, error: "Unauthorized" };
+
+    if (profile.role === "patient") {
+      return { data: null, error: "Forbidden" };
+    }
+
+    const page = Math.max(1, params.page ?? 1);
+    const limit = Math.max(1, Math.min(100, params.limit ?? 20));
+    const offset = (page - 1) * limit;
+
+    let query = db
+      .from("payments")
+      .select("*, patient:patients!inner(id, name, phone)", { count: "exact" })
+      .eq("clinic_id", profile.clinic_id)
+      .is("deleted_at", null);
+
+    // Search by patient name or phone
+    if (params.search) {
+      const searchTerm = `%${params.search}%`;
+      query = query.or(`name.ilike.${searchTerm},phone.ilike.${searchTerm}`, {
+        referencedTable: "patients",
+      });
+    }
+
+    // Filter by payment method
+    if (params.method) {
+      query = query.eq("method", params.method);
+    }
+
+    // Filter by date range
+    if (params.dateFrom) {
+      query = query.gte("payment_date", params.dateFrom);
+    }
+    if (params.dateTo) {
+      query = query.lte("payment_date", params.dateTo);
+    }
+
+    query = query
+      .order("payment_date", { ascending: false })
+      .order("created_at", { ascending: false })
+      .range(offset, offset + limit - 1);
+
+    const { data, error, count } = await query;
+
+    if (error) {
+      console.error("[getAllPayments]", error);
+      return { data: null, error: "Failed to fetch payments." };
+    }
+
+    return {
+      data: {
+        payments: (data ?? []) as PaymentWithPatient[],
+        total: count ?? 0,
+      },
+      error: null,
+    };
+  } catch (err) {
+    console.error("[getAllPayments] unexpected:", err);
     return { data: null, error: "Unexpected error" };
   }
 }

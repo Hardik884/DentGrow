@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { createServerClient } from "@/lib/supabase/server";
 import { SlotPicker } from "@/components/patient/SlotPicker";
+import { isPatientBookingEnabled } from "@/lib/feature-flags";
 
 export const metadata: Metadata = {
   title: "Book Appointment",
@@ -20,6 +21,11 @@ export const metadata: Metadata = {
  * 4. Redirect to /portal/appointments on success.
  */
 export default async function PortalNewAppointmentPage() {
+  // Feature flag check — redirect if booking is disabled
+  if (!isPatientBookingEnabled()) {
+    redirect("/portal/appointments");
+  }
+
   const supabase = await createServerClient();
 
   const {

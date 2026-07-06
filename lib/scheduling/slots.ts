@@ -94,6 +94,8 @@ export function generateSlots(rule: AvailabilityRule): string[] {
  *                                 When provided, all slots starting at or before this
  *                                 value are filtered out. Pass null/undefined for
  *                                 future dates where no cutoff is needed.
+ * @param blockedRanges          - Time ranges ("HH:MM") blocked by external consultancy
+ *                                 schedules. Any candidate overlapping one is removed.
  */
 export function getAvailableSlots(
   date: string,
@@ -101,9 +103,15 @@ export function getAvailableSlots(
   occupied: OccupiedSlot[],
   timezone: string,
   requestedDurationMinutes = 30,
-  nowCutoffMinutes?: number | null
+  nowCutoffMinutes?: number | null,
+  blockedRanges?: Array<{ start: string; end: string }>
 ): string[] {
   if (rules.length === 0) return [];
+
+  // Build blocked windows (consultancy schedules) as [start, end) minute pairs.
+  const blockedWindows: Array<[number, number]> = (blockedRanges ?? []).map(
+    (range) => [toMinutes(range.start), toMinutes(range.end)]
+  );
 
   // Build occupied windows as [startMinutes, endMinutes) pairs
   const occupiedWindows: Array<[number, number]> = occupied.map((slot) => {
@@ -144,10 +152,15 @@ export function getAvailableSlots(
       const hasOverlap = occupiedWindows.some(([occStart, occEnd]) => {
         return candidateStart < occEnd && candidateEnd > occStart;
       });
+      if (hasOverlap) continue;
 
-      if (!hasOverlap) {
-        availableSlots.push(`${date}T${candidateTime}:00`);
-      }
+      // 4. Slot must not overlap any consultancy-blocked window
+      const isBlocked = blockedWindows.some(([blockStart, blockEnd]) => {
+        return candidateStart < blockEnd && candidateEnd > blockStart;
+      });
+      if (isBlocked) continue;
+
+      availableSlots.push(`${date}T${candidateTime}:00`);
     }
   }
 

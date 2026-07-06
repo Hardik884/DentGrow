@@ -2,8 +2,14 @@ import type { Metadata } from "next";
 import { PageHeader } from "@/components/layouts/PageHeader";
 import { ClinicSettingsForm } from "@/components/dentist/ClinicSettingsForm";
 import { SignatureSettings } from "@/components/dentist/SignatureSettings";
+import { ConsultantSettings } from "@/components/dentist/ConsultantSettings";
 import { getClinicSettings } from "@/actions/clinic-settings";
 import { getMySignature } from "@/actions/signature";
+import {
+  getConsultants,
+  getConsultancySchedules,
+  getUnavailableDates,
+} from "@/actions/consultants";
 
 export const metadata: Metadata = {
   title: "Clinic Settings",
@@ -28,15 +34,29 @@ export const metadata: Metadata = {
  * to patients (actions/signature.ts).
  */
 export default async function ClinicSettingsPage() {
-  const [{ data: settings }, { data: signature }] = await Promise.all([
+  const [
+    { data: settings },
+    { data: signature },
+    { data: consultants },
+    { data: schedules },
+    { data: unavailableDates },
+  ] = await Promise.all([
     getClinicSettings(),
     getMySignature(),
+    getConsultants(),
+    getConsultancySchedules(),
+    getUnavailableDates(),
   ]);
 
   return (
     <div className="p-6 space-y-6">
       <PageHeader title="Clinic Settings" />
       <ClinicSettingsForm initialSettings={settings} />
+      <ConsultantSettings
+        initialConsultants={consultants ?? []}
+        initialSchedules={schedules ?? []}
+        initialUnavailableDates={unavailableDates ?? []}
+      />
       <SignatureSettings initialUrl={signature?.url ?? null} />
     </div>
   );

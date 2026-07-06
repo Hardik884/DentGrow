@@ -104,7 +104,11 @@ function SectionHeader({ title, count, viewAllHref, badge }: SectionHeaderProps)
 // Main component
 // ─────────────────────────────────────────────────────────────
 
-export async function PortalDashboard() {
+interface PortalDashboardProps {
+  bookingEnabled: boolean;
+}
+
+export async function PortalDashboard({ bookingEnabled }: PortalDashboardProps) {
   const supabase = await createServerClient();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const db: any = supabase;
@@ -189,12 +193,14 @@ export async function PortalDashboard() {
             Your appointments, treatments and account at a glance
           </p>
         </div>
-        <Button asChild size="sm" className="shrink-0 mt-0.5">
-          <Link href="/portal/appointments/new">
-            <Plus className="h-3.5 w-3.5" aria-hidden />
-            Book Appointment
-          </Link>
-        </Button>
+        {bookingEnabled && (
+          <Button asChild size="sm" className="shrink-0 mt-0.5">
+            <Link href="/portal/appointments/new">
+              <Plus className="h-3.5 w-3.5" aria-hidden />
+              Book Appointment
+            </Link>
+          </Button>
+        )}
       </div>
 
       {/* ── Stat strip ──────────────────────────────────────── */}
@@ -321,11 +327,13 @@ export async function PortalDashboard() {
               <EmptyState
                 icon={<CalendarDays className="h-5 w-5" aria-hidden />}
                 title="No upcoming appointments"
-                description="Book one to get started."
+                description={bookingEnabled ? "Book one to get started." : "Contact your clinic to schedule an appointment."}
                 action={
-                  <Button asChild size="sm" variant="secondary">
-                    <Link href="/portal/appointments/new">Book now</Link>
-                  </Button>
+                  bookingEnabled ? (
+                    <Button asChild size="sm" variant="secondary">
+                      <Link href="/portal/appointments/new">Book now</Link>
+                    </Button>
+                  ) : undefined
                 }
                 className="py-10"
               />
@@ -521,11 +529,11 @@ export async function PortalDashboard() {
             </div>
             <div className="p-3 grid grid-cols-2 gap-2">
               {[
-                {
+                ...(bookingEnabled ? [{
                   href: "/portal/appointments/new",
                   label: "Book Appointment",
                   icon: <CalendarDays className="h-4 w-4" aria-hidden />,
-                },
+                }] : []),
                 {
                   href: "/portal/queue",
                   label: "My Queue",

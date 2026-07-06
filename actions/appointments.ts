@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createServerClient } from "@/lib/supabase/server";
 import { resolveSession as resolveCachedSession } from "@/lib/auth/session";
+import { isPatientBookingEnabled } from "@/lib/feature-flags";
 import {
   CreateAppointmentSchema,
   RescheduleAppointmentSchema,
@@ -93,6 +94,14 @@ export async function createAppointment(
       profile.role !== "patient"
     ) {
       return { data: null, error: "Forbidden" };
+    }
+
+    // ── Feature flag: patient booking must be enabled ─────────────────────
+    if (profile.role === "patient" && !isPatientBookingEnabled()) {
+      return {
+        data: null,
+        error: "Online appointment booking is temporarily unavailable. Please contact your clinic.",
+      };
     }
 
     // ── Patient portal path: verify the patient_id matches the portal link ─

@@ -11,8 +11,9 @@ import { AppointmentFollowUpsSection } from "@/components/dentist/AppointmentFol
 import { AppointmentPatientHistorySection } from "@/components/dentist/AppointmentPatientHistorySection";
 import { AppointmentNotesEditor } from "@/components/dentist/AppointmentNotesEditor";
 import { getAppointment } from "@/actions/appointments";
+import { getOutstandingBalance } from "@/actions/payments";
 import { createServerClient } from "@/lib/supabase/server";
-import { formatDateTimeInTimezone, APPOINTMENT_SOURCE_LABELS, calculateAge } from "@/lib/utils";
+import { formatDateTimeInTimezone, formatCurrency, APPOINTMENT_SOURCE_LABELS, calculateAge } from "@/lib/utils";
 import type { AppointmentStatus } from "@/types";
 
 export const metadata: Metadata = {
@@ -46,6 +47,10 @@ export default async function DentistAppointmentDetailPage({ params }: Props) {
   const genderLabel = appt.patient.gender
     ? appt.patient.gender.charAt(0).toUpperCase() + appt.patient.gender.slice(1)
     : "—";
+
+  // Fetch remaining balance
+  const balanceResult = await getOutstandingBalance(appt.patient_id);
+  const remainingBalance = balanceResult.data ?? 0;
 
   // Fetch clinic timezone for correct date/time display and for RescheduleModal
   const supabase = await createServerClient();
@@ -109,6 +114,14 @@ export default async function DentistAppointmentDetailPage({ params }: Props) {
           <Detail label="Gender" value={genderLabel} />
         </div>
 
+        <div className="pt-4 border-t">
+          <Detail 
+            label="Remaining Balance" 
+            value={formatCurrency(remainingBalance)}
+            highlight={remainingBalance > 0}
+          />
+        </div>
+
         <AppointmentNotesEditor
           appointmentId={appt.id}
           initialNotes={appt.notes}
@@ -155,13 +168,21 @@ export default async function DentistAppointmentDetailPage({ params }: Props) {
   );
 }
 
-function Detail({ label, value }: { label: string; value: string }) {
+function Detail({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
   return (
     <div>
       <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">
         {label}
       </p>
-      <p className="text-sm font-semibold text-gray-900 mt-0.5">{value}</p>
+      <p className={cn(
+        "text-sm font-semibold mt-0.5",
+        highlight ? "text-red-600" : "text-gray-900"
+      )}>
+        {value}
+      </p>
     </div>
   );
 }
+
+// Add cn utility import at the top with other imports
+import { cn } from "@/lib/utils";

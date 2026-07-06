@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { AppointmentList } from "@/components/patient/AppointmentList";
+import { isPatientBookingEnabled } from "@/lib/feature-flags";
 
 export const metadata: Metadata = {
   title: "My Appointments",
@@ -13,16 +14,20 @@ export const metadata: Metadata = {
  * Cancel button available for future (non-terminal status) appointments.
  */
 export default async function PortalAppointmentsPage() {
+  const bookingEnabled = isPatientBookingEnabled();
+  
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold">My Appointments</h1>
-        <Link
-          href="/portal/appointments/new"
-          className="text-sm font-medium text-blue-600"
-        >
-          Book Appointment
-        </Link>
+        {bookingEnabled && (
+          <Link
+            href="/portal/appointments/new"
+            className="text-sm font-medium text-blue-600"
+          >
+            Book Appointment
+          </Link>
+        )}
       </div>
 
       <AppointmentList />

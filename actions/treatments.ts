@@ -19,6 +19,85 @@ import {
   DOCUMENT_BUCKET,
   ALLOWED_DOCUMENT_TYPES,
 } from "@/lib/treatments/constants";
+import { computeConsultantSplit } from "@/lib/billing/revenue";
+
+/**
+ * Revenue-distribution columns to persist on a treatment.
+ * `clinic_share` is always populated (equals cost when no consultant), so
+ * analytics can rely on it as the single source of truth for net revenue.
+ */
+interface ConsultantRevenueFields {
+  consultant_id: string | null;
+  commission_type: "percentage" | "fixed" | null;
+  commission_value: number | null;
+  consultant_share: number;
+  clinic_share: number;
+}
+
+/**
+ * Validate the consultant selection against the clinic directory and compute
+ * the consultant / clinic split. Returns the DB fields to persist, or an error.
+ */
+async function resolveConsultantRevenue(
+  db: DbClient,
+  clinicId: string,
+  gross: number,
+  consultantId: string | undefined,
+  commissionType: "percentage" | "fixed" | undefined,
+  commissionValue: number | undefined
+): Promise<{ ok: true; fields: ConsultantRevenueFields } | { ok: false; error: string }> {
+  // No consultant → treating dentist; clinic keeps the full gross amount.
+  if (!consultantId) {
+    return {
+      ok: true,
+      fields: {
+        consultant_id: null,
+        commission_type: null,
+        commission_value: null,
+        consultant_share: 0,
+        clinic_share: computeConsultantSplit(gross, null, null).clinicShare,
+      },
+    };
+  }
+
+  if (!commissionType) {
+    return { ok: false, error: "Select a compensation type for the consultant." };
+  }
+  if (commissionValue == null || !Number.isFinite(commissionValue)) {
+    return { ok: false, error: "Enter the consultant compensation value." };
+  }
+  if (commissionType === "percentage" && (commissionValue < 0 || commissionValue > 100)) {
+    return { ok: false, error: "Consultant percentage must be between 0 and 100." };
+  }
+  if (commissionType === "fixed" && commissionValue > gross) {
+    return { ok: false, error: "Consultant amount cannot exceed the treatment amount." };
+  }
+
+  // Consultant must belong to the caller's clinic and be active.
+  const { data: consultant } = await db
+    .from("consultants")
+    .select("id")
+    .eq("id", consultantId)
+    .eq("clinic_id", clinicId)
+    .eq("is_active", true)
+    .maybeSingle();
+
+  if (!consultant) {
+    return { ok: false, error: "Selected consultant was not found." };
+  }
+
+  const split = computeConsultantSplit(gross, commissionType, commissionValue);
+  return {
+    ok: true,
+    fields: {
+      consultant_id: consultantId,
+      commission_type: commissionType,
+      commission_value: commissionValue,
+      consultant_share: split.consultantShare,
+      clinic_share: split.clinicShare,
+    },
+  };
+}
 
 /**
  * Treatment Server Actions
@@ -90,6 +169,17 @@ export async function createTreatment(
       }
     }
 
+    // Resolve consultant revenue distribution (clinic_share always populated).
+    const revenue = await resolveConsultantRevenue(
+      db,
+      profile.clinic_id,
+      parsed.data.cost,
+      parsed.data.consultant_id,
+      parsed.data.commission_type,
+      parsed.data.commission_value
+    );
+    if (!revenue.ok) return { data: null, error: revenue.error };
+
     const { data, error } = await db
       .from("treatments")
       .insert({
@@ -104,6 +194,7 @@ export async function createTreatment(
         status: parsed.data.status ?? "planned",
         performed_at: performedAt,
         created_by: profile.id,
+        ...revenue.fields,
       })
       .select()
       .single();
@@ -160,6 +251,46 @@ export async function updateTreatment(
     if (parsed.data.medications !== undefined) updates.medications = parsed.data.medications ?? [];
     if (parsed.data.cost !== undefined) updates.cost = parsed.data.cost;
     if (parsed.data.status !== undefined) updates.status = parsed.data.status;
+
+    // Recompute the revenue split whenever the cost or the consultant selection
+    // is part of this update. Keeps clinic_share/consultant_share consistent and
+    // never subtracts payouts twice.
+    const touchesRevenue =
+      parsed.data.cost !== undefined ||
+      parsed.data.consultant_id !== undefined ||
+      parsed.data.commission_type !== undefined ||
+      parsed.data.commission_value !== undefined;
+
+    if (touchesRevenue) {
+      let effectiveGross = parsed.data.cost;
+      if (effectiveGross === undefined) {
+        const { data: current } = await db
+          .from("treatments")
+          .select("cost")
+          .eq("id", id)
+          .eq("clinic_id", profile.clinic_id)
+          .is("deleted_at", null)
+          .maybeSingle();
+        effectiveGross = Number((current as { cost?: number } | null)?.cost ?? 0);
+      }
+
+      const revenue = await resolveConsultantRevenue(
+        db,
+        profile.clinic_id,
+        effectiveGross,
+        parsed.data.consultant_id,
+        parsed.data.commission_type,
+        parsed.data.commission_value
+      );
+      if (!revenue.ok) return { data: null, error: revenue.error };
+
+      updates.consultant_id = revenue.fields.consultant_id;
+      updates.commission_type = revenue.fields.commission_type;
+      updates.commission_value = revenue.fields.commission_value;
+      updates.consultant_share = revenue.fields.consultant_share;
+      updates.clinic_share = revenue.fields.clinic_share;
+    }
+
     if (parsed.data.performed_at !== undefined) {
       if (!parsed.data.performed_at) {
         updates.performed_at = null;

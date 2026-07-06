@@ -268,6 +268,11 @@ export type Database = {
           created_at: string;
           updated_at: string;
           created_by: string | null;
+          consultant_id: string | null;
+          commission_type: "percentage" | "fixed" | null;
+          commission_value: number | null;
+          consultant_share: number | null;
+          clinic_share: number | null;
         };
         Insert: {
           id?: string;
@@ -285,6 +290,11 @@ export type Database = {
           created_at?: string;
           updated_at?: string;
           created_by?: string | null;
+          consultant_id?: string | null;
+          commission_type?: "percentage" | "fixed" | null;
+          commission_value?: number | null;
+          consultant_share?: number | null;
+          clinic_share?: number | null;
         };
         Update: {
           id?: string;
@@ -302,6 +312,11 @@ export type Database = {
           created_at?: string;
           updated_at?: string;
           created_by?: string | null;
+          consultant_id?: string | null;
+          commission_type?: "percentage" | "fixed" | null;
+          commission_value?: number | null;
+          consultant_share?: number | null;
+          clinic_share?: number | null;
         };
       };
       treatment_documents: {
@@ -528,6 +543,134 @@ export type Database = {
           is_active?: boolean;
           created_at?: string;
           updated_at?: string;
+        };
+      };
+      consultants: {
+        Row: {
+          id: string;
+          clinic_id: string;
+          name: string;
+          is_active: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          clinic_id: string;
+          name: string;
+          is_active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          clinic_id?: string;
+          name?: string;
+          is_active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+      consultancy_income: {
+        Row: {
+          id: string;
+          clinic_id: string;
+          dentist_id: string;
+          date: string;
+          external_clinic: string;
+          description: string;
+          amount: number;
+          notes: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          clinic_id: string;
+          dentist_id: string;
+          date: string;
+          external_clinic: string;
+          description: string;
+          amount: number;
+          notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          clinic_id?: string;
+          dentist_id?: string;
+          date?: string;
+          external_clinic?: string;
+          description?: string;
+          amount?: number;
+          notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+      consultancy_schedules: {
+        Row: {
+          id: string;
+          clinic_id: string;
+          dentist_id: string | null;
+          day_of_week: number;
+          start_time: string;
+          end_time: string;
+          reason: string | null;
+          is_active: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          clinic_id: string;
+          dentist_id?: string | null;
+          day_of_week: number;
+          start_time: string;
+          end_time: string;
+          reason?: string | null;
+          is_active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          clinic_id?: string;
+          dentist_id?: string | null;
+          day_of_week?: number;
+          start_time?: string;
+          end_time?: string;
+          reason?: string | null;
+          is_active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+      unavailable_dates: {
+        Row: {
+          id: string;
+          clinic_id: string;
+          dentist_id: string | null;
+          date: string;
+          reason: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          clinic_id: string;
+          dentist_id?: string | null;
+          date: string;
+          reason?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          clinic_id?: string;
+          dentist_id?: string | null;
+          date?: string;
+          reason?: string | null;
+          created_at?: string;
         };
       };
       webhook_logs: {

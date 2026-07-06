@@ -190,3 +190,52 @@ body {
     padding-bottom: 5rem;
   }
 }
+
+/* ── Print Styles for Prescription ───────────────────────────────────────── */
+@media print {
+  /* Hide everything by default */
+  body * {
+    visibility: hidden;
+  }
+
+  /* Show only the prescription content */
+  .print-prescription,
+  .print-prescription * {
+    visibility: visible;
+  }
+
+  /* Position prescription at top of page */
+  .print-prescription {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+  }
+
+  /* Hide UI elements */
+  nav,
+  aside,
+  header,
+  footer,
+  .no-print,
+  button,
+  [role="dialog"]:not(.print-prescription) {
+    display: none !important;
+  }
+
+  /* Reset page margins */
+  @page {
+    margin: 1cm;
+  }
+
+  /* Clean background */
+  body {
+    background: white;
+  }
+
+  /* Remove borders and shadows for print */
+  .print-prescription {
+    border: none !important;
+    box-shadow: none !important;
+  }
+}

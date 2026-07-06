@@ -15,6 +15,7 @@ import {
   BarChart3,
   Settings,
   CreditCard,
+  Pill,
   type LucideIcon,
 } from "lucide-react";
 
@@ -41,6 +42,7 @@ const BASE_RECEPTIONIST_NAV: NavItem[] = [
   { label: "Today's Dashboard", href: "/receptionist",              icon: LayoutDashboard },
   { label: "Patients",          href: "/receptionist/patients",     icon: Users },
   { label: "Appointments",      href: "/receptionist/appointments", icon: CalendarDays },
+  { label: "Prescription History", href: "/receptionist/prescriptions", icon: Pill },
 ];
 
 // Conditional payment nav item (shown only when allowed)

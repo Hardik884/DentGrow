@@ -1,0 +1,24 @@
+import { PageHeader } from "@/components/layouts/PageHeader";
+import { ListTableSkeleton } from "@/components/shared/ListTableSkeleton";
+
+export default function Loading() {
+  return (
+    <div className="p-6 space-y-6">
+      <PageHeader
+        title="Prescription History"
+        description="View and print past prescriptions for patient inquiries"
+      />
+      <div className="bg-white border border-[#E4E4E7] rounded-xl px-5 py-4 space-y-4">
+        <div className="h-8 w-32 bg-[#F4F4F5] rounded animate-pulse" />
+        <div className="h-9 w-full max-w-md bg-[#F4F4F5] rounded animate-pulse" />
+        <div className="flex gap-4">
+          <div className="h-9 w-40 bg-[#F4F4F5] rounded animate-pulse" />
+          <div className="h-9 w-40 bg-[#F4F4F5] rounded animate-pulse" />
+          <div className="h-9 w-40 bg-[#F4F4F5] rounded animate-pulse" />
+        </div>
+      </div>
+      <p className="text-sm text-[#71717A]">Loading prescriptions…</p>
+      <ListTableSkeleton />
+    </div>
+  );
+}

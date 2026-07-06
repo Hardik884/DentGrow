@@ -30,7 +30,8 @@ import type {
   PaymentMethod,
   AppointmentStatus,
 } from "@/types";
-import { sumBillableTreatmentCost } from "@/lib/billing/balance";
+import { sumBillableTreatmentCost, isBillableTreatment } from "@/lib/billing/balance";
+import { treatmentClinicShare, treatmentConsultantShare } from "@/lib/billing/revenue";
 
 export interface DateRangeFilter {
   clinicId: string;
@@ -132,8 +133,11 @@ interface PaymentRow {
 interface TreatmentRow {
   treatment_type: string;
   cost: number;
+  clinic_share: number | null;
+  consultant_share: number | null;
   status: string;
   performed_at: string | null;
+  created_at: string;
   patient_id: string;
 }
 interface FollowUpRow {
@@ -173,7 +177,7 @@ export async function getDashboardKPIs(
     timezone
   );
 
-  const [apptRes, queueRes, revenueRes, newPatientsRes] = await Promise.all([
+  const [apptRes, queueRes, revenueRes, newPatientsRes, consultancyRes] = await Promise.all([
     supabase
       .from("appointments")
       .select("status, source")
@@ -202,11 +206,18 @@ export async function getDashboardKPIs(
       .is("deleted_at", null)
       .gte("created_at", todayStartIso)
       .lte("created_at", todayEndIso),
+
+    supabase
+      .from("consultancy_income")
+      .select("amount")
+      .eq("clinic_id", clinicId)
+      .eq("date", todayDate),
   ]);
 
   const appointments = (apptRes.data ?? []) as Pick<ApptRow, "status" | "source">[];
   const queueEntries = (queueRes.data ?? []) as Pick<QueueRow, "status">[];
   const payments = (revenueRes.data ?? []) as Pick<PaymentRow, "amount">[];
+  const consultancyToday = (consultancyRes.data ?? []) as { amount: number }[];
 
   const totalAppointmentsToday = appointments.length;
   const seenPatientsToday = appointments.filter((a) => a.status === "completed").length;
@@ -214,6 +225,7 @@ export async function getDashboardKPIs(
   const walkInsToday = appointments.filter((a) => a.source === "walk_in").length;
   const waitingPatients = queueEntries.filter((q) => q.status === "waiting").length;
   const revenueToday = payments.reduce((sum, p) => sum + (p.amount ?? 0), 0);
+  const consultancyIncomeToday = consultancyToday.reduce((sum, c) => sum + Number(c.amount ?? 0), 0);
   const completionRateToday =
     totalAppointmentsToday > 0
       ? Math.round((seenPatientsToday / totalAppointmentsToday) * 100)
@@ -226,6 +238,7 @@ export async function getDashboardKPIs(
     waitingPatients,
     noShowsToday,
     revenueToday,
+    consultancyIncomeToday,
     newPatientsToday: newPatientsRes.count ?? 0,
     walkInsToday,
   };
@@ -245,10 +258,19 @@ export interface AnalyticsSummary {
   newPatientsThisMonth: number;
   returningPatients: number;
   activePatients: number;
+  /** Gross payments collected in range (patients pay the full amount). */
   totalRevenue: number;
   revenueThisMonth: number;
   outstandingBalances: number;
   avgRevenuePerPatient: number;
+  /** Total consultant payouts for treatments in range. */
+  consultantPayouts: number;
+  /** Net clinic revenue = gross payments − consultant payouts. */
+  netClinicRevenue: number;
+  /** External consultancy income the dentist recorded in range. */
+  consultancyIncome: number;
+  /** Net clinic revenue + external consultancy income. */
+  totalIncome: number;
   pendingFollowUps: number;
   completedFollowUps: number;
   overdueFollowUps: number;
@@ -286,6 +308,7 @@ export async function getAnalyticsSummary(
   const [
     apptRes, apptTodayRes, patientsRes, newPatientsMonthRes,
     paymentsRes, treatmentsRes, followUpsRes, queueTodayRes,
+    consultancyRes,
   ] = await Promise.all([
     supabase
       .from("appointments")
@@ -318,7 +341,7 @@ export async function getAnalyticsSummary(
 
     supabase
       .from("treatments")
-      .select("cost, patient_id, status")
+      .select("cost, clinic_share, consultant_share, patient_id, status, created_at")
       .eq("clinic_id", clinicId).is("deleted_at", null),
 
     supabase
@@ -331,15 +354,25 @@ export async function getAnalyticsSummary(
       .select("status, checked_in_at, called_at")
       .eq("clinic_id", clinicId)
       .eq("queue_date", todayDate),
+
+    supabase
+      .from("consultancy_income")
+      .select("amount, date")
+      .eq("clinic_id", clinicId)
+      .gte("date", dateFrom).lte("date", dateTo),
   ]);
 
   const appointments = (apptRes.data ?? []) as ApptRow[];
   const appointmentsToday = (apptTodayRes.data ?? []) as Pick<ApptRow, "status" | "source">[];
   const patients = (patientsRes.data ?? []) as Pick<PatientRow, "id" | "created_at" | "total_visits" | "last_visit">[];
   const payments = (paymentsRes.data ?? []) as Pick<PaymentRow, "amount" | "patient_id" | "payment_date">[];
-  const treatments = (treatmentsRes.data ?? []) as Pick<TreatmentRow, "cost" | "patient_id" | "status">[];
+  const treatments = (treatmentsRes.data ?? []) as Pick<
+    TreatmentRow,
+    "cost" | "clinic_share" | "consultant_share" | "patient_id" | "status" | "created_at"
+  >[];
   const followUps = (followUpsRes.data ?? []) as Pick<FollowUpRow, "status" | "due_date">[];
   const queueToday = (queueTodayRes.data ?? []) as QueueRow[];
+  const consultancyRows = (consultancyRes.data ?? []) as { amount: number; date: string }[];
 
   const totalAppointments = appointments.length;
   const completedAppointments = appointments.filter((a) => a.status === "completed").length;
@@ -360,6 +393,22 @@ export async function getAnalyticsSummary(
   const totalTreatmentCost = sumBillableTreatmentCost(treatments);
   const totalPaid = payments.reduce((sum, p) => sum + (p.amount ?? 0), 0);
   const outstandingBalances = Math.max(0, totalTreatmentCost - totalPaid);
+
+  // ── Consultant payouts + net clinic revenue ──────────────────────────────
+  // Payouts are recognised for billable treatments created within the range.
+  // Net clinic revenue nets gross payments against those payouts (no double
+  // subtraction: patient billing/outstanding still uses the gross cost).
+  const rangeStartIso = startOf(dateFrom);
+  const rangeEndIso = endOf(dateTo);
+  const consultantPayouts = treatments.reduce((sum, t) => {
+    if (!isBillableTreatment(t.status)) return sum;
+    if (t.created_at < rangeStartIso || t.created_at > rangeEndIso) return sum;
+    return sum + treatmentConsultantShare(t);
+  }, 0);
+
+  const netClinicRevenue = Math.max(0, totalRevenue - consultantPayouts);
+  const consultancyIncome = consultancyRows.reduce((sum, c) => sum + Number(c.amount ?? 0), 0);
+  const totalIncome = netClinicRevenue + consultancyIncome;
 
   const patientsWithPayments = new Set(payments.map((p) => p.patient_id)).size;
   const avgRevenuePerPatient = patientsWithPayments > 0 ? totalRevenue / patientsWithPayments : 0;
@@ -387,6 +436,7 @@ export async function getAnalyticsSummary(
     completedAppointments, cancelledAppointments, noShowAppointments,
     totalPatients, newPatientsThisMonth, returningPatients, activePatients,
     totalRevenue, revenueThisMonth, outstandingBalances, avgRevenuePerPatient,
+    consultantPayouts, netClinicRevenue, consultancyIncome, totalIncome,
     pendingFollowUps, completedFollowUps, overdueFollowUps,
     avgWaitTimeMinutes, patientsServedToday, currentWaitingCount,
   };
@@ -566,7 +616,7 @@ export async function getTreatmentAnalytics(
 
   const { data } = await supabase
     .from("treatments")
-    .select("treatment_type, cost, status, performed_at")
+    .select("treatment_type, cost, clinic_share, consultant_share, status, performed_at")
     .eq("clinic_id", clinicId)
     .is("deleted_at", null)
     .gte("created_at", startOf(dateFrom))
@@ -574,13 +624,18 @@ export async function getTreatmentAnalytics(
 
   const rows = (data ?? []) as TreatmentRow[];
 
-  const typeMap: Record<string, { count: number; totalCost: number; completedCount: number }> = {};
+  // totalCost = gross (average treatment price); totalRevenue = net clinic_share.
+  const typeMap: Record<
+    string,
+    { count: number; totalCost: number; totalRevenue: number; completedCount: number }
+  > = {};
   let completedCount = 0;
   for (const t of rows) {
     const tt = t.treatment_type ?? "Other";
-    if (!typeMap[tt]) typeMap[tt] = { count: 0, totalCost: 0, completedCount: 0 };
+    if (!typeMap[tt]) typeMap[tt] = { count: 0, totalCost: 0, totalRevenue: 0, completedCount: 0 };
     typeMap[tt].count += 1;
     typeMap[tt].totalCost += Number(t.cost ?? 0);
+    typeMap[tt].totalRevenue += treatmentClinicShare(t);
     if (t.status === "completed") {
       typeMap[tt].completedCount += 1;
       completedCount++;
@@ -597,7 +652,7 @@ export async function getTreatmentAnalytics(
   }));
 
   const revenueByType = Object.entries(typeMap)
-    .map(([treatmentType, v]) => ({ treatmentType, revenue: v.totalCost }))
+    .map(([treatmentType, v]) => ({ treatmentType, revenue: v.totalRevenue }))
     .sort((a, b) => b.revenue - a.revenue);
 
   const completionRate = rows.length > 0 ? Math.round((completedCount / rows.length) * 100) : 0;
@@ -923,7 +978,7 @@ export async function generateBasicInsights(
 
     supabase
       .from("treatments")
-      .select("treatment_type, cost, status")
+      .select("treatment_type, cost, clinic_share, consultant_share, status")
       .eq("clinic_id", clinicId).is("deleted_at", null),
   ]);
 
@@ -953,7 +1008,7 @@ export async function generateBasicInsights(
   for (const t of treatments) {
     if (t.status === "completed") {
       const tt = t.treatment_type ?? "Other";
-      treatmentRevenue[tt] = (treatmentRevenue[tt] ?? 0) + Number(t.cost ?? 0);
+      treatmentRevenue[tt] = (treatmentRevenue[tt] ?? 0) + treatmentClinicShare(t);
     }
   }
   const topTreatmentEntry = Object.entries(treatmentRevenue).sort((a, b) => b[1] - a[1])[0];

@@ -8,8 +8,9 @@ import { RescheduleReceptionistPanel } from "@/components/receptionist/Reschedul
 import { CancelAppointmentButton } from "@/components/shared/CancelAppointmentButton";
 import { AppointmentHistoryTimeline } from "@/components/shared/AppointmentHistoryTimeline";
 import { getAppointment } from "@/actions/appointments";
+import { getOutstandingBalance } from "@/actions/payments";
 import { createServerClient } from "@/lib/supabase/server";
-import { formatDateTimeInTimezone, APPOINTMENT_SOURCE_LABELS } from "@/lib/utils";
+import { formatDateTimeInTimezone, formatCurrency, APPOINTMENT_SOURCE_LABELS, calculateAge, cn } from "@/lib/utils";
 import type { AppointmentStatus } from "@/types";
 
 export const metadata: Metadata = {
@@ -40,6 +41,15 @@ export default async function ReceptionistAppointmentDetailPage({ params }: Prop
   const status = appt.status as AppointmentStatus;
   const isTerminal = ["completed", "cancelled", "no_show"].includes(status);
   const isCheckedIn = status === "checked_in";
+
+  const age = calculateAge(appt.patient.date_of_birth);
+  const genderLabel = appt.patient.gender
+    ? appt.patient.gender.charAt(0).toUpperCase() + appt.patient.gender.slice(1)
+    : "—";
+
+  // Fetch remaining balance
+  const balanceResult = await getOutstandingBalance(appt.patient_id);
+  const remainingBalance = balanceResult.data ?? 0;
 
   // Fetch clinic timezone for correct date/time display and RescheduleModal
   const supabase = await createServerClient();
@@ -93,21 +103,23 @@ export default async function ReceptionistAppointmentDetailPage({ params }: Prop
           <AppointmentStatusBadge status={status} />
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 pt-4 border-t text-sm">
-          <div>
-            <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Date &amp; Time</p>
-            <p className="font-semibold mt-0.5">{formatDateTimeInTimezone(appt.scheduled_at, clinicTimezone)}</p>
-          </div>
-          <div>
-            <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Duration</p>
-            <p className="font-semibold mt-0.5">{appt.duration_minutes} min</p>
-          </div>
-          <div>
-            <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Source</p>
-            <p className="font-semibold mt-0.5">
-              {APPOINTMENT_SOURCE_LABELS[appt.source] ?? appt.source}
-            </p>
-          </div>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-4 border-t">
+          <Detail label="Date & Time" value={formatDateTimeInTimezone(appt.scheduled_at, clinicTimezone)} />
+          <Detail label="Duration" value={`${appt.duration_minutes} min`} />
+          <Detail label="Age" value={age !== null ? `${age} years` : "—"} />
+          <Detail label="Gender" value={genderLabel} />
+        </div>
+
+        <div className="pt-4 border-t">
+          <Detail label="Source" value={APPOINTMENT_SOURCE_LABELS[appt.source] ?? appt.source} />
+        </div>
+
+        <div className="pt-4 border-t">
+          <Detail 
+            label="Remaining Balance" 
+            value={formatCurrency(remainingBalance)}
+            highlight={remainingBalance > 0}
+          />
         </div>
 
         {appt.notes && (
@@ -154,6 +166,22 @@ export default async function ReceptionistAppointmentDetailPage({ params }: Prop
 
       {/* ── History ──────────────────────────────────────────── */}
       <AppointmentHistoryTimeline history={appt.history} timezone={clinicTimezone} />
+    </div>
+  );
+}
+
+function Detail({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
+  return (
+    <div>
+      <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+        {label}
+      </p>
+      <p className={cn(
+        "text-sm font-semibold mt-0.5",
+        highlight ? "text-red-600" : "text-gray-900"
+      )}>
+        {value}
+      </p>
     </div>
   );
 }

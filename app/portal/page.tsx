@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { PortalDashboard } from "@/components/patient/PortalDashboard";
+import { isPatientBookingEnabled } from "@/lib/feature-flags";
 
 export const metadata: Metadata = {
   title: "My Dashboard",
@@ -20,6 +21,7 @@ export const metadata: Metadata = {
  * All data is resolved inside PortalDashboard (server component).
  */
 export default function PortalDashboardPage() {
-  return <PortalDashboard />;
+  const bookingEnabled = isPatientBookingEnabled();
+  return <PortalDashboard bookingEnabled={bookingEnabled} />;
 }
 

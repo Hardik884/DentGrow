@@ -22,7 +22,10 @@ import {
   updateTreatment,
   uploadTreatmentDocument,
 } from "@/actions/treatments";
-import { TREATMENT_STATUS_LABELS } from "@/lib/utils";
+import { getConsultants } from "@/actions/consultants";
+import type { Consultant } from "@/types";
+import { computeConsultantSplit } from "@/lib/billing/revenue";
+import { TREATMENT_STATUS_LABELS, formatCurrency } from "@/lib/utils";
 import { queryKeys } from "@/lib/query/keys";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
@@ -31,7 +34,7 @@ import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { SkeletonCard } from "@/components/ui/skeleton";
 import { CalendarPicker } from "@/components/ui/calendar-picker";
-import { Eye, Plus, Trash2, Minus, Upload, FileText, Pill } from "lucide-react";
+import { Eye, Plus, Trash2, Minus, Upload, FileText, Pill, Briefcase } from "lucide-react";
 
 interface TreatmentFormProps {
   treatmentId?: string;
@@ -64,6 +67,9 @@ export function TreatmentForm({ treatmentId, appointmentId, patientId, onSuccess
   const [files, setFiles] = useState<File[]>([]);
   const [fileError, setFileError] = useState<string | null>(null);
 
+  // Consultant directory for the "Performed By" dropdown
+  const [consultants, setConsultants] = useState<Consultant[]>([]);
+
   const isEdit = !!treatmentId;
   const schema = isEdit ? UpdateTreatmentSchema : CreateTreatmentSchema;
 
@@ -86,6 +92,9 @@ export function TreatmentForm({ treatmentId, appointmentId, patientId, onSuccess
       cost: 0,
       status: TreatmentStatus.PLANNED,
       performed_at: undefined,
+      consultant_id: "",
+      commission_type: undefined,
+      commission_value: undefined,
     },
   });
 
@@ -101,6 +110,19 @@ export function TreatmentForm({ treatmentId, appointmentId, patientId, onSuccess
     | Array<{ dosage?: string; instructions?: string }>
     | undefined;
 
+  // ── Revenue distribution (Performed By) ─────────────────────────────────────
+  const costValue = watch("cost") as number | undefined;
+  const consultantIdValue = watch("consultant_id") as string | undefined;
+  const commissionTypeValue = watch("commission_type") as "percentage" | "fixed" | undefined;
+  const commissionValueValue = watch("commission_value") as number | undefined;
+
+  const hasConsultant = !!consultantIdValue;
+  const split = computeConsultantSplit(
+    Number(costValue ?? 0),
+    hasConsultant ? commissionTypeValue : null,
+    hasConsultant ? Number(commissionValueValue ?? 0) : null
+  );
+
   // "Other" mode — true when the stored value is not one of the preset options.
   // In that case the Select shows "Other" and a free-text input is revealed.
   const isStandardType =
@@ -110,6 +132,16 @@ export function TreatmentForm({ treatmentId, appointmentId, patientId, onSuccess
   const [customTypeValue, setCustomTypeValue] = useState(
     isStandardType ? "" : (treatmentTypeValue ?? "")
   );
+
+  useEffect(() => {
+    let active = true;
+    getConsultants().then((res) => {
+      if (active && res.data) setConsultants(res.data);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   useEffect(() => {
     if (!treatmentId) return;
@@ -133,6 +165,12 @@ export function TreatmentForm({ treatmentId, appointmentId, patientId, onSuccess
           cost: Number(result.data.cost),
           status: result.data.status,
           performed_at: date ? (time ? `${date}T${time}` : date) : undefined,
+          consultant_id: result.data.consultant_id ?? "",
+          commission_type: result.data.commission_type ?? undefined,
+          commission_value:
+            result.data.commission_value != null
+              ? Number(result.data.commission_value)
+              : undefined,
         });
       }
       setLoading(false);
@@ -337,6 +375,92 @@ export function TreatmentForm({ treatmentId, appointmentId, patientId, onSuccess
           </Field>
         </div>
 
+        {/* ── Performed By / Revenue Distribution ─────────────── */}
+        <div className="px-6 py-5 space-y-4">
+          <div className="flex items-center gap-1.5">
+            <Briefcase className="h-4 w-4 text-[#71717A]" aria-hidden />
+            <h3 className="text-sm font-semibold text-[#09090B]">Performed By</h3>
+          </div>
+
+          <Field
+            label="Performed By"
+            htmlFor="performed-by"
+            hint="Select a consultant to split revenue; defaults to the treating dentist"
+          >
+            <Select
+              id="performed-by"
+              value={consultantIdValue || ""}
+              onChange={(e) => {
+                const val = e.target.value;
+                setValue("consultant_id" as keyof CreateTreatmentInput, (val || "") as never);
+                if (!val) {
+                  // Reset compensation when reverting to the treating dentist
+                  setValue("commission_type" as keyof CreateTreatmentInput, undefined as never);
+                  setValue("commission_value" as keyof CreateTreatmentInput, undefined as never);
+                } else if (!commissionTypeValue) {
+                  setValue("commission_type" as keyof CreateTreatmentInput, "percentage" as never);
+                }
+              }}
+            >
+              <option value="">Treating Dentist</option>
+              {consultants.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </Select>
+          </Field>
+
+          {hasConsultant && (
+            <div className="rounded-lg border border-[#E4E4E7] bg-[#FAFAFA] p-4 space-y-4">
+              <p className="text-xs font-semibold text-[#09090B] uppercase tracking-wide">
+                Revenue Distribution
+              </p>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <Field label="Compensation Type" htmlFor="commission-type">
+                  <Select
+                    id="commission-type"
+                    value={commissionTypeValue ?? "percentage"}
+                    onChange={(e) =>
+                      setValue(
+                        "commission_type" as keyof CreateTreatmentInput,
+                        e.target.value as never
+                      )
+                    }
+                  >
+                    <option value="percentage">Percentage</option>
+                    <option value="fixed">Fixed Amount</option>
+                  </Select>
+                </Field>
+
+                <Field
+                  label={commissionTypeValue === "fixed" ? "Consultant Amount (₹)" : "Consultant Percentage (%)"}
+                  htmlFor="commission-value"
+                  error={(errors as Record<string, { message?: string }>).commission_value?.message}
+                >
+                  <Input
+                    id="commission-value"
+                    type="number"
+                    min={0}
+                    max={commissionTypeValue === "fixed" ? undefined : 100}
+                    step="0.01"
+                    placeholder={commissionTypeValue === "fixed" ? "4000" : "30"}
+                    {...register("commission_value", { valueAsNumber: true })}
+                  />
+                </Field>
+              </div>
+
+              {/* Live preview */}
+              <div className="grid grid-cols-3 gap-3 pt-1">
+                <PreviewStat label="Treatment" value={formatCurrency(Number(costValue ?? 0))} />
+                <PreviewStat label="Consultant Share" value={formatCurrency(split.consultantShare)} accent="amber" />
+                <PreviewStat label="Clinic Share" value={formatCurrency(split.clinicShare)} accent="green" />
+              </div>
+            </div>
+          )}
+        </div>
+
         {/* ── Medications ─────────────────────────────────────── */}
         <div className="px-6 py-5 space-y-4">
           <div className="flex items-center justify-between">
@@ -529,6 +653,26 @@ export function TreatmentForm({ treatmentId, appointmentId, patientId, onSuccess
         </div>
       </div>
     </form>
+  );
+}
+
+/** Small labelled figure used in the revenue-distribution live preview. */
+function PreviewStat({
+  label,
+  value,
+  accent,
+}: {
+  label: string;
+  value: string;
+  accent?: "amber" | "green";
+}) {
+  const color =
+    accent === "amber" ? "text-[#B45309]" : accent === "green" ? "text-[#16A34A]" : "text-[#09090B]";
+  return (
+    <div className="rounded-lg bg-white border border-[#E4E4E7] px-3 py-2">
+      <p className="text-[10px] uppercase tracking-wide text-[#71717A]">{label}</p>
+      <p className={`text-sm font-semibold ${color}`}>{value}</p>
+    </div>
   );
 }
 

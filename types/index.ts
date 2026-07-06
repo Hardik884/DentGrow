@@ -36,6 +36,10 @@ export type PatientPortalLink = Database["public"]["Tables"]["patient_portal_lin
 export type ClinicSettings  = Database["public"]["Tables"]["clinic_settings"]["Row"];
 export type AvailabilityRule = Database["public"]["Tables"]["availability_rules"]["Row"];
 export type WebhookLog      = Database["public"]["Tables"]["webhook_logs"]["Row"];
+export type Consultant      = Database["public"]["Tables"]["consultants"]["Row"];
+export type ConsultancyIncome = Database["public"]["Tables"]["consultancy_income"]["Row"];
+export type ConsultancySchedule = Database["public"]["Tables"]["consultancy_schedules"]["Row"];
+export type UnavailableDate = Database["public"]["Tables"]["unavailable_dates"]["Row"];
 
 // Insert types
 export type PatientInsert     = Database["public"]["Tables"]["patients"]["Insert"];
@@ -390,6 +394,14 @@ export const CreateTreatmentSchema = z.object({
   // The server action normalises this to a proper timestamptz before inserting.
   // Truly optional — can be omitted or left blank without validation failure.
   performed_at: z.string().optional().or(z.literal("")).transform(v => v || undefined),
+  // ── Revenue distribution ──────────────────────────────────────────────────
+  // consultant_id NULL/empty => performed by the treating dentist (no split).
+  // When a consultant is selected, commission_type + commission_value drive the
+  // consultant_share / clinic_share computed server-side. Cross-field rules are
+  // enforced in the server action (kept off the object so .partial() works).
+  consultant_id: z.string().uuid().optional().or(z.literal("")).transform(v => v || undefined),
+  commission_type: z.enum(["percentage", "fixed"]).optional(),
+  commission_value: z.number().nonnegative().optional(),
 });
 export type CreateTreatmentInput = z.infer<typeof CreateTreatmentSchema>;
 
@@ -489,6 +501,50 @@ export const CreateAvailabilityRuleSchema = z.object({
 });
 export type CreateAvailabilityRuleInput = z.infer<typeof CreateAvailabilityRuleSchema>;
 
+// ── Consultant Directory ────────────────────────────────────────────────────
+
+export const CreateConsultantSchema = z.object({
+  name: z.string().trim().min(2, "Name must be at least 2 characters").max(100),
+});
+export type CreateConsultantInput = z.infer<typeof CreateConsultantSchema>;
+
+export const UpdateConsultantSchema = CreateConsultantSchema;
+export type UpdateConsultantInput = z.infer<typeof UpdateConsultantSchema>;
+
+// ── Consultancy Income (external earnings) ───────────────────────────────────
+
+export const RecordConsultancyIncomeSchema = z.object({
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Valid date is required"),
+  external_clinic: z.string().trim().min(1, "Clinic name is required").max(200),
+  description: z.string().trim().min(1, "Description is required").max(500),
+  amount: z.number().positive("Amount must be greater than zero"),
+  notes: z.string().max(1000).optional().or(z.literal("")).transform((v) => v || undefined),
+});
+export type RecordConsultancyIncomeInput = z.infer<typeof RecordConsultancyIncomeSchema>;
+
+// ── Consultancy Schedule (recurring weekly blocks) ───────────────────────────
+
+export const CreateConsultancyScheduleSchema = z
+  .object({
+    day_of_week: z.number().int().min(0).max(6),
+    start_time: z.string().regex(/^\d{2}:\d{2}$/, "Valid start time required (HH:MM)"),
+    end_time: z.string().regex(/^\d{2}:\d{2}$/, "Valid end time required (HH:MM)"),
+    reason: z.string().max(200).optional().or(z.literal("")).transform((v) => v || undefined),
+  })
+  .refine((v) => v.end_time > v.start_time, {
+    message: "End time must be after start time",
+    path: ["end_time"],
+  });
+export type CreateConsultancyScheduleInput = z.infer<typeof CreateConsultancyScheduleSchema>;
+
+// ── Unavailable Date (holiday / closure) ─────────────────────────────────────
+
+export const CreateUnavailableDateSchema = z.object({
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Valid date is required"),
+  reason: z.string().max(200).optional().or(z.literal("")).transform((v) => v || undefined),
+});
+export type CreateUnavailableDateInput = z.infer<typeof CreateUnavailableDateSchema>;
+
 // ── Portal Link ───────────────────────────────────────────────────────────────
 
 export const LinkPortalAccountSchema = z.object({
@@ -587,7 +643,10 @@ export type DashboardKPIs = {
   completionRateToday: number;
   waitingPatients: number;
   noShowsToday: number;
+  /** Gross payments collected today. */
   revenueToday: number;
+  /** External consultancy income the dentist recorded for today. */
+  consultancyIncomeToday: number;
   newPatientsToday: number;
   walkInsToday: number;
 };
