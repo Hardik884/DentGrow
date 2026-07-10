@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { NewInquiryModal } from "@/components/shared/NewInquiryModal";
 
@@ -20,10 +21,11 @@ export function NewInquiryButton() {
   return (
     <>
       <Button
-        variant="outline"
+        variant="default"
         size="sm"
         onClick={() => setOpen(true)}
       >
+        <Plus className="h-3.5 w-3.5" aria-hidden />
         Add New Inquiry
       </Button>
 

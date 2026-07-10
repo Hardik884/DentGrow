@@ -4,7 +4,7 @@ import { useState, useTransition, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
-import { RecordPaymentSchema, type RecordPaymentInput, PaymentMethod } from "@/types";
+import { RecordPaymentSchema, type RecordPaymentInput, PaymentMethod, type PaymentType } from "@/types";
 import { recordPayment } from "@/actions/payments";
 import { PAYMENT_METHOD_LABELS } from "@/lib/utils";
 import { PatientSearch } from "@/components/shared/PatientSearch";
@@ -20,14 +20,23 @@ interface PaymentFormProps {
   patientId?: string;
   patientName?: string;
   appointmentId?: string;
+  /** Payment type — "opd" records a standalone consultation payment. Defaults to "treatment". */
+  paymentType?: PaymentType;
+  /** When provided, shows a read-only "Recorded By" field (staff member's name). */
+  recordedByName?: string;
   onSuccess?: () => void;
+  /** When provided, renders a Cancel button that calls this instead of router.back() (modal use). */
+  onCancel?: () => void;
 }
 
 export function PaymentForm({
   patientId: initialPatientId,
   patientName: initialPatientName,
   appointmentId,
+  paymentType = "treatment",
+  recordedByName,
   onSuccess,
+  onCancel,
 }: PaymentFormProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -52,6 +61,7 @@ export function PaymentForm({
       appointment_id: appointmentId,
       amount: undefined,
       method: PaymentMethod.CASH,
+      payment_type: paymentType,
       payment_date: today,
       notes: "",
     },
@@ -98,8 +108,6 @@ export function PaymentForm({
 
       <div className="bg-white border border-[#E4E4E7] rounded-xl overflow-hidden divide-y divide-[#F4F4F5]">
         <div className="px-6 py-5 space-y-4">
-          <h2 className="text-sm font-semibold text-[#09090B]">Record Payment</h2>
-
           {/* Patient */}
           <div className="space-y-1.5" ref={patientRef}>
             <label className="block text-sm font-medium text-[#09090B]">
@@ -135,6 +143,7 @@ export function PaymentForm({
               />
             )}
             <input type="hidden" {...register("patient_id")} value={selectedPatientId} />
+            <input type="hidden" {...register("payment_type")} />
             {errors.patient_id && (
               <p className="text-xs text-[#DC2626]" role="alert">{errors.patient_id.message}</p>
             )}
@@ -179,13 +188,19 @@ export function PaymentForm({
               id="notes"
               {...register("notes")}
               rows={2}
-              placeholder="e.g. Partial payment for root canal treatment…"
+              placeholder={paymentType === "opd" ? "e.g. OPD / consultation fee…" : "e.g. Partial payment for root canal treatment…"}
             />
           </Field>
+
+          {recordedByName && (
+            <Field label="Recorded By" htmlFor="recorded-by">
+              <Input id="recorded-by" value={recordedByName} readOnly disabled />
+            </Field>
+          )}
         </div>
 
         <div className="px-6 py-4 bg-[#FAFAFA] flex items-center justify-end gap-3">
-          <Button variant="outline" size="sm" type="button" onClick={() => router.back()}>
+          <Button variant="outline" size="sm" type="button" onClick={() => (onCancel ? onCancel() : router.back())}>
             Cancel
           </Button>
           <Button type="submit" size="sm" isLoading={isPending}>

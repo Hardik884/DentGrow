@@ -15,8 +15,12 @@
  *   2. patients.total_visits incremented EXACTLY once.
  *   3. patients.last_visit updated once.
  *   4. The appointment's active queue entry (waiting/in_progress) → completed.
- *   5. Linked pending follow-ups auto-completed once.
- *   6. A single appointment_history row written.
+ *   5. A single appointment_history row written.
+ *
+ * NOTE: Completing an appointment does NOT complete its linked follow-up
+ * appointments. A follow-up stays `pending` until it is explicitly completed
+ * by a user (actions/follow-ups.ts → completeFollowUp). This mirrors real
+ * clinical workflow: the follow-up visit is a separate future event.
  *
  * Idempotency: the status transition is performed with a conditional UPDATE
  * (`status <> 'completed'`). Postgres row-locking serialises concurrent calls,
@@ -25,7 +29,6 @@
  * changed a row. A second/duplicate completion is a no-op.
  */
 
-import { completeLinkedFollowUps } from "@/lib/follow-ups/complete-linked";
 import { writeAppointmentHistory } from "@/lib/appointments/history";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -138,10 +141,9 @@ export async function completeAppointmentCascade(
     .eq("clinic_id", clinicId)
     .in("status", ["waiting", "in_progress"]);
 
-  // ── 3) Auto-complete linked pending follow-ups (idempotent) ──────────────
-  await completeLinkedFollowUps(db, appointmentId, clinicId);
-
-  // ── 4) Audit history (exactly once) ──────────────────────────────────────
+  // ── 3) Audit history (exactly once) ──────────────────────────────────────
+  // NOTE: linked follow-ups are intentionally left `pending`. Completing an
+  // appointment must never auto-complete its follow-up visit.
   await writeAppointmentHistory({
     appointmentId,
     action: "status_changed",

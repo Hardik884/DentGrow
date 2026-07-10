@@ -135,6 +135,7 @@ export async function updateClinicSettings(
           timezone: parsed.data.timezone,
           registration_number: parsed.data.registration_number || null,
           allow_receptionist_payments: parsed.data.allow_receptionist_payments ?? false,
+          show_consultancy_on_dashboard: parsed.data.show_consultancy_on_dashboard ?? true,
           clinic_hours: parsed.data.clinic_hours ?? null,
           updated_at: new Date().toISOString(),
         },

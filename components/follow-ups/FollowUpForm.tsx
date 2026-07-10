@@ -12,15 +12,18 @@ import {
   getPatientTreatmentsForFollowUp,
 } from "@/actions/follow-ups";
 import { searchPatients } from "@/actions/patients";
+import { getAvailableSlots } from "@/actions/availability";
 import { queryKeys } from "@/lib/query/keys";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { PatientAvatar } from "@/components/shared/PatientAvatar";
 import { LoadingSpinner } from "@/components/shared/LoadingSpinner";
 import {
+  cn,
   FOLLOW_UP_STATUS_LABELS,
   formatDate,
   formatDateTime,
+  formatTime,
 } from "@/lib/utils";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
@@ -29,7 +32,7 @@ import { Select } from "@/components/ui/select";
 import { Field } from "@/components/ui/field";
 import { CalendarPicker } from "@/components/ui/calendar-picker";
 import Link from "next/link";
-import { CheckCircle2, X, User, Calendar, Stethoscope } from "lucide-react";
+import { CheckCircle2, X, User, Calendar, Stethoscope, Clock } from "lucide-react";
 import { TREATMENT_TYPE_OPTIONS } from "@/types";
 import type { FollowUpWithRelations, Patient } from "@/types";
 
@@ -135,6 +138,11 @@ export function FollowUpForm({
   );
   const [dueDate, setDueDate]   = useState(initialData?.due_date ?? "");
   const [dueTime, setDueTime]   = useState("");
+  const [confirmationStatus, setConfirmationStatus] = useState<"tentative" | "confirmed">(
+    (initialData?.confirmation_status as "tentative" | "confirmed") ?? "confirmed"
+  );
+  const [slots, setSlots]             = useState<string[]>([]);
+  const [slotsLoading, setSlotsLoading] = useState(false);
   const [notes, setNotes]       = useState(initialData?.notes ?? "");
   const [formError, setFormError]     = useState<string | null>(null);
   const [formSuccess, setFormSuccess] = useState<string | null>(null);
@@ -208,6 +216,28 @@ export function FollowUpForm({
       loadRelatedOptions(selectedPatient.id);
     }
   }, [selectedPatient?.id, loadRelatedOptions, hideRelatedFields]);
+
+  // ── Available appointment slots for the chosen due date (create mode) ──────
+  // Reuses the same scheduling engine as appointment booking (getAvailableSlots)
+  // so follow-up appointments can only be booked into genuinely free slots that
+  // respect working hours, lunch/consultancy blocks, holidays, and existing
+  // appointments. No duplicate scheduling logic.
+  const fetchSlots = useCallback(async (date: string) => {
+    if (!date) {
+      setSlots([]);
+      return;
+    }
+    setSlotsLoading(true);
+    setDueTime("");
+    const result = await getAvailableSlots(date);
+    setSlots(result.data ?? []);
+    setSlotsLoading(false);
+  }, []);
+
+  useEffect(() => {
+    // Only relevant when creating — editing does not re-book the appointment.
+    if (!followUpId && dueDate) fetchSlots(dueDate);
+  }, [dueDate, followUpId, fetchSlots]);
 
   // ── Sync initialData if editing ─────────────────────────────────────────────
   useEffect(() => {
@@ -313,6 +343,7 @@ export function FollowUpForm({
       treatment_id:   selectedTreatmentId   || undefined,
       due_date:       dueDate,
       due_time:       dueTime || undefined,
+      confirmation_status: confirmationStatus,
       notes:          notes.trim() || undefined,
     };
 
@@ -331,6 +362,13 @@ export function FollowUpForm({
       // Invalidate only the follow-ups cache.
       queryClient.invalidateQueries({ queryKey: queryKeys.followUps.all });
 
+      // Modal mode: let the host dialog handle closing + refreshing. Skips
+      // page navigation so the user stays on the current page.
+      if (onSuccess) {
+        onSuccess();
+        return;
+      }
+
       if (!followUpId && result.data) {
         // Task 8 fix — when the follow-up was launched from an appointment and
         // a (new or linked) appointment is attached, navigate to that
@@ -347,7 +385,10 @@ export function FollowUpForm({
         router.refresh();
         return;
       }
-      onSuccess?.();
+
+      // Edit mode without a modal host: stay on the page (success message +
+      // cache invalidation already applied above).
+      router.refresh();
     });
   }
 
@@ -381,7 +422,7 @@ export function FollowUpForm({
         {/* ── Header (edit mode only) ── */}
         {currentStatus && (
           <div className="px-6 py-4 border-b border-border flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-text-primary">Follow-Up Details</h2>
+            <h2 className="text-sm font-semibold text-text-primary">Follow-up Appointment Details</h2>
             <StatusBadge
               label={FOLLOW_UP_STATUS_LABELS[currentStatus]}
               variant={
@@ -578,21 +619,82 @@ export function FollowUpForm({
                 </Field>
               </div>
 
-              <Field
-                label="Time"
-                htmlFor="due_time"
-                hint={followUpId ? undefined : "Auto-creates next appointment"}
-              >
-                <Input
-                  id="due_time"
-                  type="time"
-                  value={dueTime}
-                  onChange={(e) => setDueTime(e.target.value)}
-                  disabled={isReadOnly}
-                  aria-label="Follow-up time"
-                />
+              {/* Confirmation status — Tentative / Confirmed segmented control */}
+              <Field label="Appointment Status" htmlFor="confirmation_status">
+                <div
+                  role="radiogroup"
+                  aria-label="Appointment status"
+                  className="inline-flex rounded-lg border border-border p-0.5 bg-[#FAFAFA]"
+                >
+                  {(["tentative", "confirmed"] as const).map((opt) => (
+                    <button
+                      key={opt}
+                      type="button"
+                      role="radio"
+                      aria-checked={confirmationStatus === opt}
+                      disabled={isReadOnly}
+                      onClick={() => setConfirmationStatus(opt)}
+                      className={cn(
+                        "px-3 py-1.5 text-xs font-medium rounded-md transition-colors capitalize disabled:opacity-50 disabled:cursor-not-allowed",
+                        confirmationStatus === opt
+                          ? "bg-white text-[#09090B] shadow-sm border border-border"
+                          : "text-[#71717A] hover:text-[#09090B]"
+                      )}
+                    >
+                      {opt}
+                    </button>
+                  ))}
+                </div>
               </Field>
             </div>
+
+            {/* ── Appointment Time — available slots only (create mode) ── */}
+            {!followUpId && (
+              <Field
+                label="Appointment Time"
+                htmlFor="due_time"
+                hint="Optional — pick an available slot to auto-create the next appointment"
+              >
+                <input type="hidden" id="due_time" value={dueTime} readOnly />
+                {!dueDate ? (
+                  <p className="text-xs text-text-secondary">Select a due date to see available slots.</p>
+                ) : slotsLoading ? (
+                  <div className="flex items-center gap-2 text-sm text-text-secondary py-1">
+                    <LoadingSpinner size="sm" />
+                    Loading available slots…
+                  </div>
+                ) : slots.length === 0 ? (
+                  <div className="rounded-lg bg-[#FAFAFA] border border-border p-3 text-center">
+                    <p className="text-xs text-text-secondary">No available slots on this date.</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 max-h-44 overflow-y-auto">
+                    {slots.map((slot) => {
+                      const timePart = slot.split("T")[1]?.slice(0, 5) ?? "";
+                      const isSelected = dueTime === timePart;
+                      return (
+                        <button
+                          key={slot}
+                          type="button"
+                          disabled={isReadOnly}
+                          onClick={() => setDueTime(isSelected ? "" : timePart)}
+                          className={cn(
+                            "flex items-center justify-center gap-1 py-2 px-1 text-xs rounded-lg border transition-all",
+                            isSelected
+                              ? "border-[#18181B] bg-[#18181B] text-white font-medium"
+                              : "border-border text-[#09090B] hover:border-[#D4D4D8] hover:bg-[#FAFAFA]",
+                            "disabled:opacity-50 disabled:cursor-not-allowed"
+                          )}
+                        >
+                          <Clock className="h-3 w-3 opacity-60" aria-hidden />
+                          {formatTime(`${timePart}:00`)}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </Field>
+            )}
 
             {/* ── Optional: Related Appointment + Related Treatment ── */}
             {/* Hidden when hideRelatedFields=true (launched from appointment context) */}
@@ -749,7 +851,7 @@ export function FollowUpForm({
                     ? "Saving…"
                     : followUpId
                       ? "Save Changes"
-                      : "Create Follow-Up"}
+                      : "Create Follow-up Appointment"}
                 </Button>
               )}
 

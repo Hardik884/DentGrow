@@ -94,6 +94,12 @@ export const PaymentMethod = {
 } as const;
 export type PaymentMethod = (typeof PaymentMethod)[keyof typeof PaymentMethod];
 
+export const PaymentType = {
+  TREATMENT: "treatment",
+  OPD:       "opd",
+} as const;
+export type PaymentType = (typeof PaymentType)[keyof typeof PaymentType];
+
 export const FollowUpStatus = {
   PENDING:   "pending",
   COMPLETED: "completed",
@@ -165,6 +171,8 @@ export type PatientFull = Patient & {
 };
 
 export type AppointmentWithPatient = Appointment & {
+  /** Treating doctor's display name, resolved from profiles via dentist_id. Null when unassigned. */
+  dentistName?: string | null;
   patient: Pick<Patient, "id" | "name" | "phone" | "date_of_birth" | "gender">;
 };
 
@@ -291,6 +299,43 @@ export const CreateAppointmentSchema = z.object({
 });
 export type CreateAppointmentInput = z.infer<typeof CreateAppointmentSchema>;
 
+/**
+ * Structured medical history stored in appointments.medical_history (jsonb).
+ * Quick-select flags plus free-text notes. Editable by receptionist + dentist.
+ */
+export type MedicalHistory = {
+  hypertension: boolean;
+  diabetes: boolean;
+  pregnancy_lactation: boolean;
+  notes: string;
+};
+
+export const MedicalHistorySchema = z.object({
+  hypertension: z.boolean().default(false),
+  diabetes: z.boolean().default(false),
+  pregnancy_lactation: z.boolean().default(false),
+  notes: z.string().max(2000).default(""),
+});
+
+/**
+ * Clinical consultation fields on the Patient Visit page.
+ * Every field is optional — each card saves independently. The server action
+ * enforces which role may write which field (chief complaints + medical
+ * history: receptionist & dentist; oral findings + provisional diagnosis:
+ * dentist only).
+ */
+export const UpdateAppointmentClinicalSchema = z.object({
+  chief_complaints: z.string().max(5000).nullable().optional(),
+  medical_history: MedicalHistorySchema.nullable().optional(),
+  oral_findings: z.string().max(5000).nullable().optional(),
+  provisional_diagnosis: z.string().max(5000).nullable().optional(),
+});
+export type UpdateAppointmentClinicalInput = z.infer<typeof UpdateAppointmentClinicalSchema>;
+
+/** Radiographic document categories offered on the Patient Visit page. */
+export const RADIOGRAPH_DOCUMENT_TYPES = ["IOPA", "OPG", "CBCT", "Other"] as const;
+export type RadiographDocumentType = (typeof RADIOGRAPH_DOCUMENT_TYPES)[number];
+
 export const RescheduleAppointmentSchema = z.object({
   appointment_id: z.string().uuid(),
   // Accept ISO datetime with OR without timezone offset.
@@ -359,6 +404,7 @@ export const MEDICATION_INSTRUCTION_OPTIONS = [
   "After Breakfast",
   "After Lunch",
   "After Dinner",
+  "After Meal",
   "Apply Locally",
 ] as const;
 export type MedicationInstructionOption = (typeof MEDICATION_INSTRUCTION_OPTIONS)[number];
@@ -426,6 +472,7 @@ export const RecordPaymentSchema = z.object({
   appointment_id: z.string().uuid().optional(),
   amount: z.number().positive(),
   method: z.enum(["cash", "upi", "card", "bank_transfer"]),
+  payment_type: z.enum(["treatment", "opd"]).optional(),
   payment_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   notes: z.string().max(500).optional(),
 });
@@ -439,6 +486,13 @@ export type RecordPaymentInput = z.infer<typeof RecordPaymentSchema>;
  * schema accepts any non-empty string so legacy values (review, cleaning, …)
  * remain valid and editable.
  */
+export const FollowUpConfirmationStatus = {
+  TENTATIVE: "tentative",
+  CONFIRMED: "confirmed",
+} as const;
+export type FollowUpConfirmationStatus =
+  (typeof FollowUpConfirmationStatus)[keyof typeof FollowUpConfirmationStatus];
+
 export const CreateFollowUpSchema = z.object({
   patient_id: z.string().uuid("Patient is required"),
   follow_up_type: z.string().min(1, "Follow-up type is required").max(100),
@@ -447,6 +501,7 @@ export const CreateFollowUpSchema = z.object({
   due_time: z.string().regex(/^\d{2}:\d{2}$/, "Valid time is required (HH:MM)").optional().or(z.literal("")).transform(v => v || undefined),
   appointment_id: z.string().uuid().optional().or(z.literal("")).transform(v => v || undefined),
   treatment_id: z.string().uuid().optional().or(z.literal("")).transform(v => v || undefined),
+  confirmation_status: z.enum(["tentative", "confirmed"]).optional(),
   notes: z.string().max(1000).optional(),
 });
 export type CreateFollowUpInput = z.infer<typeof CreateFollowUpSchema>;
@@ -456,6 +511,7 @@ export const UpdateFollowUpSchema = z.object({
   due_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   appointment_id: z.string().uuid().optional().or(z.literal("")).transform(v => v || undefined),
   treatment_id: z.string().uuid().optional().or(z.literal("")).transform(v => v || undefined),
+  confirmation_status: z.enum(["tentative", "confirmed"]).optional(),
   notes: z.string().max(1000).optional(),
   status: z.enum(["pending", "completed", "cancelled"]).optional(),
 });
@@ -478,6 +534,7 @@ export const UpdateClinicSettingsSchema = z.object({
   timezone: z.string().min(1),
   registration_number: z.string().max(100).optional().or(z.literal("")),
   allow_receptionist_payments: z.boolean().default(false),
+  show_consultancy_on_dashboard: z.boolean().default(true),
   clinic_hours: z.object({
     monday: ClinicDayHoursSchema,
     tuesday: ClinicDayHoursSchema,

@@ -1,5 +1,8 @@
-import Link from "next/link";
+"use client";
+
+import { useState } from "react";
 import { StatusBadge } from "@/components/shared/StatusBadge";
+import { TreatmentDetailDialog } from "@/components/dentist/TreatmentDetailModal";
 import { formatDate, formatCurrency, TREATMENT_STATUS_LABELS } from "@/lib/utils";
 import type { Treatment, TreatmentForReceptionist, TreatmentStatus } from "@/types";
 
@@ -24,18 +27,17 @@ const STATUS_VARIANT_MAP: Record<TreatmentStatus, "default" | "info" | "success"
  * TreatmentList
  *
  * Shared treatment list component for dentist + receptionist views.
- * - Dentist: shows internal_notes column + edit link.
- * - Receptionist: hides internal_notes.
- *
- * Server Component — receives pre-fetched data via props.
+ * - Dentist: treatment type opens the shared read-only Treatment detail dialog
+ *   inline (no navigation) and shows the internal notes column.
+ * - Receptionist: read-only, no modal trigger, hides internal_notes.
  */
 export function TreatmentList({
   treatments,
   role,
-  baseHref = "/dentist",
   showPatient = false,
 }: TreatmentListProps) {
   const isDentist = role === "dentist";
+  const [selectedId, setSelectedId] = useState<string | null>(null);
 
   if (treatments.length === 0) {
     return (
@@ -58,12 +60,13 @@ export function TreatmentList({
               <div className="min-w-0 flex-1">
                 {/* Treatment type as heading */}
                 {isDentist ? (
-                  <Link
-                    href={`${baseHref}/treatments/${treatment.id}`}
-                    className="font-medium text-sm text-blue-600 hover:underline truncate block"
+                  <button
+                    type="button"
+                    onClick={() => setSelectedId(treatment.id)}
+                    className="font-medium text-sm text-blue-600 hover:underline truncate block text-left"
                   >
                     {treatment.treatment_type}
-                  </Link>
+                  </button>
                 ) : (
                   <p className="font-medium text-sm text-gray-900 truncate">
                     {treatment.treatment_type}
@@ -105,6 +108,14 @@ export function TreatmentList({
           </div>
         );
       })}
+
+      {isDentist && (
+        <TreatmentDetailDialog
+          treatmentId={selectedId}
+          open={selectedId !== null}
+          onClose={() => setSelectedId(null)}
+        />
+      )}
     </div>
   );
 }

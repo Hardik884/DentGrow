@@ -335,6 +335,11 @@ export const FOLLOW_UP_STATUS_LABELS: Record<FollowUpStatus, string> = {
   cancelled: "Cancelled",
 };
 
+export const FOLLOW_UP_CONFIRMATION_STATUS_LABELS: Record<"tentative" | "confirmed", string> = {
+  tentative: "Tentative",
+  confirmed: "Confirmed",
+};
+
 export const FOLLOW_UP_TYPE_LABELS: Record<string, string> = {
   review:            "Review",
   cleaning:          "Cleaning",
@@ -383,4 +388,71 @@ export function getAppointmentStatusVariant(status: AppointmentStatus): BadgeVar
     default:
       return "default";
   }
+}
+
+
+// =============================================================================
+// Quick-filter date range presets
+// =============================================================================
+
+/**
+ * getDateRangePresets — compute common date ranges from a base "today"
+ * (a "YYYY-MM-DD" string, typically the clinic's local today).
+ *
+ * Returns "YYYY-MM-DD" bounds used by the reusable QuickFilters chips so date
+ * ranges stay consistent with the rest of the app (which filters on date only).
+ */
+export function getDateRangePresets(today: string): {
+  today: string;
+  yesterday: string;
+  weekStart: string;
+  weekEnd: string;
+  monthStart: string;
+  monthEnd: string;
+  lastMonthStart: string;
+  lastMonthEnd: string;
+  yearStart: string;
+  yearEnd: string;
+} {
+  // Parse at noon to avoid any DST/offset edge cases.
+  const base = new Date(`${today}T12:00:00`);
+  const iso = (d: Date) =>
+    [
+      d.getFullYear(),
+      String(d.getMonth() + 1).padStart(2, "0"),
+      String(d.getDate()).padStart(2, "0"),
+    ].join("-");
+
+  const yesterday = new Date(base);
+  yesterday.setDate(base.getDate() - 1);
+
+  // Week: Monday → Sunday.
+  const dow = base.getDay(); // 0 = Sun … 6 = Sat
+  const mondayOffset = dow === 0 ? -6 : 1 - dow;
+  const weekStart = new Date(base);
+  weekStart.setDate(base.getDate() + mondayOffset);
+  const weekEnd = new Date(weekStart);
+  weekEnd.setDate(weekStart.getDate() + 6);
+
+  const year = base.getFullYear();
+  const month = base.getMonth();
+  const monthStart = new Date(year, month, 1);
+  const monthEnd = new Date(year, month + 1, 0);
+  const lastMonthStart = new Date(year, month - 1, 1);
+  const lastMonthEnd = new Date(year, month, 0);
+  const yearStart = new Date(year, 0, 1);
+  const yearEnd = new Date(year, 11, 31);
+
+  return {
+    today,
+    yesterday: iso(yesterday),
+    weekStart: iso(weekStart),
+    weekEnd: iso(weekEnd),
+    monthStart: iso(monthStart),
+    monthEnd: iso(monthEnd),
+    lastMonthStart: iso(lastMonthStart),
+    lastMonthEnd: iso(lastMonthEnd),
+    yearStart: iso(yearStart),
+    yearEnd: iso(yearEnd),
+  };
 }

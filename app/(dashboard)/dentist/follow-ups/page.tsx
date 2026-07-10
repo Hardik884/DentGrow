@@ -3,15 +3,23 @@ import { Suspense } from "react";
 import { PageHeader } from "@/components/layouts/PageHeader";
 import { FollowUpFilters } from "@/components/follow-ups/FollowUpFilters";
 import { FollowUpsView } from "@/components/follow-ups/FollowUpsView";
+import { FollowUpFormDialog } from "@/components/follow-ups/FollowUpFormDialog";
+import { QuickFilters } from "@/components/shared/QuickFilters";
+import { followUpsQuickFilters } from "@/lib/quick-filters";
+import { getClinicTimezone } from "@/lib/clinic/config";
+import { getTodayInTimezone } from "@/lib/utils";
+import { Plus } from "lucide-react";
 
 export const metadata: Metadata = {
-  title: "Follow-Ups",
+  title: "Follow-up Appointments",
 };
 
 interface Props {
   searchParams: Promise<{
     search?: string;
     status?: string;
+    confirmation?: string;
+    treatmentType?: string;
     dateFrom?: string;
     dateTo?: string;
     page?: string;
@@ -31,18 +39,34 @@ export default async function DentistFollowUpsPage({ searchParams }: Props) {
   const page = Math.max(1, parseInt(params.page ?? "1", 10) || 1);
   const limit = 20;
 
+  const clinicTimezone = await getClinicTimezone();
+  const today = getTodayInTimezone(clinicTimezone);
+  const quickFilters = followUpsQuickFilters(today);
+
   return (
     <div className="p-6 space-y-6">
-      <PageHeader
-        title="Follow-Ups"
-        action={{ label: "+ New Follow-Up", href: "/dentist/follow-ups/new" }}
-      />
+      <PageHeader title="Follow-up Appointments">
+        <FollowUpFormDialog
+          hideRelatedFields={false}
+          title="New Follow-up Appointment"
+          triggerVariant="default"
+        >
+          <Plus className="h-3.5 w-3.5" aria-hidden />
+          New Follow-up Appointment
+        </FollowUpFormDialog>
+      </PageHeader>
+
+      {/* Quick filters */}
+      <Suspense>
+        <QuickFilters trackKeys={quickFilters.trackKeys} chips={quickFilters.chips} />
+      </Suspense>
 
       {/* Filters (client component, drives URL params) */}
       <Suspense>
         <FollowUpFilters
           initialSearch={params.search ?? ""}
           initialStatus={params.status ?? ""}
+          initialTreatmentType={params.treatmentType ?? ""}
           initialDateFrom={params.dateFrom ?? ""}
           initialDateTo={params.dateTo ?? ""}
         />
@@ -54,6 +78,8 @@ export default async function DentistFollowUpsPage({ searchParams }: Props) {
         limit={limit}
         search={params.search}
         status={params.status}
+        confirmation={params.confirmation}
+        treatmentType={params.treatmentType}
         dateFrom={params.dateFrom}
         dateTo={params.dateTo}
       />

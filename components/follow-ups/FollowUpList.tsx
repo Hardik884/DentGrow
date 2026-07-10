@@ -1,14 +1,17 @@
 import Link from "next/link";
 import { getFollowUpsForPatient, getAllFollowUps } from "@/actions/follow-ups";
 import { OverdueFollowUpBadge } from "./OverdueFollowUpBadge";
+import { ConfirmationStatusBadge } from "./ConfirmationStatusBadge";
+import { FollowUpFormDialog } from "./FollowUpFormDialog";
 import { StatusBadge } from "@/components/shared/StatusBadge";
+import { ACTION_BUTTON } from "@/lib/ui/action-styles";
 import {
   formatDate,
   formatDateTime,
   FOLLOW_UP_STATUS_LABELS,
   FOLLOW_UP_TYPE_LABELS,
 } from "@/lib/utils";
-import { Calendar, Stethoscope } from "lucide-react";
+import { Calendar, Stethoscope, Bell } from "lucide-react";
 import type { FollowUpWithRelations } from "@/types";
 
 interface FollowUpListProps {
@@ -68,20 +71,24 @@ export async function FollowUpList({
     <div className="bg-white border border-border rounded-xl overflow-hidden">
       {/* Header */}
       <div className="px-4 py-3 border-b border-border flex items-center justify-between">
-        <h2 className="text-sm font-semibold text-text-primary">Follow-Ups</h2>
+        <h2 className="text-sm font-semibold text-text-primary">Follow-up Appointments</h2>
         {patientId && (
-          <Link
-            href={`${baseHref}/follow-ups/new?patient=${patientId}`}
-            className="text-xs font-medium text-blue-600 hover:underline underline-offset-4"
+          <FollowUpFormDialog
+            patientId={patientId}
+            role={baseHref.includes("receptionist") ? "receptionist" : "dentist"}
+            hideRelatedFields={false}
+            title="New Follow-up Appointment"
+            triggerClassName={ACTION_BUTTON}
           >
-            + New Follow-Up
-          </Link>
+            <Bell className="h-3 w-3" aria-hidden />
+            New Follow-up Appointment
+          </FollowUpFormDialog>
         )}
       </div>
 
       {sorted.length === 0 ? (
         <p className="px-4 py-8 text-sm text-text-secondary text-center">
-          No follow-ups found.
+          No follow-up appointments found.
         </p>
       ) : (
         <ul className="divide-y divide-border">
@@ -201,6 +208,7 @@ function FollowUpRow({
 
           {/* Right: badges */}
           <div className="flex items-center gap-2 shrink-0 mt-0.5">
+            <ConfirmationStatusBadge status={followUp.confirmation_status} />
             {isOverdue && <OverdueFollowUpBadge />}
             <StatusBadge
               label={FOLLOW_UP_STATUS_LABELS[followUp.status]}

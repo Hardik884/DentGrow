@@ -1,13 +1,19 @@
-import Link from "next/link";
-import { getPatientPayments, getOutstandingBalance } from "@/actions/payments";
+import {
+  getPatientPayments,
+  getOutstandingBalance,
+  getPaymentRecorderNames,
+} from "@/actions/payments";
 import { getTreatmentsForPatient } from "@/actions/treatments";
-import { PaymentList } from "@/components/dentist/PaymentList";
-import { formatCurrency } from "@/lib/utils";
+import { PaymentFormDialog } from "@/components/dentist/PaymentFormDialog";
+import { ACTION_BUTTON } from "@/lib/ui/action-styles";
+import { formatCurrency, formatDate, PAYMENT_METHOD_LABELS } from "@/lib/utils";
 import { sumBillableTreatmentCost } from "@/lib/billing/balance";
-import type { Payment } from "@/types";
+import { Plus } from "lucide-react";
+import type { Payment, PaymentMethod } from "@/types";
 
 interface PatientPaymentsTabProps {
   patientId: string;
+  patientName?: string;
   role: "dentist" | "receptionist";
   baseHref: string;
 }
@@ -15,12 +21,17 @@ interface PatientPaymentsTabProps {
 /**
  * PatientPaymentsTab
  *
- * Server Component — payments panel on patient profile.
- * Shows outstanding balance, total cost, total paid, and payment timeline.
- * Both dentist and receptionist can see payment info.
+ * Server Component — payments panel on the patient profile / visit.
+ * Shows total cost, total paid and remaining balance, followed by the
+ * patient's complete payment history (newest first) with the remaining
+ * balance after each payment and who recorded it.
+ *
+ * Reuses the existing payment/treatment/balance server actions — no
+ * duplicated queries or balance calculations.
  */
 export async function PatientPaymentsTab({
   patientId,
+  patientName,
   role,
   baseHref,
 }: PatientPaymentsTabProps) {
@@ -34,41 +45,51 @@ export async function PatientPaymentsTab({
   const balance = balanceResult.data ?? 0;
   const treatments = treatmentsResult.data ?? [];
 
-  // "Total Cost" reflects billable treatments only (completed / in_progress),
-  // so the three summary cards stay internally consistent:
+  // Total cost reflects billable treatments only (completed / in_progress),
+  // keeping the summary cards internally consistent:
   //   Total Cost - Total Paid == Remaining (outstanding balance).
   const totalCost = sumBillableTreatmentCost(
     treatments as { cost: number | null; status?: string | null }[]
   );
-  const totalPaid = payments.reduce(
-    (sum, p) => sum + Number(p.amount ?? 0),
-    0
+  const totalPaid = payments.reduce((sum, p) => sum + Number(p.amount ?? 0), 0);
+
+  // Resolve "Recorded By" names for the payment recorders.
+  const recorderIds = Array.from(
+    new Set(payments.map((p) => p.created_by).filter((v): v is string => !!v))
   );
+  const recordersResult = recorderIds.length
+    ? await getPaymentRecorderNames(recorderIds)
+    : { data: {} as Record<string, string> };
+  const recorders = recordersResult.data ?? {};
+
+  // Compute the remaining balance after each payment. Payments are returned
+  // newest-first; walk oldest → newest to accumulate, then display newest-first.
+  const chronological = [...payments].reverse();
+  const remainingAfter = new Map<string, number>();
+  let cumulativePaid = 0;
+  for (const p of chronological) {
+    cumulativePaid += Number(p.amount ?? 0);
+    remainingAfter.set(p.id, Math.max(0, totalCost - cumulativePaid));
+  }
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h3 className="font-semibold text-gray-900">Payments</h3>
-        <Link
-          href={`${baseHref}/payments/new?patient=${patientId}`}
-          className="px-3 py-1.5 text-sm font-medium bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+        <PaymentFormDialog
+          patientId={patientId}
+          patientName={patientName}
+          triggerClassName={ACTION_BUTTON}
         >
-          + Record Payment
-        </Link>
+          <Plus className="h-3 w-3" aria-hidden />
+          Record Payment
+        </PaymentFormDialog>
       </div>
 
       {/* Summary cards */}
       <div className="grid grid-cols-3 gap-3">
-        <SummaryCard
-          label="Total Cost"
-          value={formatCurrency(totalCost)}
-          valueClass="text-gray-900"
-        />
-        <SummaryCard
-          label="Total Paid"
-          value={formatCurrency(totalPaid)}
-          valueClass="text-green-600"
-        />
+        <SummaryCard label="Total Cost" value={formatCurrency(totalCost)} valueClass="text-gray-900" />
+        <SummaryCard label="Total Paid" value={formatCurrency(totalPaid)} valueClass="text-green-600" />
         <SummaryCard
           label="Remaining"
           value={formatCurrency(balance)}
@@ -82,7 +103,62 @@ export async function PatientPaymentsTab({
         </p>
       )}
 
-      <PaymentList payments={payments} role={role} baseHref={baseHref} />
+      {/* Payment history */}
+      {payments.length === 0 ? (
+        <div className="border rounded-lg p-6 text-center text-sm text-gray-500">
+          No payment records found.
+        </div>
+      ) : (
+        <div className="bg-white border border-[#E4E4E7] rounded-xl overflow-hidden">
+          <div className="px-5 py-3 border-b border-[#E4E4E7]">
+            <h4 className="text-sm font-semibold text-[#09090B]">Payment History</h4>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-[#FAFAFA] border-b border-[#E4E4E7]">
+                <tr className="text-left text-xs font-medium text-[#71717A] uppercase tracking-wider">
+                  <th className="px-5 py-3">Date</th>
+                  <th className="px-5 py-3">Amount</th>
+                  <th className="px-5 py-3">Method</th>
+                  <th className="px-5 py-3">Type</th>
+                  <th className="px-5 py-3">Notes</th>
+                  <th className="px-5 py-3">Remaining</th>
+                  <th className="px-5 py-3">Recorded By</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[#F4F4F5]">
+                {payments.map((p) => (
+                  <tr key={p.id} className="hover:bg-[#FAFAFA] transition-colors">
+                    <td className="px-5 py-3 whitespace-nowrap text-[#09090B]">
+                      {formatDate(p.payment_date)}
+                    </td>
+                    <td className="px-5 py-3 whitespace-nowrap font-semibold text-[#16A34A]">
+                      {formatCurrency(Number(p.amount))}
+                    </td>
+                    <td className="px-5 py-3 whitespace-nowrap">
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-[#F4F4F5] text-[#52525B]">
+                        {PAYMENT_METHOD_LABELS[p.method as PaymentMethod] ?? p.method}
+                      </span>
+                    </td>
+                    <td className="px-5 py-3 whitespace-nowrap text-[#52525B]">
+                      {p.payment_type === "opd" ? "OPD" : "Treatment"}
+                    </td>
+                    <td className="px-5 py-3 text-[#71717A]">
+                      {p.notes ? <span className="line-clamp-2">{p.notes}</span> : <span className="text-[#A1A1AA]">—</span>}
+                    </td>
+                    <td className="px-5 py-3 whitespace-nowrap text-[#09090B]">
+                      {formatCurrency(remainingAfter.get(p.id) ?? 0)}
+                    </td>
+                    <td className="px-5 py-3 whitespace-nowrap text-[#52525B]">
+                      {(p.created_by && recorders[p.created_by]) || "—"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

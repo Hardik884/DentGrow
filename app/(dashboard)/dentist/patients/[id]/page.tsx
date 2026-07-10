@@ -106,6 +106,7 @@ export default async function DentistPatientProfilePage({ params, searchParams }
       {tab === "payments" && (
         <PatientPaymentsTab
           patientId={id}
+          patientName={patientName}
           role="dentist"
           baseHref="/dentist"
         />

@@ -5,7 +5,7 @@ import { FollowUpForm } from "@/components/follow-ups/FollowUpForm";
 import { getFollowUp } from "@/actions/follow-ups";
 
 export const metadata: Metadata = {
-  title: "Follow-Up",
+  title: "Follow-up Appointment",
 };
 
 interface Props {
@@ -36,7 +36,7 @@ export default async function DentistFollowUpDetailPage({ params }: Props) {
   return (
     <div className="p-6 space-y-6">
       <PageHeader
-        title="Follow-Up"
+        title="Follow-up Appointment"
         backHref={
           followUp.patient
             ? `/dentist/patients/${followUp.patient_id}?tab=follow-ups`

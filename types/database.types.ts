@@ -150,6 +150,10 @@ export type Database = {
           source: "walk_in" | "phone_call" | "website" | "referral" | "other";
           status: "scheduled" | "checked_in" | "in_progress" | "completed" | "cancelled" | "no_show";
           notes: string | null;
+          chief_complaints: string | null;
+          medical_history: Json | null;
+          oral_findings: string | null;
+          provisional_diagnosis: string | null;
           deleted_at: string | null;
           created_at: string;
           updated_at: string;
@@ -165,6 +169,10 @@ export type Database = {
           source: "walk_in" | "phone_call" | "website" | "referral" | "other";
           status?: "scheduled" | "checked_in" | "in_progress" | "completed" | "cancelled" | "no_show";
           notes?: string | null;
+          chief_complaints?: string | null;
+          medical_history?: Json | null;
+          oral_findings?: string | null;
+          provisional_diagnosis?: string | null;
           deleted_at?: string | null;
           created_at?: string;
           updated_at?: string;
@@ -180,6 +188,10 @@ export type Database = {
           source?: "walk_in" | "phone_call" | "website" | "referral" | "other";
           status?: "scheduled" | "checked_in" | "in_progress" | "completed" | "cancelled" | "no_show";
           notes?: string | null;
+          chief_complaints?: string | null;
+          medical_history?: Json | null;
+          oral_findings?: string | null;
+          provisional_diagnosis?: string | null;
           deleted_at?: string | null;
           created_at?: string;
           updated_at?: string;
@@ -324,7 +336,9 @@ export type Database = {
           id: string;
           clinic_id: string;
           patient_id: string;
-          treatment_id: string;
+          treatment_id: string | null;
+          appointment_id: string | null;
+          document_type: string | null;
           file_name: string;
           file_path: string;
           file_type: string;
@@ -336,7 +350,9 @@ export type Database = {
           id?: string;
           clinic_id: string;
           patient_id: string;
-          treatment_id: string;
+          treatment_id?: string | null;
+          appointment_id?: string | null;
+          document_type?: string | null;
           file_name: string;
           file_path: string;
           file_type: string;
@@ -348,7 +364,9 @@ export type Database = {
           id?: string;
           clinic_id?: string;
           patient_id?: string;
-          treatment_id?: string;
+          treatment_id?: string | null;
+          appointment_id?: string | null;
+          document_type?: string | null;
           file_name?: string;
           file_path?: string;
           file_type?: string;
@@ -365,6 +383,7 @@ export type Database = {
           appointment_id: string | null;
           amount: number;
           method: "cash" | "upi" | "card" | "bank_transfer";
+          payment_type: "treatment" | "opd";
           payment_date: string;
           notes: string | null;
           deleted_at: string | null;
@@ -378,6 +397,7 @@ export type Database = {
           appointment_id?: string | null;
           amount: number;
           method: "cash" | "upi" | "card" | "bank_transfer";
+          payment_type?: "treatment" | "opd";
           payment_date?: string;
           notes?: string | null;
           deleted_at?: string | null;
@@ -391,6 +411,7 @@ export type Database = {
           appointment_id?: string | null;
           amount?: number;
           method?: "cash" | "upi" | "card" | "bank_transfer";
+          payment_type?: "treatment" | "opd";
           payment_date?: string;
           notes?: string | null;
           deleted_at?: string | null;
@@ -408,6 +429,7 @@ export type Database = {
           follow_up_type: string;
           due_date: string;
           status: "pending" | "completed" | "cancelled";
+          confirmation_status: "tentative" | "confirmed";
           notes: string | null;
           deleted_at: string | null;
           created_at: string;
@@ -423,6 +445,7 @@ export type Database = {
           follow_up_type?: string;
           due_date: string;
           status?: "pending" | "completed" | "cancelled";
+          confirmation_status?: "tentative" | "confirmed";
           notes?: string | null;
           deleted_at?: string | null;
           created_at?: string;
@@ -438,6 +461,7 @@ export type Database = {
           follow_up_type?: string;
           due_date?: string;
           status?: "pending" | "completed" | "cancelled";
+          confirmation_status?: "tentative" | "confirmed";
           notes?: string | null;
           deleted_at?: string | null;
           created_at?: string;
@@ -478,6 +502,7 @@ export type Database = {
           timezone: string;
           registration_number: string | null;
           allow_receptionist_payments: boolean;
+          show_consultancy_on_dashboard: boolean;
           created_at: string;
           updated_at: string;
         };
@@ -492,6 +517,7 @@ export type Database = {
           timezone?: string;
           registration_number?: string | null;
           allow_receptionist_payments?: boolean;
+          show_consultancy_on_dashboard?: boolean;
           created_at?: string;
           updated_at?: string;
         };
@@ -506,6 +532,7 @@ export type Database = {
           timezone?: string;
           registration_number?: string | null;
           allow_receptionist_payments?: boolean;
+          show_consultancy_on_dashboard?: boolean;
           created_at?: string;
           updated_at?: string;
         };

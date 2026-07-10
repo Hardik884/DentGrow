@@ -1,12 +1,11 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getPatient } from "@/actions/patients";
 import { PatientAvatar } from "@/components/shared/PatientAvatar";
 import { DeletePatientButton } from "@/components/dentist/DeletePatientButton";
+import { PatientEditDialog } from "@/components/dentist/PatientEditDialog";
 import { formatDate, formatCurrency, calculateAge } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { Phone, MapPin, AlertTriangle, Pencil, CalendarDays, Clock } from "lucide-react";
+import { Phone, MapPin, AlertTriangle, CalendarDays, Clock } from "lucide-react";
 
 interface PatientProfileHeaderProps {
   patientId: string;
@@ -58,12 +57,7 @@ export async function PatientProfileHeader({ patientId, role, baseHref }: Patien
 
         {/* Actions */}
         <div className="flex items-center gap-2 shrink-0">
-          <Button asChild variant="outline" size="sm">
-            <Link href={`${baseHref}/patients/${patientId}/edit`}>
-              <Pencil className="h-3.5 w-3.5" aria-hidden />
-              Edit
-            </Link>
-          </Button>
+          <PatientEditDialog patient={patient} />
           {isDentist && (
             <DeletePatientButton patientId={patientId} patientName={patient.name} />
           )}

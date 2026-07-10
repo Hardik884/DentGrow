@@ -4,6 +4,7 @@ import { TodayAppointmentList } from "@/components/receptionist/TodayAppointment
 import { QueueBoard } from "@/components/queue/QueueBoard";
 import { ClinicDentistName } from "@/components/shared/ClinicDentistName";
 import { NewInquiryButton } from "@/components/dentist/NewInquiryButton";
+import { AppointmentFormDialog } from "@/components/shared/AppointmentFormDialog";
 import { getTodayQueue, getQueueMetrics } from "@/actions/queue";
 import { createServerClient } from "@/lib/supabase/server";
 import { Plus } from "lucide-react";
@@ -44,9 +45,12 @@ export default async function ReceptionistDashboardPage() {
       <PageHeader
         title="Today's Dashboard"
         description="Front-desk operational workspace"
-        action={{ label: "Book New Appointment", href: "/receptionist/appointments/new", icon: <Plus className="h-3.5 w-3.5" /> }}
       >
         <NewInquiryButton />
+        <AppointmentFormDialog title="Book New Appointment" triggerVariant="default">
+          <Plus className="h-3.5 w-3.5" aria-hidden />
+          Book New Appointment
+        </AppointmentFormDialog>
       </PageHeader>
 
       {/* Clinic dentist name (data-driven from clinics.dentist_name) */}

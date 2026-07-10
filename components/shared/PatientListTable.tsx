@@ -5,7 +5,8 @@ import { EmptyState } from "@/components/ui/empty-state";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { Users } from "lucide-react";
+import { ACTION_BUTTON } from "@/lib/ui/action-styles";
+import { Users, Eye } from "lucide-react";
 import type { Patient } from "@/types";
 
 interface PatientListTableProps {
@@ -114,9 +115,10 @@ export function PatientListTable({
                   <TableCell className="text-right">
                     <Link
                       href={`${baseHref}/patients/${patient.id}`}
-                      className="text-xs font-medium text-[#71717A] hover:text-[#09090B] transition-colors"
+                      className={`${ACTION_BUTTON} justify-end`}
                     >
-                      View →
+                      <Eye className="h-3 w-3" aria-hidden />
+                      View
                     </Link>
                   </TableCell>
                 </TableRow>

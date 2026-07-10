@@ -2,14 +2,15 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { PageHeader } from "@/components/layouts/PageHeader";
-import { AppointmentStatusControl } from "@/components/dentist/AppointmentStatusControl";
+import { AppointmentCompleteControl } from "@/components/dentist/AppointmentCompleteControl";
 import { AppointmentHistoryTimeline } from "@/components/shared/AppointmentHistoryTimeline";
 import { AppointmentStatusBadge } from "@/components/shared/AppointmentStatusBadge";
 import { AppointmentTreatmentsSection } from "@/components/dentist/AppointmentTreatmentsSection";
 import { AppointmentPaymentsSection } from "@/components/dentist/AppointmentPaymentsSection";
 import { AppointmentFollowUpsSection } from "@/components/dentist/AppointmentFollowUpsSection";
-import { AppointmentPatientHistorySection } from "@/components/dentist/AppointmentPatientHistorySection";
-import { AppointmentNotesEditor } from "@/components/dentist/AppointmentNotesEditor";
+import { ClinicalTextCard } from "@/components/shared/ClinicalTextCard";
+import { MedicalHistoryCard } from "@/components/shared/MedicalHistoryCard";
+import { AppointmentRadiographsSection } from "@/components/shared/AppointmentRadiographsSection";
 import { getAppointment } from "@/actions/appointments";
 import { getOutstandingBalance } from "@/actions/payments";
 import { createServerClient } from "@/lib/supabase/server";
@@ -17,7 +18,7 @@ import { formatDateTimeInTimezone, formatCurrency, APPOINTMENT_SOURCE_LABELS, ca
 import type { AppointmentStatus } from "@/types";
 
 export const metadata: Metadata = {
-  title: "Appointment",
+  title: "Patient Visit",
 };
 
 interface Props {
@@ -59,7 +60,6 @@ export default async function DentistAppointmentDetailPage({ params }: Props) {
   const { data: { user } } = await supabase.auth.getUser();
 
   let clinicTimezone = "Asia/Kolkata";
-  let clinicToday: string | undefined;
   if (user) {
     const { data: profile } = await db
       .from("profiles")
@@ -74,18 +74,12 @@ export default async function DentistAppointmentDetailPage({ params }: Props) {
         .eq("clinic_id", clinicId)
         .maybeSingle();
       clinicTimezone = (settings as { timezone?: string } | null)?.timezone ?? "Asia/Kolkata";
-      clinicToday = new Intl.DateTimeFormat("en-CA", {
-        timeZone: clinicTimezone,
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit",
-      }).format(new Date());
     }
   }
 
   return (
     <div className="p-6 space-y-6 max-w-3xl">
-      <PageHeader title="Appointment" backHref="/dentist/appointments" />
+      <PageHeader title="Patient Visit" backHref="/dentist/appointments" />
 
       {/* ── Summary card ─────────────────────────────────────── */}
       <div className="bg-white border rounded-lg p-6 space-y-4">
@@ -121,45 +115,71 @@ export default async function DentistAppointmentDetailPage({ params }: Props) {
             highlight={remainingBalance > 0}
           />
         </div>
-
-        <AppointmentNotesEditor
-          appointmentId={appt.id}
-          initialNotes={appt.notes}
-        />
       </div>
 
-      {/* ── Status controls ──────────────────────────────────── */}
-      <AppointmentStatusControl
+      {/* ── Chief Complaints ─────────────────────────────────── */}
+      <ClinicalTextCard
         appointmentId={appt.id}
-        currentStatus={appt.status as AppointmentStatus}
-        currentScheduledAt={appt.scheduled_at}
-        clinicToday={clinicToday}
+        field="chief_complaints"
+        title="Chief Complaints"
+        placeholder="Enter chief complaints..."
+        initialValue={appt.chief_complaints}
+        canEdit
+        rows={4}
       />
 
-      {/* ── Treatments for this appointment ─────────────────── */}
+      {/* ── Medical History ──────────────────────────────────── */}
+      <MedicalHistoryCard
+        appointmentId={appt.id}
+        initial={appt.medical_history}
+        canEdit
+      />
+
+      {/* ── Oral & Radiographic Findings (dentist only) ──────── */}
+      <ClinicalTextCard
+        appointmentId={appt.id}
+        field="oral_findings"
+        title="Oral & Radiographic Findings"
+        placeholder="Record intra-oral examination and radiographic findings…"
+        initialValue={appt.oral_findings}
+        canEdit
+        rows={4}
+      />
+
+      {/* ── Radiographic Documents (IOPA / OPG / CBCT) ───────── */}
+      <AppointmentRadiographsSection appointmentId={appt.id} patientId={appt.patient_id} />
+
+      {/* ── Provisional Diagnosis (dentist only) ─────────────── */}
+      <ClinicalTextCard
+        appointmentId={appt.id}
+        field="provisional_diagnosis"
+        title="Provisional Diagnosis"
+        placeholder="Enter provisional diagnosis..."
+        initialValue={appt.provisional_diagnosis}
+        canEdit
+        rows={3}
+      />
+
+      {/* ── Treatments: Current Treatment + Past Treatment History ── */}
       <AppointmentTreatmentsSection
         appointmentId={appt.id}
         patientId={appt.patient_id}
       />
 
-      {/* ── Follow-Ups for this appointment ─────────────────── */}
+      {/* ── Payments for this appointment (read-only) ───────── */}
+      <AppointmentPaymentsSection appointmentId={appt.id} />
+
+      {/* ── Follow-up appointments linked to this visit ─────── */}
       <AppointmentFollowUpsSection
         appointmentId={appt.id}
         patientId={appt.patient_id}
         patientName={appt.patient.name}
       />
 
-      {/* ── Payments for this appointment ───────────────────── */}
-      <AppointmentPaymentsSection
+      {/* ── Workflow action: Mark as Complete (only while active) ── */}
+      <AppointmentCompleteControl
         appointmentId={appt.id}
-        patientId={appt.patient_id}
-        patientName={appt.patient.name}
-      />
-
-      {/* ── Past treatment history for this patient ─────────── */}
-      <AppointmentPatientHistorySection
-        patientId={appt.patient_id}
-        currentAppointmentId={appt.id}
+        currentStatus={appt.status as AppointmentStatus}
       />
 
       {/* ── Audit history timeline ───────────────────────────── */}

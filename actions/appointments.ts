@@ -8,6 +8,7 @@ import {
   CreateAppointmentSchema,
   RescheduleAppointmentSchema,
   UpdateAppointmentStatusSchema,
+  UpdateAppointmentClinicalSchema,
   VALID_APPOINTMENT_TRANSITIONS,
   type ActionResult,
   type Appointment,
@@ -15,6 +16,7 @@ import {
   type AppointmentWithHistory,
   type AppointmentStatus,
   type AppointmentHistory,
+  type UpdateAppointmentClinicalInput,
 } from "@/types";
 import {
   getAvailableSlots as computeSlots,
@@ -1014,6 +1016,97 @@ export async function updateAppointmentNotes(
 }
 
 // =============================================================================
+// updateAppointmentClinical — structured consultation fields
+//
+// Persists the Patient Visit consultation cards. Field-level permissions:
+//   - chief_complaints, medical_history : receptionist + dentist
+//   - oral_findings, provisional_diagnosis : dentist only
+// Disallowed fields for the caller's role are silently ignored so a
+// receptionist saving the medical-history card can never touch clinical
+// findings, and vice-versa.
+// =============================================================================
+
+export async function updateAppointmentClinical(
+  appointmentId: string,
+  input: UpdateAppointmentClinicalInput
+): Promise<ActionResult<Appointment>> {
+  try {
+    if (!appointmentId) return { data: null, error: "Appointment ID is required" };
+
+    const parsed = UpdateAppointmentClinicalSchema.safeParse(input);
+    if (!parsed.success) {
+      return { data: null, error: parsed.error.errors[0]?.message ?? "Invalid input" };
+    }
+
+    const { db, profile } = await resolveSession();
+    if (!profile) return { data: null, error: "Unauthorized" };
+    if (profile.role !== "dentist" && profile.role !== "receptionist") {
+      return { data: null, error: "Forbidden" };
+    }
+
+    // Verify the appointment belongs to the caller's clinic.
+    const { data: existing } = await db
+      .from("appointments")
+      .select("id")
+      .eq("id", appointmentId)
+      .eq("clinic_id", profile.clinic_id)
+      .is("deleted_at", null)
+      .single();
+
+    if (!existing) return { data: null, error: "Appointment not found." };
+
+    // ── Role-based field allow-list ─────────────────────────────────────────
+    const payload: Record<string, unknown> = {};
+
+    const setText = (key: keyof UpdateAppointmentClinicalInput) => {
+      if (!(key in parsed.data)) return;
+      const raw = parsed.data[key];
+      if (raw === undefined) return;
+      const trimmed = typeof raw === "string" ? raw.trim() : raw;
+      payload[key] = trimmed && String(trimmed).length > 0 ? trimmed : null;
+    };
+
+    // Receptionist + dentist fields
+    setText("chief_complaints");
+    if ("medical_history" in parsed.data && parsed.data.medical_history !== undefined) {
+      payload.medical_history = parsed.data.medical_history;
+    }
+
+    // Dentist-only fields
+    if (profile.role === "dentist") {
+      setText("oral_findings");
+      setText("provisional_diagnosis");
+    }
+
+    if (Object.keys(payload).length === 0) {
+      return { data: null, error: "Nothing to update." };
+    }
+
+    payload.updated_at = new Date().toISOString();
+
+    const { data: updated, error: updateErr } = await db
+      .from("appointments")
+      .update(payload)
+      .eq("id", appointmentId)
+      .eq("clinic_id", profile.clinic_id)
+      .select()
+      .single();
+
+    if (updateErr || !updated) {
+      console.error("[updateAppointmentClinical]", updateErr);
+      return { data: null, error: "Failed to save." };
+    }
+
+    revalidatePath(`/${profile.role}/appointments/${appointmentId}`);
+
+    return { data: updated as Appointment, error: null };
+  } catch (err) {
+    console.error("[updateAppointmentClinical] unexpected:", err);
+    return { data: null, error: "Unexpected error" };
+  }
+}
+
+// =============================================================================
 // getAppointmentsToday — dashboard KPI + list query, scoped to today
 // =============================================================================
 
@@ -1226,9 +1319,35 @@ export async function getAppointments(filters?: {
       return { data: null, error: "Failed to fetch appointments." };
     }
 
+    const rows = (data ?? []) as AppointmentWithPatient[];
+
+    // Resolve the treating doctor (dentist) display name for each row. The
+    // appointment stores dentist_id (FK → profiles); we batch-fetch the names
+    // in a single query and attach them so the table can show the doctor
+    // without an ambiguous PostgREST embed (appointments has two FKs to
+    // profiles: dentist_id + created_by).
+    const dentistIds = Array.from(
+      new Set(rows.map((r) => r.dentist_id).filter(Boolean))
+    );
+    if (dentistIds.length > 0) {
+      const { data: dentists } = await db
+        .from("profiles")
+        .select("id, full_name")
+        .in("id", dentistIds);
+      const nameById = new Map(
+        ((dentists ?? []) as { id: string; full_name: string | null }[]).map((d) => [
+          d.id,
+          d.full_name,
+        ])
+      );
+      for (const row of rows) {
+        row.dentistName = row.dentist_id ? nameById.get(row.dentist_id) ?? null : null;
+      }
+    }
+
     return {
       data: {
-        appointments: (data ?? []) as AppointmentWithPatient[],
+        appointments: rows,
         total: count ?? 0,
       },
       error: null,

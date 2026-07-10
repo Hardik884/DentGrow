@@ -1,8 +1,12 @@
 import { getAppointmentsToday } from "@/actions/appointments";
 import { getClinicSettings } from "@/actions/clinic-settings";
-import { AppointmentCard } from "@/components/shared/AppointmentCard";
+import { AppointmentQuickActions } from "@/components/dentist/AppointmentQuickActions";
+import { AppointmentStatusBadge } from "@/components/shared/AppointmentStatusBadge";
+import { PatientAvatar } from "@/components/shared/PatientAvatar";
 import { EmptyState } from "@/components/ui/empty-state";
-import { CalendarDays } from "lucide-react";
+import { formatDateTimeInTimezone } from "@/lib/utils";
+import { CalendarDays, Clock } from "lucide-react";
+import type { AppointmentStatus } from "@/types";
 
 interface UpcomingAppointmentsProps {
   /**
@@ -33,6 +37,13 @@ export async function UpcomingAppointments({ timezone: propTimezone }: UpcomingA
     (a) => a.status === "scheduled" || a.status === "checked_in"
   );
 
+  const clinicToday = new Intl.DateTimeFormat("en-CA", {
+    timeZone: clinicTimezone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
+
   return (
     <div className="bg-white border border-[#E4E4E7] rounded-xl overflow-hidden">
       <div className="px-5 py-4 border-b border-[#E4E4E7] flex items-center justify-between">
@@ -53,12 +64,35 @@ export async function UpcomingAppointments({ timezone: propTimezone }: UpcomingA
       ) : (
         <div className="divide-y divide-[#F4F4F5]">
           {appointments.map((appointment) => (
-            <AppointmentCard
-              key={appointment.id}
-              appointment={appointment}
-              baseHref="/dentist"
-              timezone={clinicTimezone}
-            />
+            <div key={appointment.id} className="px-5 py-3.5 space-y-2.5">
+              <div className="flex items-center gap-3">
+                <PatientAvatar name={appointment.patient.name} size="sm" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-[#09090B] truncate">
+                    {appointment.patient.name}
+                  </p>
+                  <div className="flex items-center gap-1.5 mt-0.5">
+                    <Clock className="h-3 w-3 text-[#A1A1AA] shrink-0" aria-hidden />
+                    <p className="text-xs text-[#71717A]">
+                      {formatDateTimeInTimezone(appointment.scheduled_at, clinicTimezone)}
+                      {" · "}
+                      {appointment.duration_minutes} min
+                    </p>
+                  </div>
+                </div>
+                <AppointmentStatusBadge status={appointment.status as AppointmentStatus} />
+              </div>
+
+              <AppointmentQuickActions
+                appointmentId={appointment.id}
+                patientId={appointment.patient_id}
+                patientName={appointment.patient.name}
+                baseHref="/dentist"
+                currentStatus={appointment.status as AppointmentStatus}
+                currentScheduledAt={appointment.scheduled_at}
+                clinicToday={clinicToday}
+              />
+            </div>
           ))}
         </div>
       )}

@@ -1,26 +1,21 @@
 import { getPaymentsForAppointment } from "@/actions/payments";
-import { RecordAppointmentPayment } from "@/components/dentist/RecordAppointmentPayment";
 import { PaymentList } from "@/components/dentist/PaymentList";
 import { formatCurrency } from "@/lib/utils";
 import type { Payment } from "@/types";
 
 interface AppointmentPaymentsSectionProps {
   appointmentId: string;
-  patientId: string;
-  patientName: string;
 }
 
 /**
  * AppointmentPaymentsSection
  *
- * Server Component — payments panel on the appointment detail page.
- * Lists payments recorded against this appointment and lets the dentist
- * record a new payment inline (pre-linked to this appointment + patient).
+ * Server Component — read-only payments panel on the appointment detail page.
+ * Lists payments recorded against this appointment. Operational "Add" actions
+ * are performed elsewhere in the workflow, so no create buttons are shown here.
  */
 export async function AppointmentPaymentsSection({
   appointmentId,
-  patientId,
-  patientName,
 }: AppointmentPaymentsSectionProps) {
   const result = await getPaymentsForAppointment(appointmentId);
   const payments = (result.data ?? []) as Payment[];
@@ -29,7 +24,7 @@ export async function AppointmentPaymentsSection({
 
   return (
     <div className="bg-white border rounded-lg p-4 space-y-4">
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex items-start justify-between gap-3">
         <div>
           <h3 className="font-semibold text-gray-900">Payments</h3>
           {payments.length > 0 && (
@@ -38,11 +33,6 @@ export async function AppointmentPaymentsSection({
             </p>
           )}
         </div>
-        <RecordAppointmentPayment
-          appointmentId={appointmentId}
-          patientId={patientId}
-          patientName={patientName}
-        />
       </div>
 
       {result.error && <p className="text-sm text-red-600">{result.error}</p>}

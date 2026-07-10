@@ -70,7 +70,6 @@ const selectClasses = cn(
 );
 
 export function AppointmentFilters({
-  today,
   initialSearch = "",
   initialStatus = "",
   initialDateFrom = "",
@@ -85,8 +84,8 @@ export function AppointmentFilters({
 
   const [search, setSearch]     = useState(initialSearch);
   const [status, setStatus]     = useState(initialStatus);
-  const [dateFrom, setDateFrom] = useState(initialDateFrom || today);
-  const [dateTo, setDateTo]     = useState(initialDateTo || today);
+  const [dateFrom, setDateFrom] = useState(initialDateFrom);
+  const [dateTo, setDateTo]     = useState(initialDateTo);
   const [timeFrom, setTimeFrom] = useState(initialTimeFrom);
   const [timeTo, setTimeTo]     = useState(initialTimeTo);
 
@@ -111,8 +110,8 @@ export function AppointmentFilters({
   function handleReset() {
     setSearch("");
     setStatus("");
-    setDateFrom(today);
-    setDateTo(today);
+    setDateFrom("");
+    setDateTo("");
     setTimeFrom("");
     setTimeTo("");
     startTransition(() => {
@@ -125,8 +124,8 @@ export function AppointmentFilters({
   const hasActiveFilters =
     !!search ||
     !!status ||
-    dateFrom !== today ||
-    dateTo !== today ||
+    !!dateFrom ||
+    !!dateTo ||
     !!timeFrom ||
     !!timeTo;
 
@@ -188,9 +187,10 @@ export function AppointmentFilters({
           </label>
           <CalendarPicker
             value={dateFrom}
-            onChange={(d) => { if (d) setDateFrom(d); }}
+            onChange={(d) => setDateFrom(d ?? "")}
             placeholder="From date"
             className="w-40"
+            clearable
           />
         </div>
 
@@ -201,9 +201,10 @@ export function AppointmentFilters({
           </label>
           <CalendarPicker
             value={dateTo}
-            onChange={(d) => { if (d) setDateTo(d); }}
+            onChange={(d) => setDateTo(d ?? "")}
             placeholder="To date"
             className="w-40"
+            clearable
           />
         </div>
 

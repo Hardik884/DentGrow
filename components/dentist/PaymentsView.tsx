@@ -13,7 +13,8 @@ import { getAllPayments } from "@/actions/payments";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ListTableSkeleton } from "@/components/shared/ListTableSkeleton";
-import { CreditCard, ArrowRight, ChevronLeft, ChevronRight } from "lucide-react";
+import { ACTION_BUTTON } from "@/lib/ui/action-styles";
+import { CreditCard, Eye, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useRouter, useSearchParams } from "next/navigation";
 
@@ -22,6 +23,7 @@ interface PaymentsViewProps {
   limit: number;
   search?: string;
   method?: string;
+  paymentType?: string;
   dateFrom?: string;
   dateTo?: string;
   basePath?: string; // e.g. "/dentist" or "/receptionist"
@@ -39,6 +41,7 @@ export function PaymentsView({
   limit,
   search,
   method,
+  paymentType,
   dateFrom,
   dateTo,
   basePath = "/dentist",
@@ -47,8 +50,8 @@ export function PaymentsView({
   const searchParams = useSearchParams();
 
   const { data, isLoading, error } = useQuery({
-    queryKey: ["payments", { page, limit, search, method, dateFrom, dateTo }],
-    queryFn: () => getAllPayments({ page, limit, search, method, dateFrom, dateTo }),
+    queryKey: ["payments", { page, limit, search, method, paymentType, dateFrom, dateTo }],
+    queryFn: () => getAllPayments({ page, limit, search, method, paymentType, dateFrom, dateTo }),
     staleTime: 1000 * 60 * 5, // 5 min
   });
 
@@ -89,7 +92,7 @@ export function PaymentsView({
           icon={<CreditCard className="h-5 w-5" aria-hidden />}
           title="No payments found"
           description={
-            search || method || dateFrom || dateTo
+            search || method || paymentType || dateFrom || dateTo
               ? "No payments match your filters."
               : "No payment records yet."
           }
@@ -128,6 +131,9 @@ export function PaymentsView({
                   Method
                 </th>
                 <th className="px-5 py-3 text-left text-xs font-medium text-[#71717A] uppercase tracking-wider">
+                  Type
+                </th>
+                <th className="px-5 py-3 text-left text-xs font-medium text-[#71717A] uppercase tracking-wider">
                   Notes
                 </th>
                 <th className="px-5 py-3 text-right text-xs font-medium text-[#71717A] uppercase tracking-wider">
@@ -164,6 +170,11 @@ export function PaymentsView({
                       {PAYMENT_METHOD_LABELS[payment.method] ?? payment.method}
                     </span>
                   </td>
+                  <td className="px-5 py-3 whitespace-nowrap">
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-[#F4F4F5] text-[#52525B]">
+                      {payment.payment_type === "opd" ? "OPD" : "Treatment"}
+                    </span>
+                  </td>
                   <td className="px-5 py-3">
                     {payment.notes ? (
                       <span className="text-sm text-[#71717A] line-clamp-2">
@@ -176,10 +187,10 @@ export function PaymentsView({
                   <td className="px-5 py-3 text-right">
                     <Link
                       href={`${basePath}/patients/${payment.patient.id}`}
-                      className="inline-flex items-center gap-1 text-xs font-medium text-[#71717A] hover:text-[#09090B] transition-colors"
+                      className={ACTION_BUTTON}
                     >
-                      View Patient
-                      <ArrowRight className="h-3 w-3" aria-hidden />
+                      <Eye className="h-3 w-3" aria-hidden />
+                      View
                     </Link>
                   </td>
                 </tr>

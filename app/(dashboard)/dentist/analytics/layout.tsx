@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import { DateRangeFilter } from "@/components/analytics/DateRangeFilter";
+import { AnalyticsQuickFilters } from "@/components/analytics/AnalyticsQuickFilters";
 import { LoadingSpinner } from "@/components/shared/LoadingSpinner";
 
 /**
@@ -25,6 +26,10 @@ export default function AnalyticsLayout({
           <DateRangeFilter />
         </Suspense>
       </div>
+
+      <Suspense fallback={null}>
+        <AnalyticsQuickFilters />
+      </Suspense>
 
       <Suspense
         fallback={

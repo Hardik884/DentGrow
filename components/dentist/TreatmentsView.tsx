@@ -14,6 +14,8 @@ import { getAllTreatments } from "@/actions/treatments";
 import { queryKeys } from "@/lib/query/keys";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { ListTableSkeleton } from "@/components/shared/ListTableSkeleton";
+import { ACTION_BUTTON } from "@/lib/ui/action-styles";
+import { Eye } from "lucide-react";
 import {
   TREATMENT_STATUS_LABELS,
   formatCurrency,
@@ -183,10 +185,8 @@ export function TreatmentsView({
                           />
                         </td>
                         <td className="px-4 py-3 text-right">
-                          <Link
-                            href={`/dentist/treatments/${tx.id}`}
-                            className="text-blue-600 hover:underline text-xs font-medium"
-                          >
+                          <Link href={`/dentist/treatments/${tx.id}`} className={ACTION_BUTTON}>
+                            <Eye className="h-3 w-3" aria-hidden />
                             View
                           </Link>
                         </td>

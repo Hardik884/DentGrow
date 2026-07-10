@@ -21,6 +21,7 @@ import {
   getTreatment,
   updateTreatment,
   uploadTreatmentDocument,
+  getCurrentUserDisplayName,
 } from "@/actions/treatments";
 import { getConsultants } from "@/actions/consultants";
 import type { Consultant } from "@/types";
@@ -41,6 +42,8 @@ interface TreatmentFormProps {
   appointmentId?: string;
   patientId?: string;
   onSuccess?: (treatment: Treatment) => void;
+  /** When provided, renders a Cancel button that calls this instead of router.back() (modal use). */
+  onCancel?: () => void;
 }
 
 const ACCEPTED_FILE_TYPES = ".pdf,.jpg,.jpeg,.png";
@@ -53,7 +56,7 @@ function splitDatetime(iso: string | null | undefined): { date: string; time: st
   return { date: datePart ?? "", time: timePart.slice(0, 5) };
 }
 
-export function TreatmentForm({ treatmentId, appointmentId, patientId, onSuccess }: TreatmentFormProps) {
+export function TreatmentForm({ treatmentId, appointmentId, patientId, onSuccess, onCancel }: TreatmentFormProps) {
   const router = useRouter();
   const queryClient = useQueryClient();
   const [isPending, startTransition] = useTransition();
@@ -69,6 +72,8 @@ export function TreatmentForm({ treatmentId, appointmentId, patientId, onSuccess
 
   // Consultant directory for the "Performed By" dropdown
   const [consultants, setConsultants] = useState<Consultant[]>([]);
+  // Logged-in dentist's name — labels the default "Performed By" option.
+  const [dentistName, setDentistName] = useState<string | null>(null);
 
   const isEdit = !!treatmentId;
   const schema = isEdit ? UpdateTreatmentSchema : CreateTreatmentSchema;
@@ -137,6 +142,9 @@ export function TreatmentForm({ treatmentId, appointmentId, patientId, onSuccess
     let active = true;
     getConsultants().then((res) => {
       if (active && res.data) setConsultants(res.data);
+    });
+    getCurrentUserDisplayName().then((res) => {
+      if (active && res.data) setDentistName(res.data);
     });
     return () => {
       active = false;
@@ -275,10 +283,6 @@ export function TreatmentForm({ treatmentId, appointmentId, patientId, onSuccess
 
       <div className="bg-white border border-[#E4E4E7] rounded-xl overflow-hidden divide-y divide-[#F4F4F5]">
         <div className="px-6 py-5 space-y-4">
-          <h2 className="text-sm font-semibold text-[#09090B]">
-            {isEdit ? "Edit Treatment" : "New Treatment"}
-          </h2>
-
           {!isEdit && (
             <>
               <input type="hidden" {...register("appointment_id" as keyof CreateTreatmentInput)} />
@@ -402,7 +406,7 @@ export function TreatmentForm({ treatmentId, appointmentId, patientId, onSuccess
                 }
               }}
             >
-              <option value="">Treating Dentist</option>
+              <option value="">{dentistName ?? "Treating Dentist"}</option>
               {consultants.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.name}
@@ -582,7 +586,6 @@ export function TreatmentForm({ treatmentId, appointmentId, patientId, onSuccess
           <Field
             label="Clinical Notes"
             htmlFor="patient-notes"
-            hint="Visible to the patient in their portal"
           >
             <div className="space-y-1.5">
               <div className="flex items-center gap-1.5 text-xs text-[#16A34A]">
@@ -644,7 +647,7 @@ export function TreatmentForm({ treatmentId, appointmentId, patientId, onSuccess
         </div>
 
         <div className="px-6 py-4 bg-[#FAFAFA] flex items-center justify-end gap-3">
-          <Button variant="outline" size="sm" type="button" onClick={() => router.back()}>
+          <Button variant="outline" size="sm" type="button" onClick={() => (onCancel ? onCancel() : router.back())}>
             Cancel
           </Button>
           <Button type="submit" size="sm" isLoading={isPending}>

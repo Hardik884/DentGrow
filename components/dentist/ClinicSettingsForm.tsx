@@ -72,6 +72,7 @@ export function ClinicSettingsForm({ initialSettings }: ClinicSettingsFormProps)
       timezone: initialSettings?.timezone ?? "Asia/Kolkata",
       registration_number: initialSettings?.registration_number ?? "",
       allow_receptionist_payments: initialSettings?.allow_receptionist_payments ?? false,
+      show_consultancy_on_dashboard: initialSettings?.show_consultancy_on_dashboard ?? true,
       clinic_hours: defaultHours,
     },
   });
@@ -212,6 +213,41 @@ export function ClinicSettingsForm({ initialSettings }: ClinicSettingsFormProps)
               </label>
               <p className="text-xs text-[#71717A] mt-0.5">
                 When enabled, receptionists can view and manage payments. When disabled, payment pages and actions are completely hidden from receptionists.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-start gap-3">
+            <button
+              type="button"
+              onClick={() => {
+                const current = watch("show_consultancy_on_dashboard");
+                setValue("show_consultancy_on_dashboard", !current);
+              }}
+              disabled={isSubmitting}
+              className={cn(
+                "relative inline-flex h-5 w-9 shrink-0 rounded-full border-2 border-transparent transition-colors",
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#18181B]",
+                "disabled:cursor-not-allowed",
+                watch("show_consultancy_on_dashboard") ? "bg-[#18181B]" : "bg-[#E4E4E7]"
+              )}
+              aria-pressed={watch("show_consultancy_on_dashboard") ? "true" : "false"}
+              aria-label="Show External Consultation Income on Dashboard"
+            >
+              <span
+                className={cn(
+                  "pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow transform transition-transform",
+                  watch("show_consultancy_on_dashboard") ? "translate-x-4" : "translate-x-0"
+                )}
+              />
+            </button>
+
+            <div>
+              <label className="text-sm font-medium text-[#09090B]">
+                Show External Consultation Income on Dashboard
+              </label>
+              <p className="text-xs text-[#71717A] mt-0.5">
+                When enabled, the dashboard shows today&apos;s External Consultation Income card. When disabled, every External Consultation widget is hidden from the dashboard. The External Consultations page stays accessible either way.
               </p>
             </div>
           </div>

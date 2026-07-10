@@ -1,7 +1,9 @@
-import Link from "next/link";
 import { getTreatmentsForPatient } from "@/actions/treatments";
 import { TreatmentList } from "@/components/dentist/TreatmentList";
+import { TreatmentFormDialog } from "@/components/dentist/TreatmentFormDialog";
+import { ACTION_BUTTON } from "@/lib/ui/action-styles";
 import { formatCurrency } from "@/lib/utils";
+import { Stethoscope } from "lucide-react";
 import type { Treatment, TreatmentForReceptionist } from "@/types";
 
 interface PatientTreatmentsTabProps {
@@ -43,12 +45,14 @@ export async function PatientTreatmentsTab({
           )}
         </div>
         {isDentist && (
-          <Link
-            href={`${baseHref}/appointments`}
-            className="px-3 py-1.5 text-sm font-medium bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+          <TreatmentFormDialog
+            patientId={patientId}
+            title="Add Treatment"
+            triggerClassName={ACTION_BUTTON}
           >
-            + New Treatment
-          </Link>
+            <Stethoscope className="h-3 w-3" aria-hidden />
+            Add Treatment
+          </TreatmentFormDialog>
         )}
       </div>
 

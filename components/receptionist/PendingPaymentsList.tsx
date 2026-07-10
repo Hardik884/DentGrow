@@ -2,13 +2,17 @@ import Link from "next/link";
 import { getPatientsWithOutstandingBalance } from "@/actions/payments";
 import { formatCurrency } from "@/lib/utils";
 import { EmptyState } from "@/components/ui/empty-state";
-import { CreditCard, ArrowRight } from "lucide-react";
+import { PaymentFormDialog } from "@/components/dentist/PaymentFormDialog";
+import { ACTION_BUTTON } from "@/lib/ui/action-styles";
+import { CreditCard, Plus } from "lucide-react";
 
 interface PendingPaymentsListProps {
   search?: string;
+  /** Base href for patient profile links. Defaults to "/dentist". */
+  basePath?: string;
 }
 
-export async function PendingPaymentsList({ search }: PendingPaymentsListProps) {
+export async function PendingPaymentsList({ search, basePath = "/dentist" }: PendingPaymentsListProps) {
   const result = await getPatientsWithOutstandingBalance();
   let pendingPatients = result.data ?? [];
 
@@ -56,7 +60,7 @@ export async function PendingPaymentsList({ search }: PendingPaymentsListProps) 
             <div key={patient.id} className="flex items-center justify-between px-5 py-3 hover:bg-[#FAFAFA] transition-colors">
               <div>
                 <Link
-                  href={`/receptionist/patients/${patient.id}`}
+                  href={`${basePath}/patients/${patient.id}`}
                   className="text-sm font-medium text-[#09090B] hover:underline underline-offset-4"
                 >
                   {patient.name}
@@ -69,13 +73,14 @@ export async function PendingPaymentsList({ search }: PendingPaymentsListProps) 
                 <span className="text-sm font-semibold text-[#DC2626]">
                   {formatCurrency(patient.balance)}
                 </span>
-                <Link
-                  href={`/receptionist/payments/new?patient=${patient.id}`}
-                  className="flex items-center gap-1 text-xs font-medium text-[#71717A] hover:text-[#09090B] transition-colors"
+                <PaymentFormDialog
+                  patientId={patient.id}
+                  patientName={patient.name}
+                  triggerClassName={ACTION_BUTTON}
                 >
-                  Record
-                  <ArrowRight className="h-3 w-3" aria-hidden />
-                </Link>
+                  <Plus className="h-3 w-3" aria-hidden />
+                  Record Payment
+                </PaymentFormDialog>
               </div>
             </div>
           ))}

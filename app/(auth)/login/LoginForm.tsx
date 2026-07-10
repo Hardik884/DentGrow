@@ -16,11 +16,20 @@ interface LoginFormProps {
   resetSuccess?: boolean;
 }
 
+// Pilot convenience: pre-select this clinic by name when it is present in the
+// dynamically loaded directory. This is a UI default only — the dropdown stays
+// fully editable and any clinic (current or future) can still be chosen.
+const DEFAULT_CLINIC_NAME = "Dr. Liying's Dental Care";
+
 export function LoginForm({ clinics, resetSuccess }: LoginFormProps) {
   const [state, formAction, isPending] = useActionState(signIn, initialState);
 
   // Clinic selection is required before sign-in is allowed.
-  const [clinicId, setClinicId] = useState("");
+  // If the default pilot clinic exists in the loaded directory, pre-select it;
+  // otherwise gracefully fall back to no selection.
+  const [clinicId, setClinicId] = useState(
+    () => clinics.find((c) => c.name === DEFAULT_CLINIC_NAME)?.id ?? ""
+  );
 
   return (
     <form action={formAction} className="space-y-4" noValidate>

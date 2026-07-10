@@ -7,6 +7,9 @@ import { AppointmentStatusBadge } from "@/components/shared/AppointmentStatusBad
 import { RescheduleReceptionistPanel } from "@/components/receptionist/RescheduleReceptionistPanel";
 import { CancelAppointmentButton } from "@/components/shared/CancelAppointmentButton";
 import { AppointmentHistoryTimeline } from "@/components/shared/AppointmentHistoryTimeline";
+import { ClinicalTextCard } from "@/components/shared/ClinicalTextCard";
+import { MedicalHistoryCard } from "@/components/shared/MedicalHistoryCard";
+import { AppointmentRadiographsSection } from "@/components/shared/AppointmentRadiographsSection";
 import { getAppointment } from "@/actions/appointments";
 import { getOutstandingBalance } from "@/actions/payments";
 import { createServerClient } from "@/lib/supabase/server";
@@ -122,13 +125,28 @@ export default async function ReceptionistAppointmentDetailPage({ params }: Prop
           />
         </div>
 
-        {appt.notes && (
-          <div className="pt-4 border-t">
-            <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Notes</p>
-            <p className="text-sm text-gray-700">{appt.notes}</p>
-          </div>
-        )}
       </div>
+
+      {/* ── Chief Complaints (receptionist can record before consult) ── */}
+      <ClinicalTextCard
+        appointmentId={appt.id}
+        field="chief_complaints"
+        title="Chief Complaints"
+        placeholder="Enter chief complaints..."
+        initialValue={appt.chief_complaints}
+        canEdit
+        rows={4}
+      />
+
+      {/* ── Medical History ──────────────────────────────────── */}
+      <MedicalHistoryCard
+        appointmentId={appt.id}
+        initial={appt.medical_history}
+        canEdit
+      />
+
+      {/* ── Radiographic Documents (IOPA / OPG / CBCT) ───────── */}
+      <AppointmentRadiographsSection appointmentId={appt.id} patientId={appt.patient_id} />
 
       {/* ── Actions ──────────────────────────────────────────── */}
       {!isTerminal && (

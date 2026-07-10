@@ -23,6 +23,7 @@ import { CalendarPicker } from "@/components/ui/calendar-picker";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { TREATMENT_TYPE_OPTIONS } from "@/types";
 import { SlidersHorizontal, X, Search } from "lucide-react";
 
 const STATUS_OPTIONS = [
@@ -42,6 +43,7 @@ const selectClasses = cn(
 interface FollowUpFiltersProps {
   initialSearch?: string;
   initialStatus?: string;
+  initialTreatmentType?: string;
   initialDateFrom?: string;
   initialDateTo?: string;
 }
@@ -49,6 +51,7 @@ interface FollowUpFiltersProps {
 export function FollowUpFilters({
   initialSearch = "",
   initialStatus = "",
+  initialTreatmentType = "",
   initialDateFrom = "",
   initialDateTo = "",
 }: FollowUpFiltersProps) {
@@ -59,6 +62,7 @@ export function FollowUpFilters({
 
   const [search, setSearch]     = useState(initialSearch);
   const [status, setStatus]     = useState(initialStatus);
+  const [treatmentType, setTreatmentType] = useState(initialTreatmentType);
   const [dateFrom, setDateFrom] = useState(initialDateFrom);
   const [dateTo, setDateTo]     = useState(initialDateTo);
 
@@ -69,17 +73,19 @@ export function FollowUpFilters({
     const s = search.trim();
     if (s) sp.set("search", s); else sp.delete("search");
     if (status) sp.set("status", status); else sp.delete("status");
+    if (treatmentType) sp.set("treatmentType", treatmentType); else sp.delete("treatmentType");
     if (dateFrom) sp.set("dateFrom", dateFrom); else sp.delete("dateFrom");
     if (dateTo)   sp.set("dateTo",   dateTo);   else sp.delete("dateTo");
 
     startTransition(() => {
       router.push(`${pathname}?${sp.toString()}`);
     });
-  }, [search, status, dateFrom, dateTo, router, pathname, searchParams]);
+  }, [search, status, treatmentType, dateFrom, dateTo, router, pathname, searchParams]);
 
   function handleReset() {
     setSearch("");
     setStatus("");
+    setTreatmentType("");
     setDateFrom("");
     setDateTo("");
     startTransition(() => {
@@ -89,7 +95,7 @@ export function FollowUpFilters({
 
   const rangeInvalid = !!dateFrom && !!dateTo && dateFrom > dateTo;
 
-  const hasActiveFilters = !!search || !!status || !!dateFrom || !!dateTo;
+  const hasActiveFilters = !!search || !!status || !!treatmentType || !!dateFrom || !!dateTo;
 
   return (
     <div className="bg-white border border-[#E4E4E7] rounded-xl px-5 py-4 space-y-4">
@@ -138,6 +144,24 @@ export function FollowUpFilters({
           >
             {STATUS_OPTIONS.map((s) => (
               <option key={s.value} value={s.value}>{s.label}</option>
+            ))}
+          </select>
+        </div>
+
+        {/* Treatment Type */}
+        <div className="space-y-1.5 min-w-[180px]">
+          <label htmlFor="fu-treatment-type" className="text-xs font-medium text-[#71717A] uppercase tracking-wide">
+            Treatment Type
+          </label>
+          <select
+            id="fu-treatment-type"
+            value={treatmentType}
+            onChange={(e) => setTreatmentType(e.target.value)}
+            className={selectClasses}
+          >
+            <option value="">All types</option>
+            {TREATMENT_TYPE_OPTIONS.map((t) => (
+              <option key={t} value={t}>{t}</option>
             ))}
           </select>
         </div>

@@ -1,14 +1,15 @@
-import Link from "next/link";
 import { getFollowUpsForPatient } from "@/actions/follow-ups";
 import { OverdueFollowUpBadge } from "./OverdueFollowUpBadge";
+import { FollowUpFormDialog } from "./FollowUpFormDialog";
 import { StatusBadge } from "@/components/shared/StatusBadge";
+import { ACTION_BUTTON } from "@/lib/ui/action-styles";
 import {
   formatDate,
   formatDateTime,
   FOLLOW_UP_STATUS_LABELS,
   FOLLOW_UP_TYPE_LABELS,
 } from "@/lib/utils";
-import { Calendar, Stethoscope } from "lucide-react";
+import { Calendar, Stethoscope, Bell } from "lucide-react";
 import type { FollowUpWithRelations } from "@/types";
 
 interface PatientFollowUpsTabProps {
@@ -25,25 +26,15 @@ interface PatientFollowUpsTabProps {
  *
  * Server Component — follow-up timeline panel on patient profile pages.
  *
- * Shows:
- * - Overdue follow-ups (pending, due_date < today) — highlighted in red
- * - Upcoming follow-ups (pending, not overdue)
- * - Completed follow-ups
- * - Cancelled follow-ups
+ * Shows overdue / upcoming / completed / cancelled follow-ups. Clicking any
+ * follow-up opens the shared inline Follow-up dialog (no navigation).
  *
- * Each row shows:
- * - Follow-up type
- * - Due date + urgency indicator
- * - Related treatment + appointment (if linked)
- * - Status badge
- *
- * Dentist: sees "+ New Follow-Up" button and follow-up detail links.
- * Receptionist: sees follow-ups read-only.
+ * Dentist: sees "+ New Follow-Up" button.
+ * Receptionist: read-only create is hidden.
  */
 export async function PatientFollowUpsTab({
   patientId,
   patientName,
-  baseHref,
   role,
 }: PatientFollowUpsTabProps) {
   const result = await getFollowUpsForPatient(patientId);
@@ -57,11 +48,7 @@ export async function PatientFollowUpsTab({
   const completed = followUps.filter((f) => f.status === "completed");
   const cancelled = followUps.filter((f) => f.status === "cancelled");
 
-  // Build the "new follow-up" href — include patientName so the form can
-  // show the selected-patient chip without a client-side search round-trip.
-  const newHref = patientName
-    ? `${baseHref}/follow-ups/new?patient=${patientId}&patientName=${encodeURIComponent(patientName)}`
-    : `${baseHref}/follow-ups/new?patient=${patientId}`;
+  const dialogRole = role;
 
   return (
     <div className="space-y-4">
@@ -80,12 +67,17 @@ export async function PatientFollowUpsTab({
           )}
         </div>
         {role === "dentist" && (
-          <Link
-            href={newHref}
-            className="px-3 py-1.5 text-sm font-medium bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+          <FollowUpFormDialog
+            patientId={patientId}
+            patientName={patientName}
+            role={dialogRole}
+            hideRelatedFields={false}
+            title="New Follow-up Appointment"
+            triggerClassName={ACTION_BUTTON}
           >
-            + New Follow-Up
-          </Link>
+            <Bell className="h-3 w-3" aria-hidden />
+            New Follow-Up
+          </FollowUpFormDialog>
         )}
       </div>
 
@@ -99,12 +91,19 @@ export async function PatientFollowUpsTab({
         <div className="bg-white border border-border rounded-xl px-4 py-8 text-center">
           <p className="text-sm text-text-secondary">No follow-ups recorded for this patient.</p>
           {role === "dentist" && (
-            <Link
-              href={newHref}
-              className="mt-3 inline-block text-sm text-blue-600 hover:underline underline-offset-4"
-            >
-              Create the first follow-up
-            </Link>
+            <div className="mt-3 flex justify-center">
+              <FollowUpFormDialog
+                patientId={patientId}
+                patientName={patientName}
+                role={dialogRole}
+                hideRelatedFields={false}
+                title="New Follow-up Appointment"
+                triggerClassName={ACTION_BUTTON}
+              >
+                <Bell className="h-3 w-3" aria-hidden />
+                Create the first follow-up
+              </FollowUpFormDialog>
+            </div>
           )}
         </div>
       ) : (
@@ -124,7 +123,9 @@ export async function PatientFollowUpsTab({
                     followUp={f}
                     isOverdue
                     diffLabel={`${diffDays} day${diffDays !== 1 ? "s" : ""} overdue`}
-                    baseHref={baseHref}
+                    patientId={patientId}
+                    patientName={patientName}
+                    role={dialogRole}
                   />
                 );
               })}
@@ -149,7 +150,9 @@ export async function PatientFollowUpsTab({
                         ? "Due today"
                         : `${diffDays} day${diffDays !== 1 ? "s" : ""} remaining`
                     }
-                    baseHref={baseHref}
+                    patientId={patientId}
+                    patientName={patientName}
+                    role={dialogRole}
                   />
                 );
               })}
@@ -160,7 +163,13 @@ export async function PatientFollowUpsTab({
           {completed.length > 0 && (
             <TimelineSection title="Completed">
               {completed.map((f) => (
-                <FollowUpTimelineRow key={f.id} followUp={f} baseHref={baseHref} />
+                <FollowUpTimelineRow
+                  key={f.id}
+                  followUp={f}
+                  patientId={patientId}
+                  patientName={patientName}
+                  role={dialogRole}
+                />
               ))}
             </TimelineSection>
           )}
@@ -169,7 +178,13 @@ export async function PatientFollowUpsTab({
           {cancelled.length > 0 && (
             <TimelineSection title="Cancelled" titleClass="text-text-secondary">
               {cancelled.map((f) => (
-                <FollowUpTimelineRow key={f.id} followUp={f} baseHref={baseHref} />
+                <FollowUpTimelineRow
+                  key={f.id}
+                  followUp={f}
+                  patientId={patientId}
+                  patientName={patientName}
+                  role={dialogRole}
+                />
               ))}
             </TimelineSection>
           )}
@@ -208,27 +223,36 @@ function FollowUpTimelineRow({
   followUp,
   isOverdue = false,
   diffLabel,
-  baseHref,
+  patientId,
+  patientName,
+  role,
 }: {
   followUp: FollowUpWithRelations;
   isOverdue?: boolean;
   diffLabel?: string;
-  baseHref: string;
+  patientId: string;
+  patientName?: string;
+  role: "dentist" | "receptionist";
 }) {
   const followUpType: string = followUp.follow_up_type ?? "";
   const typeLabel = FOLLOW_UP_TYPE_LABELS[followUpType] ?? followUpType ?? "Follow-up";
 
   return (
-    <Link
-      href={`${baseHref}/follow-ups/${followUp.id}`}
-      className="flex items-start justify-between px-4 py-3 hover:bg-[#FAFAFA] transition-colors gap-3"
+    <FollowUpFormDialog
+      followUpId={followUp.id}
+      initialData={followUp}
+      patientId={patientId}
+      patientName={patientName}
+      role={role}
+      title="Follow-up Appointment"
+      triggerClassName="w-full flex items-start justify-between px-4 py-3 hover:bg-[#FAFAFA] transition-colors gap-3 text-left"
     >
-      <div className="min-w-0 flex-1 space-y-1">
+      <span className="min-w-0 flex-1 space-y-1">
         {/* Type label */}
-        <p className="text-sm font-semibold text-text-primary">{typeLabel}</p>
+        <span className="block text-sm font-semibold text-text-primary">{typeLabel}</span>
 
         {/* Due date + urgency */}
-        <p className="text-xs text-text-secondary">
+        <span className="block text-xs text-text-secondary">
           Due {formatDate(followUp.due_date)}
           {followUp.status === "completed" && (
             <span className="text-success ml-2">
@@ -244,16 +268,16 @@ function FollowUpTimelineRow({
               · {diffLabel}
             </span>
           )}
-        </p>
+        </span>
 
         {/* Notes */}
         {followUp.notes && (
-          <p className="text-xs text-text-secondary truncate">{followUp.notes}</p>
+          <span className="block text-xs text-text-secondary truncate">{followUp.notes}</span>
         )}
 
         {/* Related appointment + treatment */}
         {(followUp.appointment || followUp.treatment) && (
-          <div className="flex items-center gap-3 flex-wrap">
+          <span className="flex items-center gap-3 flex-wrap">
             {followUp.appointment && (
               <span className="inline-flex items-center gap-1 text-xs text-text-secondary">
                 <Calendar className="h-3 w-3 shrink-0" aria-hidden />
@@ -266,11 +290,11 @@ function FollowUpTimelineRow({
                 {followUp.treatment.treatment_type}
               </span>
             )}
-          </div>
+          </span>
         )}
-      </div>
+      </span>
 
-      <div className="flex items-center gap-2 shrink-0 mt-0.5">
+      <span className="flex items-center gap-2 shrink-0 mt-0.5">
         {isOverdue && <OverdueFollowUpBadge />}
         <StatusBadge
           label={FOLLOW_UP_STATUS_LABELS[followUp.status]}
@@ -284,7 +308,7 @@ function FollowUpTimelineRow({
                   : "default"
           }
         />
-      </div>
-    </Link>
+      </span>
+    </FollowUpFormDialog>
   );
 }

@@ -13,8 +13,11 @@ import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import { getAllFollowUps } from "@/actions/follow-ups";
 import { queryKeys } from "@/lib/query/keys";
 import { OverdueFollowUpBadge } from "@/components/follow-ups/OverdueFollowUpBadge";
+import { ConfirmationStatusBadge } from "@/components/follow-ups/ConfirmationStatusBadge";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { ListTableSkeleton } from "@/components/shared/ListTableSkeleton";
+import { ACTION_BUTTON } from "@/lib/ui/action-styles";
+import { Eye } from "lucide-react";
 import {
   formatDate,
   FOLLOW_UP_STATUS_LABELS,
@@ -27,6 +30,8 @@ interface FollowUpsViewProps {
   limit: number;
   search?: string;
   status?: string;
+  confirmation?: string;
+  treatmentType?: string;
   dateFrom?: string;
   dateTo?: string;
 }
@@ -36,6 +41,8 @@ export function FollowUpsView({
   limit,
   search,
   status,
+  confirmation,
+  treatmentType,
   dateFrom,
   dateTo,
 }: FollowUpsViewProps) {
@@ -45,6 +52,8 @@ export function FollowUpsView({
         page,
         search: search ?? "",
         status: status ?? "",
+        confirmation: confirmation ?? "",
+        treatmentType: treatmentType ?? "",
         dateFrom: dateFrom ?? "",
         dateTo: dateTo ?? "",
       }),
@@ -59,6 +68,8 @@ export function FollowUpsView({
             | "cancelled"
             | "overdue"
             | undefined,
+          confirmation: confirmation as "tentative" | "confirmed" | undefined,
+          treatmentType,
           dateFrom,
           dateTo,
         });
@@ -78,10 +89,12 @@ export function FollowUpsView({
 
   function pageHref(p: number) {
     const sp = new URLSearchParams();
-    if (search)   sp.set("search",   search);
-    if (status)   sp.set("status",   status);
-    if (dateFrom) sp.set("dateFrom", dateFrom);
-    if (dateTo)   sp.set("dateTo",   dateTo);
+    if (search)        sp.set("search",        search);
+    if (status)        sp.set("status",        status);
+    if (confirmation)  sp.set("confirmation",  confirmation);
+    if (treatmentType) sp.set("treatmentType", treatmentType);
+    if (dateFrom)      sp.set("dateFrom",      dateFrom);
+    if (dateTo)        sp.set("dateTo",        dateTo);
     sp.set("page", String(p));
     return `?${sp.toString()}`;
   }
@@ -242,7 +255,8 @@ function FollowUpRow({
 
       {/* Status */}
       <td className="px-4 py-3">
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <ConfirmationStatusBadge status={fu.confirmation_status} />
           {isOverdue && <OverdueFollowUpBadge />}
           <StatusBadge
             label={FOLLOW_UP_STATUS_LABELS[fu.status]}
@@ -261,10 +275,8 @@ function FollowUpRow({
 
       {/* Actions */}
       <td className="px-4 py-3 text-right">
-        <Link
-          href={`/dentist/follow-ups/${fu.id}`}
-          className="text-blue-600 hover:underline text-xs font-medium"
-        >
+        <Link href={`/dentist/follow-ups/${fu.id}`} className={ACTION_BUTTON}>
+          <Eye className="h-3 w-3" aria-hidden />
           View
         </Link>
       </td>

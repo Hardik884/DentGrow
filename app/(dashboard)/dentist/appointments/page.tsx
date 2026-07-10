@@ -4,8 +4,12 @@ import { PageHeader } from "@/components/layouts/PageHeader";
 import { AppointmentFilters } from "@/components/dentist/AppointmentFilters";
 import { AppointmentsView } from "@/components/dentist/AppointmentsView";
 import { NewInquiryButton } from "@/components/dentist/NewInquiryButton";
+import { AppointmentFormDialog } from "@/components/shared/AppointmentFormDialog";
+import { QuickFilters } from "@/components/shared/QuickFilters";
+import { appointmentsQuickFilters } from "@/lib/quick-filters";
 import { getClinicTimezone } from "@/lib/clinic/config";
 import { getTodayInTimezone } from "@/lib/utils";
+import { Plus } from "lucide-react";
 
 export const metadata: Metadata = {
   title: "Appointments",
@@ -39,15 +43,26 @@ export default async function DentistAppointmentsPage({ searchParams }: Props) {
 
   const clinicTimezone = await getClinicTimezone();
   const today = getTodayInTimezone(clinicTimezone);
+  const quickFilters = appointmentsQuickFilters(today);
 
   return (
     <div className="p-6 space-y-6">
-      <PageHeader
-        title="Appointments"
-        action={{ label: "Book New Appointment", href: "/dentist/appointments/new" }}
-      >
+      <PageHeader title="Appointments">
         <NewInquiryButton />
+        <AppointmentFormDialog
+          clinicToday={today}
+          title="Book New Appointment"
+          triggerVariant="default"
+        >
+          <Plus className="h-3.5 w-3.5" aria-hidden />
+          Book New Appointment
+        </AppointmentFormDialog>
       </PageHeader>
+
+      {/* Quick filters (client component, drives URL params) */}
+      <Suspense>
+        <QuickFilters trackKeys={quickFilters.trackKeys} chips={quickFilters.chips} />
+      </Suspense>
 
       {/* Filters (client component, drives URL params) */}
       <Suspense>
@@ -55,8 +70,8 @@ export default async function DentistAppointmentsPage({ searchParams }: Props) {
           today={today}
           initialSearch={params.search ?? ""}
           initialStatus={params.status ?? ""}
-          initialDateFrom={params.dateFrom ?? today}
-          initialDateTo={params.dateTo ?? today}
+          initialDateFrom={params.dateFrom ?? ""}
+          initialDateTo={params.dateTo ?? ""}
           initialTimeFrom={params.timeFrom ?? ""}
           initialTimeTo={params.timeTo ?? ""}
         />
@@ -67,6 +82,7 @@ export default async function DentistAppointmentsPage({ searchParams }: Props) {
         page={page}
         limit={limit}
         clinicTimezone={clinicTimezone}
+        clinicToday={today}
         search={params.search}
         status={params.status}
         dateFrom={params.dateFrom}

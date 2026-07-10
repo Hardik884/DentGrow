@@ -21,6 +21,7 @@
 export interface PatientsListFilters {
   page: number;
   search?: string;
+  filter?: string;
 }
 
 export interface AppointmentsListFilters {
@@ -46,6 +47,8 @@ export interface FollowUpsListFilters {
   page: number;
   search?: string;
   status?: string;
+  confirmation?: string;
+  treatmentType?: string;
   dateFrom?: string;
   dateTo?: string;
 }

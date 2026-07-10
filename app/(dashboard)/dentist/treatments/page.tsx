@@ -3,6 +3,8 @@ import { Suspense } from "react";
 import { PageHeader } from "@/components/layouts/PageHeader";
 import { TreatmentFilters } from "@/components/dentist/TreatmentFilters";
 import { TreatmentsView } from "@/components/dentist/TreatmentsView";
+import { QuickFilters } from "@/components/shared/QuickFilters";
+import { treatmentsQuickFilters } from "@/lib/quick-filters";
 import { createServerClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = {
@@ -65,9 +67,16 @@ export default async function DentistTreatmentsPage({ searchParams }: Props) {
     }
   }
 
+  const quickFilters = treatmentsQuickFilters(today);
+
   return (
     <div className="p-6 space-y-6">
       <PageHeader title="Treatments" />
+
+      {/* Quick filters */}
+      <Suspense>
+        <QuickFilters trackKeys={quickFilters.trackKeys} chips={quickFilters.chips} />
+      </Suspense>
 
       {/* Filters (client component, drives URL params) */}
       <Suspense>

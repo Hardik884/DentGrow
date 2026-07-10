@@ -4,10 +4,14 @@ import { PageHeader } from "@/components/layouts/PageHeader";
 import { PendingPaymentsList } from "@/components/receptionist/PendingPaymentsList";
 import { PaymentFilters } from "@/components/dentist/PaymentFilters";
 import { PaymentsView } from "@/components/dentist/PaymentsView";
-import { ConsultancyIncomePanel } from "@/components/dentist/ConsultancyIncomePanel";
+import { PaymentFormDialog } from "@/components/dentist/PaymentFormDialog";
+import { OpdPaymentDialog } from "@/components/dentist/OpdPaymentDialog";
+import { QuickFilters } from "@/components/shared/QuickFilters";
+import { paymentsQuickFilters } from "@/lib/quick-filters";
 import { getPaymentsToday } from "@/actions/payments";
 import { getConsultancyRevenueToday } from "@/actions/consultants";
-import { formatCurrency } from "@/lib/utils";
+import { getClinicTimezone } from "@/lib/clinic/config";
+import { getTodayInTimezone, formatCurrency } from "@/lib/utils";
 
 export const metadata: Metadata = {
   title: "Payments",
@@ -17,6 +21,7 @@ interface Props {
   searchParams: Promise<{
     search?: string;
     method?: string;
+    paymentType?: string;
     dateFrom?: string;
     dateTo?: string;
     page?: string;
@@ -27,7 +32,8 @@ interface Props {
  * /dentist/payments
  *
  * Payment ledger — dentist view.
- * Shows today's revenue KPI + outstanding balances + searchable payment history.
+ * Shows today's clinic / consultancy / total revenue + outstanding balances +
+ * searchable payment history (treatment + OPD payments).
  */
 export default async function DentistPaymentsPage({ searchParams }: Props) {
   const params = await searchParams;
@@ -38,37 +44,53 @@ export default async function DentistPaymentsPage({ searchParams }: Props) {
     getPaymentsToday(),
     getConsultancyRevenueToday(),
   ]);
-  const revenueToday = todayResult.data ?? 0;
+  const clinicRevenueToday = todayResult.data ?? 0;
   const consultancyRevenueToday = consultancyTodayResult.data ?? 0;
+  const totalRevenueToday = clinicRevenueToday + consultancyRevenueToday;
+
+  const clinicTimezone = await getClinicTimezone();
+  const today = getTodayInTimezone(clinicTimezone);
+  const quickFilters = paymentsQuickFilters(today);
 
   return (
     <div className="p-6 space-y-6">
-      <PageHeader
-        title="Payments"
-        action={{ label: "Record Payment", href: "/dentist/payments/new" }}
-      >
-        <ConsultancyIncomePanel />
+      <PageHeader title="Payments">
+        <PaymentFormDialog triggerVariant="default">Add Payment</PaymentFormDialog>
+        <OpdPaymentDialog triggerVariant="default">Add OPD Payment</OpdPaymentDialog>
       </PageHeader>
 
-      {/* Revenue today + consultancy revenue today */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      {/* Today's revenue: clinic + consultancy = total */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="bg-white border rounded-lg p-4">
           <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">
-            Revenue Today
+            Today&apos;s Clinic Revenue
           </p>
           <p className="text-2xl font-bold text-green-600 mt-1">
-            {formatCurrency(revenueToday)}
+            {formatCurrency(clinicRevenueToday)}
           </p>
         </div>
         <div className="bg-white border rounded-lg p-4">
           <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">
-            Consultancy Revenue Today
+            Today&apos;s Consultancy Revenue
           </p>
           <p className="text-2xl font-bold text-blue-600 mt-1">
             {formatCurrency(consultancyRevenueToday)}
           </p>
         </div>
+        <div className="bg-white border rounded-lg p-4">
+          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+            Today&apos;s Total Revenue
+          </p>
+          <p className="text-2xl font-bold text-[#09090B] mt-1">
+            {formatCurrency(totalRevenueToday)}
+          </p>
+        </div>
       </div>
+
+      {/* Quick filters */}
+      <Suspense>
+        <QuickFilters trackKeys={quickFilters.trackKeys} chips={quickFilters.chips} />
+      </Suspense>
 
       {/* Filters (client component, drives URL params) */}
       <Suspense>
@@ -89,6 +111,7 @@ export default async function DentistPaymentsPage({ searchParams }: Props) {
         limit={limit}
         search={params.search}
         method={params.method}
+        paymentType={params.paymentType}
         dateFrom={params.dateFrom}
         dateTo={params.dateTo}
         basePath="/dentist"
@@ -96,4 +119,3 @@ export default async function DentistPaymentsPage({ searchParams }: Props) {
     </div>
   );
 }
-

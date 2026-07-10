@@ -264,11 +264,45 @@ export async function recordConsultancyIncome(
       return { data: null, error: "Failed to record consultancy income." };
     }
 
+    revalidatePath("/dentist/external-consultations");
     revalidatePath("/dentist/payments");
     revalidatePath("/dentist/analytics");
+    revalidatePath("/dentist");
     return { data: data as ConsultancyIncome, error: null };
   } catch (err) {
     console.error("[recordConsultancyIncome] unexpected:", err);
+    return { data: null, error: "Unexpected error" };
+  }
+}
+
+/**
+ * List all external consultancy income entries for the dentist, newest first.
+ * Used by the External Consultations page. Dentist-scoped; clinic-isolated.
+ */
+export async function getConsultancyIncome(): Promise<
+  ActionResult<ConsultancyIncome[]>
+> {
+  try {
+    const { db, profile } = await resolveSession();
+    if (!profile) return { data: null, error: "Unauthorized" };
+    if (profile.role !== "dentist") return { data: null, error: "Forbidden" };
+
+    const { data, error } = await db
+      .from("consultancy_income")
+      .select("*")
+      .eq("clinic_id", profile.clinic_id)
+      .eq("dentist_id", profile.id)
+      .order("date", { ascending: false })
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error("[getConsultancyIncome]", error);
+      return { data: null, error: "Failed to fetch external consultations." };
+    }
+
+    return { data: (data ?? []) as ConsultancyIncome[], error: null };
+  } catch (err) {
+    console.error("[getConsultancyIncome] unexpected:", err);
     return { data: null, error: "Unexpected error" };
   }
 }

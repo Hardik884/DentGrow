@@ -5,9 +5,13 @@ import { QueueWidget } from "@/components/queue/QueueWidget";
 import { UpcomingAppointments } from "@/components/dentist/UpcomingAppointments";
 import { ClinicDentistName } from "@/components/shared/ClinicDentistName";
 import { NewInquiryButton } from "@/components/dentist/NewInquiryButton";
+import { AppointmentFormDialog } from "@/components/shared/AppointmentFormDialog";
 import { getTodayQueue } from "@/actions/queue";
+import { getConsultancyRevenueToday } from "@/actions/consultants";
+import { getClinicSettings } from "@/actions/clinic-settings";
 import { getClinicConfig } from "@/lib/clinic/config";
-import { Plus } from "lucide-react";
+import { getTodayInTimezone, formatCurrency } from "@/lib/utils";
+import { Briefcase, Plus } from "lucide-react";
 
 export const metadata: Metadata = {
   title: "Dashboard",
@@ -19,22 +23,37 @@ export default async function DentistDashboardPage() {
   // session, so auth + profile are resolved once for the whole render — not
   // once per data source. clinicId/timezone are passed down so child
   // components fire no further auth/profile/settings lookups.
-  const [{ clinicId, timezone }, queueRes] = await Promise.all([
-    getClinicConfig(),
-    getTodayQueue(),
-  ]);
+  const [{ clinicId, timezone }, queueRes, settingsRes, consultancyTodayRes] =
+    await Promise.all([
+      getClinicConfig(),
+      getTodayQueue(),
+      getClinicSettings(),
+      getConsultancyRevenueToday(),
+    ]);
+
+  // Default the dashboard consultancy card ON when no settings row exists yet.
+  const showConsultancy = settingsRes.data?.show_consultancy_on_dashboard ?? true;
+  const consultancyRevenueToday = consultancyTodayRes.data ?? 0;
 
   if (clinicId) {
     const initialQueue = queueRes.data ?? [];
+    const today = getTodayInTimezone(timezone);
 
     return (
       <div className="p-6 max-w-screen-xl">
         <PageHeader
           title="Today's Dashboard"
           description="Overview of today's clinic activity"
-          action={{ label: "Book New Appointment", href: "/dentist/appointments/new", icon: <Plus className="h-3.5 w-3.5" /> }}
         >
           <NewInquiryButton />
+          <AppointmentFormDialog
+            clinicToday={today}
+            title="Book New Appointment"
+            triggerVariant="default"
+          >
+            <Plus className="h-3.5 w-3.5" aria-hidden />
+            Book New Appointment
+          </AppointmentFormDialog>
         </PageHeader>
 
         {/* Clinic dentist name (data-driven from clinics.dentist_name) */}
@@ -42,6 +61,28 @@ export default async function DentistDashboardPage() {
 
         {/* KPI Cards — receives pre-resolved clinicId + timezone, fires no extra queries */}
         <DashboardKPIs clinicId={clinicId} timezone={timezone} />
+
+        {/* Today's External Consultation Income — hidden when disabled in settings */}
+        {showConsultancy && (
+          <div className="mt-4">
+            <div className="bg-white border border-[#E4E4E7] rounded-xl p-5 space-y-3 sm:max-w-xs">
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-medium text-[#71717A] tracking-wide">
+                  External Consultation Income
+                </p>
+                <div className="h-7 w-7 rounded-lg bg-[#F4F4F5] flex items-center justify-center text-[#71717A]">
+                  <Briefcase className="h-3.5 w-3.5" aria-hidden />
+                </div>
+              </div>
+              <div>
+                <p className="text-2xl font-semibold text-[#09090B] tracking-tight">
+                  {formatCurrency(consultancyRevenueToday)}
+                </p>
+                <p className="text-xs text-[#71717A] mt-0.5">Today</p>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Main content */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-4">
@@ -68,9 +109,12 @@ export default async function DentistDashboardPage() {
       <PageHeader
         title="Today's Dashboard"
         description="Overview of today's clinic activity"
-        action={{ label: "Book New Appointment", href: "/dentist/appointments/new", icon: <Plus className="h-3.5 w-3.5" /> }}
       >
         <NewInquiryButton />
+        <AppointmentFormDialog title="Book New Appointment" triggerVariant="default">
+          <Plus className="h-3.5 w-3.5" aria-hidden />
+          Book New Appointment
+        </AppointmentFormDialog>
       </PageHeader>
       <DashboardKPIs />
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-4">

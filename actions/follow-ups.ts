@@ -158,6 +158,7 @@ export async function createFollowUp(
         follow_up_type: parsed.data.follow_up_type,
         due_date:       parsed.data.due_date,
         status:         "pending",
+        confirmation_status: parsed.data.confirmation_status ?? "confirmed",
         notes:          parsed.data.notes ?? null,
         created_by:     profile.id,
       })
@@ -346,6 +347,7 @@ export async function updateFollowUp(
     if (parsed.data.appointment_id !== undefined)  updates.appointment_id  = parsed.data.appointment_id ?? null;
     if (parsed.data.treatment_id !== undefined)    updates.treatment_id    = parsed.data.treatment_id ?? null;
     if (parsed.data.status !== undefined)          updates.status          = parsed.data.status;
+    if (parsed.data.confirmation_status !== undefined) updates.confirmation_status = parsed.data.confirmation_status;
 
     const { data, error } = await db
       .from("follow_ups")
@@ -604,6 +606,8 @@ export async function getFollowUpsForPatient(
 
 export async function getAllFollowUps(filters?: {
   status?: "pending" | "completed" | "cancelled" | "overdue";
+  confirmation?: "tentative" | "confirmed";
+  treatmentType?: string;
   page?: number;
   limit?: number;
   /** Free-text search across patient name + phone. */
@@ -665,6 +669,14 @@ export async function getAllFollowUps(filters?: {
       query = query.eq("status", "pending").lt("due_date", today);
     } else if (filters?.status) {
       query = query.eq("status", filters.status);
+    }
+
+    if (filters?.confirmation) {
+      query = query.eq("confirmation_status", filters.confirmation);
+    }
+
+    if (filters?.treatmentType) {
+      query = query.eq("follow_up_type", filters.treatmentType);
     }
 
     if (patientIdFilter !== null) {

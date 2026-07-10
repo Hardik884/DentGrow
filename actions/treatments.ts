@@ -1089,3 +1089,203 @@ export async function deleteTreatmentDocument(
     return { data: null, error: "Unexpected error" };
   }
 }
+
+
+// =============================================================================
+// getCurrentUserDisplayName — the logged-in staff member's name
+// Used by the treatment form to label the default "Performed By" option with
+// the treating dentist's actual name instead of a generic placeholder.
+// =============================================================================
+
+export async function getCurrentUserDisplayName(): Promise<
+  ActionResult<string | null>
+> {
+  try {
+    const { profile } = await resolveCachedSession();
+    if (!profile) return { data: null, error: "Unauthorized" };
+    return { data: profile.full_name ?? null, error: null };
+  } catch (err) {
+    console.error("[getCurrentUserDisplayName] unexpected:", err);
+    return { data: null, error: "Unexpected error" };
+  }
+}
+
+// =============================================================================
+// APPOINTMENT-SCOPED DOCUMENTS (radiographic: IOPA / OPG / CBCT)
+//
+// Reuses the existing patient-documents storage bucket and treatment_documents
+// metadata table (appointment_id set, treatment_id null). Staff (dentist +
+// receptionist) may manage these — radiographs are commonly captured at the
+// front desk. Clinic isolation is enforced via clinic_id + storage path.
+// =============================================================================
+
+export async function uploadAppointmentDocument(
+  formData: FormData
+): Promise<ActionResult<TreatmentDocument>> {
+  try {
+    const file = formData.get("file");
+    const appointmentId = String(formData.get("appointment_id") ?? "");
+    const patientId = String(formData.get("patient_id") ?? "");
+    const documentTypeRaw = String(formData.get("document_type") ?? "").trim();
+    const documentType = documentTypeRaw.length > 0 ? documentTypeRaw.slice(0, 40) : null;
+
+    if (!(file instanceof File) || !appointmentId || !patientId) {
+      return { data: null, error: "Missing file or identifiers." };
+    }
+
+    if (!ALLOWED_DOCUMENT_TYPES.includes(file.type as (typeof ALLOWED_DOCUMENT_TYPES)[number])) {
+      return { data: null, error: "Unsupported file type. Allowed: PDF, JPG, JPEG, PNG." };
+    }
+
+    if (file.size > 10 * 1024 * 1024) {
+      return { data: null, error: "File too large (max 10 MB)." };
+    }
+
+    const { db, profile } = await resolveSession();
+    if (!profile) return { data: null, error: "Unauthorized" };
+    if (profile.role !== "dentist" && profile.role !== "receptionist") {
+      return { data: null, error: "Forbidden" };
+    }
+
+    // Verify the appointment belongs to this clinic.
+    const { data: appointment } = await db
+      .from("appointments")
+      .select("id")
+      .eq("id", appointmentId)
+      .eq("clinic_id", profile.clinic_id)
+      .is("deleted_at", null)
+      .single();
+    if (!appointment) return { data: null, error: "Appointment not found." };
+
+    // Clinic-isolated storage path: {clinic}/{patient}/appointments/{appt}/{ts-name}
+    const safeName = file.name.replace(/[^\w.\-]/g, "_");
+    const path = `${profile.clinic_id}/${patientId}/appointments/${appointmentId}/${Date.now()}-${safeName}`;
+
+    const { error: uploadErr } = await db.storage
+      .from(DOCUMENT_BUCKET)
+      .upload(path, file, { contentType: file.type, upsert: false });
+
+    if (uploadErr) {
+      console.error("[uploadAppointmentDocument] upload:", uploadErr);
+      return { data: null, error: "Failed to upload file." };
+    }
+
+    const { data, error } = await db
+      .from("treatment_documents")
+      .insert({
+        clinic_id: profile.clinic_id,
+        patient_id: patientId,
+        treatment_id: null,
+        appointment_id: appointmentId,
+        document_type: documentType,
+        file_name: file.name,
+        file_path: path,
+        file_type: file.type,
+        file_size: file.size,
+        created_by: profile.id,
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error("[uploadAppointmentDocument] metadata:", error);
+      await db.storage.from(DOCUMENT_BUCKET).remove([path]);
+      return { data: null, error: "Failed to save document metadata." };
+    }
+
+    revalidatePath(`/${profile.role}/appointments/${appointmentId}`);
+
+    return { data: data as TreatmentDocument, error: null };
+  } catch (err) {
+    console.error("[uploadAppointmentDocument] unexpected:", err);
+    return { data: null, error: "Unexpected error" };
+  }
+}
+
+export async function getAppointmentDocuments(
+  appointmentId: string
+): Promise<ActionResult<Array<TreatmentDocument & { url: string | null }>>> {
+  try {
+    if (!appointmentId) return { data: [], error: null };
+
+    const { db, profile } = await resolveSession();
+    if (!profile) return { data: null, error: "Unauthorized" };
+
+    let query = db
+      .from("treatment_documents")
+      .select("*")
+      .eq("appointment_id", appointmentId)
+      .order("created_at", { ascending: false });
+
+    if (profile.role !== "patient") {
+      query = query.eq("clinic_id", profile.clinic_id);
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+      console.error("[getAppointmentDocuments]", error);
+      return { data: null, error: "Failed to fetch documents." };
+    }
+
+    const docs = (data ?? []) as TreatmentDocument[];
+
+    const withUrls = await Promise.all(
+      docs.map(async (doc) => {
+        const { data: signed } = await db.storage
+          .from(DOCUMENT_BUCKET)
+          .createSignedUrl(doc.file_path, 60 * 60);
+        return { ...doc, url: signed?.signedUrl ?? null };
+      })
+    );
+
+    return { data: withUrls, error: null };
+  } catch (err) {
+    console.error("[getAppointmentDocuments] unexpected:", err);
+    return { data: null, error: "Unexpected error" };
+  }
+}
+
+export async function deleteAppointmentDocument(
+  id: string
+): Promise<ActionResult<null>> {
+  try {
+    if (!id) return { data: null, error: "Document ID is required" };
+
+    const { db, profile } = await resolveSession();
+    if (!profile) return { data: null, error: "Unauthorized" };
+    if (profile.role !== "dentist" && profile.role !== "receptionist") {
+      return { data: null, error: "Forbidden" };
+    }
+
+    const { data: doc } = await db
+      .from("treatment_documents")
+      .select("id, file_path, appointment_id")
+      .eq("id", id)
+      .eq("clinic_id", profile.clinic_id)
+      .not("appointment_id", "is", null)
+      .single();
+
+    if (!doc) return { data: null, error: "Document not found." };
+
+    await db.storage.from(DOCUMENT_BUCKET).remove([doc.file_path]);
+
+    const { error } = await db
+      .from("treatment_documents")
+      .delete()
+      .eq("id", id)
+      .eq("clinic_id", profile.clinic_id);
+
+    if (error) {
+      console.error("[deleteAppointmentDocument]", error);
+      return { data: null, error: "Failed to delete document." };
+    }
+
+    revalidatePath(`/${profile.role}/appointments/${doc.appointment_id}`);
+
+    return { data: null, error: null };
+  } catch (err) {
+    console.error("[deleteAppointmentDocument] unexpected:", err);
+    return { data: null, error: "Unexpected error" };
+  }
+}

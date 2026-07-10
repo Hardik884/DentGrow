@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { createAppointment } from "@/actions/appointments";
 import { searchPatients, createPatient } from "@/actions/patients";
 import { getAvailableSlots } from "@/actions/availability";
@@ -16,7 +17,7 @@ import {
   type CreatePatientInput,
   type Patient,
 } from "@/types";
-import { cn, formatTime, APPOINTMENT_SOURCE_LABELS } from "@/lib/utils";
+import { cn, formatTime, calculateAge, APPOINTMENT_SOURCE_LABELS } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
@@ -25,7 +26,7 @@ import { Field } from "@/components/ui/field";
 import { CalendarPicker } from "@/components/ui/calendar-picker";
 import { PatientAvatar } from "./PatientAvatar";
 import { LoadingSpinner } from "./LoadingSpinner";
-import { CheckCircle2, Search, Plus, Clock } from "lucide-react";
+import { CheckCircle2, Search, Clock, UserPlus } from "lucide-react";
 
 type AppointmentFormValues = {
   patient_id: string;
@@ -36,10 +37,27 @@ type AppointmentFormValues = {
 };
 
 interface AppointmentFormProps {
-  successRedirect: string;
-  cancelHref: string;
+  /** Where to navigate after a successful booking. Ignored when onSuccess is set. */
+  successRedirect?: string;
+  /** Cancel link target. Ignored when onCancel is set. */
+  cancelHref?: string;
   preselectedPatient?: Pick<Patient, "id" | "name">;
   clinicToday?: string;
+  /** When provided, called after a successful booking instead of navigating (modal use). */
+  onSuccess?: () => void;
+  /** When provided, renders a Cancel button that calls this instead of a link (modal use). */
+  onCancel?: () => void;
+}
+
+/** True when a query string looks like a phone number rather than a name. */
+function looksLikePhone(q: string): boolean {
+  return /\d/.test(q) && /^[+\d][\d\s\-()]*$/.test(q.trim());
+}
+
+/** Derive an approximate DOB (Jan 1 of the birth year) from an age in years. */
+function dobFromAge(age: number): string {
+  const year = new Date().getFullYear() - age;
+  return `${year}-01-01`;
 }
 
 export function AppointmentForm({
@@ -47,6 +65,8 @@ export function AppointmentForm({
   cancelHref,
   preselectedPatient,
   clinicToday,
+  onSuccess,
+  onCancel,
 }: AppointmentFormProps) {
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -60,15 +80,21 @@ export function AppointmentForm({
   const [searchTimer, setSearchTimer] = useState<ReturnType<typeof setTimeout> | null>(null);
   const [showDropdown, setShowDropdown] = useState(false);
 
-  const [showNewPatient, setShowNewPatient] = useState(false);
+  // New-patient mode is entered AUTOMATICALLY when a search yields no match.
+  const [newPatientMode, setNewPatientMode] = useState(false);
   const [newPatientError, setNewPatientError] = useState<string | null>(null);
-  const [isSavingPatient, setIsSavingPatient] = useState(false);
+  const [newPatientAge, setNewPatientAge] = useState("");
+
+  const [isBooking, setIsBooking] = useState(false);
+  const [bookError, setBookError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
 
   const newPatientForm = useForm<CreatePatientInput>({
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     resolver: zodResolver(CreatePatientSchema) as any,
     defaultValues: { name: "", phone: "", gender: undefined },
   });
+  const newPatientName = newPatientForm.watch("name");
 
   const today = clinicToday ?? new Date().toISOString().split("T")[0];
   const [selectedDate, setSelectedDate] = useState(today);
@@ -78,11 +104,10 @@ export function AppointmentForm({
 
   const {
     register,
-    handleSubmit,
     setValue,
+    getValues,
     watch,
-    formState: { errors, isSubmitting },
-    setError,
+    formState: { errors },
   } = useForm<AppointmentFormValues>({
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     resolver: zodResolver(CreateAppointmentSchema) as any,
@@ -109,10 +134,33 @@ export function AppointmentForm({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedDate, fetchSlots]);
 
+  function enterNewPatientMode(query: string) {
+    const phone = looksLikePhone(query);
+    newPatientForm.reset({
+      name: phone ? "" : query,
+      phone: phone ? query : "",
+      gender: undefined,
+    });
+    setNewPatientAge("");
+    setNewPatientError(null);
+    setNewPatientMode(true);
+  }
+
+  function resetPatientSelection() {
+    setSelectedPatient(null);
+    setValue("patient_id", "");
+    setPatientQuery("");
+    setPatientResults([]);
+    setShowDropdown(false);
+    setNewPatientMode(false);
+    setNewPatientError(null);
+  }
+
   function handlePatientSearch(query: string) {
     setPatientQuery(query);
     setSelectedPatient(null);
     setValue("patient_id", "");
+    setNewPatientMode(false);
 
     if (searchTimer) clearTimeout(searchTimer);
     if (query.trim().length < 2) {
@@ -124,9 +172,14 @@ export function AppointmentForm({
     const t = setTimeout(async () => {
       setIsSearching(true);
       const result = await searchPatients(query.trim());
-      setPatientResults((result.data ?? []).map((p) => ({ id: p.id, name: p.name, phone: p.phone })));
-      setShowDropdown(true);
+      const results = (result.data ?? []).map((p) => ({ id: p.id, name: p.name, phone: p.phone }));
+      setPatientResults(results);
+      setShowDropdown(results.length > 0);
       setIsSearching(false);
+      // No existing patient matches → switch straight into New Patient mode.
+      if (results.length === 0) {
+        enterNewPatientMode(query.trim());
+      }
     }, 300);
 
     setSearchTimer(t);
@@ -138,7 +191,7 @@ export function AppointmentForm({
     setPatientQuery(p.name);
     setPatientResults([]);
     setShowDropdown(false);
-    setShowNewPatient(false);
+    setNewPatientMode(false);
   }
 
   function selectSlot(slot: string) {
@@ -146,48 +199,89 @@ export function AppointmentForm({
     setValue("scheduled_at", slot, { shouldValidate: true });
   }
 
-  async function handleSaveNewPatient(values: CreatePatientInput) {
-    setNewPatientError(null);
-    setIsSavingPatient(true);
-    const result = await createPatient(values);
-    setIsSavingPatient(false);
-    if (result.error || !result.data) {
-      setNewPatientError(result.error ?? "Failed to create patient.");
-      return;
-    }
-    selectPatient({ id: result.data.id, name: result.data.name });
-    newPatientForm.reset();
-    // A new patient was created inline — refresh the patients cache.
-    queryClient.invalidateQueries({ queryKey: queryKeys.patients.all });
-  }
+  const hasPatient = !!(selectedPatient || preselectedPatient);
+  const canBook =
+    !!selectedSlot && (hasPatient || (newPatientMode && (newPatientName?.trim().length ?? 0) >= 2));
 
-  async function onSubmit(values: AppointmentFormValues) {
-    const result = await createAppointment(values);
-    if (result.error) {
-      setError("root", { message: result.error });
+  async function handleBook(e: React.FormEvent) {
+    e.preventDefault();
+    setBookError(null);
+    setNewPatientError(null);
+
+    if (!selectedSlot) {
+      setBookError("Please select a time slot.");
       return;
     }
-    // Refresh the appointments cache so the new booking appears.
+
+    let patientId = selectedPatient?.id ?? preselectedPatient?.id ?? null;
+
+    setIsBooking(true);
+
+    // ── Create the patient inline when no existing record was selected ──────
+    if (!patientId) {
+      const valid = await newPatientForm.trigger();
+      if (!valid) {
+        setIsBooking(false);
+        setNewPatientMode(true);
+        return;
+      }
+      const values = newPatientForm.getValues();
+
+      // Age OR DOB: derive an approximate DOB from age when DOB is not given.
+      let dateOfBirth = values.date_of_birth || undefined;
+      const ageNum = parseInt(newPatientAge, 10);
+      if (!dateOfBirth && Number.isFinite(ageNum) && ageNum > 0 && ageNum < 130) {
+        dateOfBirth = dobFromAge(ageNum);
+      }
+
+      const res = await createPatient({ ...values, date_of_birth: dateOfBirth });
+      if (res.error || !res.data) {
+        setIsBooking(false);
+        setNewPatientError(res.error ?? "Failed to create patient.");
+        return;
+      }
+      patientId = res.data.id;
+      queryClient.invalidateQueries({ queryKey: queryKeys.patients.all });
+      selectPatient({ id: res.data.id, name: res.data.name });
+    }
+
+    // ── Book the appointment ────────────────────────────────────────────────
+    const result = await createAppointment({
+      patient_id: patientId,
+      scheduled_at: getValues("scheduled_at") || selectedSlot,
+      duration_minutes: watch("duration_minutes") ?? 30,
+      source: getValues("source"),
+      notes: getValues("notes"),
+    });
+
+    setIsBooking(false);
+
+    if (result.error) {
+      setBookError(result.error);
+      return;
+    }
+
+    // ── Success ──────────────────────────────────────────────────────────────
+    setSuccess(true);
+    toast.success("Appointment booked successfully.");
     queryClient.invalidateQueries({ queryKey: queryKeys.appointments.all });
-    router.push(successRedirect);
+
+    if (onSuccess) {
+      onSuccess();
+      return;
+    }
+    router.push(successRedirect ?? "/dentist/appointments");
     router.refresh();
   }
 
   return (
-    <form onSubmit={handleSubmit(onSubmit, () => {
-      // Scroll to first invalid field
-      const first = document.querySelector("[aria-invalid='true'], [data-invalid='true']");
-      if (first) {
-        first.scrollIntoView({ behavior: "smooth", block: "center" });
-        (first as HTMLElement).focus?.();
-      }
-    })} noValidate>
-      {errors.root && (
+    <form onSubmit={handleBook} noValidate>
+      {bookError && (
         <div
           role="alert"
           className="mb-4 rounded-lg bg-[#FEF2F2] border border-[#FECACA] px-4 py-3 text-xs text-[#DC2626]"
         >
-          {errors.root.message}
+          {bookError}
         </div>
       )}
 
@@ -198,36 +292,15 @@ export function AppointmentForm({
           <div className="flex items-center justify-between">
             <div>
               <h3 className="text-sm font-semibold text-[#09090B]">Patient</h3>
-              <p className="text-xs text-[#71717A] mt-0.5">Search for existing or add new</p>
+              <p className="text-xs text-[#71717A] mt-0.5">
+                Search by name or phone — new patients are added automatically
+              </p>
             </div>
-            {!preselectedPatient && !selectedPatient && (
+            {(selectedPatient || newPatientMode) && !preselectedPatient && (
               <button
                 type="button"
-                onClick={() => {
-                  setShowNewPatient((v) => !v);
-                  setPatientResults([]);
-                  setPatientQuery("");
-                  setValue("patient_id", "");
-                  newPatientForm.reset();
-                  setNewPatientError(null);
-                  setShowDropdown(false);
-                }}
-                disabled={isSubmitting}
-                className="flex items-center gap-1 text-xs font-medium text-[#71717A] hover:text-[#09090B] transition-colors"
-              >
-                <Plus className="h-3 w-3" aria-hidden />
-                {showNewPatient ? "Search existing" : "New patient"}
-              </button>
-            )}
-            {selectedPatient && !preselectedPatient && (
-              <button
-                type="button"
-                onClick={() => {
-                  setSelectedPatient(null);
-                  setValue("patient_id", "");
-                  setPatientQuery("");
-                }}
-                disabled={isSubmitting}
+                onClick={resetPatientSelection}
+                disabled={isBooking}
                 className="text-xs text-[#71717A] hover:text-[#09090B] transition-colors"
               >
                 Change
@@ -249,133 +322,154 @@ export function AppointmentForm({
               <PatientAvatar name={selectedPatient.name} size="sm" />
               <span className="text-sm font-medium text-[#09090B]">{selectedPatient.name}</span>
             </div>
-          ) : showNewPatient ? (
-            <div className="space-y-3 border border-dashed border-[#E4E4E7] rounded-lg p-4 bg-[#FAFAFA]">
-              <p className="text-xs font-semibold text-[#09090B]">New Patient Details</p>
-
-              {newPatientError && (
-                <p className="text-xs text-[#DC2626]" role="alert">{newPatientError}</p>
-              )}
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <Field label="Full Name" htmlFor="np-name" required>
-                  <Input
-                    id="np-name"
-                    type="text"
-                    {...newPatientForm.register("name")}
-                    disabled={isSavingPatient}
-                    placeholder="Patient full name"
-                    hasError={!!newPatientForm.formState.errors.name}
-                  />
-                  {newPatientForm.formState.errors.name && (
-                    <p className="text-xs text-[#DC2626] mt-1">{newPatientForm.formState.errors.name.message}</p>
-                  )}
-                </Field>
-
-                <Field label="Phone" htmlFor="np-phone">
-                  <Input
-                    id="np-phone"
-                    type="tel"
-                    {...newPatientForm.register("phone")}
-                    disabled={isSavingPatient}
-                    placeholder="+91 98765 43210"
-                  />
-                </Field>
-
-                <Field label="Gender" htmlFor="np-gender">
-                  <Select
-                    id="np-gender"
-                    {...newPatientForm.register("gender")}
-                    disabled={isSavingPatient}
-                  >
-                    <option value="">Select…</option>
-                    <option value="male">Male</option>
-                    <option value="female">Female</option>
-                    <option value="other">Other</option>
-                  </Select>
-                </Field>
-
-                <Field label="Date of Birth" htmlFor="np-dob">
-                  <CalendarPicker
-                    id="np-dob"
-                    value={newPatientForm.watch("date_of_birth") ?? undefined}
-                    disabled={isSavingPatient}
-                    onChange={(d) => newPatientForm.setValue("date_of_birth", d)}
-                    placeholder="Date of birth"
-                    clearable
-                  />
-                </Field>
-              </div>
-
-              <div className="flex items-center justify-end gap-2">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  type="button"
-                  onClick={() => { setShowNewPatient(false); newPatientForm.reset(); }}
-                  disabled={isSavingPatient}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  onClick={newPatientForm.handleSubmit(handleSaveNewPatient)}
-                  isLoading={isSavingPatient}
-                >
-                  {isSavingPatient ? "Saving…" : "Save & Continue"}
-                </Button>
-              </div>
-            </div>
           ) : (
-            <div className="relative">
+            <>
+              {/* Single entry field: Patient Name / Phone Number */}
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#A1A1AA]" aria-hidden />
-                <Input
-                  type="search"
-                  value={patientQuery}
-                  onChange={(e) => handlePatientSearch(e.target.value)}
-                  placeholder="Search patient by name or phone…"
-                  disabled={isSubmitting}
-                  aria-label="Search patient"
-                  autoComplete="off"
-                  className="pl-9"
-                  onBlur={() => setTimeout(() => setShowDropdown(false), 150)}
-                  onFocus={() => patientResults.length > 0 && setShowDropdown(true)}
-                />
-                {isSearching && (
-                  <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                    <LoadingSpinner size="sm" />
-                  </div>
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#A1A1AA]" aria-hidden />
+                  <Input
+                    type="search"
+                    value={patientQuery}
+                    onChange={(e) => handlePatientSearch(e.target.value)}
+                    placeholder="Patient name / phone number…"
+                    disabled={isBooking}
+                    aria-label="Patient name or phone number"
+                    autoComplete="off"
+                    className="pl-9"
+                    onBlur={() => setTimeout(() => setShowDropdown(false), 150)}
+                    onFocus={() => patientResults.length > 0 && setShowDropdown(true)}
+                  />
+                  {isSearching && (
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                      <LoadingSpinner size="sm" />
+                    </div>
+                  )}
+                </div>
+                {showDropdown && patientResults.length > 0 && (
+                  <ul className="absolute z-20 w-full mt-1 bg-white border border-[#E4E4E7] rounded-xl shadow-lg max-h-52 overflow-y-auto">
+                    {patientResults.map((p) => (
+                      <li key={p.id}>
+                        <button
+                          type="button"
+                          onMouseDown={(e) => e.preventDefault()}
+                          onClick={() => selectPatient(p)}
+                          className="w-full px-4 py-2.5 text-left hover:bg-[#FAFAFA] flex items-center gap-3 transition-colors"
+                        >
+                          <PatientAvatar name={p.name} size="sm" />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-[#09090B] truncate">{p.name}</p>
+                            <p className="text-xs text-[#71717A]">{p.phone ?? "—"}</p>
+                          </div>
+                        </button>
+                      </li>
+                    ))}
+                    {patientQuery.trim().length >= 2 && (
+                      <li className="border-t border-[#F4F4F5]">
+                        <button
+                          type="button"
+                          onMouseDown={(e) => e.preventDefault()}
+                          onClick={() => {
+                            setShowDropdown(false);
+                            enterNewPatientMode(patientQuery.trim());
+                          }}
+                          className="w-full px-4 py-2.5 text-left hover:bg-[#FAFAFA] flex items-center gap-2 text-sm text-[#52525B] transition-colors"
+                        >
+                          <UserPlus className="h-3.5 w-3.5 text-[#71717A]" aria-hidden />
+                          Add “{patientQuery.trim()}” as new patient
+                        </button>
+                      </li>
+                    )}
+                  </ul>
                 )}
               </div>
-              {showDropdown && patientResults.length > 0 && (
-                <ul className="absolute z-20 w-full mt-1 bg-white border border-[#E4E4E7] rounded-xl shadow-lg max-h-52 overflow-y-auto">
-                  {patientResults.map((p) => (
-                    <li key={p.id}>
-                      <button
-                        type="button"
-                        onMouseDown={(e) => e.preventDefault()}
-                        onClick={() => selectPatient(p)}
-                        className="w-full px-4 py-2.5 text-left hover:bg-[#FAFAFA] flex items-center gap-3 transition-colors"
-                      >
-                        <PatientAvatar name={p.name} size="sm" />
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-[#09090B] truncate">{p.name}</p>
-                          <p className="text-xs text-[#71717A]">{p.phone ?? "—"}</p>
-                        </div>
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          )}
 
-          {errors.patient_id && !showNewPatient && (
-            <p className="text-xs text-[#DC2626]" role="alert">
-              {errors.patient_id.message ?? "Please select a patient."}
-            </p>
+              {/* New patient — revealed automatically when no match is found */}
+              {newPatientMode && (
+                <div className="space-y-3 border border-dashed border-[#E4E4E7] rounded-lg p-4 bg-[#FAFAFA]">
+                  <div className="flex items-center gap-1.5 text-xs font-semibold text-[#09090B]">
+                    <UserPlus className="h-3.5 w-3.5 text-[#71717A]" aria-hidden />
+                    New Patient — no existing record found
+                  </div>
+
+                  {newPatientError && (
+                    <p className="text-xs text-[#DC2626]" role="alert">{newPatientError}</p>
+                  )}
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <Field label="Full Name" htmlFor="np-name" required>
+                      <Input
+                        id="np-name"
+                        type="text"
+                        {...newPatientForm.register("name")}
+                        disabled={isBooking}
+                        placeholder="Patient full name"
+                        hasError={!!newPatientForm.formState.errors.name}
+                      />
+                      {newPatientForm.formState.errors.name && (
+                        <p className="text-xs text-[#DC2626] mt-1">{newPatientForm.formState.errors.name.message}</p>
+                      )}
+                    </Field>
+
+                    <Field label="Phone" htmlFor="np-phone">
+                      <Input
+                        id="np-phone"
+                        type="tel"
+                        {...newPatientForm.register("phone")}
+                        disabled={isBooking}
+                        placeholder="+91 98765 43210"
+                      />
+                    </Field>
+
+                    <Field label="Gender" htmlFor="np-gender">
+                      <Select
+                        id="np-gender"
+                        {...newPatientForm.register("gender")}
+                        disabled={isBooking}
+                      >
+                        <option value="">Select…</option>
+                        <option value="male">Male</option>
+                        <option value="female">Female</option>
+                        <option value="other">Other</option>
+                      </Select>
+                    </Field>
+
+                    <Field label="Date of Birth" htmlFor="np-dob" hint="Enter DOB or age — either is fine">
+                      <CalendarPicker
+                        id="np-dob"
+                        value={newPatientForm.watch("date_of_birth") ?? undefined}
+                        disabled={isBooking}
+                        onChange={(d) => {
+                          newPatientForm.setValue("date_of_birth", d);
+                          const a = calculateAge(d || null);
+                          setNewPatientAge(a != null ? String(a) : "");
+                        }}
+                        placeholder="Date of birth"
+                        clearable
+                      />
+                    </Field>
+
+                    <Field label="Age (years)" htmlFor="np-age" hint="Optional if DOB is provided">
+                      <Input
+                        id="np-age"
+                        type="number"
+                        min={0}
+                        max={130}
+                        value={newPatientAge}
+                        disabled={isBooking}
+                        placeholder="e.g. 34"
+                        onChange={(e) => {
+                          setNewPatientAge(e.target.value);
+                          // Age drives an approximate DOB; clear any manual DOB
+                          // so the two never conflict.
+                          newPatientForm.setValue("date_of_birth", "");
+                        }}
+                      />
+                    </Field>
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </div>
 
@@ -393,7 +487,7 @@ export function AppointmentForm({
               id="appt-date"
               value={selectedDate}
               min={today}
-              disabled={isSubmitting}
+              disabled={isBooking}
               onChange={(d) => { if (d) setSelectedDate(d); }}
             />
           </Field>
@@ -410,7 +504,7 @@ export function AppointmentForm({
               <p className="text-xs text-[#A1A1AA] mt-0.5">Try selecting a different date.</p>
             </div>
           ) : (
-            <Field label="Available Times" required error={errors.scheduled_at ? "Please select a time slot." : undefined}>
+            <Field label="Available Times" required error={!selectedSlot && bookError ? "Please select a time slot." : undefined}>
               <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 mt-1">
                 {slots.map((slot) => {
                   const timePart = slot.split("T")[1]?.slice(0, 5) ?? "";
@@ -418,7 +512,7 @@ export function AppointmentForm({
                     <button
                       key={slot}
                       type="button"
-                      disabled={isSubmitting}
+                      disabled={isBooking}
                       onClick={() => selectSlot(slot)}
                       className={cn(
                         "flex items-center justify-center gap-1 py-2 px-1 text-xs rounded-lg border transition-all",
@@ -448,7 +542,7 @@ export function AppointmentForm({
             <Select
               id="source"
               {...register("source")}
-              disabled={isSubmitting}
+              disabled={isBooking}
               hasError={!!errors.source}
             >
               {Object.entries(APPOINTMENT_SOURCE_LABELS).map(([val, label]) => (
@@ -461,7 +555,7 @@ export function AppointmentForm({
             <Select
               id="duration"
               {...register("duration_minutes", { valueAsNumber: true })}
-              disabled={isSubmitting}
+              disabled={isBooking}
               onChange={(e) => {
                 const newDuration = Number(e.target.value);
                 setValue("duration_minutes", newDuration);
@@ -481,24 +575,41 @@ export function AppointmentForm({
               id="notes"
               {...register("notes")}
               rows={2}
-              disabled={isSubmitting}
+              disabled={isBooking}
               placeholder="Reason for visit, special instructions…"
             />
           </Field>
         </div>
 
+        {/* ── Success banner ──────────────────────────────────────── */}
+        {success && (
+          <div
+            role="status"
+            className="px-6 py-3 bg-[#F0FDF4] border-t border-[#BBF7D0] text-sm text-[#16A34A] flex items-center gap-2"
+          >
+            <CheckCircle2 className="h-4 w-4 shrink-0" aria-hidden />
+            Appointment booked successfully.
+          </div>
+        )}
+
         {/* ── Actions ─────────────────────────────────────────────── */}
         <div className="px-6 py-4 bg-[#FAFAFA] flex items-center justify-end gap-3">
-          <Button variant="outline" size="sm" asChild>
-            <a href={cancelHref}>Cancel</a>
-          </Button>
+          {onCancel ? (
+            <Button variant="outline" size="sm" type="button" onClick={onCancel} disabled={isBooking}>
+              Cancel
+            </Button>
+          ) : (
+            <Button variant="outline" size="sm" asChild>
+              <a href={cancelHref ?? "/dentist/appointments"}>Cancel</a>
+            </Button>
+          )}
           <Button
             type="submit"
             size="sm"
-            disabled={isSubmitting || (!selectedPatient && !preselectedPatient) || !selectedSlot}
-            isLoading={isSubmitting}
+            disabled={isBooking || !canBook}
+            isLoading={isBooking}
           >
-            {isSubmitting ? "Booking…" : "Book Appointment"}
+            {isBooking ? "Booking…" : "Book Appointment"}
           </Button>
         </div>
       </div>

@@ -88,6 +88,7 @@ export async function recordPayment(
         appointment_id: parsed.data.appointment_id ?? null,
         amount: parsed.data.amount,
         method: parsed.data.method,
+        payment_type: parsed.data.payment_type ?? "treatment",
         payment_date: parsed.data.payment_date,
         notes: parsed.data.notes ?? null,
         created_by: profile.id,
@@ -522,6 +523,7 @@ export async function getAllPayments(params: {
   limit?: number;
   search?: string;
   method?: string;
+  paymentType?: string;
   dateFrom?: string;
   dateTo?: string;
 }): Promise<ActionResult<{ payments: PaymentWithPatient[]; total: number }>> {
@@ -556,6 +558,11 @@ export async function getAllPayments(params: {
       query = query.eq("method", params.method);
     }
 
+    // Filter by payment type (treatment vs OPD)
+    if (params.paymentType) {
+      query = query.eq("payment_type", params.paymentType);
+    }
+
     // Filter by date range
     if (params.dateFrom) {
       query = query.gte("payment_date", params.dateFrom);
@@ -586,5 +593,130 @@ export async function getAllPayments(params: {
   } catch (err) {
     console.error("[getAllPayments] unexpected:", err);
     return { data: null, error: "Unexpected error" };
+  }
+}
+
+// =============================================================================
+// getAppointmentPaymentStatuses — batched payment-status derivation (staff)
+//
+// For a set of appointment ids, derives a payment status badge:
+//   - "paid"    → billable treatment cost > 0 and fully covered
+//   - "partial" → some payment recorded but less than the billable cost
+//   - "pending" → billable treatment cost > 0 and nothing paid
+//   - "none"    → no billable treatment cost for the appointment
+//
+// Reuses the shared billing rules (isBillableTreatment). One query per table,
+// no per-row work, so it is safe to call once for a whole page of appointments.
+// =============================================================================
+
+export type AppointmentPaymentStatus = "paid" | "partial" | "pending" | "none";
+
+export async function getAppointmentPaymentStatuses(
+  appointmentIds: string[]
+): Promise<ActionResult<Record<string, AppointmentPaymentStatus>>> {
+  try {
+    if (!appointmentIds || appointmentIds.length === 0) {
+      return { data: {}, error: null };
+    }
+
+    const { db, profile } = await resolveSession();
+    if (!profile) return { data: null, error: "Unauthorized" };
+    if (profile.role === "patient") return { data: null, error: "Forbidden" };
+
+    const ids = Array.from(new Set(appointmentIds));
+
+    const [{ data: treatmentRows }, { data: paymentRows }] = await Promise.all([
+      db
+        .from("treatments")
+        .select("appointment_id, cost, status")
+        .eq("clinic_id", profile.clinic_id)
+        .in("appointment_id", ids)
+        .is("deleted_at", null),
+      db
+        .from("payments")
+        .select("appointment_id, amount")
+        .eq("clinic_id", profile.clinic_id)
+        .in("appointment_id", ids)
+        .is("deleted_at", null),
+    ]);
+
+    const costMap = new Map<string, number>();
+    const paidMap = new Map<string, number>();
+
+    for (const t of (treatmentRows ?? []) as {
+      appointment_id: string | null;
+      cost: number;
+      status: string;
+    }[]) {
+      if (!t.appointment_id || !isBillableTreatment(t.status)) continue;
+      costMap.set(t.appointment_id, (costMap.get(t.appointment_id) ?? 0) + Number(t.cost ?? 0));
+    }
+
+    for (const p of (paymentRows ?? []) as {
+      appointment_id: string | null;
+      amount: number;
+    }[]) {
+      if (!p.appointment_id) continue;
+      paidMap.set(p.appointment_id, (paidMap.get(p.appointment_id) ?? 0) + Number(p.amount ?? 0));
+    }
+
+    const result: Record<string, AppointmentPaymentStatus> = {};
+    for (const id of ids) {
+      const cost = costMap.get(id) ?? 0;
+      const paid = paidMap.get(id) ?? 0;
+      if (cost <= 0) {
+        // No billable treatment cost — flag any standalone payment as paid,
+        // otherwise there is nothing to collect yet.
+        result[id] = paid > 0 ? "paid" : "none";
+      } else if (paid >= cost) {
+        result[id] = "paid";
+      } else if (paid > 0) {
+        result[id] = "partial";
+      } else {
+        result[id] = "pending";
+      }
+    }
+
+    return { data: result, error: null };
+  } catch (err) {
+    console.error("[getAppointmentPaymentStatuses] unexpected:", err);
+    return { data: null, error: "Unexpected error" };
+  }
+}
+
+// =============================================================================
+// getPaymentRecorderNames — resolve staff display names for "Recorded By"
+// =============================================================================
+
+export async function getPaymentRecorderNames(
+  ids: string[]
+): Promise<ActionResult<Record<string, string>>> {
+  try {
+    const clean = Array.from(new Set((ids ?? []).filter(Boolean)));
+    if (clean.length === 0) return { data: {}, error: null };
+
+    const { db, profile } = await resolveSession();
+    if (!profile) return { data: null, error: "Unauthorized" };
+    if (profile.role === "patient") return { data: {}, error: null };
+
+    const { data, error } = await db
+      .from("profiles")
+      .select("id, full_name")
+      .eq("clinic_id", profile.clinic_id)
+      .in("id", clean);
+
+    if (error) {
+      console.error("[getPaymentRecorderNames]", error);
+      return { data: {}, error: null };
+    }
+
+    const map: Record<string, string> = {};
+    for (const p of (data ?? []) as { id: string; full_name: string | null }[]) {
+      if (p.full_name) map[p.id] = p.full_name;
+    }
+    return { data: map, error: null };
+  } catch (err) {
+    console.error("[getPaymentRecorderNames] unexpected:", err);
+    return { data: {}, error: null };
   }
 }

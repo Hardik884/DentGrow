@@ -12,9 +12,9 @@ import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import { getPrescriptions, type PrescriptionRecord } from "@/actions/prescriptions";
 import { queryKeys } from "@/lib/query/keys";
 import { ListTableSkeleton } from "@/components/shared/ListTableSkeleton";
+import { ACTION_BUTTON } from "@/lib/ui/action-styles";
 import { formatDate } from "@/lib/utils";
 import { Eye, Printer } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { PrescriptionDialog } from "./PrescriptionDialog";
 
 interface PrescriptionsViewProps {
@@ -157,25 +157,25 @@ export function PrescriptionsView({
                       <td className="px-4 py-3 text-center text-[#52525B]">
                         {rx.medicine_count}
                       </td>
-                      <td className="px-4 py-3 text-right space-x-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleView(rx)}
-                          className="inline-flex items-center gap-1"
-                        >
-                          <Eye className="h-3.5 w-3.5" aria-hidden />
-                          View
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handlePrint(rx)}
-                          className="inline-flex items-center gap-1"
-                        >
-                          <Printer className="h-3.5 w-3.5" aria-hidden />
-                          Print
-                        </Button>
+                      <td className="px-4 py-3 text-right">
+                        <div className="flex items-center justify-end gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => handleView(rx)}
+                            className={ACTION_BUTTON}
+                          >
+                            <Eye className="h-3 w-3" aria-hidden />
+                            View
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handlePrint(rx)}
+                            className={ACTION_BUTTON}
+                          >
+                            <Printer className="h-3 w-3" aria-hidden />
+                            Print
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}

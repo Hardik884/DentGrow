@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { resolveSession as resolveCachedSession } from "@/lib/auth/session";
 import { computeOutstandingBalance } from "@/lib/billing/balance";
+import { getTodayInTimezone, getUtcBoundariesForLocalDate } from "@/lib/utils";
 import {
   CreatePatientSchema,
   UpdatePatientSchema,
@@ -456,6 +457,8 @@ export async function getPatients(filters?: {
   page?: number;
   limit?: number;
   search?: string;
+  /** Quick-filter category: new | visits-today | active | inactive */
+  filter?: string;
 }): Promise<ActionResult<{ patients: Patient[]; total: number }>> {
   try {
     const { db, profile } = await resolveSession();
@@ -480,6 +483,60 @@ export async function getPatients(filters?: {
       const s = sanitizeForOrFilter(filters.search.trim());
       if (s.length >= 2) {
         query = query.or(`name.ilike.%${s}%,phone.ilike.%${s}%`);
+      }
+    }
+
+    // Quick-filter categories. "active" = seen in the last 180 days;
+    // "inactive" = no visit in the last 180 days; "new" = registered today;
+    // "visits-today" = has an appointment scheduled today. All computed in the
+    // clinic timezone so boundaries match the rest of the app.
+    const cat = filters?.filter;
+    if (cat === "new" || cat === "visits-today" || cat === "active" || cat === "inactive") {
+      const { data: settings } = await db
+        .from("clinic_settings")
+        .select("timezone")
+        .eq("clinic_id", profile.clinic_id)
+        .maybeSingle();
+      const tz = (settings as { timezone?: string } | null)?.timezone ?? "Asia/Kolkata";
+      const today = getTodayInTimezone(tz);
+
+      if (cat === "new") {
+        const { start } = getUtcBoundariesForLocalDate(today, tz);
+        query = query.gte("created_at", start);
+      } else if (cat === "visits-today") {
+        const { start, end } = getUtcBoundariesForLocalDate(today, tz);
+        const { data: appts } = await db
+          .from("appointments")
+          .select("patient_id")
+          .eq("clinic_id", profile.clinic_id)
+          .is("deleted_at", null)
+          .gte("scheduled_at", start)
+          .lte("scheduled_at", end);
+        const ids = Array.from(
+          new Set(((appts ?? []) as { patient_id: string }[]).map((a) => a.patient_id))
+        );
+        if (ids.length === 0) return { data: { patients: [], total: 0 }, error: null };
+        query = query.in("id", ids);
+      } else {
+        // active / inactive — resolve patients seen in the last 180 days.
+        const cutoff = new Date(`${today}T00:00:00`);
+        cutoff.setDate(cutoff.getDate() - 180);
+        const cutoffIso = cutoff.toISOString();
+        const { data: appts } = await db
+          .from("appointments")
+          .select("patient_id")
+          .eq("clinic_id", profile.clinic_id)
+          .is("deleted_at", null)
+          .gte("scheduled_at", cutoffIso);
+        const activeIds = Array.from(
+          new Set(((appts ?? []) as { patient_id: string }[]).map((a) => a.patient_id))
+        );
+        if (cat === "active") {
+          if (activeIds.length === 0) return { data: { patients: [], total: 0 }, error: null };
+          query = query.in("id", activeIds);
+        } else if (activeIds.length > 0) {
+          query = query.not("id", "in", `(${activeIds.join(",")})`);
+        }
       }
     }
 

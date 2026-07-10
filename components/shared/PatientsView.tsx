@@ -30,19 +30,20 @@ interface PatientsViewProps {
   page: number;
   limit: number;
   search?: string;
+  filter?: string;
   baseHref: string; // "/dentist" | "/receptionist"
 }
 
-export function PatientsView({ page, limit, search, baseHref }: PatientsViewProps) {
+export function PatientsView({ page, limit, search, filter, baseHref }: PatientsViewProps) {
   const router = useRouter();
   const pathname = usePathname();
   const [searchInput, setSearchInput] = useState(search ?? "");
 
   const { data, isPending, isError, error, isPlaceholderData, isFetching } =
     useQuery({
-      queryKey: queryKeys.patients.list({ page, search: search ?? "" }),
+      queryKey: queryKeys.patients.list({ page, search: search ?? "", filter: filter ?? "" }),
       queryFn: async () => {
-        const res = await getPatients({ page, limit, search });
+        const res = await getPatients({ page, limit, search, filter });
         if (res.error) throw new Error(res.error);
         return res.data ?? { patients: [], total: 0 };
       },
@@ -52,12 +53,19 @@ export function PatientsView({ page, limit, search, baseHref }: PatientsViewProp
   function submitSearch(e: React.FormEvent) {
     e.preventDefault();
     const q = searchInput.trim();
-    router.push(q ? `${pathname}?search=${encodeURIComponent(q)}` : pathname);
+    const sp = new URLSearchParams();
+    if (q) sp.set("search", q);
+    if (filter) sp.set("filter", filter);
+    const qs = sp.toString();
+    router.push(qs ? `${pathname}?${qs}` : pathname);
   }
 
   function clearSearch() {
     setSearchInput("");
-    router.push(pathname);
+    const sp = new URLSearchParams();
+    if (filter) sp.set("filter", filter);
+    const qs = sp.toString();
+    router.push(qs ? `${pathname}?${qs}` : pathname);
   }
 
   const total = data?.total ?? 0;
