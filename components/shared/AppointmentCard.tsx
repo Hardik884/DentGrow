@@ -61,8 +61,8 @@ export async function AppointmentCard({
               : ""}
           </p>
         </div>
-        {appointment.notes && (
-          <p className="text-xs text-[#A1A1AA] truncate mt-0.5">{appointment.notes}</p>
+        {appointment.chief_complaints && (
+          <p className="text-xs text-[#A1A1AA] truncate mt-0.5">{appointment.chief_complaints}</p>
         )}
       </div>
       <AppointmentStatusBadge status={appointment.status} />

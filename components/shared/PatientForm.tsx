@@ -169,7 +169,9 @@ export function PatientForm({ patient, successRedirect, cancelHref, onSuccess, h
             <Field label="Gender" htmlFor="gender" error={errors.gender?.message}>
               <Select
                 id="gender"
-                {...register("gender")}
+                {...register("gender", {
+                  setValueAs: (v) => (v === "" || v == null ? undefined : v),
+                })}
                 disabled={isSubmitting}
                 hasError={!!errors.gender}
               >

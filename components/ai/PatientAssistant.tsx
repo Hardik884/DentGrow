@@ -13,6 +13,7 @@ import {
   ChevronDown,
 } from "lucide-react";
 import type { CopilotMessage } from "@/types";
+import { isPatientBookingEnabled } from "@/lib/feature-flags";
 
 // ── Typing indicator ─────────────────────────────────────────────────────────
 
@@ -58,8 +59,10 @@ function MessageBubble({ msg }: { msg: CopilotMessage }) {
 
 // ── Suggested prompts ─────────────────────────────────────────────────────────
 
+// Booking-related prompts are only surfaced when patient booking is enabled,
+// so the assistant never advertises an action it will immediately refuse.
 const SUGGESTED_PROMPTS = [
-  "What slots are available tomorrow?",
+  ...(isPatientBookingEnabled() ? ["What slots are available tomorrow?"] : []),
   "What are the clinic hours?",
   "Do I have any upcoming appointments?",
   "What's my queue position?",
@@ -302,8 +305,9 @@ function PatientAssistantInner({ patientId }: PatientAssistantProps) {
                   Hi! I&apos;m your dental assistant.
                 </p>
                 <p className="text-xs text-[#71717A] mt-1 leading-relaxed">
-                  I can help you book appointments, check clinic hours, view
-                  your queue status, and more.
+                  {isPatientBookingEnabled()
+                    ? "I can help you book appointments, check clinic hours, view your queue status, and more."
+                    : "I can help you check clinic hours, view your queue status, see your appointments, and more."}
                 </p>
               </div>
             </div>

@@ -73,6 +73,7 @@ export function ClinicSettingsForm({ initialSettings }: ClinicSettingsFormProps)
       registration_number: initialSettings?.registration_number ?? "",
       allow_receptionist_payments: initialSettings?.allow_receptionist_payments ?? false,
       show_consultancy_on_dashboard: initialSettings?.show_consultancy_on_dashboard ?? true,
+      default_opd_fee: initialSettings?.default_opd_fee ?? null,
       clinic_hours: defaultHours,
     },
   });
@@ -176,6 +177,32 @@ export function ClinicSettingsForm({ initialSettings }: ClinicSettingsFormProps)
               </Select>
             </Field>
           </div>
+        </div>
+
+        {/* ── OPD Consultation Settings ───────────────────────── */}
+        <div className="px-6 py-5 space-y-4">
+          <h3 className="text-sm font-semibold text-[#09090B]">OPD Consultation Settings</h3>
+
+          <Field
+            label="Default OPD Consultation Fee (₹)"
+            htmlFor="default_opd_fee"
+            hint="Pre-fills the amount when recording an OPD payment. Leave blank for no default."
+            error={errors.default_opd_fee?.message}
+          >
+            <Input
+              id="default_opd_fee"
+              type="number"
+              min={0}
+              step="0.01"
+              placeholder="e.g. 300"
+              disabled={isSubmitting}
+              hasError={!!errors.default_opd_fee}
+              {...register("default_opd_fee", {
+                setValueAs: (v) =>
+                  v === "" || v === null || v === undefined ? null : Number(v),
+              })}
+            />
+          </Field>
         </div>
 
         {/* ── Access Control ─────────────────────────────────────── */}

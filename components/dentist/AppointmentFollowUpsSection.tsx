@@ -3,6 +3,7 @@ import { ConfirmationStatusBadge } from "@/components/follow-ups/ConfirmationSta
 import { FollowUpFormDialog } from "@/components/follow-ups/FollowUpFormDialog";
 import { formatDate } from "@/lib/utils";
 import { FOLLOW_UP_TYPE_LABELS, FOLLOW_UP_STATUS_LABELS } from "@/lib/utils";
+import { Plus } from "lucide-react";
 import type { FollowUpWithRelations } from "@/types";
 
 interface AppointmentFollowUpsSectionProps {
@@ -39,6 +40,16 @@ export async function AppointmentFollowUpsSection({
             </p>
           )}
         </div>
+        <FollowUpFormDialog
+          patientId={patientId}
+          patientName={patientName}
+          appointmentId={appointmentId}
+          triggerVariant="outline"
+          triggerSize="sm"
+        >
+          <Plus className="h-3.5 w-3.5" aria-hidden />
+          Add Follow-up Appointment
+        </FollowUpFormDialog>
       </div>
 
       {result.error && (

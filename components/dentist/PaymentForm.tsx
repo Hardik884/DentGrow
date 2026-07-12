@@ -22,6 +22,8 @@ interface PaymentFormProps {
   appointmentId?: string;
   /** Payment type — "opd" records a standalone consultation payment. Defaults to "treatment". */
   paymentType?: PaymentType;
+  /** Pre-fills the Amount field (e.g. the clinic's default OPD fee). Editable. */
+  defaultAmount?: number;
   /** When provided, shows a read-only "Recorded By" field (staff member's name). */
   recordedByName?: string;
   onSuccess?: () => void;
@@ -34,6 +36,7 @@ export function PaymentForm({
   patientName: initialPatientName,
   appointmentId,
   paymentType = "treatment",
+  defaultAmount,
   recordedByName,
   onSuccess,
   onCancel,
@@ -59,7 +62,7 @@ export function PaymentForm({
     defaultValues: {
       patient_id: initialPatientId ?? "",
       appointment_id: appointmentId,
-      amount: undefined,
+      amount: defaultAmount != null && defaultAmount > 0 ? defaultAmount : undefined,
       method: PaymentMethod.CASH,
       payment_type: paymentType,
       payment_date: today,

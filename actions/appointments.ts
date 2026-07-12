@@ -346,7 +346,7 @@ export async function createAppointment(
         scheduled_at: scheduledAtUtc,
         duration_minutes: parsed.data.duration_minutes ?? 30,
         source: parsed.data.source,
-        notes: parsed.data.notes ?? null,
+        chief_complaints: parsed.data.chief_complaints?.trim() || null,
         status: "scheduled",
         created_by: profile.id,
       })

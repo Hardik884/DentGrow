@@ -5,6 +5,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { CalendarDays } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { createServerClient } from "@/lib/supabase/server";
+import { isPatientBookingEnabled } from "@/lib/feature-flags";
 
 interface AppointmentListProps {
   limit?: number;
@@ -13,6 +14,7 @@ interface AppointmentListProps {
 export async function AppointmentList({ limit }: AppointmentListProps) {
   const result = await getAppointments({ status: "scheduled", limit: limit ?? 10 });
   const appointments = result.data?.appointments ?? [];
+  const bookingEnabled = isPatientBookingEnabled();
 
   // Resolve clinic timezone for correct time display in the portal.
   // Appointments are stored in UTC; we must display in the clinic's local timezone.
@@ -50,11 +52,17 @@ export async function AppointmentList({ limit }: AppointmentListProps) {
           <EmptyState
             icon={<CalendarDays className="h-5 w-5" aria-hidden />}
             title="No upcoming appointments"
-            description="You don't have any appointments scheduled."
+            description={
+              bookingEnabled
+                ? "You don't have any appointments scheduled."
+                : "You don't have any appointments scheduled. Please contact your clinic to book one."
+            }
             action={
-              <Button asChild size="sm">
-                <Link href="/portal/appointments/new">Book Now</Link>
-              </Button>
+              bookingEnabled ? (
+                <Button asChild size="sm">
+                  <Link href="/portal/appointments/new">Book Now</Link>
+                </Button>
+              ) : undefined
             }
           />
         </div>

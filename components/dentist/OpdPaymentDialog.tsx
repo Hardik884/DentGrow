@@ -16,8 +16,14 @@ import { Dialog } from "@/components/ui/dialog";
 import { Button, type ButtonVariant, type ButtonSize } from "@/components/ui/button";
 import { PaymentForm } from "@/components/dentist/PaymentForm";
 import { getCurrentUserDisplayName } from "@/actions/treatments";
+import { getClinicSettings } from "@/actions/clinic-settings";
 
 interface OpdPaymentDialogProps {
+  /** Pre-selects the patient (Patient Visit context). */
+  patientId?: string;
+  patientName?: string;
+  /** Links the OPD payment to a specific appointment (Patient Visit context). */
+  appointmentId?: string;
   triggerClassName?: string;
   /** When set, the trigger renders via the shared Button for consistent styling. */
   triggerVariant?: ButtonVariant;
@@ -27,6 +33,9 @@ interface OpdPaymentDialogProps {
 }
 
 export function OpdPaymentDialog({
+  patientId,
+  patientName,
+  appointmentId,
   triggerClassName,
   triggerVariant,
   triggerSize = "sm",
@@ -35,13 +44,20 @@ export function OpdPaymentDialog({
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [recordedBy, setRecordedBy] = useState<string | undefined>(undefined);
+  const [defaultFee, setDefaultFee] = useState<number | undefined>(undefined);
+  const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
-    if (!open || recordedBy) return;
+    if (!open || loaded) return;
     getCurrentUserDisplayName().then((res) => {
       if (res.data) setRecordedBy(res.data);
     });
-  }, [open, recordedBy]);
+    getClinicSettings().then((res) => {
+      const fee = res.data?.default_opd_fee;
+      if (fee != null && Number(fee) > 0) setDefaultFee(Number(fee));
+      setLoaded(true);
+    });
+  }, [open, loaded]);
 
   return (
     <>
@@ -63,15 +79,23 @@ export function OpdPaymentDialog({
 
       <Dialog open={open} onClose={() => setOpen(false)} title="Add OPD Payment" size="md">
         <div className="p-4">
-          <PaymentForm
-            paymentType="opd"
-            recordedByName={recordedBy}
-            onCancel={() => setOpen(false)}
-            onSuccess={() => {
-              setOpen(false);
-              router.refresh();
-            }}
-          />
+          {/* Wait for settings before mounting the form so the default OPD fee
+              is applied to the initial Amount value (still editable). */}
+          {loaded && (
+            <PaymentForm
+              paymentType="opd"
+              patientId={patientId}
+              patientName={patientName}
+              appointmentId={appointmentId}
+              defaultAmount={defaultFee}
+              recordedByName={recordedBy}
+              onCancel={() => setOpen(false)}
+              onSuccess={() => {
+                setOpen(false);
+                router.refresh();
+              }}
+            />
+          )}
         </div>
       </Dialog>
     </>

@@ -313,7 +313,7 @@ async function executePatientTool(
         scheduled_at: confirmed.args.scheduledAt,
         duration_minutes: 30,
         source: "website",
-        notes: confirmed.args.notes ?? undefined,
+        chief_complaints: confirmed.args.notes ?? undefined,
       });
       if (result.error) return { error: result.error };
       return {

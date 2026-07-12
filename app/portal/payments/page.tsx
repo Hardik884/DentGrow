@@ -3,7 +3,7 @@ import { PaymentHistoryList } from "@/components/patient/PaymentHistoryList";
 import { OutstandingBalanceCard } from "@/components/patient/OutstandingBalanceCard";
 
 export const metadata: Metadata = {
-  title: "Payments — DentGrow",
+  title: "Payments",
 };
 
 /**

@@ -19,6 +19,8 @@ const EMPTY: MedicalHistory = {
   hypertension: false,
   diabetes: false,
   pregnancy_lactation: false,
+  drug_allergies: false,
+  thyroid_disorders: false,
   notes: "",
 };
 
@@ -26,6 +28,8 @@ const CHECKS: { key: keyof Omit<MedicalHistory, "notes">; label: string }[] = [
   { key: "hypertension", label: "Hypertension (BP)" },
   { key: "diabetes", label: "Diabetes" },
   { key: "pregnancy_lactation", label: "Pregnancy / Lactation" },
+  { key: "drug_allergies", label: "Drug Allergies" },
+  { key: "thyroid_disorders", label: "Thyroid Disorders" },
 ];
 
 function normalize(raw: unknown): MedicalHistory {
@@ -35,6 +39,8 @@ function normalize(raw: unknown): MedicalHistory {
       hypertension: !!r.hypertension,
       diabetes: !!r.diabetes,
       pregnancy_lactation: !!r.pregnancy_lactation,
+      drug_allergies: !!r.drug_allergies,
+      thyroid_disorders: !!r.thyroid_disorders,
       notes: typeof r.notes === "string" ? r.notes : "",
     };
   }
@@ -62,6 +68,8 @@ export function MedicalHistoryCard({ appointmentId, initial, canEdit }: MedicalH
     value.hypertension !== saved.hypertension ||
     value.diabetes !== saved.diabetes ||
     value.pregnancy_lactation !== saved.pregnancy_lactation ||
+    value.drug_allergies !== saved.drug_allergies ||
+    value.thyroid_disorders !== saved.thyroid_disorders ||
     value.notes.trim() !== saved.notes.trim();
 
   function toggle(key: keyof Omit<MedicalHistory, "notes">) {

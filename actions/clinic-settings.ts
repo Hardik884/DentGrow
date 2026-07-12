@@ -136,6 +136,7 @@ export async function updateClinicSettings(
           registration_number: parsed.data.registration_number || null,
           allow_receptionist_payments: parsed.data.allow_receptionist_payments ?? false,
           show_consultancy_on_dashboard: parsed.data.show_consultancy_on_dashboard ?? true,
+          default_opd_fee: parsed.data.default_opd_fee ?? null,
           clinic_hours: parsed.data.clinic_hours ?? null,
           updated_at: new Date().toISOString(),
         },

@@ -1,7 +1,9 @@
 import { getTreatmentsForAppointment } from "@/actions/treatments";
 import { TreatmentList } from "@/components/dentist/TreatmentList";
+import { TreatmentFormDialog } from "@/components/dentist/TreatmentFormDialog";
 import { AppointmentPatientHistorySection } from "@/components/dentist/AppointmentPatientHistorySection";
 import { formatCurrency } from "@/lib/utils";
+import { Plus } from "lucide-react";
 import type { Treatment } from "@/types";
 
 interface AppointmentTreatmentsSectionProps {
@@ -33,13 +35,22 @@ export async function AppointmentTreatmentsSection({
       <div className="space-y-4">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <h3 className="font-semibold text-gray-900">Current Treatment</h3>
+            <h3 className="font-semibold text-gray-900">Treatments</h3>
             {treatments.length > 0 && (
               <p className="text-xs text-gray-500 mt-0.5">
                 Total: {formatCurrency(totalCost)}
               </p>
             )}
           </div>
+          <TreatmentFormDialog
+            appointmentId={appointmentId}
+            patientId={patientId}
+            triggerVariant="outline"
+            triggerSize="sm"
+          >
+            <Plus className="h-3.5 w-3.5" aria-hidden />
+            Add Treatment
+          </TreatmentFormDialog>
         </div>
 
         {result.error && <p className="text-sm text-red-600">{result.error}</p>}

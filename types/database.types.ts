@@ -503,6 +503,7 @@ export type Database = {
           registration_number: string | null;
           allow_receptionist_payments: boolean;
           show_consultancy_on_dashboard: boolean;
+          default_opd_fee: number | null;
           created_at: string;
           updated_at: string;
         };
@@ -518,6 +519,7 @@ export type Database = {
           registration_number?: string | null;
           allow_receptionist_payments?: boolean;
           show_consultancy_on_dashboard?: boolean;
+          default_opd_fee?: number | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -533,6 +535,7 @@ export type Database = {
           registration_number?: string | null;
           allow_receptionist_payments?: boolean;
           show_consultancy_on_dashboard?: boolean;
+          default_opd_fee?: number | null;
           created_at?: string;
           updated_at?: string;
         };

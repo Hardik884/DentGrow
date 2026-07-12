@@ -271,14 +271,23 @@ const phoneRegex = /^[+]?[\d\s\-().]{7,15}$/;
 // ── Patient ───────────────────────────────────────────────────────────────────
 
 export const CreatePatientSchema = z.object({
-  name: z.string().min(2).max(100),
+  name: z
+    .string()
+    .min(2, "Name must be at least 2 characters")
+    .max(100, "Name must be 100 characters or fewer"),
   phone: z.string().regex(phoneRegex, "Invalid phone number format").optional().or(z.literal("")),
   date_of_birth: z.string().optional(),
+  // Gender is optional. The form maps the empty "Select…" option to undefined
+  // (via register setValueAs) so this enum never receives "".
   gender: z.enum(["male", "female", "other"]).optional(),
-  address: z.string().max(500).optional(),
-  emergency_contact_name: z.string().max(100).optional(),
-  emergency_contact_phone: z.string().regex(phoneRegex).optional().or(z.literal("")),
-  notes: z.string().max(2000).optional(),
+  address: z.string().max(500, "Address is too long").optional(),
+  emergency_contact_name: z.string().max(100, "Contact name is too long").optional(),
+  emergency_contact_phone: z
+    .string()
+    .regex(phoneRegex, "Invalid phone number format")
+    .optional()
+    .or(z.literal("")),
+  notes: z.string().max(2000, "Notes are too long").optional(),
 });
 export type CreatePatientInput = z.infer<typeof CreatePatientSchema>;
 
@@ -288,14 +297,17 @@ export type UpdatePatientInput = z.infer<typeof UpdatePatientSchema>;
 // ── Appointment ───────────────────────────────────────────────────────────────
 
 export const CreateAppointmentSchema = z.object({
-  patient_id: z.string().uuid(),
+  patient_id: z.string().uuid("Please select a patient"),
   // Accept ISO datetime with OR without timezone offset.
   // Slots from getAvailableSlots() return "YYYY-MM-DDTHH:MM:00" (no offset);
   // the server action converts to a proper timestamptz before inserting.
   scheduled_at: z.string().min(1, "Please select a time slot"),
   duration_minutes: z.number().int().positive().default(30),
   source: z.enum(["walk_in", "phone_call", "website", "referral", "other"]),
-  notes: z.string().max(1000).optional(),
+  // Chief complaints captured at booking. Stored directly in
+  // appointments.chief_complaints so the Patient Visit page auto-loads it
+  // (single source of truth — no duplicate "notes" field).
+  chief_complaints: z.string().max(5000).optional(),
 });
 export type CreateAppointmentInput = z.infer<typeof CreateAppointmentSchema>;
 
@@ -307,6 +319,8 @@ export type MedicalHistory = {
   hypertension: boolean;
   diabetes: boolean;
   pregnancy_lactation: boolean;
+  drug_allergies: boolean;
+  thyroid_disorders: boolean;
   notes: string;
 };
 
@@ -314,6 +328,8 @@ export const MedicalHistorySchema = z.object({
   hypertension: z.boolean().default(false),
   diabetes: z.boolean().default(false),
   pregnancy_lactation: z.boolean().default(false),
+  drug_allergies: z.boolean().default(false),
+  thyroid_disorders: z.boolean().default(false),
   notes: z.string().max(2000).default(""),
 });
 
@@ -430,11 +446,11 @@ export type MedicationInput = z.infer<typeof MedicationSchema>;
 export const CreateTreatmentSchema = z.object({
   appointment_id: z.string().uuid(),
   patient_id: z.string().uuid(),
-  treatment_type: z.string().min(1).max(100),
+  treatment_type: z.string().min(1, "Treatment type is required").max(100),
   internal_notes: z.string().max(5000).optional(),
   patient_visible_notes: z.string().max(2000).optional(),
   medications: z.array(MedicationSchema).max(30).optional(),
-  cost: z.number().nonnegative(),
+  cost: z.number({ invalid_type_error: "Cost is required" }).nonnegative("Cost cannot be negative"),
   status: z.enum(["planned", "in_progress", "completed", "cancelled"]).default("planned"),
   // Accepts "YYYY-MM-DD", "YYYY-MM-DDTHH:mm", or full ISO strings.
   // The server action normalises this to a proper timestamptz before inserting.
@@ -468,12 +484,12 @@ export type CreateTreatmentDocumentInput = z.infer<typeof CreateTreatmentDocumen
 // ── Payment ───────────────────────────────────────────────────────────────────
 
 export const RecordPaymentSchema = z.object({
-  patient_id: z.string().uuid(),
+  patient_id: z.string().uuid("Please select a patient"),
   appointment_id: z.string().uuid().optional(),
-  amount: z.number().positive(),
+  amount: z.number({ invalid_type_error: "Amount is required" }).positive("Amount must be greater than 0"),
   method: z.enum(["cash", "upi", "card", "bank_transfer"]),
   payment_type: z.enum(["treatment", "opd"]).optional(),
-  payment_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  payment_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Valid payment date is required"),
   notes: z.string().max(500).optional(),
 });
 export type RecordPaymentInput = z.infer<typeof RecordPaymentSchema>;
@@ -535,6 +551,9 @@ export const UpdateClinicSettingsSchema = z.object({
   registration_number: z.string().max(100).optional().or(z.literal("")),
   allow_receptionist_payments: z.boolean().default(false),
   show_consultancy_on_dashboard: z.boolean().default(true),
+  // Default OPD consultation fee (clinic-specific). Optional — leave empty to
+  // configure no default. Pre-fills the amount when recording an OPD payment.
+  default_opd_fee: z.number().nonnegative().nullable().optional(),
   clinic_hours: z.object({
     monday: ClinicDayHoursSchema,
     tuesday: ClinicDayHoursSchema,

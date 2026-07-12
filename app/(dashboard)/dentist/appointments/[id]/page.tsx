@@ -166,8 +166,12 @@ export default async function DentistAppointmentDetailPage({ params }: Props) {
         patientId={appt.patient_id}
       />
 
-      {/* ── Payments for this appointment (read-only) ───────── */}
-      <AppointmentPaymentsSection appointmentId={appt.id} />
+      {/* ── Payments for this appointment (OPD + Treatment) ─── */}
+      <AppointmentPaymentsSection
+        appointmentId={appt.id}
+        patientId={appt.patient_id}
+        patientName={appt.patient.name}
+      />
 
       {/* ── Follow-up appointments linked to this visit ─────── */}
       <AppointmentFollowUpsSection

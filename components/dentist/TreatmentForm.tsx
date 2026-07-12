@@ -20,7 +20,6 @@ import {
   createTreatment,
   getTreatment,
   updateTreatment,
-  uploadTreatmentDocument,
   getCurrentUserDisplayName,
 } from "@/actions/treatments";
 import { getConsultants } from "@/actions/consultants";
@@ -35,7 +34,7 @@ import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { SkeletonCard } from "@/components/ui/skeleton";
 import { CalendarPicker } from "@/components/ui/calendar-picker";
-import { Eye, Plus, Trash2, Minus, Upload, FileText, Pill, Briefcase } from "lucide-react";
+import { Eye, Plus, Trash2, Minus, Pill, Briefcase } from "lucide-react";
 
 interface TreatmentFormProps {
   treatmentId?: string;
@@ -45,9 +44,6 @@ interface TreatmentFormProps {
   /** When provided, renders a Cancel button that calls this instead of router.back() (modal use). */
   onCancel?: () => void;
 }
-
-const ACCEPTED_FILE_TYPES = ".pdf,.jpg,.jpeg,.png";
-const ACCEPTED_MIME = ["application/pdf", "image/jpeg", "image/jpg", "image/png"];
 
 /** Split an ISO datetime string into its "YYYY-MM-DD" and "HH:mm" parts. */
 function splitDatetime(iso: string | null | undefined): { date: string; time: string } {
@@ -65,10 +61,6 @@ export function TreatmentForm({ treatmentId, appointmentId, patientId, onSuccess
 
   const [performedDate, setPerformedDate] = useState("");
   const [performedTime, setPerformedTime] = useState("");
-
-  // Files staged for upload (uploaded after the treatment is created)
-  const [files, setFiles] = useState<File[]>([]);
-  const [fileError, setFileError] = useState<string | null>(null);
 
   // Consultant directory for the "Performed By" dropdown
   const [consultants, setConsultants] = useState<Consultant[]>([]);
@@ -198,39 +190,6 @@ export function TreatmentForm({ treatmentId, appointmentId, patientId, onSuccess
     setValue("performed_at" as keyof CreateTreatmentInput, combined);
   }
 
-  function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
-    setFileError(null);
-    const selected = Array.from(e.target.files ?? []);
-    const valid: File[] = [];
-    for (const f of selected) {
-      if (!ACCEPTED_MIME.includes(f.type)) {
-        setFileError(`"${f.name}" is not a supported type (PDF, JPG, JPEG, PNG).`);
-        continue;
-      }
-      if (f.size > 10 * 1024 * 1024) {
-        setFileError(`"${f.name}" exceeds the 10 MB limit.`);
-        continue;
-      }
-      valid.push(f);
-    }
-    setFiles((prev) => [...prev, ...valid]);
-    e.target.value = "";
-  }
-
-  async function uploadFiles(tId: string, pId: string) {
-    for (const file of files) {
-      const fd = new FormData();
-      fd.append("file", file);
-      fd.append("treatment_id", tId);
-      fd.append("patient_id", pId);
-      const res = await uploadTreatmentDocument(fd);
-      if (res.error) {
-        // Surface but don't abort the rest — treatment is already created
-        setFileError(`Upload failed for "${file.name}": ${res.error}`);
-      }
-    }
-  }
-
   function onSubmit(values: CreateTreatmentInput | UpdateTreatmentInput) {
     setServerError(null);
     startTransition(async () => {
@@ -244,11 +203,6 @@ export function TreatmentForm({ treatmentId, appointmentId, patientId, onSuccess
       }
 
       if (result.data) {
-        // Upload any staged documents now that we have a treatment id
-        if (files.length > 0) {
-          await uploadFiles(result.data.id, result.data.patient_id);
-        }
-
         // Invalidate only the treatments cache.
         queryClient.invalidateQueries({ queryKey: queryKeys.treatments.all });
 
@@ -600,50 +554,6 @@ export function TreatmentForm({ treatmentId, appointmentId, patientId, onSuccess
               />
             </div>
           </Field>
-        </div>
-
-        {/* ── Documents ───────────────────────────────────────── */}
-        <div className="px-6 py-5 space-y-3">
-          <div className="flex items-center gap-1.5">
-            <Upload className="h-4 w-4 text-[#71717A]" aria-hidden />
-            <h3 className="text-sm font-semibold text-[#09090B]">Documents</h3>
-          </div>
-          <p className="text-xs text-[#71717A]">Attach PDF, JPG, JPEG or PNG files (max 10 MB each).</p>
-
-          <label className="inline-flex items-center gap-2 px-3 py-2 text-sm border border-dashed border-[#D4D4D8] rounded-lg cursor-pointer hover:bg-[#FAFAFA] text-[#52525B]">
-            <Upload className="h-3.5 w-3.5" aria-hidden />
-            Choose files
-            <input
-              type="file"
-              accept={ACCEPTED_FILE_TYPES}
-              multiple
-              onChange={handleFileSelect}
-              className="hidden"
-            />
-          </label>
-
-          {fileError && <p className="text-xs text-[#DC2626]">{fileError}</p>}
-
-          {files.length > 0 && (
-            <ul className="space-y-1.5">
-              {files.map((f, i) => (
-                <li key={`${f.name}-${i}`} className="flex items-center justify-between gap-2 text-sm bg-[#FAFAFA] border border-[#E4E4E7] rounded-lg px-3 py-2">
-                  <span className="flex items-center gap-2 min-w-0">
-                    <FileText className="h-3.5 w-3.5 text-[#A1A1AA] shrink-0" aria-hidden />
-                    <span className="truncate text-[#52525B]">{f.name}</span>
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setFiles((prev) => prev.filter((_, idx) => idx !== i))}
-                    className="text-[#A1A1AA] hover:text-[#DC2626] shrink-0"
-                    aria-label={`Remove ${f.name}`}
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
         </div>
 
         <div className="px-6 py-4 bg-[#FAFAFA] flex items-center justify-end gap-3">

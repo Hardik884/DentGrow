@@ -33,7 +33,7 @@ type AppointmentFormValues = {
   scheduled_at: string;
   duration_minutes: number;
   source: CreateAppointmentInput["source"];
-  notes?: string;
+  chief_complaints?: string;
 };
 
 interface AppointmentFormProps {
@@ -251,7 +251,7 @@ export function AppointmentForm({
       scheduled_at: getValues("scheduled_at") || selectedSlot,
       duration_minutes: watch("duration_minutes") ?? 30,
       source: getValues("source"),
-      notes: getValues("notes"),
+      chief_complaints: getValues("chief_complaints"),
     });
 
     setIsBooking(false);
@@ -570,13 +570,13 @@ export function AppointmentForm({
             </Select>
           </Field>
 
-          <Field label="Notes" htmlFor="notes" hint="Optional — reason for visit, special instructions">
+          <Field label="Chief Complaints" htmlFor="chief_complaints" hint="Optional — reason for visit, presenting complaint">
             <Textarea
-              id="notes"
-              {...register("notes")}
+              id="chief_complaints"
+              {...register("chief_complaints")}
               rows={2}
               disabled={isBooking}
-              placeholder="Reason for visit, special instructions…"
+              placeholder="e.g. Pain in upper left molar…"
             />
           </Field>
         </div>
