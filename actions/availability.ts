@@ -12,7 +12,7 @@ import {
   type AvailabilityRule as SlotRule,
   type OccupiedSlot,
 } from "@/lib/scheduling/slots";
-import { getUtcBoundariesForLocalDate } from "@/lib/utils";
+import { getUtcBoundariesForLocalDate, getBackdateFloor } from "@/lib/utils";
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type DbClient = any;
 
@@ -290,7 +290,11 @@ export async function getAvailableSlots(
       day: "2-digit",
     }).format(new Date());
 
-    if (date < todayInTz) {
+    // Allow backdated entries within the backdate window (late data entry).
+    // For portal patients (self-booking) keep the strict future-only rule.
+    const earliestDate =
+      profile.role === "patient" ? todayInTz : getBackdateFloor(todayInTz);
+    if (date < earliestDate) {
       return { data: [], error: null };
     }
 

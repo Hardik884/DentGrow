@@ -6,7 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import { RecordPaymentSchema, type RecordPaymentInput, PaymentMethod, type PaymentType } from "@/types";
 import { recordPayment } from "@/actions/payments";
-import { PAYMENT_METHOD_LABELS } from "@/lib/utils";
+import { PAYMENT_METHOD_LABELS, getBackdateFloor } from "@/lib/utils";
 import { PatientSearch } from "@/components/shared/PatientSearch";
 import { PatientAvatar } from "@/components/shared/PatientAvatar";
 import { Input } from "@/components/ui/input";
@@ -20,6 +20,8 @@ interface PaymentFormProps {
   patientId?: string;
   patientName?: string;
   appointmentId?: string;
+  /** Pre-links this payment to a specific treatment (treatment-wise tracking). */
+  treatmentId?: string;
   /** Payment type — "opd" records a standalone consultation payment. Defaults to "treatment". */
   paymentType?: PaymentType;
   /** Pre-fills the Amount field (e.g. the clinic's default OPD fee). Editable. */
@@ -35,6 +37,7 @@ export function PaymentForm({
   patientId: initialPatientId,
   patientName: initialPatientName,
   appointmentId,
+  treatmentId,
   paymentType = "treatment",
   defaultAmount,
   recordedByName,
@@ -50,6 +53,8 @@ export function PaymentForm({
   const amountRef  = useRef<HTMLDivElement>(null);
 
   const today = new Date().toISOString().split("T")[0];
+  // Allow backdating payments up to a week; older dates remain unavailable.
+  const minDate = getBackdateFloor(today);
 
   const {
     register,
@@ -62,6 +67,7 @@ export function PaymentForm({
     defaultValues: {
       patient_id: initialPatientId ?? "",
       appointment_id: appointmentId,
+      treatment_id: treatmentId,
       amount: defaultAmount != null && defaultAmount > 0 ? defaultAmount : undefined,
       method: PaymentMethod.CASH,
       payment_type: paymentType,
@@ -147,6 +153,7 @@ export function PaymentForm({
             )}
             <input type="hidden" {...register("patient_id")} value={selectedPatientId} />
             <input type="hidden" {...register("payment_type")} />
+            <input type="hidden" {...register("treatment_id")} />
             {errors.patient_id && (
               <p className="text-xs text-[#DC2626]" role="alert">{errors.patient_id.message}</p>
             )}
@@ -180,6 +187,7 @@ export function PaymentForm({
             <CalendarPicker
               id="payment-date"
               value={watch("payment_date") ?? today}
+              min={minDate}
               max={today}
               onChange={(d) => setValue("payment_date", d, { shouldValidate: true })}
               placeholder="Select payment date"

@@ -24,6 +24,7 @@ import {
   formatDate,
   formatDateTime,
   formatTime,
+  getBackdateFloor,
 } from "@/lib/utils";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
@@ -608,6 +609,7 @@ export function FollowUpForm({
                   <CalendarPicker
                     id="due_date"
                     value={dueDate}
+                    min={getBackdateFloor()}
                     onChange={(d) => {
                       setDueDate(d ?? "");
                       setFieldErrors((prev) => ({ ...prev, dueDate: undefined }));

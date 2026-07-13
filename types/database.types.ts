@@ -276,6 +276,7 @@ export type Database = {
           status: "planned" | "in_progress" | "completed" | "cancelled";
           performed_at: string | null;
           medications: Json;
+          opd_charged: boolean;
           deleted_at: string | null;
           created_at: string;
           updated_at: string;
@@ -298,6 +299,7 @@ export type Database = {
           status?: "planned" | "in_progress" | "completed" | "cancelled";
           performed_at?: string | null;
           medications?: Json;
+          opd_charged?: boolean;
           deleted_at?: string | null;
           created_at?: string;
           updated_at?: string;
@@ -320,6 +322,7 @@ export type Database = {
           status?: "planned" | "in_progress" | "completed" | "cancelled";
           performed_at?: string | null;
           medications?: Json;
+          opd_charged?: boolean;
           deleted_at?: string | null;
           created_at?: string;
           updated_at?: string;
@@ -381,6 +384,7 @@ export type Database = {
           clinic_id: string;
           patient_id: string;
           appointment_id: string | null;
+          treatment_id: string | null;
           amount: number;
           method: "cash" | "upi" | "card" | "bank_transfer";
           payment_type: "treatment" | "opd";
@@ -395,6 +399,7 @@ export type Database = {
           clinic_id: string;
           patient_id: string;
           appointment_id?: string | null;
+          treatment_id?: string | null;
           amount: number;
           method: "cash" | "upi" | "card" | "bank_transfer";
           payment_type?: "treatment" | "opd";
@@ -409,6 +414,7 @@ export type Database = {
           clinic_id?: string;
           patient_id?: string;
           appointment_id?: string | null;
+          treatment_id?: string | null;
           amount?: number;
           method?: "cash" | "upi" | "card" | "bank_transfer";
           payment_type?: "treatment" | "opd";

@@ -23,7 +23,7 @@ import {
   type AvailabilityRule as SlotRule,
   type OccupiedSlot,
 } from "@/lib/scheduling/slots";
-import { zonedDateToUTC, getTodayInTimezone, getUtcBoundariesForLocalDate } from "@/lib/utils";
+import { zonedDateToUTC, getTodayInTimezone, getUtcBoundariesForLocalDate, getBackdateFloor } from "@/lib/utils";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { writeAppointmentHistory } from "@/lib/appointments/history";
 import { completeAppointmentCascade } from "@/lib/appointments/complete";
@@ -221,8 +221,12 @@ export async function createAppointment(
       day: "2-digit",
     }).format(new Date());
 
-    if (requestedDate < todayInTz) {
-      return { data: null, error: "Cannot create an appointment in the past." };
+    // Staff may backdate within the backdate window (late data entry);
+    // portal patients remain restricted to today or later.
+    const earliestCreateDate =
+      profile.role === "patient" ? todayInTz : getBackdateFloor(todayInTz);
+    if (requestedDate < earliestCreateDate) {
+      return { data: null, error: "Cannot create an appointment more than a week in the past." };
     }
 
     // ── DOW: use timezone-aware calculation ───────────────────────────────
@@ -679,8 +683,9 @@ export async function rescheduleAppointment(
       day: "2-digit",
     }).format(new Date());
 
-    if (newDate < todayInTz) {
-      return { data: null, error: "Cannot reschedule to a past date." };
+    // Staff may backdate within the backdate window (late data entry).
+    if (newDate < getBackdateFloor(todayInTz)) {
+      return { data: null, error: "Cannot reschedule more than a week into the past." };
     }
 
     // ── DOW: use timezone-aware calculation ───────────────────────────────

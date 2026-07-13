@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button, type ButtonVariant, type ButtonSize } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { CalendarPicker } from "@/components/ui/calendar-picker";
+import { getBackdateFloor } from "@/lib/utils";
 
 interface ExternalConsultationDialogProps {
   /** Class names applied to the trigger button. */
@@ -118,7 +119,7 @@ export function ExternalConsultationDialog({
           )}
 
           <Field label="Date" htmlFor="ext-date" required>
-            <CalendarPicker id="ext-date" value={date} onChange={setDate} placeholder="Select date" clearable />
+            <CalendarPicker id="ext-date" value={date} min={getBackdateFloor()} onChange={setDate} placeholder="Select date" clearable />
           </Field>
 
           <Field label="Clinic Name" htmlFor="ext-clinic">

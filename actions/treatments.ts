@@ -192,6 +192,7 @@ export async function createTreatment(
         medications: parsed.data.medications ?? [],
         cost: parsed.data.cost,
         status: parsed.data.status ?? "planned",
+        opd_charged: parsed.data.opd_charged ?? false,
         performed_at: performedAt,
         created_by: profile.id,
         ...revenue.fields,
@@ -251,6 +252,7 @@ export async function updateTreatment(
     if (parsed.data.medications !== undefined) updates.medications = parsed.data.medications ?? [];
     if (parsed.data.cost !== undefined) updates.cost = parsed.data.cost;
     if (parsed.data.status !== undefined) updates.status = parsed.data.status;
+    if (parsed.data.opd_charged !== undefined) updates.opd_charged = parsed.data.opd_charged;
 
     // Recompute the revenue split whenever the cost or the consultant selection
     // is part of this update. Keeps clinic_share/consultant_share consistent and

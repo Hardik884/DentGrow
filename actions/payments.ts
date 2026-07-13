@@ -86,6 +86,7 @@ export async function recordPayment(
         clinic_id: profile.clinic_id,
         patient_id: parsed.data.patient_id,
         appointment_id: parsed.data.appointment_id ?? null,
+        treatment_id: parsed.data.treatment_id ?? null,
         amount: parsed.data.amount,
         method: parsed.data.method,
         payment_type: parsed.data.payment_type ?? "treatment",
@@ -104,6 +105,9 @@ export async function recordPayment(
     revalidatePath(`/dentist/patients/${parsed.data.patient_id}`);
     revalidatePath("/dentist/payments");
     revalidatePath("/receptionist/payments");
+    if (parsed.data.appointment_id) {
+      revalidatePath(`/dentist/appointments/${parsed.data.appointment_id}`);
+    }
 
     return { data: data as Payment, error: null };
   } catch (err) {

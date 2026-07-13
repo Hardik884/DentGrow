@@ -25,7 +25,7 @@ import {
 import { getConsultants } from "@/actions/consultants";
 import type { Consultant } from "@/types";
 import { computeConsultantSplit } from "@/lib/billing/revenue";
-import { TREATMENT_STATUS_LABELS, formatCurrency } from "@/lib/utils";
+import { TREATMENT_STATUS_LABELS, formatCurrency, getBackdateFloor, cn } from "@/lib/utils";
 import { queryKeys } from "@/lib/query/keys";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
@@ -88,6 +88,7 @@ export function TreatmentForm({ treatmentId, appointmentId, patientId, onSuccess
       medications: [],
       cost: 0,
       status: TreatmentStatus.PLANNED,
+      opd_charged: false,
       performed_at: undefined,
       consultant_id: "",
       commission_type: undefined,
@@ -106,6 +107,13 @@ export function TreatmentForm({ treatmentId, appointmentId, patientId, onSuccess
   const medicationValues = watch("medications") as
     | Array<{ dosage?: string; instructions?: string }>
     | undefined;
+
+  // ── OPD consultation charge toggle ──────────────────────────────────────────
+  const opdChargedValue = watch("opd_charged") as boolean | undefined;
+
+  // Backdating bounds for the "Performed At" date (up to a week ago, not future).
+  const performedMax = new Date().toISOString().split("T")[0];
+  const performedMin = getBackdateFloor(performedMax);
 
   // ── Revenue distribution (Performed By) ─────────────────────────────────────
   const costValue = watch("cost") as number | undefined;
@@ -164,6 +172,7 @@ export function TreatmentForm({ treatmentId, appointmentId, patientId, onSuccess
             : [],
           cost: Number(result.data.cost),
           status: result.data.status,
+          opd_charged: result.data.opd_charged ?? false,
           performed_at: date ? (time ? `${date}T${time}` : date) : undefined,
           consultant_id: result.data.consultant_id ?? "",
           commission_type: result.data.commission_type ?? undefined,
@@ -318,6 +327,8 @@ export function TreatmentForm({ treatmentId, appointmentId, patientId, onSuccess
                 id="performed-at-date"
                 value={performedDate}
                 onChange={handleDateChange}
+                min={performedMin}
+                max={performedMax}
                 placeholder="Select date"
                 clearable
               />
@@ -329,6 +340,49 @@ export function TreatmentForm({ treatmentId, appointmentId, patientId, onSuccess
                 disabled={!performedDate}
                 aria-label="Treatment time"
               />
+            </div>
+          </Field>
+
+          {/* ── OPD Consultation Charged ─────────────────────────── */}
+          <Field
+            label="OPD Consultation Charged"
+            htmlFor="opd-charged"
+            hint="Enable to collect an OPD (consultation) fee for this visit"
+          >
+            <div
+              id="opd-charged"
+              role="radiogroup"
+              aria-label="OPD consultation charged"
+              className="inline-flex rounded-lg border border-[#E4E4E7] bg-[#FAFAFA] p-0.5"
+            >
+              <button
+                type="button"
+                role="radio"
+                aria-checked={!opdChargedValue}
+                onClick={() => setValue("opd_charged" as keyof CreateTreatmentInput, false as never)}
+                className={cn(
+                  "px-4 py-1.5 text-xs font-semibold rounded-md transition-colors",
+                  !opdChargedValue
+                    ? "bg-white text-[#09090B] shadow-sm border border-[#E4E4E7]"
+                    : "text-[#71717A] hover:text-[#09090B]"
+                )}
+              >
+                No
+              </button>
+              <button
+                type="button"
+                role="radio"
+                aria-checked={!!opdChargedValue}
+                onClick={() => setValue("opd_charged" as keyof CreateTreatmentInput, true as never)}
+                className={cn(
+                  "px-4 py-1.5 text-xs font-semibold rounded-md transition-colors",
+                  opdChargedValue
+                    ? "bg-[#18181B] text-white shadow-sm"
+                    : "text-[#71717A] hover:text-[#09090B]"
+                )}
+              >
+                Yes
+              </button>
             </div>
           </Field>
         </div>

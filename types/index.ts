@@ -452,6 +452,9 @@ export const CreateTreatmentSchema = z.object({
   medications: z.array(MedicationSchema).max(30).optional(),
   cost: z.number({ invalid_type_error: "Cost is required" }).nonnegative("Cost cannot be negative"),
   status: z.enum(["planned", "in_progress", "completed", "cancelled"]).default("planned"),
+  // Whether an OPD consultation fee should be collected for this treatment.
+  // Drives visibility of the OPD payments subsection on the Patient Visit page.
+  opd_charged: z.boolean().default(false),
   // Accepts "YYYY-MM-DD", "YYYY-MM-DDTHH:mm", or full ISO strings.
   // The server action normalises this to a proper timestamptz before inserting.
   // Truly optional — can be omitted or left blank without validation failure.
@@ -486,6 +489,9 @@ export type CreateTreatmentDocumentInput = z.infer<typeof CreateTreatmentDocumen
 export const RecordPaymentSchema = z.object({
   patient_id: z.string().uuid("Please select a patient"),
   appointment_id: z.string().uuid().optional(),
+  // Optional link to the specific treatment this payment is for. Enables
+  // treatment-wise payment tracking on the Patient Visit page.
+  treatment_id: z.string().uuid().optional().or(z.literal("")).transform((v) => v || undefined),
   amount: z.number({ invalid_type_error: "Amount is required" }).positive("Amount must be greater than 0"),
   method: z.enum(["cash", "upi", "card", "bank_transfer"]),
   payment_type: z.enum(["treatment", "opd"]).optional(),

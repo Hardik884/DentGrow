@@ -17,7 +17,7 @@ import {
   type CreatePatientInput,
   type Patient,
 } from "@/types";
-import { cn, formatTime, calculateAge, APPOINTMENT_SOURCE_LABELS } from "@/lib/utils";
+import { cn, formatTime, calculateAge, APPOINTMENT_SOURCE_LABELS, getBackdateFloor } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
@@ -97,6 +97,8 @@ export function AppointmentForm({
   const newPatientName = newPatientForm.watch("name");
 
   const today = clinicToday ?? new Date().toISOString().split("T")[0];
+  // Allow backdating appointments up to a week (end-of-day / late data entry).
+  const minDate = getBackdateFloor(today);
   const [selectedDate, setSelectedDate] = useState(today);
   const [slots, setSlots] = useState<string[]>([]);
   const [slotsLoading, setSlotsLoading] = useState(false);
@@ -486,7 +488,7 @@ export function AppointmentForm({
             <CalendarPicker
               id="appt-date"
               value={selectedDate}
-              min={today}
+              min={minDate}
               disabled={isBooking}
               onChange={(d) => { if (d) setSelectedDate(d); }}
             />

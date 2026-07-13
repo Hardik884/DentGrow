@@ -10,6 +10,10 @@ interface PaymentFormDialogProps {
   patientId?: string;
   patientName?: string;
   appointmentId?: string;
+  /** Pre-links the payment to a specific treatment (treatment-wise tracking). */
+  treatmentId?: string;
+  /** Pre-fills the Amount field (e.g. remaining balance for a treatment). Editable. */
+  defaultAmount?: number;
   /** Dialog title. Defaults to "Record Payment". */
   title?: string;
   /** Class names applied to the trigger button. */
@@ -33,6 +37,8 @@ export function PaymentFormDialog({
   patientId,
   patientName,
   appointmentId,
+  treatmentId,
+  defaultAmount,
   title = "Record Payment",
   triggerClassName,
   triggerVariant,
@@ -66,6 +72,8 @@ export function PaymentFormDialog({
             patientId={patientId}
             patientName={patientName}
             appointmentId={appointmentId}
+            treatmentId={treatmentId}
+            defaultAmount={defaultAmount}
             onCancel={() => setOpen(false)}
             onSuccess={() => {
               setOpen(false);
