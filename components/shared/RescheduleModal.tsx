@@ -6,7 +6,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { rescheduleAppointment } from "@/actions/appointments";
 import { getAvailableSlots } from "@/actions/availability";
 import { queryKeys } from "@/lib/query/keys";
-import { cn, formatTime, getBackdateFloor } from "@/lib/utils";
+import { cn, formatTime } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { CalendarPicker } from "@/components/ui/calendar-picker";
@@ -29,11 +29,12 @@ export function RescheduleModal({
   const router = useRouter();
   const queryClient = useQueryClient();
   const today = clinicToday ?? new Date().toISOString().split("T")[0];
-  // Allow rescheduling up to a week into the past (late data entry).
-  const minDate = getBackdateFloor(today);
+  // Reschedule is a staff-only flow. Any historical date is allowed so past
+  // visits can be corrected or migrated. Slot rules (DOW, clinic hours,
+  // conflict) still apply server-side.
   const currentDate = currentScheduledAt.slice(0, 10);
 
-  const [selectedDate, setSelectedDate] = useState(currentDate >= minDate ? currentDate : today);
+  const [selectedDate, setSelectedDate] = useState(currentDate || today);
   const [slots, setSlots] = useState<string[]>([]);
   const [slotsLoading, setSlotsLoading] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
@@ -86,7 +87,6 @@ export function RescheduleModal({
           <CalendarPicker
             id="reschedule-date"
             value={selectedDate}
-            min={minDate}
             onChange={(d) => { if (d) setSelectedDate(d); }}
           />
         </Field>

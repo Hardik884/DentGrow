@@ -34,36 +34,6 @@ export function formatDate(date: string | Date | null | undefined): string {
 }
 
 /**
- * Number of days in the past that data-entry date pickers may select.
- * Clinics frequently record appointments, treatments and payments a few days
- * late, so pickers allow backdating within this window. Dates older than this
- * remain unavailable; future dates are unaffected.
- */
-export const BACKDATE_WINDOW_DAYS = 7;
-
-/**
- * getBackdateFloor — the earliest date (inclusive) a data-entry picker allows.
- *
- * Returns the "YYYY-MM-DD" string BACKDATE_WINDOW_DAYS before the reference
- * date. Pass the clinic-timezone "today" (clinicToday) when available so the
- * floor is correct across timezones; otherwise the local date is used.
- *
- * @example getBackdateFloor("2026-07-13") → "2026-07-06"
- */
-export function getBackdateFloor(baseDate?: string | null): string {
-  // Anchor at noon to avoid DST / timezone day-shift when subtracting days.
-  const base =
-    baseDate && /^\d{4}-\d{2}-\d{2}$/.test(baseDate)
-      ? new Date(`${baseDate}T12:00:00`)
-      : new Date();
-  base.setDate(base.getDate() - BACKDATE_WINDOW_DAYS);
-  const y = base.getFullYear();
-  const m = String(base.getMonth() + 1).padStart(2, "0");
-  const d = String(base.getDate()).padStart(2, "0");
-  return `${y}-${m}-${d}`;
-}
-
-/**
  * formatDateTime — formats a datetime string for display with time.
  * Renders in the browser/Node local timezone.
  * @example formatDateTime("2026-06-19T10:30:00Z") → "19 Jun 2026, 10:30 AM"
