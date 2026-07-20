@@ -23,7 +23,7 @@ import {
   type AvailabilityRule as SlotRule,
   type OccupiedSlot,
 } from "@/lib/scheduling/slots";
-import { zonedDateToUTC, getTodayInTimezone, getUtcBoundariesForLocalDate, getBackdateFloor } from "@/lib/utils";
+import { zonedDateToUTC, getTodayInTimezone, getUtcBoundariesForLocalDate } from "@/lib/utils";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { writeAppointmentHistory } from "@/lib/appointments/history";
 import { completeAppointmentCascade } from "@/lib/appointments/complete";
@@ -221,12 +221,12 @@ export async function createAppointment(
       day: "2-digit",
     }).format(new Date());
 
-    // Staff may backdate within the backdate window (late data entry);
-    // portal patients remain restricted to today or later.
-    const earliestCreateDate =
-      profile.role === "patient" ? todayInTz : getBackdateFloor(todayInTz);
-    if (requestedDate < earliestCreateDate) {
-      return { data: null, error: "Cannot create an appointment more than a week in the past." };
+    // Staff (dentist/receptionist) may enter historical appointments without
+    // restriction — this supports migration from paper records and prior
+    // software. Portal patients remain restricted to today or later so they
+    // cannot self-book in the past.
+    if (profile.role === "patient" && requestedDate < todayInTz) {
+      return { data: null, error: "Cannot create an appointment in the past." };
     }
 
     // ── DOW: use timezone-aware calculation ───────────────────────────────
@@ -675,18 +675,11 @@ export async function rescheduleAppointment(
     // offset. Convert to UTC before storing to prevent the +5:30 shift.
     const newScheduledAtUtc = zonedDateToUTC(parsed.data.new_scheduled_at, clinicTimezone).toISOString();
 
-    // ── Past-date rejection (server-side guard) ────────────────────────────
-    const todayInTz = new Intl.DateTimeFormat("en-CA", {
-      timeZone: clinicTimezone,
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-    }).format(new Date());
-
-    // Staff may backdate within the backdate window (late data entry).
-    if (newDate < getBackdateFloor(todayInTz)) {
-      return { data: null, error: "Cannot reschedule more than a week into the past." };
-    }
+    // ── Past-date handling ─────────────────────────────────────────────────
+    // Reschedule is a staff-only action. Any historical date is permitted so
+    // clinics can correct records or reflect visits that actually occurred on
+    // an earlier day. Slot conflict, DOW and clinic-hours rules below still
+    // apply to guard integrity.
 
     // ── DOW: use timezone-aware calculation ───────────────────────────────
     const noonLocal = new Date(`${newDate}T12:00:00`);

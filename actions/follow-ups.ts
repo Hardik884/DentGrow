@@ -85,10 +85,11 @@ export async function createFollowUp(
       return { data: null, error: "Forbidden: patients cannot create follow-ups." };
     }
 
-    // ── Validate patient, appointment, treatment, and timezone in parallel ────
-    // Previously these were fired sequentially. All four are independent reads
-    // so they can safely run in parallel.
-    const [patientRow, apptRow, txRow, today] = await Promise.all([
+    // ── Validate patient, appointment, and treatment in parallel ─────────────
+    // All three are independent reads so they can safely run in parallel.
+    // Historical follow-ups are permitted (paper-record migration), so
+    // "today" is no longer needed for a past-date guard here.
+    const [patientRow, apptRow, txRow] = await Promise.all([
       db
         .from("patients")
         .select("id")
@@ -121,8 +122,6 @@ export async function createFollowUp(
             .single()
             .then((r: { data: unknown }) => r.data)
         : Promise.resolve(true), // no treatment to validate → pass-through
-
-      todayForClinic(db, profile.clinic_id),
     ]);
 
     if (!patientRow) {
@@ -143,10 +142,9 @@ export async function createFollowUp(
       };
     }
 
-    // ── Validate due_date is not in the past ───────────────────────────────
-    if (parsed.data.due_date < today) {
-      return { data: null, error: "Due date cannot be in the past." };
-    }
+    // Historical follow-ups are permitted (migration / late data entry).
+    // Analytics still classify due_date < today with status = 'pending' as
+    // overdue via the shared "today" comparison — see the queries below.
 
     const { data, error } = await db
       .from("follow_ups")

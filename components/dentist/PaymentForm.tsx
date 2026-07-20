@@ -6,7 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import { RecordPaymentSchema, type RecordPaymentInput, PaymentMethod, type PaymentType } from "@/types";
 import { recordPayment } from "@/actions/payments";
-import { PAYMENT_METHOD_LABELS, getBackdateFloor } from "@/lib/utils";
+import { PAYMENT_METHOD_LABELS } from "@/lib/utils";
 import { PatientSearch } from "@/components/shared/PatientSearch";
 import { PatientAvatar } from "@/components/shared/PatientAvatar";
 import { Input } from "@/components/ui/input";
@@ -53,8 +53,8 @@ export function PaymentForm({
   const amountRef  = useRef<HTMLDivElement>(null);
 
   const today = new Date().toISOString().split("T")[0];
-  // Allow backdating payments up to a week; older dates remain unavailable.
-  const minDate = getBackdateFloor(today);
+  // Payments may be recorded for any historical date (paper-record migration).
+  // Future payment dates remain blocked via max={today} on the picker below.
 
   const {
     register,
@@ -187,7 +187,6 @@ export function PaymentForm({
             <CalendarPicker
               id="payment-date"
               value={watch("payment_date") ?? today}
-              min={minDate}
               max={today}
               onChange={(d) => setValue("payment_date", d, { shouldValidate: true })}
               placeholder="Select payment date"

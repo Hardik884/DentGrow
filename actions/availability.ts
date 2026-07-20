@@ -12,7 +12,7 @@ import {
   type AvailabilityRule as SlotRule,
   type OccupiedSlot,
 } from "@/lib/scheduling/slots";
-import { getUtcBoundariesForLocalDate, getBackdateFloor } from "@/lib/utils";
+import { getUtcBoundariesForLocalDate } from "@/lib/utils";
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type DbClient = any;
 
@@ -282,7 +282,10 @@ export async function getAvailableSlots(
       (settings as { average_appointment_duration?: number } | null)
         ?.average_appointment_duration ?? 30;
 
-    // ── Past-date rejection ─────────────────────────────────────────────────
+    // ── Past-date handling ──────────────────────────────────────────────────
+    // Staff (dentist/receptionist) can list slots for any historical date so
+    // they can record migrated / late-entered visits. Portal patients remain
+    // restricted to today or later — they cannot self-book in the past.
     const todayInTz = new Intl.DateTimeFormat("en-CA", {
       timeZone: timezone,
       year: "numeric",
@@ -290,11 +293,7 @@ export async function getAvailableSlots(
       day: "2-digit",
     }).format(new Date());
 
-    // Allow backdated entries within the backdate window (late data entry).
-    // For portal patients (self-booking) keep the strict future-only rule.
-    const earliestDate =
-      profile.role === "patient" ? todayInTz : getBackdateFloor(todayInTz);
-    if (date < earliestDate) {
+    if (profile.role === "patient" && date < todayInTz) {
       return { data: [], error: null };
     }
 

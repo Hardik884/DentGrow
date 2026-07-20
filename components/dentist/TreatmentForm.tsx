@@ -25,7 +25,7 @@ import {
 import { getConsultants } from "@/actions/consultants";
 import type { Consultant } from "@/types";
 import { computeConsultantSplit } from "@/lib/billing/revenue";
-import { TREATMENT_STATUS_LABELS, formatCurrency, getBackdateFloor, cn } from "@/lib/utils";
+import { TREATMENT_STATUS_LABELS, formatCurrency, cn } from "@/lib/utils";
 import { queryKeys } from "@/lib/query/keys";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
@@ -111,9 +111,10 @@ export function TreatmentForm({ treatmentId, appointmentId, patientId, onSuccess
   // ── OPD consultation charge toggle ──────────────────────────────────────────
   const opdChargedValue = watch("opd_charged") as boolean | undefined;
 
-  // Backdating bounds for the "Performed At" date (up to a week ago, not future).
+  // "Performed At" may be any historical date so migrated records can be
+  // logged accurately. Future dates remain blocked (a treatment cannot have
+  // been performed in the future).
   const performedMax = new Date().toISOString().split("T")[0];
-  const performedMin = getBackdateFloor(performedMax);
 
   // ── Revenue distribution (Performed By) ─────────────────────────────────────
   const costValue = watch("cost") as number | undefined;
@@ -327,7 +328,6 @@ export function TreatmentForm({ treatmentId, appointmentId, patientId, onSuccess
                 id="performed-at-date"
                 value={performedDate}
                 onChange={handleDateChange}
-                min={performedMin}
                 max={performedMax}
                 placeholder="Select date"
                 clearable

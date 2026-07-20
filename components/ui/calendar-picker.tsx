@@ -4,7 +4,8 @@
  * CalendarPicker
  *
  * A modern, accessible date picker built for DentGrow with:
- * - Year range: 1950 → 2050 (supports patient DOB + future appointments)
+ * - Year range: 1900 → 2100 (supports elderly DOB, migrated historical records,
+ *   and future scheduling)
  * - Searchable year selection via a scrollable dropdown
  * - Easy month + year switching with prev/next navigation
  * - Keyboard accessible (arrow keys, Tab, Enter, Escape)
@@ -39,9 +40,12 @@ const MONTH_NAMES_SHORT = [
 
 const DAY_HEADERS = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
 
-// Year range: 1950 → 2050, covers all patient DOB and future appointments
-const YEAR_START = 1950;
-const YEAR_END = 2050;
+// Year range: 1900 → 2100. Wide enough for:
+// - Elderly patient DOB (100+ years old still supported)
+// - Historical / migrated clinic records going back decades
+// - Future scheduling with plenty of runway
+const YEAR_START = 1900;
+const YEAR_END = 2100;
 const YEAR_OPTIONS = Array.from(
   { length: YEAR_END - YEAR_START + 1 },
   (_, i) => YEAR_START + i
