@@ -92,8 +92,7 @@ business-brain/
 │   ├── metrics/           # MetricsEngine implementation (Phase 3)
 │   │   ├── metric-ids.ts          # metric keys, descriptors, buildMetric factory
 │   │   ├── calculators/           # one pure function per metric group
-│   │   ├── metrics-engine.ts      # DentGrowMetricsEngine (deterministic)
-│   │   └── metrics-engine.test.ts # unit tests (vitest)
+│   │   └── metrics-engine.ts      # DentGrowMetricsEngine (deterministic)
 │   └── index.ts
 ├── config/                # Feature flags, engine toggles, thresholds, AI placeholder
 │   ├── config.ts
