@@ -1,0 +1,186 @@
+/**
+ * Business Brain — Metrics Engine: Metric definitions
+ *
+ * Stable keys, display names, categories, and units for every metric the
+ * engine produces. Centralising these keeps calculators tiny and makes adding
+ * a new metric a one-line change here plus a calculator function.
+ */
+
+import { MetricCategory, MetricUnit } from "../../domain";
+import type { Metric } from "../../domain";
+
+/** Stable, machine-readable key for each metric. */
+export const MetricKey = {
+  // Appointments
+  APPOINTMENTS_TOTAL_TODAY: "appointments.total_today",
+  APPOINTMENTS_COMPLETED_TODAY: "appointments.completed_today",
+  APPOINTMENTS_UPCOMING_TODAY: "appointments.upcoming_today",
+  APPOINTMENTS_CANCELLED_TODAY: "appointments.cancelled_today",
+  APPOINTMENTS_NO_SHOWS_TODAY: "appointments.no_shows_today",
+  // Patients
+  PATIENTS_NEW_TODAY: "patients.new_today",
+  PATIENTS_RETURNING_TODAY: "patients.returning_today",
+  // Revenue
+  REVENUE_COLLECTED_TODAY: "revenue.collected_today",
+  REVENUE_OUTSTANDING: "revenue.outstanding",
+  REVENUE_PENDING_TREATMENT_VALUE: "revenue.pending_treatment_value",
+  // Queue
+  QUEUE_PATIENTS_WAITING: "queue.patients_waiting",
+  QUEUE_AVERAGE_WAITING_TIME: "queue.average_waiting_time",
+  // Follow-ups
+  FOLLOWUPS_DUE_TODAY: "followups.due_today",
+  FOLLOWUPS_OVERDUE: "followups.overdue",
+  // Treatment
+  TREATMENT_ACCEPTED_PENDING_SCHEDULING: "treatment.accepted_pending_scheduling",
+  TREATMENT_COMPLETED_TODAY: "treatment.completed_today",
+  // Capacity
+  CAPACITY_CHAIR_UTILIZATION: "capacity.chair_utilization",
+  CAPACITY_AVAILABLE_SLOTS_TODAY: "capacity.available_slots_today",
+} as const;
+
+export type MetricKey = (typeof MetricKey)[keyof typeof MetricKey];
+
+/** Static descriptor for a metric: how it is named, categorised, and measured. */
+export interface MetricDescriptor {
+  readonly key: MetricKey;
+  readonly name: string;
+  readonly category: MetricCategory;
+  readonly unit: MetricUnit;
+}
+
+/** Descriptor table for every metric the engine can produce. */
+export const METRIC_DESCRIPTORS: Readonly<Record<MetricKey, MetricDescriptor>> = {
+  [MetricKey.APPOINTMENTS_TOTAL_TODAY]: {
+    key: MetricKey.APPOINTMENTS_TOTAL_TODAY,
+    name: "Total Appointments Today",
+    category: MetricCategory.SCHEDULING,
+    unit: MetricUnit.COUNT,
+  },
+  [MetricKey.APPOINTMENTS_COMPLETED_TODAY]: {
+    key: MetricKey.APPOINTMENTS_COMPLETED_TODAY,
+    name: "Completed Appointments Today",
+    category: MetricCategory.SCHEDULING,
+    unit: MetricUnit.COUNT,
+  },
+  [MetricKey.APPOINTMENTS_UPCOMING_TODAY]: {
+    key: MetricKey.APPOINTMENTS_UPCOMING_TODAY,
+    name: "Upcoming Appointments Today",
+    category: MetricCategory.SCHEDULING,
+    unit: MetricUnit.COUNT,
+  },
+  [MetricKey.APPOINTMENTS_CANCELLED_TODAY]: {
+    key: MetricKey.APPOINTMENTS_CANCELLED_TODAY,
+    name: "Cancelled Appointments Today",
+    category: MetricCategory.SCHEDULING,
+    unit: MetricUnit.COUNT,
+  },
+  [MetricKey.APPOINTMENTS_NO_SHOWS_TODAY]: {
+    key: MetricKey.APPOINTMENTS_NO_SHOWS_TODAY,
+    name: "No-Shows Today",
+    category: MetricCategory.SCHEDULING,
+    unit: MetricUnit.COUNT,
+  },
+  [MetricKey.PATIENTS_NEW_TODAY]: {
+    key: MetricKey.PATIENTS_NEW_TODAY,
+    name: "New Patients Today",
+    category: MetricCategory.ACQUISITION,
+    unit: MetricUnit.COUNT,
+  },
+  [MetricKey.PATIENTS_RETURNING_TODAY]: {
+    key: MetricKey.PATIENTS_RETURNING_TODAY,
+    name: "Returning Patients Today",
+    category: MetricCategory.RETENTION,
+    unit: MetricUnit.COUNT,
+  },
+  [MetricKey.REVENUE_COLLECTED_TODAY]: {
+    key: MetricKey.REVENUE_COLLECTED_TODAY,
+    name: "Revenue Collected Today",
+    category: MetricCategory.REVENUE,
+    unit: MetricUnit.CURRENCY,
+  },
+  [MetricKey.REVENUE_OUTSTANDING]: {
+    key: MetricKey.REVENUE_OUTSTANDING,
+    name: "Outstanding Payments",
+    category: MetricCategory.REVENUE,
+    unit: MetricUnit.CURRENCY,
+  },
+  [MetricKey.REVENUE_PENDING_TREATMENT_VALUE]: {
+    key: MetricKey.REVENUE_PENDING_TREATMENT_VALUE,
+    name: "Pending Treatment Value",
+    category: MetricCategory.REVENUE,
+    unit: MetricUnit.CURRENCY,
+  },
+  [MetricKey.QUEUE_PATIENTS_WAITING]: {
+    key: MetricKey.QUEUE_PATIENTS_WAITING,
+    name: "Patients Waiting",
+    category: MetricCategory.OPERATIONAL,
+    unit: MetricUnit.COUNT,
+  },
+  [MetricKey.QUEUE_AVERAGE_WAITING_TIME]: {
+    key: MetricKey.QUEUE_AVERAGE_WAITING_TIME,
+    name: "Average Waiting Time",
+    category: MetricCategory.OPERATIONAL,
+    unit: MetricUnit.MINUTES,
+  },
+  [MetricKey.FOLLOWUPS_DUE_TODAY]: {
+    key: MetricKey.FOLLOWUPS_DUE_TODAY,
+    name: "Follow-ups Due Today",
+    category: MetricCategory.RETENTION,
+    unit: MetricUnit.COUNT,
+  },
+  [MetricKey.FOLLOWUPS_OVERDUE]: {
+    key: MetricKey.FOLLOWUPS_OVERDUE,
+    name: "Overdue Follow-ups",
+    category: MetricCategory.RETENTION,
+    unit: MetricUnit.COUNT,
+  },
+  [MetricKey.TREATMENT_ACCEPTED_PENDING_SCHEDULING]: {
+    key: MetricKey.TREATMENT_ACCEPTED_PENDING_SCHEDULING,
+    name: "Accepted Treatments Pending Scheduling",
+    category: MetricCategory.CLINICAL,
+    unit: MetricUnit.COUNT,
+  },
+  [MetricKey.TREATMENT_COMPLETED_TODAY]: {
+    key: MetricKey.TREATMENT_COMPLETED_TODAY,
+    name: "Treatments Completed Today",
+    category: MetricCategory.CLINICAL,
+    unit: MetricUnit.COUNT,
+  },
+  [MetricKey.CAPACITY_CHAIR_UTILIZATION]: {
+    key: MetricKey.CAPACITY_CHAIR_UTILIZATION,
+    name: "Chair Utilization",
+    category: MetricCategory.UTILIZATION,
+    unit: MetricUnit.PERCENTAGE,
+  },
+  [MetricKey.CAPACITY_AVAILABLE_SLOTS_TODAY]: {
+    key: MetricKey.CAPACITY_AVAILABLE_SLOTS_TODAY,
+    name: "Available Appointment Slots Today",
+    category: MetricCategory.UTILIZATION,
+    unit: MetricUnit.COUNT,
+  },
+};
+
+/**
+ * Build a {@link Metric} domain object from a metric key and a computed value.
+ * Pure construction only — no calculation happens here.
+ *
+ * The id is deterministic (`key:clinicId:date`) so the same measurement always
+ * carries the same id.
+ */
+export function buildMetric(
+  key: MetricKey,
+  value: number,
+  clinicId: string,
+  date: string,
+  timestamp: string,
+): Metric {
+  const descriptor = METRIC_DESCRIPTORS[key];
+  return {
+    id: `${key}:${clinicId}:${date}`,
+    name: descriptor.name,
+    value,
+    unit: descriptor.unit,
+    category: descriptor.category,
+    timestamp,
+  };
+}
