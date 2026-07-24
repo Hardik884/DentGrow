@@ -1,11 +1,9 @@
 import { getPaymentsForAppointment } from "@/actions/payments";
 import { getTreatmentsForAppointment } from "@/actions/treatments";
-import { getClinicSettings } from "@/actions/clinic-settings";
 import { PaymentFormDialog } from "@/components/dentist/PaymentFormDialog";
-import { OpdPaymentDialog } from "@/components/dentist/OpdPaymentDialog";
 import { Badge, type BadgeVariant } from "@/components/ui/badge";
 import { formatCurrency, formatDate, PAYMENT_METHOD_LABELS } from "@/lib/utils";
-import { Plus, Stethoscope } from "lucide-react";
+import { Plus } from "lucide-react";
 import type { Payment, PaymentMethod, Treatment } from "@/types";
 
 interface AppointmentPaymentsSectionProps {
@@ -33,13 +31,9 @@ function derivePaymentStatus(
  * Treatments section) with its own cost, payment history, remaining balance,
  * status and a pre-linked "Add Payment" action.
  *
- * The OPD Consultation subsection is only rendered when at least one treatment
- * has `opd_charged = true`.
- *
  * Reuses existing infrastructure only:
  *   - getTreatmentsForAppointment / getPaymentsForAppointment (2 queries, no N+1)
  *   - PaymentFormDialog (treatment payments, treatment pre-selected)
- *   - OpdPaymentDialog + recordPayment (OPD payments)
  * No payment logic or calculations are duplicated.
  */
 export async function AppointmentPaymentsSection({
@@ -56,8 +50,8 @@ export async function AppointmentPaymentsSection({
   const payments = (paymentsResult.data ?? []) as Payment[];
   const error = treatmentsResult.error || paymentsResult.error;
 
-  // Partition payments: OPD, treatment-linked, and unassigned treatment payments.
-  const opdPayments = payments.filter((p) => p.payment_type === "opd");
+  // Partition payments: treatment-linked and unassigned treatment payments.
+  // OPD payments are preserved in the DB but not shown in the UI (backend intact).
   const paymentsByTreatment = new Map<string, Payment[]>();
   const unassignedPayments: Payment[] = [];
   for (const p of payments) {
@@ -70,21 +64,6 @@ export async function AppointmentPaymentsSection({
       unassignedPayments.push(p);
     }
   }
-
-  const opdEnabled = treatments.some((t) => t.opd_charged);
-
-  // Only fetch clinic settings when OPD is relevant (avoids an extra query).
-  let opdDefaultFee: number | null = null;
-  if (opdEnabled) {
-    const settings = await getClinicSettings();
-    const fee = settings.data?.default_opd_fee;
-    opdDefaultFee = fee != null && Number(fee) > 0 ? Number(fee) : null;
-  }
-
-  const opdPaid = opdPayments.reduce((sum, p) => sum + Number(p.amount ?? 0), 0);
-  const opdRemaining = opdDefaultFee != null ? Math.max(0, opdDefaultFee - opdPaid) : null;
-  const opdStatus =
-    opdDefaultFee != null ? derivePaymentStatus(opdDefaultFee, opdPaid) : null;
 
   return (
     <div className="bg-white border rounded-lg p-4 space-y-5">
@@ -148,52 +127,6 @@ export async function AppointmentPaymentsSection({
             />
           )}
         </div>
-      )}
-
-      {/* ── OPD Consultation (only when charged) ────────────── */}
-      {opdEnabled && (
-        <section className="pt-5 border-t border-gray-100">
-          <div className="rounded-lg border border-[#E4E4E7] bg-[#FAFAFA] p-4 space-y-3">
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex items-center gap-2">
-                <Stethoscope className="h-4 w-4 text-[#71717A]" aria-hidden />
-                <div>
-                  <h4 className="text-sm font-semibold text-[#09090B]">OPD Consultation</h4>
-                  <p className="text-xs text-gray-500 mt-0.5">Consultation / OPD fee for this visit</p>
-                </div>
-              </div>
-              {opdStatus && <Badge variant={opdStatus.variant}>{opdStatus.label}</Badge>}
-            </div>
-
-            <div className="grid grid-cols-3 gap-3">
-              <Stat
-                label="Outstanding"
-                value={opdDefaultFee != null ? formatCurrency(opdDefaultFee) : "—"}
-              />
-              <Stat label="Paid" value={formatCurrency(opdPaid)} accent="green" />
-              <Stat
-                label="Remaining"
-                value={opdRemaining != null ? formatCurrency(opdRemaining) : "—"}
-                accent={opdRemaining && opdRemaining > 0 ? "red" : undefined}
-              />
-            </div>
-
-            <PaymentRows payments={opdPayments} emptyLabel="No OPD payments recorded yet." />
-
-            <div className="flex justify-end pt-1">
-              <OpdPaymentDialog
-                patientId={patientId}
-                patientName={patientName}
-                appointmentId={appointmentId}
-                triggerVariant="outline"
-                triggerSize="sm"
-              >
-                <Plus className="h-3.5 w-3.5" aria-hidden />
-                Add OPD Payment
-              </OpdPaymentDialog>
-            </div>
-          </div>
-        </section>
       )}
     </div>
   );

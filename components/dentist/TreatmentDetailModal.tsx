@@ -148,6 +148,12 @@ function TreatmentDetail({
           value={treatment.performed_at ? formatDateTime(treatment.performed_at) : "Not recorded"}
         />
         <Detail label="Added" value={formatDate(treatment.created_at)} />
+        {treatment.xray_taken && (
+          <Detail
+            label="X-ray Cost"
+            value={treatment.xray_cost != null ? formatCurrency(Number(treatment.xray_cost)) : "—"}
+          />
+        )}
       </div>
 
       {/* Medicines + Instructions */}

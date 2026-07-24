@@ -455,6 +455,10 @@ export const CreateTreatmentSchema = z.object({
   // Whether an OPD consultation fee should be collected for this treatment.
   // Drives visibility of the OPD payments subsection on the Patient Visit page.
   opd_charged: z.boolean().default(false),
+  // X-ray information. xray_cost is required and must be > 0 only when xray_taken is true.
+  // Cross-field validation is enforced in the form (not here, so .partial() works cleanly).
+  xray_taken: z.boolean().default(false),
+  xray_cost: z.number().nonnegative("X-ray cost cannot be negative").nullable().optional(),
   // Accepts "YYYY-MM-DD", "YYYY-MM-DDTHH:mm", or full ISO strings.
   // The server action normalises this to a proper timestamptz before inserting.
   // Truly optional — can be omitted or left blank without validation failure.
@@ -560,6 +564,8 @@ export const UpdateClinicSettingsSchema = z.object({
   // Default OPD consultation fee (clinic-specific). Optional — leave empty to
   // configure no default. Pre-fills the amount when recording an OPD payment.
   default_opd_fee: z.number().nonnegative().nullable().optional(),
+  // Whether the X-ray section is shown inside treatment forms clinic-wide.
+  enable_xray_charges: z.boolean().default(true),
   clinic_hours: z.object({
     monday: ClinicDayHoursSchema,
     tuesday: ClinicDayHoursSchema,

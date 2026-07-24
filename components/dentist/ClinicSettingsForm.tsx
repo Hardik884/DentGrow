@@ -74,6 +74,7 @@ export function ClinicSettingsForm({ initialSettings }: ClinicSettingsFormProps)
       allow_receptionist_payments: initialSettings?.allow_receptionist_payments ?? false,
       show_consultancy_on_dashboard: initialSettings?.show_consultancy_on_dashboard ?? true,
       default_opd_fee: initialSettings?.default_opd_fee ?? null,
+      enable_xray_charges: initialSettings?.enable_xray_charges !== false,
       clinic_hours: defaultHours,
     },
   });
@@ -203,6 +204,41 @@ export function ClinicSettingsForm({ initialSettings }: ClinicSettingsFormProps)
               })}
             />
           </Field>
+
+          <div className="flex items-start gap-3">
+            <button
+              type="button"
+              onClick={() => {
+                const current = watch("enable_xray_charges");
+                setValue("enable_xray_charges", !current);
+              }}
+              disabled={isSubmitting}
+              className={cn(
+                "relative inline-flex h-5 w-9 shrink-0 rounded-full border-2 border-transparent transition-colors",
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#18181B]",
+                "disabled:cursor-not-allowed",
+                watch("enable_xray_charges") !== false ? "bg-[#18181B]" : "bg-[#E4E4E7]"
+              )}
+              aria-pressed={watch("enable_xray_charges") !== false ? "true" : "false"}
+              aria-label="Enable X-ray Charges"
+            >
+              <span
+                className={cn(
+                  "pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow transform transition-transform",
+                  watch("enable_xray_charges") !== false ? "translate-x-4" : "translate-x-0"
+                )}
+              />
+            </button>
+
+            <div>
+              <label className="text-sm font-medium text-[#09090B]">
+                Enable X-ray Charges
+              </label>
+              <p className="text-xs text-[#71717A] mt-0.5">
+                When enabled, the X-ray section appears inside treatment forms so dentists can record whether an X-ray was taken and its cost. When disabled, the X-ray section is hidden clinic-wide.
+              </p>
+            </div>
+          </div>
         </div>
 
         {/* ── Access Control ─────────────────────────────────────── */}

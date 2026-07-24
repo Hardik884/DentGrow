@@ -193,6 +193,8 @@ export async function createTreatment(
         cost: parsed.data.cost,
         status: parsed.data.status ?? "planned",
         opd_charged: parsed.data.opd_charged ?? false,
+        xray_taken: parsed.data.xray_taken ?? false,
+        xray_cost: parsed.data.xray_taken ? (parsed.data.xray_cost ?? null) : null,
         performed_at: performedAt,
         created_by: profile.id,
         ...revenue.fields,
@@ -253,6 +255,13 @@ export async function updateTreatment(
     if (parsed.data.cost !== undefined) updates.cost = parsed.data.cost;
     if (parsed.data.status !== undefined) updates.status = parsed.data.status;
     if (parsed.data.opd_charged !== undefined) updates.opd_charged = parsed.data.opd_charged;
+    if (parsed.data.xray_taken !== undefined) {
+      updates.xray_taken = parsed.data.xray_taken;
+      // Clear xray_cost automatically when x-ray is disabled
+      updates.xray_cost = parsed.data.xray_taken ? (parsed.data.xray_cost ?? null) : null;
+    } else if (parsed.data.xray_cost !== undefined) {
+      updates.xray_cost = parsed.data.xray_cost ?? null;
+    }
 
     // Recompute the revenue split whenever the cost or the consultant selection
     // is part of this update. Keeps clinic_share/consultant_share consistent and

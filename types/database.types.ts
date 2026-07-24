@@ -277,6 +277,8 @@ export type Database = {
           performed_at: string | null;
           medications: Json;
           opd_charged: boolean;
+          xray_taken: boolean;
+          xray_cost: number | null;
           deleted_at: string | null;
           created_at: string;
           updated_at: string;
@@ -300,6 +302,8 @@ export type Database = {
           performed_at?: string | null;
           medications?: Json;
           opd_charged?: boolean;
+          xray_taken?: boolean;
+          xray_cost?: number | null;
           deleted_at?: string | null;
           created_at?: string;
           updated_at?: string;
@@ -323,6 +327,8 @@ export type Database = {
           performed_at?: string | null;
           medications?: Json;
           opd_charged?: boolean;
+          xray_taken?: boolean;
+          xray_cost?: number | null;
           deleted_at?: string | null;
           created_at?: string;
           updated_at?: string;
@@ -510,6 +516,7 @@ export type Database = {
           allow_receptionist_payments: boolean;
           show_consultancy_on_dashboard: boolean;
           default_opd_fee: number | null;
+          enable_xray_charges: boolean;
           created_at: string;
           updated_at: string;
         };
@@ -526,6 +533,7 @@ export type Database = {
           allow_receptionist_payments?: boolean;
           show_consultancy_on_dashboard?: boolean;
           default_opd_fee?: number | null;
+          enable_xray_charges?: boolean;
           created_at?: string;
           updated_at?: string;
         };
@@ -542,6 +550,7 @@ export type Database = {
           allow_receptionist_payments?: boolean;
           show_consultancy_on_dashboard?: boolean;
           default_opd_fee?: number | null;
+          enable_xray_charges?: boolean;
           created_at?: string;
           updated_at?: string;
         };

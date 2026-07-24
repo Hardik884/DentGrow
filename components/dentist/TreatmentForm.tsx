@@ -23,6 +23,7 @@ import {
   getCurrentUserDisplayName,
 } from "@/actions/treatments";
 import { getConsultants } from "@/actions/consultants";
+import { getClinicSettings } from "@/actions/clinic-settings";
 import type { Consultant } from "@/types";
 import { computeConsultantSplit } from "@/lib/billing/revenue";
 import { TREATMENT_STATUS_LABELS, formatCurrency, cn } from "@/lib/utils";
@@ -34,7 +35,7 @@ import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { SkeletonCard } from "@/components/ui/skeleton";
 import { CalendarPicker } from "@/components/ui/calendar-picker";
-import { Eye, Plus, Trash2, Minus, Pill, Briefcase } from "lucide-react";
+import { Eye, Plus, Trash2, Minus, Pill, Briefcase, ScanLine } from "lucide-react";
 
 interface TreatmentFormProps {
   treatmentId?: string;
@@ -66,6 +67,8 @@ export function TreatmentForm({ treatmentId, appointmentId, patientId, onSuccess
   const [consultants, setConsultants] = useState<Consultant[]>([]);
   // Logged-in dentist's name — labels the default "Performed By" option.
   const [dentistName, setDentistName] = useState<string | null>(null);
+  // Whether the clinic has X-ray charges enabled (defaults true while loading).
+  const [xrayEnabled, setXrayEnabled] = useState(true);
 
   const isEdit = !!treatmentId;
   const schema = isEdit ? UpdateTreatmentSchema : CreateTreatmentSchema;
@@ -86,9 +89,11 @@ export function TreatmentForm({ treatmentId, appointmentId, patientId, onSuccess
       treatment_type: "",
       patient_visible_notes: "",
       medications: [],
-      cost: 0,
+      cost: undefined,
       status: TreatmentStatus.PLANNED,
       opd_charged: false,
+      xray_taken: false,
+      xray_cost: null,
       performed_at: undefined,
       consultant_id: "",
       commission_type: undefined,
@@ -108,8 +113,8 @@ export function TreatmentForm({ treatmentId, appointmentId, patientId, onSuccess
     | Array<{ dosage?: string; instructions?: string }>
     | undefined;
 
-  // ── OPD consultation charge toggle ──────────────────────────────────────────
-  const opdChargedValue = watch("opd_charged") as boolean | undefined;
+  // ── X-ray toggle ─────────────────────────────────────────────────────────────
+  const xrayTakenValue = watch("xray_taken") as boolean | undefined;
 
   // "Performed At" may be any historical date so migrated records can be
   // logged accurately. Future dates remain blocked (a treatment cannot have
@@ -147,6 +152,12 @@ export function TreatmentForm({ treatmentId, appointmentId, patientId, onSuccess
     getCurrentUserDisplayName().then((res) => {
       if (active && res.data) setDentistName(res.data);
     });
+    getClinicSettings().then((res) => {
+      if (active) {
+        // Default is true; only disable when the setting is explicitly false.
+        setXrayEnabled(res.data?.enable_xray_charges !== false);
+      }
+    });
     return () => {
       active = false;
     };
@@ -171,9 +182,11 @@ export function TreatmentForm({ treatmentId, appointmentId, patientId, onSuccess
           medications: Array.isArray(result.data.medications)
             ? (result.data.medications as CreateTreatmentInput["medications"])
             : [],
-          cost: Number(result.data.cost),
+          cost: result.data.cost != null ? Number(result.data.cost) : undefined,
           status: result.data.status,
           opd_charged: result.data.opd_charged ?? false,
+          xray_taken: result.data.xray_taken ?? false,
+          xray_cost: result.data.xray_cost != null ? Number(result.data.xray_cost) : null,
           performed_at: date ? (time ? `${date}T${time}` : date) : undefined,
           consultant_id: result.data.consultant_id ?? "",
           commission_type: result.data.commission_type ?? undefined,
@@ -255,6 +268,8 @@ export function TreatmentForm({ treatmentId, appointmentId, patientId, onSuccess
           )}
 
           <input type="hidden" {...register("performed_at" as keyof CreateTreatmentInput)} />
+          {/* opd_charged kept as hidden false — backend logic unchanged */}
+          <input type="hidden" {...register("opd_charged" as keyof CreateTreatmentInput)} />
 
           <Field label="Treatment Type" htmlFor="treatment-type" required error={(errors as Record<string, {message?: string}>).treatment_type?.message}>
             <Select
@@ -316,7 +331,7 @@ export function TreatmentForm({ treatmentId, appointmentId, patientId, onSuccess
                 min={0}
                 step="0.01"
                 {...register("cost", { valueAsNumber: true })}
-                placeholder="0.00"
+                className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                 hasError={!!(errors as Record<string, unknown>).cost}
               />
             </Field>
@@ -343,48 +358,82 @@ export function TreatmentForm({ treatmentId, appointmentId, patientId, onSuccess
             </div>
           </Field>
 
-          {/* ── OPD Consultation Charged ─────────────────────────── */}
-          <Field
-            label="OPD Consultation Charged"
-            htmlFor="opd-charged"
-            hint="Enable to collect an OPD (consultation) fee for this visit"
-          >
-            <div
-              id="opd-charged"
-              role="radiogroup"
-              aria-label="OPD consultation charged"
-              className="inline-flex rounded-lg border border-[#E4E4E7] bg-[#FAFAFA] p-0.5"
-            >
-              <button
-                type="button"
-                role="radio"
-                aria-checked={!opdChargedValue}
-                onClick={() => setValue("opd_charged" as keyof CreateTreatmentInput, false as never)}
-                className={cn(
-                  "px-4 py-1.5 text-xs font-semibold rounded-md transition-colors",
-                  !opdChargedValue
-                    ? "bg-white text-[#09090B] shadow-sm border border-[#E4E4E7]"
-                    : "text-[#71717A] hover:text-[#09090B]"
-                )}
+          {/* ── X-ray (only when clinic has it enabled) ─────────── */}
+          {xrayEnabled && (
+            <div className="space-y-3">
+              <Field
+                label="X-ray Taken"
+                htmlFor="xray-taken"
+                hint="Enable if an X-ray was taken during this visit"
               >
-                No
-              </button>
-              <button
-                type="button"
-                role="radio"
-                aria-checked={!!opdChargedValue}
-                onClick={() => setValue("opd_charged" as keyof CreateTreatmentInput, true as never)}
-                className={cn(
-                  "px-4 py-1.5 text-xs font-semibold rounded-md transition-colors",
-                  opdChargedValue
-                    ? "bg-[#18181B] text-white shadow-sm"
-                    : "text-[#71717A] hover:text-[#09090B]"
-                )}
-              >
-                Yes
-              </button>
+                <div
+                  id="xray-taken"
+                  role="radiogroup"
+                  aria-label="X-ray taken"
+                  className="inline-flex rounded-lg border border-[#E4E4E7] bg-[#FAFAFA] p-0.5"
+                >
+                  <button
+                    type="button"
+                    role="radio"
+                    aria-checked={!xrayTakenValue}
+                    onClick={() => {
+                      setValue("xray_taken" as keyof CreateTreatmentInput, false as never);
+                      setValue("xray_cost" as keyof CreateTreatmentInput, null as never);
+                    }}
+                    className={cn(
+                      "px-4 py-1.5 text-xs font-semibold rounded-md transition-colors cursor-pointer",
+                      !xrayTakenValue
+                        ? "bg-white text-[#09090B] shadow-sm border border-[#E4E4E7]"
+                        : "text-[#71717A] hover:text-[#09090B]"
+                    )}
+                  >
+                    No
+                  </button>
+                  <button
+                    type="button"
+                    role="radio"
+                    aria-checked={!!xrayTakenValue}
+                    onClick={() =>
+                      setValue("xray_taken" as keyof CreateTreatmentInput, true as never)
+                    }
+                    className={cn(
+                      "px-4 py-1.5 text-xs font-semibold rounded-md transition-colors cursor-pointer",
+                      xrayTakenValue
+                        ? "bg-[#18181B] text-white shadow-sm"
+                        : "text-[#71717A] hover:text-[#09090B]"
+                    )}
+                  >
+                    Yes
+                  </button>
+                </div>
+              </Field>
+
+              {xrayTakenValue && (
+                <div className="rounded-lg border border-[#E4E4E7] bg-[#FAFAFA] px-4 py-4">
+                  <div className="flex items-center gap-1.5 mb-3">
+                    <ScanLine className="h-3.5 w-3.5 text-[#71717A]" aria-hidden />
+                    <span className="text-xs font-semibold text-[#09090B] uppercase tracking-wide">X-ray Details</span>
+                  </div>
+                  <Field
+                    label="X-ray Cost (₹)"
+                    htmlFor="xray-cost"
+                    required
+                    error={(errors as Record<string, {message?: string}>).xray_cost?.message}
+                  >
+                    <Input
+                      id="xray-cost"
+                      type="number"
+                      min={0}
+                      step="0.01"
+                      {...register("xray_cost", { valueAsNumber: true, setValueAs: (v) => (v === "" || v === null || v === undefined || isNaN(v) ? null : Number(v)) })}
+                      className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                      hasError={!!(errors as Record<string, unknown>).xray_cost}
+                    />
+                  </Field>
+                </div>
+              )}
             </div>
-          </Field>
+          )}
         </div>
 
         {/* ── Performed By / Revenue Distribution ─────────────── */}
@@ -457,7 +506,7 @@ export function TreatmentForm({ treatmentId, appointmentId, patientId, onSuccess
                     min={0}
                     max={commissionTypeValue === "fixed" ? undefined : 100}
                     step="0.01"
-                    placeholder={commissionTypeValue === "fixed" ? "4000" : "30"}
+                    className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                     {...register("commission_value", { valueAsNumber: true })}
                   />
                 </Field>
