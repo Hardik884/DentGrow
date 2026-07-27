@@ -55,6 +55,11 @@ logs
 # Supabase
 .supabase/
 
+# Database dumps — may contain production patient data (PII). Never commit.
+backup*.sql
+*.dump
+supabase/backup*.sql
+
 # OS
 Thumbs.db
 
