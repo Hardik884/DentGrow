@@ -795,6 +795,20 @@ export type Database = {
       payment_method: "cash" | "upi" | "card" | "bank_transfer";
       follow_up_status: "pending" | "completed" | "cancelled";
       appointment_history_action: "created" | "rescheduled" | "cancelled" | "status_changed";
+      follow_up_confirmation_status: "tentative" | "confirmed";
+    };
+    /**
+     * Required by @supabase/supabase-js: a schema without this key does not
+     * satisfy its `GenericSchema` constraint, so every `.from(...)` collapses to
+     * `never` and the client appears untyped. Its absence is why so much of the
+     * codebase falls back to `type DbClient = any`.
+     *
+     * `supabase gen types` always emits this block; it was missed because this
+     * file is hand-maintained. Empty is correct — the schema defines no
+     * composite types.
+     */
+    CompositeTypes: {
+      [_ in never]: never;
     };
   };
 };

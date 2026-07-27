@@ -18,7 +18,11 @@ import { resolveSession } from "@/lib/auth/session";
  * reuses it.
  */
 
-export const DEFAULT_TIMEZONE = "Asia/Kolkata";
+// Defined in ./constants so non-server contexts (Business Brain repository and
+// its tests) can use it without pulling in `server-only`. Re-exported here so
+// existing `@/lib/clinic/config` imports keep working.
+export { DEFAULT_TIMEZONE } from "./constants";
+import { DEFAULT_TIMEZONE } from "./constants";
 
 export type ClinicConfig = {
   clinicId: string;

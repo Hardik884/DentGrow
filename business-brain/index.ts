@@ -16,3 +16,10 @@ export * from "./engines";
 export * from "./config";
 export * from "./validation";
 export * from "./utils";
+/**
+ * The data port and its snapshot shapes are part of the public API: a consumer
+ * cannot construct DentGrowMetricsEngine, nor implement or fake a repository,
+ * without them. Only the port is exported — the Business Brain still contains
+ * no database access of its own.
+ */
+export * from "./repositories";
