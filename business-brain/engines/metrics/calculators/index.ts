@@ -21,6 +21,7 @@ import {
   revenueCollectedToday,
   outstandingPayments,
   pendingTreatmentValue,
+  clinicShareToday,
 } from "./revenue-metrics";
 import { patientsWaiting, averageWaitingTime } from "./queue-metrics";
 import { followUpsDueToday, overdueFollowUps } from "./follow-up-metrics";
@@ -48,6 +49,7 @@ export const METRIC_CALCULATORS: readonly MetricCalculator[] = [
   revenueCollectedToday,
   outstandingPayments,
   pendingTreatmentValue,
+  clinicShareToday,
   // Queue
   patientsWaiting,
   averageWaitingTime,

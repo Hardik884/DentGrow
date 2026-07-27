@@ -42,7 +42,19 @@ export interface PaymentSnapshot {
 /** A treatment record, reduced to what metrics need. */
 export interface TreatmentSnapshot {
   readonly id: string;
+  /**
+   * GROSS treatment amount — what the patient owes. Patient billing never uses
+   * the consultant split (see `lib/billing/revenue.ts`).
+   */
   readonly cost: number;
+  /**
+   * The clinic's retained share of {@link cost} after any consultant payout.
+   *
+   * Equals `cost` when no consultant performed the treatment. The repository
+   * must coalesce DentGrow's nullable `treatments.clinic_share` column to
+   * `cost` when it is null, so this field is always a real number.
+   */
+  readonly clinicShare: number;
   /** DentGrow treatment_status: planned | in_progress | completed | cancelled. */
   readonly status: string;
   /** ISO-8601 time the treatment was performed, or null if not yet performed. */

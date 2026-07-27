@@ -24,6 +24,7 @@ export const MetricKey = {
   REVENUE_COLLECTED_TODAY: "revenue.collected_today",
   REVENUE_OUTSTANDING: "revenue.outstanding",
   REVENUE_PENDING_TREATMENT_VALUE: "revenue.pending_treatment_value",
+  REVENUE_CLINIC_SHARE_TODAY: "revenue.clinic_share_today",
   // Queue
   QUEUE_PATIENTS_WAITING: "queue.patients_waiting",
   QUEUE_AVERAGE_WAITING_TIME: "queue.average_waiting_time",
@@ -107,6 +108,12 @@ export const METRIC_DESCRIPTORS: Readonly<Record<MetricKey, MetricDescriptor>> =
   [MetricKey.REVENUE_PENDING_TREATMENT_VALUE]: {
     key: MetricKey.REVENUE_PENDING_TREATMENT_VALUE,
     name: "Pending Treatment Value",
+    category: MetricCategory.REVENUE,
+    unit: MetricUnit.CURRENCY,
+  },
+  [MetricKey.REVENUE_CLINIC_SHARE_TODAY]: {
+    key: MetricKey.REVENUE_CLINIC_SHARE_TODAY,
+    name: "Clinic Share of Work Delivered Today",
     category: MetricCategory.REVENUE,
     unit: MetricUnit.CURRENCY,
   },
