@@ -1,0 +1,43 @@
+/**
+ * Business Brain — Diagnosis Engine: matcher registry
+ *
+ * The single list of every correlation rule. Adding a pattern is one new file
+ * plus one entry here; nothing else in the engine changes.
+ *
+ * Registry order does not affect output — the engine applies a canonical sort by
+ * pattern. It does determine which signals count as "claimed" before the
+ * unclustered pass, which is why that pass runs separately and last.
+ *
+ * `unclustered_signal` is deliberately NOT in this array: it takes a second
+ * argument (what the others claimed) and can emit several diagnoses per day, so it
+ * does not fit the uniform matcher shape.
+ */
+
+import { collectionGapMatcher } from "./financial/collection-gap";
+import { revenueShortfallMatcher } from "./financial/revenue-shortfall";
+import { pipelineConversionFailureMatcher } from "./clinical/pipeline-conversion-failure";
+import { capacityCeilingMatcher } from "./operational/capacity-ceiling";
+import { demandSupplyMismatchMatcher } from "./operational/demand-supply-mismatch";
+import { throughputCongestionMatcher } from "./operational/throughput-congestion";
+import { patientBaseErosionMatcher } from "./retention/patient-base-erosion";
+import { recallProcessFailureMatcher } from "./retention/recall-process-failure";
+import { scheduleAttritionMatcher } from "./scheduling/schedule-attrition";
+import type { PatternMatcher } from "./types";
+
+/** Every registered pattern matcher. */
+export const MATCHERS: readonly PatternMatcher[] = [
+  // Operational
+  demandSupplyMismatchMatcher,
+  throughputCongestionMatcher,
+  capacityCeilingMatcher,
+  // Scheduling
+  scheduleAttritionMatcher,
+  // Financial
+  collectionGapMatcher,
+  revenueShortfallMatcher,
+  // Clinical
+  pipelineConversionFailureMatcher,
+  // Retention
+  patientBaseErosionMatcher,
+  recallProcessFailureMatcher,
+];

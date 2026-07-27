@@ -9,8 +9,79 @@ const compat = new FlatCompat({
   baseDirectory: __dirname,
 });
 
+/**
+ * Import boundary for the pure reasoning engines.
+ *
+ * The Signal Engine and the Diagnosis Engine are pure functions over
+ * already-computed inputs: metrics in, signals out; signals in, diagnoses out.
+ * They must never reach the database, an LLM, or the network. Doc comments are
+ * not the risk — imports are — so the boundary is enforced by lint and fails
+ * the build on violation.
+ */
+const PURE_ENGINE_FILES = [
+  "business-brain/engines/signals/**/*.ts",
+  "business-brain/engines/diagnosis/**/*.ts",
+];
+
+const FORBIDDEN_IMPORT_PATTERNS = [
+  {
+    group: [
+      "**/repositories",
+      "**/repositories/**",
+      "**/business-brain/repositories",
+      "**/business-brain/repositories/**",
+    ],
+    message:
+      "Pure reasoning engines must not import the repositories layer. Data is passed in by the caller.",
+  },
+  {
+    group: ["@prisma/client", "@prisma/*", ".prisma/**", "@supabase/*", "@supabase/**"],
+    message:
+      "Pure reasoning engines must not import a database client. Data is passed in by the caller.",
+  },
+  {
+    group: [
+      "@anthropic-ai/*",
+      "@anthropic-ai/**",
+      "openai",
+      "openai/**",
+      "@google/generative-ai",
+      "@google/generative-ai/**",
+      "**/lib/ai",
+      "**/lib/ai/**",
+    ],
+    message: "Pure reasoning engines must not call an LLM. Reasoning here is deterministic.",
+  },
+  {
+    group: [
+      "axios",
+      "axios/**",
+      "node-fetch",
+      "got",
+      "superagent",
+      "undici",
+      "ky",
+      "http",
+      "https",
+      "node:http",
+      "node:https",
+      "next/server",
+    ],
+    message: "Pure reasoning engines must not perform network I/O.",
+  },
+];
+
 const eslintConfig = [
   ...compat.extends("next/core-web-vitals", "next/typescript"),
+  {
+    files: PURE_ENGINE_FILES,
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        { patterns: FORBIDDEN_IMPORT_PATTERNS },
+      ],
+    },
+  },
   {
     rules: {
       // Enforce no-any in strict mode — matches TypeScript strict: true
