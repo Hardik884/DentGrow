@@ -855,7 +855,48 @@ This means:
 
 ## 11. Database Schema
 
+### 11.0 Migration Workflow (Supabase CLI)
+
+Schema changes are made **only** through versioned migrations in `supabase/migrations/`.
+Editing the hosted database through the Supabase SQL editor is no longer permitted —
+it is what produced the duplicate-version and untracked-history problems the CLI
+workflow now prevents.
+
+```bash
+npm run db:start              # start local Supabase (Docker required)
+npm run db:new -- my_change   # create a timestamped migration file
+npm run db:reset              # rebuild the local DB from the full history + seed
+npm run db:list               # compare local history against the linked remote
+npm run db:push               # apply pending migrations to the linked remote
+npm run db:lint               # Supabase database linter (RLS, security-definer views…)
+npm run gen:types             # regenerate types/database.types.ts from the local DB
+```
+
+Rules:
+
+- **One migration per logical change**, with a unique 14-digit `YYYYMMDDHHMMSS` version.
+  Two files sharing a version collide on `schema_migrations.version` (a primary key) and
+  one will be silently skipped.
+- **Never edit a migration that has already been applied.** Write a new forward migration.
+- **`npm run db:reset` before every push.** It rebuilds an empty database from the entire
+  history and is the only thing that proves a fresh environment still provisions.
+- **Never run `db reset` against a linked remote** — it drops the database, and at least one
+  historical migration contains destructive DML.
+- Adopting the CLI on a database whose schema was applied by hand requires a one-time
+  reconciliation. See **`supabase/REPAIR.md`**.
+
+`supabase/seed.sql` runs on `db reset` only (never on `db push`) and seeds local
+sign-in accounts. Clinics are seeded by migration `20260627000000`, so they exist
+in every environment.
+
+### 11.1 Canonical Schema
+
 Below is the canonical schema. Always keep migrations in sync with this reference.
+
+> ⚠️ **This section is out of date** (last revised 2026-06-19). It documents 13 tables;
+> the database has 18, plus ~33 columns not listed here, and it models enums as
+> `text` + CHECK where the database uses native Postgres enums. Treat
+> `supabase/migrations/` as authoritative until this section is refreshed.
 
 ```sql
 -- Clinics
