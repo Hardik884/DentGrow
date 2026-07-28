@@ -59,8 +59,28 @@ export interface TreatmentSnapshot {
   readonly status: string;
   /** ISO-8601 time the treatment was performed, or null if not yet performed. */
   readonly performedAt: string | null;
-  /** Whether the treatment already has a scheduled appointment/follow-up. */
-  readonly isScheduled: boolean;
+  /**
+   * Whether this treatment is booked to be performed at a FUTURE appointment —
+   * i.e. it was accepted but deliberately not carried out during the visit at
+   * which it was recorded.
+   *
+   *   true   the treatment is linked to a future, still-active appointment
+   *   false  it is being performed now, was completed, or has no booking
+   *   null   NOT DETERMINABLE from the available data
+   *
+   * `null` is a first-class value, not a placeholder. DentGrow currently has no
+   * column expressing "this planned treatment will be performed at appointment
+   * X" — `treatments.appointment_id` records the visit at which the treatment
+   * was *proposed*, which says nothing about when it will be done. Rather than
+   * infer it from a proxy (a follow-up, or any future appointment the patient
+   * happens to have), the repository reports `null` and the affected metric is
+   * withheld.
+   *
+   * This mirrors the discipline the Signal and Diagnosis engines already apply:
+   * an absence that is "we could not measure" must never be reported as a
+   * measured zero.
+   */
+  readonly isScheduled: boolean | null;
 }
 
 /** A queue entry for the target date. */

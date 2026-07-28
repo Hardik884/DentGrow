@@ -110,10 +110,28 @@ export function snapshot(over: Partial<ClinicDataSnapshot> = {}): ClinicDataSnap
   };
 }
 
-/** Convenience: run a calculator and return just its numeric value. */
+/**
+ * Run a calculator and return its numeric value.
+ *
+ * Throws if the calculator withheld the metric (returned null) — a value
+ * assertion that silently received `undefined` would pass for the wrong reason.
+ * Use {@link isWithheld} to assert withholding explicitly.
+ */
 export function valueOf(
-  calc: (s: ClinicDataSnapshot) => { value: number },
+  calc: (s: ClinicDataSnapshot) => { value: number } | null,
   s: ClinicDataSnapshot,
 ): number {
-  return calc(s).value;
+  const metric = calc(s);
+  if (metric === null) {
+    throw new Error("calculator withheld the metric; expected a value");
+  }
+  return metric.value;
+}
+
+/** True when the calculator declined to measure from this snapshot. */
+export function isWithheld(
+  calc: (s: ClinicDataSnapshot) => unknown | null,
+  s: ClinicDataSnapshot,
+): boolean {
+  return calc(s) === null;
 }

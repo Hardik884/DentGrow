@@ -116,9 +116,6 @@ interface ConsultancyBlockRow {
   end_time: string;
 }
 
-/** Appointment statuses that still occupy a slot / count as a real visit. */
-const ACTIVE_APPOINTMENT_STATUSES = ["scheduled", "checked_in", "in_progress", "completed"];
-
 /** Postgres `time` columns arrive as "HH:MM:SS"; the slot engine wants "HH:MM". */
 function toHhMm(time: string): string {
   return time.slice(0, 5);
@@ -202,8 +199,6 @@ export class SupabaseMetricsDataRepository implements MetricsDataRepository {
       appointmentsToday.map((a) => a.patientId),
     );
 
-    const scheduled = await this.fetchScheduledTreatmentIds(clinicId, dayEnd);
-
     return {
       clinicId,
       date,
@@ -211,7 +206,10 @@ export class SupabaseMetricsDataRepository implements MetricsDataRepository {
       appointmentsToday,
       patientsRegisteredToday,
       patientsSeenToday,
-      treatments: treatments.map((t) => ({ ...t, isScheduled: scheduled.has(t.id) })),
+      // isScheduled is reported as UNKNOWN, never guessed — see the note above
+      // fetchTreatments. DentGrow cannot currently express which future
+      // appointment a planned treatment is booked for.
+      treatments: treatments.map((t) => ({ ...t, isScheduled: null })),
       payments,
       queueToday,
       followUps,
@@ -291,6 +289,31 @@ export class SupabaseMetricsDataRepository implements MetricsDataRepository {
    *
    * `clinic_share` is nullable in DentGrow (no consultant => no split recorded);
    * it is coalesced to `cost` so the engine always receives a real number.
+   *
+   * KNOWN SCHEMA GAP — `isScheduled` is reported as `null` (unknown)
+   * ---------------------------------------------------------------
+   * A treatment is "scheduled" when it was accepted but deliberately not done
+   * during the visit, and is booked for a specific future appointment.
+   *
+   * DentGrow cannot express that. `treatments.appointment_id` is NOT NULL and
+   * records the visit at which the treatment was *proposed* — it is the same
+   * column whether the work happened then or was deferred, so it carries no
+   * information about a future booking.
+   *
+   * The available proxies are all wrong:
+   *   - a pending `follow_ups` row is a recall/review, not a booking for this
+   *     treatment, and a treatment can be booked with no follow-up at all;
+   *   - "the patient has some future appointment" says nothing about whether
+   *     THIS treatment is what that appointment is for.
+   *
+   * Either would report accepted work as booked (or unbooked) on no evidence,
+   * so this repository reports `null` and the Metrics Engine withholds
+   * `treatment.accepted_pending_scheduling` entirely. The dependent evaluator
+   * then skips and records that it could not measure.
+   *
+   * Smallest fix: add `treatments.scheduled_appointment_id uuid null references
+   * appointments(id) on delete set null`. See the "Scheduled treatments" note in
+   * the accompanying report.
    */
   private async fetchTreatments(clinicId: string): Promise<Array<Omit<TreatmentSnapshot, "isScheduled">>> {
     const { data, error } = await this.db
@@ -366,71 +389,6 @@ export class SupabaseMetricsDataRepository implements MetricsDataRepository {
     if (error) throw new Error(`follow_ups: ${error.message}`);
 
     return rows<FollowUpRow>(data).map((f) => ({ id: f.id, dueDate: f.due_date, status: f.status }));
-  }
-
-  /**
-   * Which treatments already have follow-through booked.
-   *
-   * DentGrow has no `treatments.is_scheduled` column — every treatment carries
-   * the `appointment_id` of the visit where it was recorded, which says nothing
-   * about whether the work itself is booked. This is therefore derived, and it
-   * is the only inferred field in the snapshot:
-   *
-   *   a treatment is "scheduled" when a pending follow-up references it, OR
-   *   its patient has a future appointment that is not cancelled/no-show.
-   *
-   * The follow-up link is the precise signal (`follow_ups.treatment_id` exists
-   * for exactly this); the future-appointment check is the pragmatic one, since
-   * a dentist may simply book the next visit without recording a follow-up.
-   */
-  private async fetchScheduledTreatmentIds(
-    clinicId: string,
-    dayEnd: string,
-  ): Promise<Set<string>> {
-    const [followUps, futureAppointments] = await Promise.all([
-      this.db
-        .from("follow_ups")
-        .select("treatment_id")
-        .eq("clinic_id", clinicId)
-        .is("deleted_at", null)
-        .eq("status", "pending")
-        .not("treatment_id", "is", null),
-      this.db
-        .from("appointments")
-        .select("patient_id")
-        .eq("clinic_id", clinicId)
-        .is("deleted_at", null)
-        .gt("scheduled_at", dayEnd)
-        .in("status", ACTIVE_APPOINTMENT_STATUSES),
-    ]);
-
-    if (followUps.error) throw new Error(`follow_ups (scheduled): ${followUps.error.message}`);
-    if (futureAppointments.error) {
-      throw new Error(`appointments (future): ${futureAppointments.error.message}`);
-    }
-
-    const scheduledTreatmentIds = new Set<string>(
-      rows<{ treatment_id: string | null }>(followUps.data)
-        .map((f) => f.treatment_id)
-        .filter((id): id is string => id !== null),
-    );
-
-    const patientsWithFutureVisit = new Set(
-      rows<{ patient_id: string }>(futureAppointments.data).map((a) => a.patient_id),
-    );
-    if (patientsWithFutureVisit.size === 0) return scheduledTreatmentIds;
-
-    // Resolve which treatments belong to those patients.
-    const { data, error } = await this.db
-      .from("treatments")
-      .select("id, patient_id")
-      .eq("clinic_id", clinicId)
-      .is("deleted_at", null)
-      .in("patient_id", [...patientsWithFutureVisit]);
-    if (error) throw new Error(`treatments (scheduled): ${error.message}`);
-
-    for (const t of rows<{ id: string }>(data)) scheduledTreatmentIds.add(t.id);
-    return scheduledTreatmentIds;
   }
 
   /**

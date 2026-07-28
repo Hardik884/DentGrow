@@ -25,9 +25,12 @@ describe("metric manifest", () => {
     expect(METRIC_CALCULATORS.length).toBe(ALL_KEYS.length);
   });
 
-  it("produces every declared key exactly once for a snapshot", () => {
+  it("produces every declared key exactly once for a measurable snapshot", () => {
+    // An empty clinic day is fully measurable: nothing is unknown, so every
+    // calculator returns a metric rather than withholding.
     const s = snapshot();
-    const produced = METRIC_CALCULATORS.map((c) => c(s).id.split(":")[0]);
+    const produced = METRIC_CALCULATORS.map((c) => c(s)?.id.split(":")[0]);
+    expect(produced.every((key) => key !== undefined)).toBe(true);
     expect(produced.length).toBe(new Set(produced).size);
     expect([...produced].sort()).toEqual([...ALL_KEYS].sort());
   });

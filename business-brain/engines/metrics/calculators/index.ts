@@ -31,8 +31,17 @@ import {
 } from "./treatment-metrics";
 import { chairUtilization, availableSlotsToday } from "./capacity-metrics";
 
-/** A pure metric calculator: snapshot in, one Metric out. */
-export type MetricCalculator = (snapshot: ClinicDataSnapshot) => Metric;
+/**
+ * A pure metric calculator: snapshot in, one Metric out.
+ *
+ * Returning `null` means "not measurable from this snapshot" — the input needed
+ * to compute it honestly is absent. That is different from a calculator
+ * throwing (a defect, logged as a failure) and different again from a value of
+ * zero (a real measurement). The engine omits withheld metrics, so downstream
+ * evaluators skip and record that they could not measure, rather than reasoning
+ * over a fabricated number.
+ */
+export type MetricCalculator = (snapshot: ClinicDataSnapshot) => Metric | null;
 
 /** The ordered set of all metric calculators the engine runs. */
 export const METRIC_CALCULATORS: readonly MetricCalculator[] = [

@@ -12,11 +12,25 @@ function toDatePart(iso: string): string {
 }
 
 /**
- * Accepted treatments pending scheduling — `planned` treatments that do not yet
- * have a scheduled appointment/follow-up.
+ * Accepted treatments pending scheduling — treatments the patient has accepted
+ * (`planned`) that are not booked to be performed at any future appointment.
+ *
+ * Returns `null` — the metric is withheld — when any planned treatment's
+ * booking state is unknown (`isScheduled === null`). Counting an unknown as
+ * "not scheduled" would report accepted work as unbooked on no evidence, and
+ * `clinical.accepted_treatments_unscheduled` would fire on it. Withholding the
+ * metric instead makes the downstream evaluator skip and record that it could
+ * not measure, which is the honest outcome.
+ *
+ * With no planned treatments at all the answer is 0 regardless of what is
+ * knowable, so the metric is still produced.
  */
-export function acceptedTreatmentsPendingScheduling(s: ClinicDataSnapshot): Metric {
-  const value = s.treatments.filter((t) => t.status === "planned" && !t.isScheduled).length;
+export function acceptedTreatmentsPendingScheduling(s: ClinicDataSnapshot): Metric | null {
+  const planned = s.treatments.filter((t) => t.status === "planned");
+  if (planned.some((t) => t.isScheduled === null)) {
+    return null;
+  }
+  const value = planned.filter((t) => t.isScheduled === false).length;
   return buildMetric(
     MetricKey.TREATMENT_ACCEPTED_PENDING_SCHEDULING,
     value,

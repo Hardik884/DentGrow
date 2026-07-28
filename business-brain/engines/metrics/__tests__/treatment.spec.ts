@@ -4,18 +4,47 @@ import {
   acceptedTreatmentsPendingScheduling,
   treatmentsCompletedToday,
 } from "../calculators/treatment-metrics";
-import { DATE, snapshot, treatment, valueOf } from "./fixtures/snapshot-fixtures";
+import { DATE, isWithheld, snapshot, treatment, valueOf } from "./fixtures/snapshot-fixtures";
 
 describe("acceptedTreatmentsPendingScheduling", () => {
-  it("counts planned treatments that have no appointment yet", () => {
+  it("counts planned treatments not booked for a future appointment", () => {
     const s = snapshot({
       treatments: [
         treatment({ status: "planned", isScheduled: false }),
         treatment({ status: "planned", isScheduled: false }),
+        // Accepted today, booked for a future visit — not pending scheduling.
         treatment({ status: "planned", isScheduled: true }),
       ],
     });
     expect(valueOf(acceptedTreatmentsPendingScheduling, s)).toBe(2);
+  });
+
+  it("WITHHOLDS the metric when any planned treatment's booking state is unknown", () => {
+    const s = snapshot({
+      treatments: [
+        treatment({ status: "planned", isScheduled: false }),
+        treatment({ status: "planned", isScheduled: null }),
+      ],
+    });
+    // Counting the unknown as "not scheduled" would report accepted work as
+    // unbooked on no evidence. Withholding makes the evaluator skip instead.
+    expect(isWithheld(acceptedTreatmentsPendingScheduling, s)).toBe(true);
+  });
+
+  it("still measures when the unknown treatment is not planned", () => {
+    // A completed treatment's booking state is irrelevant to this metric.
+    const s = snapshot({
+      treatments: [
+        treatment({ status: "planned", isScheduled: false }),
+        treatment({ status: "completed", isScheduled: null }),
+      ],
+    });
+    expect(valueOf(acceptedTreatmentsPendingScheduling, s)).toBe(1);
+  });
+
+  it("reports zero when there are no planned treatments, whatever is knowable", () => {
+    const s = snapshot({ treatments: [treatment({ status: "completed", isScheduled: null })] });
+    expect(valueOf(acceptedTreatmentsPendingScheduling, s)).toBe(0);
   });
 
   it("ignores treatments that are already under way or finished", () => {
