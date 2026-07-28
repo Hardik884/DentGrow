@@ -20,11 +20,14 @@ export const MetricKey = {
   // Patients
   PATIENTS_NEW_TODAY: "patients.new_today",
   PATIENTS_RETURNING_TODAY: "patients.returning_today",
+  PATIENTS_REACTIVATION_CANDIDATES: "patients.reactivation_candidates",
   // Revenue
   REVENUE_COLLECTED_TODAY: "revenue.collected_today",
   REVENUE_OUTSTANDING: "revenue.outstanding",
   REVENUE_PENDING_TREATMENT_VALUE: "revenue.pending_treatment_value",
   REVENUE_CLINIC_SHARE_TODAY: "revenue.clinic_share_today",
+  REVENUE_PRODUCTION_30D: "revenue.production_30d",
+  REVENUE_COLLECTION_RATE_30D: "revenue.collection_rate_30d",
   // Queue
   QUEUE_PATIENTS_WAITING: "queue.patients_waiting",
   QUEUE_AVERAGE_WAITING_TIME: "queue.average_waiting_time",
@@ -34,6 +37,7 @@ export const MetricKey = {
   // Treatment
   TREATMENT_ACCEPTED_PENDING_SCHEDULING: "treatment.accepted_pending_scheduling",
   TREATMENT_COMPLETED_TODAY: "treatment.completed_today",
+  TREATMENT_AVERAGE_CASE_VALUE_30D: "treatment.average_case_value_30d",
   // Capacity
   CAPACITY_CHAIR_UTILIZATION: "capacity.chair_utilization",
   CAPACITY_AVAILABLE_SLOTS_TODAY: "capacity.available_slots_today",
@@ -115,6 +119,30 @@ export const METRIC_DESCRIPTORS: Readonly<Record<MetricKey, MetricDescriptor>> =
     key: MetricKey.REVENUE_CLINIC_SHARE_TODAY,
     name: "Clinic Share of Work Delivered Today",
     category: MetricCategory.REVENUE,
+    unit: MetricUnit.CURRENCY,
+  },
+  [MetricKey.REVENUE_PRODUCTION_30D]: {
+    key: MetricKey.REVENUE_PRODUCTION_30D,
+    name: "Production (30 days)",
+    category: MetricCategory.REVENUE,
+    unit: MetricUnit.CURRENCY,
+  },
+  [MetricKey.REVENUE_COLLECTION_RATE_30D]: {
+    key: MetricKey.REVENUE_COLLECTION_RATE_30D,
+    name: "Collection Rate (30 days)",
+    category: MetricCategory.REVENUE,
+    unit: MetricUnit.PERCENTAGE,
+  },
+  [MetricKey.PATIENTS_REACTIVATION_CANDIDATES]: {
+    key: MetricKey.PATIENTS_REACTIVATION_CANDIDATES,
+    name: "Patients Due for Reactivation",
+    category: MetricCategory.RETENTION,
+    unit: MetricUnit.COUNT,
+  },
+  [MetricKey.TREATMENT_AVERAGE_CASE_VALUE_30D]: {
+    key: MetricKey.TREATMENT_AVERAGE_CASE_VALUE_30D,
+    name: "Average Case Value (30 days)",
+    category: MetricCategory.CLINICAL,
     unit: MetricUnit.CURRENCY,
   },
   [MetricKey.QUEUE_PATIENTS_WAITING]: {

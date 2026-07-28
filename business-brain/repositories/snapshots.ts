@@ -105,6 +105,23 @@ export interface FollowUpSnapshot {
   readonly status: string;
 }
 
+/**
+ * One patient on the clinic's roster, with the two facts retention metrics need.
+ *
+ * This is the whole active roster rather than a filtered subset: deciding who
+ * counts as lapsed is a business rule and belongs in a calculator, not in the
+ * repository's query.
+ */
+export interface PatientRosterEntry {
+  readonly id: string;
+  /** ISO-8601 timestamp the patient record was created. */
+  readonly createdAt: string;
+  /** ISO-8601 timestamp of the most recent completed visit, or null if never seen. */
+  readonly lastVisit: string | null;
+  /** Whether the patient has at least one upcoming, non-cancelled appointment. */
+  readonly hasUpcomingAppointment: boolean;
+}
+
 /** Clinic capacity for the target date, derived from availability rules. */
 export interface CapacitySnapshot {
   /** Total bookable appointment slots the clinic offers on the target date. */
@@ -143,4 +160,14 @@ export interface ClinicDataSnapshot {
   readonly followUps: readonly FollowUpSnapshot[];
   /** Capacity for `date`. */
   readonly capacity: CapacitySnapshot;
+
+  /**
+   * The clinic's full active patient roster.
+   *
+   * OPTIONAL by design. A repository that cannot afford to load the roster — or
+   * a caller that only wants same-day metrics — omits it, and the metrics that
+   * depend on it are withheld rather than reported as zero. Every metric that
+   * existed before the roster was introduced is unaffected by its absence.
+   */
+  readonly patientRoster?: readonly PatientRosterEntry[];
 }

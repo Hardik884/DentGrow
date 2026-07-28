@@ -6,6 +6,8 @@
 
 import type { Metric } from "../../../domain";
 import type { ClinicDataSnapshot } from "../../../repositories";
+import { METRIC_WINDOWS } from "../config/metric-windows";
+import { completedInWindow, paymentsInWindow } from "../support/windows";
 import { MetricKey, buildMetric } from "../metric-ids";
 
 /** Revenue collected today — sum of payments recorded on the target date. */
@@ -81,4 +83,45 @@ export function clinicShareToday(s: ClinicDataSnapshot): Metric {
     )
     .reduce((sum, t) => sum + t.clinicShare, 0);
   return buildMetric(MetricKey.REVENUE_CLINIC_SHARE_TODAY, value, s.clinicId, s.date, s.asOf);
+}
+
+/**
+ * Production over the trailing window — the gross value of treatment actually
+ * DELIVERED, by the date it was performed.
+ *
+ * Production and collection are dentistry's fundamental pair, and reporting only
+ * one of them hides the most common failure mode: a clinic that is busy and
+ * delivering well but not getting paid looks identical to one with no demand.
+ * Gross, not clinic share — this measures work done, not what was retained.
+ */
+export function production30d(s: ClinicDataSnapshot): Metric {
+  const value = completedInWindow(s, METRIC_WINDOWS.TRAILING_DAYS).reduce(
+    (sum, t) => sum + t.cost,
+    0,
+  );
+  return buildMetric(MetricKey.REVENUE_PRODUCTION_30D, value, s.clinicId, s.date, s.asOf);
+}
+
+/**
+ * Collection rate over the trailing window — cash received as a percentage of
+ * work delivered.
+ *
+ * Near 100% means the clinic converts delivered work into money. A persistent
+ * gap is a collections process problem, not a demand problem, and this is the
+ * metric that separates the two.
+ *
+ * WITHHELD when production is zero: a ratio against nothing is undefined, and
+ * reporting 0% would read as "we collected nothing" when the truth is "we
+ * delivered nothing". Not capped at 100% — collecting historic dues genuinely
+ * can exceed the window's production, and flattening that would hide it.
+ */
+export function collectionRate30d(s: ClinicDataSnapshot): Metric | null {
+  const days = METRIC_WINDOWS.TRAILING_DAYS;
+  const produced = completedInWindow(s, days).reduce((sum, t) => sum + t.cost, 0);
+  if (produced <= 0) {
+    return null;
+  }
+  const collected = paymentsInWindow(s, days).reduce((sum, p) => sum + p.amount, 0);
+  const value = Math.round((collected / produced) * 1000) / 10;
+  return buildMetric(MetricKey.REVENUE_COLLECTION_RATE_30D, value, s.clinicId, s.date, s.asOf);
 }

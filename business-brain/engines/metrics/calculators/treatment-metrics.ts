@@ -4,6 +4,8 @@
 
 import type { Metric } from "../../../domain";
 import type { ClinicDataSnapshot } from "../../../repositories";
+import { METRIC_WINDOWS } from "../config/metric-windows";
+import { completedInWindow } from "../support/windows";
 import { MetricKey, buildMetric } from "../metric-ids";
 
 /** Returns the "YYYY-MM-DD" calendar date portion of an ISO timestamp. */
@@ -46,4 +48,35 @@ export function treatmentsCompletedToday(s: ClinicDataSnapshot): Metric {
     (t) => t.status === "completed" && t.performedAt !== null && toDatePart(t.performedAt) === s.date,
   ).length;
   return buildMetric(MetricKey.TREATMENT_COMPLETED_TODAY, value, s.clinicId, s.date, s.asOf);
+}
+
+/**
+ * Average value of a case completed in the trailing window.
+ *
+ * Separates a volume problem from a value problem. Revenue can fall with patient
+ * numbers flat because the case mix shifted towards cleanings — a completely
+ * different response from "we need more patients". This is the metric the
+ * `revenue_shortfall` diagnosis needs to settle its `case_mix` hypothesis, which
+ * is otherwise always undetermined.
+ *
+ * Gross cost, matching {@link production30d}, so the two divide cleanly into a
+ * case count.
+ *
+ * WITHHELD when nothing completed in the window: a mean of no cases is
+ * undefined, and reporting 0 would read as "our cases are worthless".
+ */
+export function averageCaseValue30d(s: ClinicDataSnapshot): Metric | null {
+  const completed = completedInWindow(s, METRIC_WINDOWS.TRAILING_DAYS);
+  if (completed.length === 0) {
+    return null;
+  }
+  const total = completed.reduce((sum, t) => sum + t.cost, 0);
+  const value = Math.round((total / completed.length) * 100) / 100;
+  return buildMetric(
+    MetricKey.TREATMENT_AVERAGE_CASE_VALUE_30D,
+    value,
+    s.clinicId,
+    s.date,
+    s.asOf,
+  );
 }

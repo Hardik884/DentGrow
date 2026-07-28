@@ -83,6 +83,11 @@ interface PatientRow {
   id: string;
   created_at: string;
 }
+interface PatientRosterRow {
+  id: string;
+  created_at: string;
+  last_visit: string | null;
+}
 interface TreatmentRow {
   id: string;
   cost: number | string | null;
@@ -191,6 +196,7 @@ export class SupabaseMetricsDataRepository implements MetricsDataRepository {
       followUps,
       totalSlotsToday,
       patientsWithFutureAppointment,
+      roster,
     ] = await Promise.all([
       this.fetchAppointments(clinicId, dayStart, dayEnd),
       this.fetchPatientsRegistered(clinicId, dayStart, dayEnd),
@@ -200,6 +206,7 @@ export class SupabaseMetricsDataRepository implements MetricsDataRepository {
       this.fetchFollowUps(clinicId, date),
       this.fetchCapacity(clinicId, date, timezone, slotMinutes),
       this.fetchPatientsWithFutureAppointments(clinicId, asOf),
+      this.fetchPatientRoster(clinicId),
     ]);
 
     // Depends on today's appointments, so it cannot join the parallel batch.
@@ -223,6 +230,12 @@ export class SupabaseMetricsDataRepository implements MetricsDataRepository {
       queueToday,
       followUps,
       capacity: { totalSlotsToday },
+      patientRoster: roster.map((p) => ({
+        id: p.id,
+        createdAt: p.created_at,
+        lastVisit: p.last_visit,
+        hasUpcomingAppointment: patientsWithFutureAppointment.has(p.id),
+      })),
     };
   }
 
@@ -346,6 +359,28 @@ export class SupabaseMetricsDataRepository implements MetricsDataRepository {
         patientId: t.patient_id,
       };
     });
+  }
+
+  /**
+   * The clinic's active patient roster.
+   *
+   * `patients.last_visit` is maintained by `completeAppointmentCascade`, so this
+   * is a plain read rather than a derivation. Deciding who counts as lapsed is a
+   * business rule and stays in the calculator.
+   *
+   * COST NOTE: this loads every active patient, and grows linearly with clinic
+   * history — the same unbounded-read caveat as treatments and payments. Fine at
+   * pilot scale; needs bounding before a clinic with years of records.
+   */
+  private async fetchPatientRoster(clinicId: string): Promise<PatientRosterRow[]> {
+    const { data, error } = await this.db
+      .from("patients")
+      .select("id, created_at, last_visit")
+      .eq("clinic_id", clinicId)
+      .is("deleted_at", null);
+    if (error) throw new Error(`patients (roster): ${error.message}`);
+
+    return rows<PatientRosterRow>(data);
   }
 
   /**

@@ -58,6 +58,8 @@ const OTHER_DENTIST = "9f000000-0000-4000-8000-0000000000fe";
 const P_RETURNING = "9f000000-0000-4000-8000-000000000021";
 const P_NEW = "9f000000-0000-4000-8000-000000000022";
 const P_DELETED = "9f000000-0000-4000-8000-000000000023";
+const P_LAPSED = "9f000000-0000-4000-8000-000000000024";
+const P_NEVER = "9f000000-0000-4000-8000-000000000025";
 
 /** Business date under test, and the IST window it maps to. */
 const DATE = "2026-03-16";
@@ -178,6 +180,14 @@ async function seed() {
     { id: "9f000000-0000-4000-8000-000000000082", clinic_id: CLINIC, appointment_id: "9f000000-0000-4000-8000-000000000032", patient_id: P_NEW, treatment_type: "Unbooked patient", cost: 100, status: "planned" },
   ]);
 
+  // Reactivation + window fixtures.
+  await insert("patients", [
+    // Last seen >180d before DATE (2026-03-16 => cutoff 2025-09-17), no future visit.
+    { id: P_LAPSED, clinic_id: CLINIC, name: "Lapsed", created_at: "2024-01-01T10:00:00Z", last_visit: "2025-01-10T10:00:00Z" },
+    // Never attended — acquisition, not lapse.
+    { id: P_NEVER, clinic_id: CLINIC, name: "Never seen", created_at: "2024-01-01T10:00:00Z" },
+  ]);
+
   await insert("payments", [
     { id: "9f000000-0000-4000-8000-000000000051", clinic_id: CLINIC, patient_id: P_RETURNING, amount: 2500, method: "cash", payment_date: DATE },
     { id: "9f000000-0000-4000-8000-000000000052", clinic_id: CLINIC, patient_id: P_RETURNING, amount: 500, method: "upi", payment_date: "2026-03-10" },
@@ -268,6 +278,22 @@ describe.skipIf(!LOCAL_UP)("SupabaseMetricsDataRepository (integration)", () => 
       expect(s.treatments.every((t) => t.isScheduled !== null)).toBe(true);
     });
 
+    it("supplies the patient roster with last-visit and booking state", async () => {
+      const s = await repository.getClinicSnapshot(CLINIC, DATE);
+      const roster = s.patientRoster ?? [];
+      const lapsed = roster.find((p) => p.id === P_LAPSED);
+      const never = roster.find((p) => p.id === P_NEVER);
+      const booked = roster.find((p) => p.id === P_RETURNING);
+
+      expect(lapsed?.lastVisit).not.toBeNull();
+      expect(lapsed?.hasUpcomingAppointment).toBe(false);
+      expect(never?.lastVisit).toBeNull();
+      // P_RETURNING has the live future appointment seeded above.
+      expect(booked?.hasUpcomingAppointment).toBe(true);
+      // Soft-deleted patients never reach the roster.
+      expect(roster.map((p) => p.id)).not.toContain(P_DELETED);
+    });
+
     it("maps queue called_at to startedAt, leaving an active wait open", async () => {
       const s = await repository.getClinicSnapshot(CLINIC, DATE);
       const done = s.queueToday.find((q) => q.status === "completed");
@@ -346,6 +372,16 @@ describe.skipIf(!LOCAL_UP)("SupabaseMetricsDataRepository (integration)", () => 
       // 2 of 8 slots occupied.
       expect(v(MetricKey.CAPACITY_CHAIR_UTILIZATION)).toBe(25);
       expect(v(MetricKey.CAPACITY_AVAILABLE_SLOTS_TODAY)).toBe(6);
+
+      // Trailing-window metrics. Both completed treatments were performed on
+      // DATE, so the whole 30-day window is those two: 5000 + 1000.
+      expect(v(MetricKey.REVENUE_PRODUCTION_30D)).toBe(6000);
+      expect(v(MetricKey.TREATMENT_AVERAGE_CASE_VALUE_30D)).toBe(3000);
+      // Payments in window: 2500 on DATE and 500 on 2026-03-10 (the 4444 row is
+      // soft-deleted). 3000 / 6000 = 50%.
+      expect(v(MetricKey.REVENUE_COLLECTION_RATE_30D)).toBe(50);
+      // Only P_LAPSED: seen long ago and with no upcoming visit.
+      expect(v(MetricKey.PATIENTS_REACTIVATION_CANDIDATES)).toBe(1);
     });
 
     it("is deterministic across repeated reads of unchanged data", async () => {

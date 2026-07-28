@@ -11,6 +11,7 @@
 
 import type {
   AppointmentSnapshot,
+  PatientRosterEntry,
   ClinicDataSnapshot,
   FollowUpSnapshot,
   PatientSnapshot,
@@ -90,6 +91,31 @@ export function followUp(over: Partial<FollowUpSnapshot> = {}): FollowUpSnapshot
     status: "pending",
     ...over,
   };
+}
+
+export function rosterEntry(over: Partial<PatientRosterEntry> = {}): PatientRosterEntry {
+  return {
+    id: nextId("pat"),
+    createdAt: "2025-01-01T09:00:00.000Z",
+    lastVisit: `${DATE}T09:00:00.000Z`,
+    hasUpcomingAppointment: false,
+    ...over,
+  };
+}
+
+/**
+ * A snapshot on which EVERY metric is measurable.
+ *
+ * An empty clinic day is not: a collection rate against zero production and a
+ * mean of zero cases are both undefined, and the roster is absent. Used where a
+ * test needs all calculators to produce a value.
+ */
+export function measurableSnapshot(): ClinicDataSnapshot {
+  return snapshot({
+    treatments: [treatment({ cost: 1000, status: "completed" })],
+    payments: [payment({ amount: 500 })],
+    patientRoster: [rosterEntry()],
+  });
 }
 
 /** An empty clinic day — every collection present but empty. */

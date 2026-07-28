@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { MetricCategory, MetricUnit } from "../../../domain";
 import { METRIC_CALCULATORS } from "../calculators";
 import { METRIC_DESCRIPTORS, MetricKey, buildMetric } from "../metric-ids";
-import { AS_OF, CLINIC, DATE, snapshot } from "./fixtures/snapshot-fixtures";
+import { AS_OF, CLINIC, DATE, measurableSnapshot, snapshot } from "./fixtures/snapshot-fixtures";
 
 const ALL_KEYS = Object.values(MetricKey);
 
@@ -26,13 +26,21 @@ describe("metric manifest", () => {
   });
 
   it("produces every declared key exactly once for a measurable snapshot", () => {
-    // An empty clinic day is fully measurable: nothing is unknown, so every
-    // calculator returns a metric rather than withholding.
-    const s = snapshot();
+    const s = measurableSnapshot();
     const produced = METRIC_CALCULATORS.map((c) => c(s)?.id.split(":")[0]);
     expect(produced.every((key) => key !== undefined)).toBe(true);
     expect(produced.length).toBe(new Set(produced).size);
     expect([...produced].sort()).toEqual([...ALL_KEYS].sort());
+  });
+
+  it("withholds exactly the undefined metrics on an empty clinic day", () => {
+    // A rate against zero production, a mean of zero cases, and a reactivation
+    // count with no roster are all undefined — reporting 0 for any of them
+    // would be a claim the data does not support.
+    const withheld = METRIC_CALCULATORS.map((c) => c(snapshot()))
+      .map((m, i) => (m === null ? i : null))
+      .filter((i): i is number => i !== null);
+    expect(withheld).toHaveLength(3);
   });
 
   it("keys are unique and namespaced", () => {

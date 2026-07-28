@@ -16,18 +16,25 @@ import {
   cancelledAppointmentsToday,
   noShowsToday,
 } from "./appointment-metrics";
-import { newPatientsToday, returningPatientsToday } from "./patient-metrics";
+import {
+  newPatientsToday,
+  returningPatientsToday,
+  reactivationCandidates,
+} from "./patient-metrics";
 import {
   revenueCollectedToday,
   outstandingPayments,
   pendingTreatmentValue,
   clinicShareToday,
+  production30d,
+  collectionRate30d,
 } from "./revenue-metrics";
 import { patientsWaiting, averageWaitingTime } from "./queue-metrics";
 import { followUpsDueToday, overdueFollowUps } from "./follow-up-metrics";
 import {
   acceptedTreatmentsPendingScheduling,
   treatmentsCompletedToday,
+  averageCaseValue30d,
 } from "./treatment-metrics";
 import { chairUtilization, availableSlotsToday } from "./capacity-metrics";
 
@@ -54,11 +61,14 @@ export const METRIC_CALCULATORS: readonly MetricCalculator[] = [
   // Patients
   newPatientsToday,
   returningPatientsToday,
+  reactivationCandidates,
   // Revenue
   revenueCollectedToday,
   outstandingPayments,
   pendingTreatmentValue,
   clinicShareToday,
+  production30d,
+  collectionRate30d,
   // Queue
   patientsWaiting,
   averageWaitingTime,
@@ -68,6 +78,7 @@ export const METRIC_CALCULATORS: readonly MetricCalculator[] = [
   // Treatment
   acceptedTreatmentsPendingScheduling,
   treatmentsCompletedToday,
+  averageCaseValue30d,
   // Capacity
   chairUtilization,
   availableSlotsToday,
@@ -80,3 +91,4 @@ export * from "./queue-metrics";
 export * from "./follow-up-metrics";
 export * from "./treatment-metrics";
 export * from "./capacity-metrics";
+export * from "../support/windows";
