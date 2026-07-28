@@ -5,7 +5,7 @@
 import type { Metric } from "../../../domain";
 import type { ClinicDataSnapshot } from "../../../repositories";
 import { METRIC_WINDOWS } from "../config/metric-windows";
-import { completedInWindow } from "../support/windows";
+import { completedInWindow, datePart, windowStart } from "../support/windows";
 import { MetricKey, buildMetric } from "../metric-ids";
 
 /** Returns the "YYYY-MM-DD" calendar date portion of an ISO timestamp. */
@@ -74,6 +74,59 @@ export function averageCaseValue30d(s: ClinicDataSnapshot): Metric | null {
   const value = Math.round((total / completed.length) * 100) / 100;
   return buildMetric(
     MetricKey.TREATMENT_AVERAGE_CASE_VALUE_30D,
+    value,
+    s.clinicId,
+    s.date,
+    s.asOf,
+  );
+}
+
+/**
+ * Case acceptance rate over the trailing window — the share of recommended
+ * treatment VALUE the patient agreed to.
+ *
+ * The single most important KPI in dental practice management. A clinic can be
+ * busy, well-utilised and still failing, because the work it recommends is not
+ * being accepted; no other metric here reveals that. It also separates a
+ * marketing problem (too few patients) from a communication problem (enough
+ * patients, too few saying yes), which call for opposite responses.
+ *
+ * Measured by value rather than count, because that is the figure that moves
+ * the business: declining one implant matters more than declining three
+ * cleanings.
+ *
+ * Basis is treatments PRESENTED in the window — dated by `createdAt`, when the
+ * plan was recorded — which is a different set from those performed in it.
+ *
+ * `cancelled` is NOT counted as a decline. A plan the clinic called off, or a
+ * duplicate entry, says nothing about the patient's answer, and conflating the
+ * two would make the metric unusable.
+ *
+ * WITHHELD when nothing was presented in the window: a rate against no
+ * recommendations is undefined.
+ *
+ * CAVEAT: this reads 100% until the clinic actually records declines. A clinic
+ * that never enters a refused plan has no declined rows, which is
+ * indistinguishable from perfect acceptance. Treat a flat 100% as "not being
+ * captured yet", not as a result.
+ */
+export function caseAcceptanceRate30d(s: ClinicDataSnapshot): Metric | null {
+  const from = windowStart(s.date, METRIC_WINDOWS.TRAILING_DAYS);
+  const presented = s.treatments.filter(
+    (t) => datePart(t.createdAt) >= from && datePart(t.createdAt) <= s.date,
+  );
+
+  const presentedValue = presented.reduce((sum, t) => sum + t.cost, 0);
+  if (presentedValue <= 0) {
+    return null;
+  }
+  const declinedValue = presented
+    .filter((t) => t.status === "declined")
+    .reduce((sum, t) => sum + t.cost, 0);
+
+  const value = Math.round(((presentedValue - declinedValue) / presentedValue) * 1000) / 10;
+  return buildMetric(
+    MetricKey.TREATMENT_CASE_ACCEPTANCE_RATE_30D,
     value,
     s.clinicId,
     s.date,

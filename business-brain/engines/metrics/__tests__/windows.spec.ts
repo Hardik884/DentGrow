@@ -9,7 +9,7 @@
 import { describe, expect, it } from "vitest";
 
 import { collectionRate30d, production30d } from "../calculators/revenue-metrics";
-import { averageCaseValue30d } from "../calculators/treatment-metrics";
+import { averageCaseValue30d, caseAcceptanceRate30d } from "../calculators/treatment-metrics";
 import { reactivationCandidates } from "../calculators/patient-metrics";
 import { windowStart } from "../support/windows";
 import {
@@ -69,7 +69,7 @@ describe("production30d", () => {
   it("uses gross cost, not the clinic's retained share", () => {
     const s = snapshot({
       treatments: [
-        treatment({ cost: 5000, clinicShare: 3000, status: "completed", performedAt: IN_WINDOW }),
+        treatment({ cost: 5000, status: "completed", performedAt: IN_WINDOW }),
       ],
     });
     expect(valueOf(production30d, s)).toBe(5000);
@@ -205,5 +205,70 @@ describe("reactivationCandidates", () => {
   it("reports zero for a roster with nobody lapsed", () => {
     const s = snapshot({ patientRoster: [] });
     expect(valueOf(reactivationCandidates, s)).toBe(0);
+  });
+});
+
+describe("caseAcceptanceRate30d", () => {
+  const PRESENTED = "2026-07-10T10:00:00.000Z";
+
+  it("reports the share of presented VALUE the patient accepted", () => {
+    const s = snapshot({
+      treatments: [
+        treatment({ cost: 8000, createdAt: PRESENTED, status: "planned" }),
+        treatment({ cost: 2000, createdAt: PRESENTED, status: "declined" }),
+      ],
+    });
+    // 8000 of 10000 accepted.
+    expect(valueOf(caseAcceptanceRate30d, s)).toBe(80);
+  });
+
+  it("weights by value, not by count", () => {
+    // Three cheap acceptances do not offset one expensive decline.
+    const s = snapshot({
+      treatments: [
+        treatment({ cost: 1000, createdAt: PRESENTED, status: "completed" }),
+        treatment({ cost: 1000, createdAt: PRESENTED, status: "completed" }),
+        treatment({ cost: 1000, createdAt: PRESENTED, status: "completed" }),
+        treatment({ cost: 7000, createdAt: PRESENTED, status: "declined" }),
+      ],
+    });
+    expect(valueOf(caseAcceptanceRate30d, s)).toBe(30);
+  });
+
+  it("does NOT treat cancelled as declined — that is the clinic's choice, not the patient's", () => {
+    const s = snapshot({
+      treatments: [
+        treatment({ cost: 5000, createdAt: PRESENTED, status: "planned" }),
+        treatment({ cost: 5000, createdAt: PRESENTED, status: "cancelled" }),
+      ],
+    });
+    expect(valueOf(caseAcceptanceRate30d, s)).toBe(100);
+  });
+
+  it("is dated by when the plan was PRESENTED, not when it was performed", () => {
+    const s = snapshot({
+      treatments: [
+        // Presented before the window opened, though performed inside it.
+        treatment({
+          cost: 9999,
+          createdAt: "2026-05-01T10:00:00.000Z",
+          performedAt: PRESENTED,
+          status: "declined",
+        }),
+        treatment({ cost: 1000, createdAt: PRESENTED, status: "planned" }),
+      ],
+    });
+    expect(valueOf(caseAcceptanceRate30d, s)).toBe(100);
+  });
+
+  it("reports 0% when everything presented was refused", () => {
+    const s = snapshot({
+      treatments: [treatment({ cost: 4000, createdAt: PRESENTED, status: "declined" })],
+    });
+    expect(valueOf(caseAcceptanceRate30d, s)).toBe(0);
+  });
+
+  it("WITHHOLDS when nothing was presented in the window", () => {
+    expect(isWithheld(caseAcceptanceRate30d, snapshot())).toBe(true);
   });
 });

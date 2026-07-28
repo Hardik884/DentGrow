@@ -11,8 +11,6 @@ import type { ClinicDataSnapshot } from "../../../repositories";
 
 import {
   totalAppointmentsToday,
-  completedAppointmentsToday,
-  upcomingAppointmentsToday,
   cancelledAppointmentsToday,
   noShowsToday,
 } from "./appointment-metrics";
@@ -25,7 +23,6 @@ import {
   revenueCollectedToday,
   outstandingPayments,
   pendingTreatmentValue,
-  clinicShareToday,
   production30d,
   collectionRate30d,
 } from "./revenue-metrics";
@@ -35,6 +32,7 @@ import {
   acceptedTreatmentsPendingScheduling,
   treatmentsCompletedToday,
   averageCaseValue30d,
+  caseAcceptanceRate30d,
 } from "./treatment-metrics";
 import {
   chairUtilization,
@@ -64,8 +62,6 @@ export type MetricCalculator = (snapshot: ClinicDataSnapshot) => Metric | null;
 export const METRIC_CALCULATORS: readonly MetricCalculator[] = [
   // Appointments
   totalAppointmentsToday,
-  completedAppointmentsToday,
-  upcomingAppointmentsToday,
   cancelledAppointmentsToday,
   noShowsToday,
   // Scheduling (trailing window)
@@ -80,7 +76,6 @@ export const METRIC_CALCULATORS: readonly MetricCalculator[] = [
   revenueCollectedToday,
   outstandingPayments,
   pendingTreatmentValue,
-  clinicShareToday,
   production30d,
   collectionRate30d,
   // Queue
@@ -93,6 +88,7 @@ export const METRIC_CALCULATORS: readonly MetricCalculator[] = [
   acceptedTreatmentsPendingScheduling,
   treatmentsCompletedToday,
   averageCaseValue30d,
+  caseAcceptanceRate30d,
   // Capacity
   chairUtilization,
   availableSlotsToday,

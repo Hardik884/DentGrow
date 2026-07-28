@@ -51,7 +51,7 @@ const context: ExecutionContext = {
 const populated = snapshot({
   appointmentsToday: [appointment({ status: "completed" }), appointment({ status: "no_show" })],
   payments: [payment({ amount: 2500 })],
-  treatments: [treatment({ cost: 4000, clinicShare: 4000, status: "completed" })],
+  treatments: [treatment({ cost: 4000, status: "completed" })],
   capacity: { totalSlotsToday: 8 },
 });
 
@@ -66,7 +66,6 @@ describe("DentGrowMetricsEngine", () => {
     expect(metrics.length).toBeGreaterThan(0);
     expect(byKey(metrics, MetricKey.APPOINTMENTS_TOTAL_TODAY)).toBe(2);
     expect(byKey(metrics, MetricKey.REVENUE_COLLECTED_TODAY)).toBe(2500);
-    expect(byKey(metrics, MetricKey.REVENUE_CLINIC_SHARE_TODAY)).toBe(4000);
     expect(byKey(metrics, MetricKey.CAPACITY_CHAIR_UTILIZATION)).toBe(12.5);
   });
 

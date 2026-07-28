@@ -11,6 +11,7 @@ const STATUS_VARIANT_MAP: Record<TreatmentStatus, "default" | "info" | "success"
   in_progress: "info",
   completed: "success",
   cancelled: "error",
+  declined: "error",
 };
 
 interface TreatmentHistoryListProps {

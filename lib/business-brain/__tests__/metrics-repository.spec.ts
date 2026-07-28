@@ -151,15 +151,15 @@ async function seed() {
 
   await insert("treatments", [
     // Completed today, consultant took 40% => clinic keeps 3000.
-    { id: "9f000000-0000-4000-8000-000000000041", clinic_id: CLINIC, appointment_id: "9f000000-0000-4000-8000-000000000031", patient_id: P_RETURNING, treatment_type: "Root Canal", cost: 5000, clinic_share: 3000, consultant_share: 2000, status: "completed", performed_at: "2026-03-16T05:00:00Z" },
+    { id: "9f000000-0000-4000-8000-000000000041", clinic_id: CLINIC, appointment_id: "9f000000-0000-4000-8000-000000000031", patient_id: P_RETURNING, created_at: "2026-03-16T04:00:00Z", treatment_type: "Root Canal", cost: 5000, status: "completed", performed_at: "2026-03-16T05:00:00Z" },
     // Completed today, no consultant => clinic_share NULL, must coalesce to cost.
-    { id: "9f000000-0000-4000-8000-000000000042", clinic_id: CLINIC, appointment_id: "9f000000-0000-4000-8000-000000000031", patient_id: P_RETURNING, treatment_type: "Cleaning", cost: 1000, status: "completed", performed_at: "2026-03-16T05:30:00Z" },
+    { id: "9f000000-0000-4000-8000-000000000042", clinic_id: CLINIC, appointment_id: "9f000000-0000-4000-8000-000000000031", patient_id: P_RETURNING, created_at: "2026-03-16T04:00:00Z", treatment_type: "Cleaning", cost: 1000, status: "completed", performed_at: "2026-03-16T05:30:00Z" },
     // Planned — must NOT count towards outstanding.
-    { id: "9f000000-0000-4000-8000-000000000043", clinic_id: CLINIC, appointment_id: "9f000000-0000-4000-8000-000000000031", patient_id: P_RETURNING, treatment_type: "Crown", cost: 9000, status: "planned" },
+    { id: "9f000000-0000-4000-8000-000000000043", clinic_id: CLINIC, appointment_id: "9f000000-0000-4000-8000-000000000031", patient_id: P_RETURNING, created_at: "2026-03-16T04:00:00Z", treatment_type: "Crown", cost: 9000, status: "planned" },
     // Soft-deleted — must be invisible to every revenue metric.
-    { id: "9f000000-0000-4000-8000-000000000044", clinic_id: CLINIC, appointment_id: "9f000000-0000-4000-8000-000000000031", patient_id: P_RETURNING, treatment_type: "Ghost", cost: 99999, status: "completed", performed_at: "2026-03-16T05:00:00Z", deleted_at: "2026-03-16T06:00:00Z" },
+    { id: "9f000000-0000-4000-8000-000000000044", clinic_id: CLINIC, appointment_id: "9f000000-0000-4000-8000-000000000031", patient_id: P_RETURNING, created_at: "2026-03-16T04:00:00Z", treatment_type: "Ghost", cost: 99999, status: "completed", performed_at: "2026-03-16T05:00:00Z", deleted_at: "2026-03-16T06:00:00Z" },
     // Other clinic.
-    { id: "9f000000-0000-4000-8000-0000000000a2", clinic_id: OTHER_CLINIC, appointment_id: "9f000000-0000-4000-8000-0000000000a1", patient_id: P_RETURNING, treatment_type: "Elsewhere", cost: 77777, status: "completed", performed_at: "2026-03-16T05:00:00Z" },
+    { id: "9f000000-0000-4000-8000-0000000000a2", clinic_id: OTHER_CLINIC, appointment_id: "9f000000-0000-4000-8000-0000000000a1", patient_id: P_RETURNING, created_at: "2026-03-16T04:00:00Z", treatment_type: "Elsewhere", cost: 77777, status: "completed", performed_at: "2026-03-16T05:00:00Z" },
   ]);
 
   // ── Scheduled-treatment fixtures (patient-level approximation) ─────────────
@@ -173,11 +173,22 @@ async function seed() {
     { id: "9f000000-0000-4000-8000-000000000093", clinic_id: CLINIC, patient_id: P_NEW, dentist_id: DENTIST, scheduled_at: "2026-03-26T04:00:00Z", source: "walk_in", status: "no_show" },
   ]);
 
+  // Case acceptance: one refused plan against the accepted work above.
+  await insert("treatments", {
+    id: "9f000000-0000-4000-8000-000000000085",
+    clinic_id: CLINIC,
+    appointment_id: "9f000000-0000-4000-8000-000000000031",
+    patient_id: P_RETURNING,
+    created_at: "2026-03-16T04:00:00Z", treatment_type: "Refused Implant",
+    cost: 4000,
+    status: "declined",
+  });
+
   await insert("treatments", [
     // Patient has an upcoming visit => counts as scheduled.
-    { id: "9f000000-0000-4000-8000-000000000081", clinic_id: CLINIC, appointment_id: "9f000000-0000-4000-8000-000000000031", patient_id: P_RETURNING, treatment_type: "Booked patient", cost: 100, status: "planned" },
+    { id: "9f000000-0000-4000-8000-000000000081", clinic_id: CLINIC, appointment_id: "9f000000-0000-4000-8000-000000000031", patient_id: P_RETURNING, created_at: "2026-03-16T04:00:00Z", treatment_type: "Booked patient", cost: 100, status: "planned" },
     // Patient's only future appointments are cancelled / no-show => pending.
-    { id: "9f000000-0000-4000-8000-000000000082", clinic_id: CLINIC, appointment_id: "9f000000-0000-4000-8000-000000000032", patient_id: P_NEW, treatment_type: "Unbooked patient", cost: 100, status: "planned" },
+    { id: "9f000000-0000-4000-8000-000000000082", clinic_id: CLINIC, appointment_id: "9f000000-0000-4000-8000-000000000032", patient_id: P_NEW, created_at: "2026-03-16T04:00:00Z", treatment_type: "Unbooked patient", cost: 100, status: "planned" },
   ]);
 
   // Reactivation + window fixtures.
@@ -245,15 +256,6 @@ describe.skipIf(!LOCAL_UP)("SupabaseMetricsDataRepository (integration)", () => 
         "9f000000-0000-4000-8000-0000000000a1",
       );
       expect(s.treatments.reduce((n, t) => n + t.cost, 0)).toBeLessThan(77777);
-    });
-
-    it("coalesces a null clinic_share to the gross cost", async () => {
-      const s = await repository.getClinicSnapshot(CLINIC, DATE);
-      const withConsultant = s.treatments.find((t) => t.id.endsWith("041"));
-      const withoutConsultant = s.treatments.find((t) => t.id.endsWith("042"));
-      expect(withConsultant?.clinicShare).toBe(3000);
-      expect(withoutConsultant?.clinicShare).toBe(1000);
-      expect(withoutConsultant?.cost).toBe(1000);
     });
 
     it("derives isScheduled from whether the patient has an upcoming visit", async () => {
@@ -373,7 +375,6 @@ describe.skipIf(!LOCAL_UP)("SupabaseMetricsDataRepository (integration)", () => 
       const v = (key: string) => metrics.find((m) => m.id.startsWith(`${key}:`))?.value;
 
       expect(v(MetricKey.APPOINTMENTS_TOTAL_TODAY)).toBe(2);
-      expect(v(MetricKey.APPOINTMENTS_COMPLETED_TODAY)).toBe(1);
       expect(v(MetricKey.PATIENTS_NEW_TODAY)).toBe(1); // deleted patient excluded
       expect(v(MetricKey.PATIENTS_RETURNING_TODAY)).toBe(1);
 
@@ -387,8 +388,6 @@ describe.skipIf(!LOCAL_UP)("SupabaseMetricsDataRepository (integration)", () => 
       // "Booked patient" belong to P_RETURNING, who does have one; only
       // P_NEW's treatment is pending scheduling.
       expect(v(MetricKey.TREATMENT_ACCEPTED_PENDING_SCHEDULING)).toBe(1);
-      // 3000 (consultant split) + 1000 (coalesced null) — the ghost row is gone.
-      expect(v(MetricKey.REVENUE_CLINIC_SHARE_TODAY)).toBe(4000);
 
       expect(v(MetricKey.QUEUE_PATIENTS_WAITING)).toBe(1);
       // (20 min completed + 30 min still waiting at 12:00 IST) / 2
@@ -411,6 +410,10 @@ describe.skipIf(!LOCAL_UP)("SupabaseMetricsDataRepository (integration)", () => 
       expect(v(MetricKey.REVENUE_COLLECTION_RATE_30D)).toBe(50);
       // Only P_LAPSED: seen long ago and with no upcoming visit.
       expect(v(MetricKey.PATIENTS_REACTIVATION_CANDIDATES)).toBe(1);
+
+      // Presented in the window: 5000 + 1000 + 9000 + 100 + 100 + 4000 = 19200,
+      // of which the 4000 implant was declined.
+      expect(v(MetricKey.TREATMENT_CASE_ACCEPTANCE_RATE_30D)).toBe(79.2);
     });
 
     it("is deterministic across repeated reads of unchanged data", async () => {

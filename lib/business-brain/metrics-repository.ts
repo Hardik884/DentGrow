@@ -101,8 +101,8 @@ interface PatientRosterRow {
 interface TreatmentRow {
   id: string;
   cost: number | string | null;
-  clinic_share: number | string | null;
   status: string;
+  created_at: string;
   performed_at: string | null;
   patient_id: string;
 }
@@ -365,9 +365,6 @@ export class SupabaseMetricsDataRepository implements MetricsDataRepository {
    * Clinic-wide treatments — deliberately NOT date-scoped. Outstanding balance
    * is cumulative, so restricting to one day would under-report it.
    *
-   * `clinic_share` is nullable in DentGrow (no consultant => no split recorded);
-   * it is coalesced to `cost` so the engine always receives a real number.
-   *
    * `isScheduled` — a deliberate patient-level approximation
    * -------------------------------------------------------
    * It answers: does this treatment's patient have ANY upcoming visit booked?
@@ -398,19 +395,18 @@ export class SupabaseMetricsDataRepository implements MetricsDataRepository {
   ): Promise<Array<Omit<TreatmentSnapshot, "isScheduled"> & { patientId: string }>> {
     const { data, error } = await this.db
       .from("treatments")
-      .select("id, cost, clinic_share, status, performed_at, patient_id")
+      .select("id, cost, status, created_at, performed_at, patient_id")
       .eq("clinic_id", clinicId)
       .is("deleted_at", null);
     if (error) throw new Error(`treatments: ${error.message}`);
 
     return rows<TreatmentRow>(data).map((t) => {
       const cost = Number(t.cost ?? 0);
-      const share = t.clinic_share == null ? cost : Number(t.clinic_share);
       return {
         id: t.id,
         cost,
-        clinicShare: share,
         status: t.status,
+        createdAt: t.created_at,
         performedAt: t.performed_at,
         patientId: t.patient_id,
       };

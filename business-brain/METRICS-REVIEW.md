@@ -3,6 +3,11 @@
 **Date:** 2026-07-28 · **Reviewing:** 19 metrics in `business-brain/engines/metrics/`
 **Lens:** dentist, clinic owner, practice manager, SaaS product designer — not only engineer.
 
+> **Implementation status (2026-07-28):** all MVP additions are built, the three
+> orphan metrics are removed, and `declined` has been added to `treatment_status`
+> for case acceptance. The engine now produces **26** metrics. Remaining items are
+> Phase 2 and Future Intelligence, unchanged.
+
 ---
 
 ## Executive summary

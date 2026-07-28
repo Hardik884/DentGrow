@@ -1,0 +1,55 @@
+-- =============================================================================
+-- Case Acceptance — treatment_status gains 'declined'
+-- Migration: 20260728000000_treatment_declined_status.sql
+--
+-- Problem:
+--   Case acceptance rate — the share of recommended treatment value a patient
+--   agrees to — is the single most important KPI in dental practice management,
+--   and DentGrow cannot express it.
+--
+--   `treatment_status` is planned | in_progress | completed | cancelled. A plan
+--   the patient refuses is indistinguishable from one an administrator called
+--   off: both end up `cancelled`, if they are recorded at all. Today a declined
+--   plan is usually never entered, so the clinic's most valuable business
+--   signal is invisible by construction.
+--
+-- Solution:
+--   One new enum value. `declined` means the patient was offered this treatment
+--   and said no.
+--
+--   Chosen over the alternatives because it costs the dentist nothing new to
+--   learn: status is already a field they set on every treatment, so recording a
+--   decline is picking a different option in a dropdown they already use. A
+--   separate `decision` column, or a `presented_at` timestamp, would add a
+--   concept to the workflow rather than a value to an existing one.
+--
+--   `cancelled` deliberately keeps its meaning — administrative cancellation,
+--   a duplicate entry, a plan withdrawn by the clinic. Only `declined` counts
+--   against case acceptance, so the two must not be conflated.
+--
+-- Derived metric (business-brain):
+--   treatment.case_acceptance_rate_30d
+--     presented = value of treatments created in the window
+--     accepted  = presented − value of those marked `declined`
+--     rate      = accepted / presented
+--
+-- What this migration does NOT do:
+--   It does not backfill. No historical row can be reclassified, because the
+--   information was never captured — that is the gap being closed. Every
+--   existing treatment keeps its current status, so the metric measures only
+--   from the point the clinic starts recording declines.
+--
+--   It also does not make the value reachable from the UI. The treatment form
+--   needs "Declined" added to its status options before any data flows, and
+--   until then the metric will report 100% acceptance — which is a measurement
+--   of an unused field, not of the clinic. Adding that option is the required
+--   follow-up.
+--
+-- Note on transactions:
+--   `alter type ... add value` is permitted inside a transaction from
+--   PostgreSQL 12 onward provided the new value is not USED in the same
+--   transaction. This migration only declares it, so it is safe under the CLI's
+--   per-file transaction. Nothing else in this file references 'declined'.
+-- =============================================================================
+
+alter type treatment_status add value if not exists 'declined';

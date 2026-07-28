@@ -31,8 +31,6 @@ export function metrics(
 /** Every metric key present, values describing a well-run day. */
 export const HEALTHY_CLINIC: MetricValues = {
   [MetricKey.APPOINTMENTS_TOTAL_TODAY]: 14,
-  [MetricKey.APPOINTMENTS_COMPLETED_TODAY]: 12,
-  [MetricKey.APPOINTMENTS_UPCOMING_TODAY]: 2,
   [MetricKey.APPOINTMENTS_CANCELLED_TODAY]: 1,
   [MetricKey.APPOINTMENTS_NO_SHOWS_TODAY]: 0,
   [MetricKey.PATIENTS_NEW_TODAY]: 3,
@@ -54,7 +52,6 @@ export const HEALTHY_CLINIC: MetricValues = {
 export const BUSY_CLINIC: MetricValues = {
   ...HEALTHY_CLINIC,
   [MetricKey.APPOINTMENTS_TOTAL_TODAY]: 20,
-  [MetricKey.APPOINTMENTS_COMPLETED_TODAY]: 18,
   [MetricKey.CAPACITY_CHAIR_UTILIZATION]: 96,
   [MetricKey.CAPACITY_AVAILABLE_SLOTS_TODAY]: 0,
 };
@@ -71,7 +68,6 @@ export const LOW_REVENUE_CLINIC: MetricValues = {
 export const HIGH_CANCELLATION_CLINIC: MetricValues = {
   ...HEALTHY_CLINIC,
   [MetricKey.APPOINTMENTS_TOTAL_TODAY]: 31,
-  [MetricKey.APPOINTMENTS_COMPLETED_TODAY]: 19,
   [MetricKey.APPOINTMENTS_CANCELLED_TODAY]: 8,
   [MetricKey.APPOINTMENTS_NO_SHOWS_TODAY]: 4,
 };
@@ -80,9 +76,7 @@ export const HIGH_CANCELLATION_CLINIC: MetricValues = {
 export const LARGE_PIPELINE_CLINIC: MetricValues = {
   ...HEALTHY_CLINIC,
   [MetricKey.APPOINTMENTS_TOTAL_TODAY]: 3,
-  [MetricKey.APPOINTMENTS_COMPLETED_TODAY]: 3,
   [MetricKey.APPOINTMENTS_CANCELLED_TODAY]: 0,
-  [MetricKey.APPOINTMENTS_UPCOMING_TODAY]: 0,
   [MetricKey.REVENUE_PENDING_TREATMENT_VALUE]: 180_000,
   [MetricKey.TREATMENT_ACCEPTED_PENDING_SCHEDULING]: 9,
   [MetricKey.CAPACITY_CHAIR_UTILIZATION]: 22,
@@ -93,7 +87,6 @@ export const LARGE_PIPELINE_CLINIC: MetricValues = {
 export const LARGE_PIPELINE_BUSY_CLINIC: MetricValues = {
   ...LARGE_PIPELINE_CLINIC,
   [MetricKey.APPOINTMENTS_TOTAL_TODAY]: 16,
-  [MetricKey.APPOINTMENTS_COMPLETED_TODAY]: 15,
   [MetricKey.CAPACITY_CHAIR_UTILIZATION]: 80,
   [MetricKey.CAPACITY_AVAILABLE_SLOTS_TODAY]: 3,
 };
@@ -108,8 +101,6 @@ export const OVERDUE_FOLLOWUPS_CLINIC: MetricValues = {
 /** Every metric present and zero: a closed or completely idle day. */
 export const EMPTY_CLINIC: MetricValues = {
   [MetricKey.APPOINTMENTS_TOTAL_TODAY]: 0,
-  [MetricKey.APPOINTMENTS_COMPLETED_TODAY]: 0,
-  [MetricKey.APPOINTMENTS_UPCOMING_TODAY]: 0,
   [MetricKey.APPOINTMENTS_CANCELLED_TODAY]: 0,
   [MetricKey.APPOINTMENTS_NO_SHOWS_TODAY]: 0,
   [MetricKey.PATIENTS_NEW_TODAY]: 0,

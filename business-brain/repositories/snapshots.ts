@@ -54,15 +54,18 @@ export interface TreatmentSnapshot {
    */
   readonly cost: number;
   /**
-   * The clinic's retained share of {@link cost} after any consultant payout.
-   *
-   * Equals `cost` when no consultant performed the treatment. The repository
-   * must coalesce DentGrow's nullable `treatments.clinic_share` column to
-   * `cost` when it is null, so this field is always a real number.
+   * DentGrow treatment_status: planned | in_progress | completed | cancelled |
+   * declined. `declined` means the patient refused the treatment; `cancelled`
+   * means the clinic called it off. Only the former counts against case
+   * acceptance, so they must never be conflated.
    */
-  readonly clinicShare: number;
-  /** DentGrow treatment_status: planned | in_progress | completed | cancelled. */
   readonly status: string;
+  /**
+   * ISO-8601 time the treatment record was created — i.e. when it was presented
+   * to the patient. Case acceptance is measured over treatments PRESENTED in a
+   * window, which is a different set from those performed in it.
+   */
+  readonly createdAt: string;
   /** ISO-8601 time the treatment was performed, or null if not yet performed. */
   readonly performedAt: string | null;
   /**

@@ -68,8 +68,8 @@ export function treatment(over: Partial<TreatmentSnapshot> = {}): TreatmentSnaps
   return {
     id: nextId("tx"),
     cost,
-    // Default: no consultant, so the clinic retains the whole gross amount.
-    clinicShare: cost,
+    // Presented today by default, so window metrics see it without extra setup.
+    createdAt: `${DATE}T09:00:00.000Z`,
     status: "completed",
     performedAt: `${DATE}T10:30:00.000Z`,
     isScheduled: false,

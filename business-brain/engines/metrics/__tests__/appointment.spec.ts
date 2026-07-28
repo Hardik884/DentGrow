@@ -2,10 +2,8 @@ import { describe, expect, it } from "vitest";
 
 import {
   cancelledAppointmentsToday,
-  completedAppointmentsToday,
   noShowsToday,
   totalAppointmentsToday,
-  upcomingAppointmentsToday,
 } from "../calculators/appointment-metrics";
 import { appointment, snapshot, valueOf } from "./fixtures/snapshot-fixtures";
 
@@ -24,15 +22,6 @@ describe("appointment metrics", () => {
     expect(valueOf(totalAppointmentsToday, snapshot({ appointmentsToday: allStatuses }))).toBe(6);
   });
 
-  it("counts only completed appointments", () => {
-    expect(valueOf(completedAppointmentsToday, snapshot({ appointmentsToday: allStatuses }))).toBe(1);
-  });
-
-  it("treats scheduled and checked_in as upcoming, but not in_progress", () => {
-    // in_progress is being seen now — it is no longer awaiting the dentist.
-    expect(valueOf(upcomingAppointmentsToday, snapshot({ appointmentsToday: allStatuses }))).toBe(2);
-  });
-
   it("counts cancellations and no-shows separately", () => {
     const s = snapshot({ appointmentsToday: allStatuses });
     expect(valueOf(cancelledAppointmentsToday, s)).toBe(1);
@@ -42,8 +31,6 @@ describe("appointment metrics", () => {
   it("reports zero for every appointment metric on an empty day", () => {
     const s = snapshot();
     expect(valueOf(totalAppointmentsToday, s)).toBe(0);
-    expect(valueOf(completedAppointmentsToday, s)).toBe(0);
-    expect(valueOf(upcomingAppointmentsToday, s)).toBe(0);
     expect(valueOf(cancelledAppointmentsToday, s)).toBe(0);
     expect(valueOf(noShowsToday, s)).toBe(0);
   });
@@ -51,7 +38,6 @@ describe("appointment metrics", () => {
   it("ignores unknown statuses rather than throwing", () => {
     const s = snapshot({ appointmentsToday: [appointment({ status: "rescheduled_future" })] });
     expect(valueOf(totalAppointmentsToday, s)).toBe(1);
-    expect(valueOf(completedAppointmentsToday, s)).toBe(0);
-    expect(valueOf(upcomingAppointmentsToday, s)).toBe(0);
+    expect(valueOf(cancelledAppointmentsToday, s)).toBe(0);
   });
 });

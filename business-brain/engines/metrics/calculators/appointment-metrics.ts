@@ -20,22 +20,7 @@ export function totalAppointmentsToday(s: ClinicDataSnapshot): Metric {
   );
 }
 
-/** Appointments today with status `completed`. */
-export function completedAppointmentsToday(s: ClinicDataSnapshot): Metric {
-  const value = s.appointmentsToday.filter((a) => a.status === "completed").length;
-  return buildMetric(MetricKey.APPOINTMENTS_COMPLETED_TODAY, value, s.clinicId, s.date, s.asOf);
-}
 
-/**
- * Upcoming appointments today — still to be seen. Counts appointments that are
- * `scheduled` or `checked_in` (not yet started, completed, cancelled, or missed).
- */
-export function upcomingAppointmentsToday(s: ClinicDataSnapshot): Metric {
-  const value = s.appointmentsToday.filter(
-    (a) => a.status === "scheduled" || a.status === "checked_in",
-  ).length;
-  return buildMetric(MetricKey.APPOINTMENTS_UPCOMING_TODAY, value, s.clinicId, s.date, s.asOf);
-}
 
 /** Appointments today with status `cancelled`. */
 export function cancelledAppointmentsToday(s: ClinicDataSnapshot): Metric {

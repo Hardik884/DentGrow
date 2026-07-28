@@ -327,6 +327,7 @@ export const TREATMENT_STATUS_LABELS: Record<TreatmentStatus, string> = {
   in_progress: "In Progress",
   completed: "Completed",
   cancelled: "Cancelled",
+  declined: "Declined",
 };
 
 export const FOLLOW_UP_STATUS_LABELS: Record<FollowUpStatus, string> = {

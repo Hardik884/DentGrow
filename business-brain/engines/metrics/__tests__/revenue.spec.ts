@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 
 import {
   BILLABLE_TREATMENT_STATUSES,
-  clinicShareToday,
   outstandingPayments,
   pendingTreatmentValue,
   revenueCollectedToday,
@@ -105,69 +104,9 @@ describe("pendingTreatmentValue", () => {
 
   it("uses gross cost, not the clinic's share", () => {
     const s = snapshot({
-      treatments: [treatment({ cost: 1000, clinicShare: 600, status: "planned" })],
+      treatments: [treatment({ cost: 1000, status: "planned" })],
     });
     expect(valueOf(pendingTreatmentValue, s)).toBe(1000);
   });
 });
 
-describe("clinicShareToday", () => {
-  it("sums the clinic's retained share of treatments completed today", () => {
-    const s = snapshot({
-      treatments: [
-        treatment({ cost: 1000, clinicShare: 600, performedAt: `${DATE}T09:00:00.000Z` }),
-        treatment({ cost: 2000, clinicShare: 2000, performedAt: `${DATE}T14:00:00.000Z` }),
-      ],
-    });
-    expect(valueOf(clinicShareToday, s)).toBe(2600);
-  });
-
-  it("equals gross when no consultant took a share", () => {
-    const s = snapshot({ treatments: [treatment({ cost: 3000 })] });
-    expect(valueOf(clinicShareToday, s)).toBe(3000);
-  });
-
-  it("ignores treatments performed on another date", () => {
-    const s = snapshot({
-      treatments: [
-        treatment({ clinicShare: 500, performedAt: `${DATE}T10:00:00.000Z` }),
-        treatment({ clinicShare: 9999, performedAt: "2026-07-27T10:00:00.000Z" }),
-        treatment({ clinicShare: 9999, performedAt: "2026-07-29T10:00:00.000Z" }),
-      ],
-    });
-    expect(valueOf(clinicShareToday, s)).toBe(500);
-  });
-
-  it("ignores treatments that are not completed, even if performed today", () => {
-    const s = snapshot({
-      treatments: [
-        treatment({ clinicShare: 700, status: "completed" }),
-        treatment({ clinicShare: 9999, status: "in_progress" }),
-        treatment({ clinicShare: 9999, status: "planned" }),
-        treatment({ clinicShare: 9999, status: "cancelled" }),
-      ],
-    });
-    expect(valueOf(clinicShareToday, s)).toBe(700);
-  });
-
-  it("ignores completed treatments with no performed_at", () => {
-    const s = snapshot({
-      treatments: [treatment({ clinicShare: 9999, status: "completed", performedAt: null })],
-    });
-    expect(valueOf(clinicShareToday, s)).toBe(0);
-  });
-
-  it("is accrual, not cash — independent of when payment arrived", () => {
-    // Work delivered today, nothing collected today.
-    const s = snapshot({
-      treatments: [treatment({ cost: 4000, clinicShare: 4000 })],
-      payments: [payment({ amount: 4000, paymentDate: "2026-07-20" })],
-    });
-    expect(valueOf(clinicShareToday, s)).toBe(4000);
-    expect(valueOf(revenueCollectedToday, s)).toBe(0);
-  });
-
-  it("reports zero when nothing was delivered today", () => {
-    expect(valueOf(clinicShareToday, snapshot())).toBe(0);
-  });
-});

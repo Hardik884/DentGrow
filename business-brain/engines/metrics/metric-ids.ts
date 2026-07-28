@@ -13,8 +13,6 @@ import type { Metric } from "../../domain";
 export const MetricKey = {
   // Appointments
   APPOINTMENTS_TOTAL_TODAY: "appointments.total_today",
-  APPOINTMENTS_COMPLETED_TODAY: "appointments.completed_today",
-  APPOINTMENTS_UPCOMING_TODAY: "appointments.upcoming_today",
   APPOINTMENTS_CANCELLED_TODAY: "appointments.cancelled_today",
   APPOINTMENTS_NO_SHOWS_TODAY: "appointments.no_shows_today",
   SCHEDULING_CANCELLATION_RATE_30D: "scheduling.cancellation_rate_30d",
@@ -28,7 +26,6 @@ export const MetricKey = {
   REVENUE_COLLECTED_TODAY: "revenue.collected_today",
   REVENUE_OUTSTANDING: "revenue.outstanding",
   REVENUE_PENDING_TREATMENT_VALUE: "revenue.pending_treatment_value",
-  REVENUE_CLINIC_SHARE_TODAY: "revenue.clinic_share_today",
   REVENUE_PRODUCTION_30D: "revenue.production_30d",
   REVENUE_COLLECTION_RATE_30D: "revenue.collection_rate_30d",
   // Queue
@@ -41,6 +38,7 @@ export const MetricKey = {
   TREATMENT_ACCEPTED_PENDING_SCHEDULING: "treatment.accepted_pending_scheduling",
   TREATMENT_COMPLETED_TODAY: "treatment.completed_today",
   TREATMENT_AVERAGE_CASE_VALUE_30D: "treatment.average_case_value_30d",
+  TREATMENT_CASE_ACCEPTANCE_RATE_30D: "treatment.case_acceptance_rate_30d",
   // Capacity
   CAPACITY_CHAIR_UTILIZATION: "capacity.chair_utilization",
   CAPACITY_AVAILABLE_SLOTS_TODAY: "capacity.available_slots_today",
@@ -63,18 +61,6 @@ export const METRIC_DESCRIPTORS: Readonly<Record<MetricKey, MetricDescriptor>> =
   [MetricKey.APPOINTMENTS_TOTAL_TODAY]: {
     key: MetricKey.APPOINTMENTS_TOTAL_TODAY,
     name: "Total Appointments Today",
-    category: MetricCategory.SCHEDULING,
-    unit: MetricUnit.COUNT,
-  },
-  [MetricKey.APPOINTMENTS_COMPLETED_TODAY]: {
-    key: MetricKey.APPOINTMENTS_COMPLETED_TODAY,
-    name: "Completed Appointments Today",
-    category: MetricCategory.SCHEDULING,
-    unit: MetricUnit.COUNT,
-  },
-  [MetricKey.APPOINTMENTS_UPCOMING_TODAY]: {
-    key: MetricKey.APPOINTMENTS_UPCOMING_TODAY,
-    name: "Upcoming Appointments Today",
     category: MetricCategory.SCHEDULING,
     unit: MetricUnit.COUNT,
   },
@@ -150,12 +136,6 @@ export const METRIC_DESCRIPTORS: Readonly<Record<MetricKey, MetricDescriptor>> =
     category: MetricCategory.REVENUE,
     unit: MetricUnit.CURRENCY,
   },
-  [MetricKey.REVENUE_CLINIC_SHARE_TODAY]: {
-    key: MetricKey.REVENUE_CLINIC_SHARE_TODAY,
-    name: "Clinic Share of Work Delivered Today",
-    category: MetricCategory.REVENUE,
-    unit: MetricUnit.CURRENCY,
-  },
   [MetricKey.REVENUE_PRODUCTION_30D]: {
     key: MetricKey.REVENUE_PRODUCTION_30D,
     name: "Production (30 days)",
@@ -215,6 +195,12 @@ export const METRIC_DESCRIPTORS: Readonly<Record<MetricKey, MetricDescriptor>> =
     name: "Treatments Completed Today",
     category: MetricCategory.CLINICAL,
     unit: MetricUnit.COUNT,
+  },
+  [MetricKey.TREATMENT_CASE_ACCEPTANCE_RATE_30D]: {
+    key: MetricKey.TREATMENT_CASE_ACCEPTANCE_RATE_30D,
+    name: "Case Acceptance Rate (30 days)",
+    category: MetricCategory.CLINICAL,
+    unit: MetricUnit.PERCENTAGE,
   },
   [MetricKey.CAPACITY_CHAIR_UTILIZATION]: {
     key: MetricKey.CAPACITY_CHAIR_UTILIZATION,

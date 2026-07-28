@@ -60,30 +60,6 @@ export function pendingTreatmentValue(s: ClinicDataSnapshot): Metric {
   return buildMetric(MetricKey.REVENUE_PENDING_TREATMENT_VALUE, value, s.clinicId, s.date, s.asOf);
 }
 
-/**
- * Clinic share of work delivered today — the portion of today's completed
- * treatments the clinic retains after consultant payouts.
- *
- * ACCRUAL, NOT CASH. This measures work delivered on the target date, so its
- * basis is {@link treatmentsCompletedToday}, not
- * {@link revenueCollectedToday} (which is money actually received, whenever the
- * underlying work happened). The two are deliberately not comparable and must
- * never be subtracted from one another.
- *
- * Gross for the same basis is obtained by summing `cost` over the same
- * treatments; the difference is the consultant payout.
- */
-export function clinicShareToday(s: ClinicDataSnapshot): Metric {
-  const value = s.treatments
-    .filter(
-      (t) =>
-        t.status === "completed" &&
-        t.performedAt !== null &&
-        t.performedAt.slice(0, 10) === s.date,
-    )
-    .reduce((sum, t) => sum + t.clinicShare, 0);
-  return buildMetric(MetricKey.REVENUE_CLINIC_SHARE_TODAY, value, s.clinicId, s.date, s.asOf);
-}
 
 /**
  * Production over the trailing window — the gross value of treatment actually
