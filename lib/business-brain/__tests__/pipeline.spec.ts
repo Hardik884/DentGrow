@@ -138,7 +138,13 @@ async function seed() {
   ]);
 }
 
-/** Total rows across every table the pipeline reads — to prove it writes none. */
+/**
+ * Row counts for every table the pipeline reads, scoped to THIS suite's clinic.
+ *
+ * Scoped deliberately: vitest runs spec files in parallel, so a global census
+ * also observes another suite's setup and teardown and would report their
+ * deletions as if this run had caused them.
+ */
 async function rowCensus(): Promise<Record<string, number>> {
   const tables = [
     "appointments",
@@ -154,7 +160,10 @@ async function rowCensus(): Promise<Record<string, number>> {
   ];
   const census: Record<string, number> = {};
   for (const table of tables) {
-    const { count, error } = await raw.from(table).select("*", { count: "exact", head: true });
+    const { count, error } = await raw
+      .from(table)
+      .select("*", { count: "exact", head: true })
+      .eq("clinic_id", CLINIC);
     if (error) throw new Error(`census ${table}: ${error.message}`);
     census[table] = count ?? 0;
   }
@@ -244,7 +253,12 @@ describe.skipIf(!LOCAL_UP)("Business Brain pipeline (integration)", () => {
 
   it("PERFORMS NO WRITES — every table's row count is unchanged", async () => {
     const before = await rowCensus();
+    // Guard against a vacuous pass: an all-zero census would satisfy toEqual
+    // even if seeding had silently failed and the pipeline read nothing.
+    expect(Object.values(before).reduce((n, c) => n + c, 0)).toBeGreaterThan(0);
+
     await brain.runBusinessBrain(CLINIC, DATE, { startedAt: AS_OF, historyDays: 3 });
+
     const after = await rowCensus();
     expect(after).toEqual(before);
   });
