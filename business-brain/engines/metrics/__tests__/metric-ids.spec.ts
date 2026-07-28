@@ -34,13 +34,34 @@ describe("metric manifest", () => {
   });
 
   it("withholds exactly the undefined metrics on an empty clinic day", () => {
-    // A rate against zero production, a mean of zero cases, and a reactivation
-    // count with no roster are all undefined — reporting 0 for any of them
-    // would be a claim the data does not support.
-    const withheld = METRIC_CALCULATORS.map((c) => c(snapshot()))
-      .map((m, i) => (m === null ? i : null))
-      .filter((i): i is number => i !== null);
-    expect(withheld).toHaveLength(3);
+    // Every one of these is undefined rather than zero: a rate with no
+    // denominator, a mean of no cases, or a metric whose input the snapshot
+    // never carried. Reporting 0 for any of them would be a claim the data does
+    // not support.
+    //
+    // Each calculator is identified by running it against a measurable snapshot
+    // first, so a failure names the metric instead of an array index.
+    const empty = snapshot();
+    const withheld = METRIC_CALCULATORS.map((c) => ({
+      key: c(measurableSnapshot())?.id.split(":")[0],
+      absent: c(empty) === null,
+    }))
+      .filter((r) => r.absent)
+      .map((r) => r.key)
+      .sort();
+
+    expect(withheld).toEqual(
+      [
+        MetricKey.CAPACITY_BOOKED_NEXT_7D,
+        MetricKey.CAPACITY_CHAIR_UTILIZATION_30D,
+        MetricKey.PATIENTS_REACTIVATION_CANDIDATES,
+        MetricKey.REVENUE_COLLECTION_RATE_30D,
+        MetricKey.SCHEDULING_BOOKING_LEAD_TIME_DAYS,
+        MetricKey.SCHEDULING_CANCELLATION_RATE_30D,
+        MetricKey.SCHEDULING_NO_SHOW_RATE_30D,
+        MetricKey.TREATMENT_AVERAGE_CASE_VALUE_30D,
+      ].sort(),
+    );
   });
 
   it("keys are unique and namespaced", () => {

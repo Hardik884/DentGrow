@@ -36,7 +36,17 @@ import {
   treatmentsCompletedToday,
   averageCaseValue30d,
 } from "./treatment-metrics";
-import { chairUtilization, availableSlotsToday } from "./capacity-metrics";
+import {
+  chairUtilization,
+  availableSlotsToday,
+  chairUtilization30d,
+  bookedNext7d,
+} from "./capacity-metrics";
+import {
+  cancellationRate30d,
+  noShowRate30d,
+  bookingLeadTimeDays,
+} from "./scheduling-metrics";
 
 /**
  * A pure metric calculator: snapshot in, one Metric out.
@@ -58,6 +68,10 @@ export const METRIC_CALCULATORS: readonly MetricCalculator[] = [
   upcomingAppointmentsToday,
   cancelledAppointmentsToday,
   noShowsToday,
+  // Scheduling (trailing window)
+  cancellationRate30d,
+  noShowRate30d,
+  bookingLeadTimeDays,
   // Patients
   newPatientsToday,
   returningPatientsToday,
@@ -82,6 +96,8 @@ export const METRIC_CALCULATORS: readonly MetricCalculator[] = [
   // Capacity
   chairUtilization,
   availableSlotsToday,
+  chairUtilization30d,
+  bookedNext7d,
 ];
 
 export * from "./appointment-metrics";
@@ -91,4 +107,5 @@ export * from "./queue-metrics";
 export * from "./follow-up-metrics";
 export * from "./treatment-metrics";
 export * from "./capacity-metrics";
+export * from "./scheduling-metrics";
 export * from "../support/windows";

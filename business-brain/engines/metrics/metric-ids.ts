@@ -17,6 +17,9 @@ export const MetricKey = {
   APPOINTMENTS_UPCOMING_TODAY: "appointments.upcoming_today",
   APPOINTMENTS_CANCELLED_TODAY: "appointments.cancelled_today",
   APPOINTMENTS_NO_SHOWS_TODAY: "appointments.no_shows_today",
+  SCHEDULING_CANCELLATION_RATE_30D: "scheduling.cancellation_rate_30d",
+  SCHEDULING_NO_SHOW_RATE_30D: "scheduling.no_show_rate_30d",
+  SCHEDULING_BOOKING_LEAD_TIME_DAYS: "scheduling.booking_lead_time_days",
   // Patients
   PATIENTS_NEW_TODAY: "patients.new_today",
   PATIENTS_RETURNING_TODAY: "patients.returning_today",
@@ -41,6 +44,8 @@ export const MetricKey = {
   // Capacity
   CAPACITY_CHAIR_UTILIZATION: "capacity.chair_utilization",
   CAPACITY_AVAILABLE_SLOTS_TODAY: "capacity.available_slots_today",
+  CAPACITY_CHAIR_UTILIZATION_30D: "capacity.chair_utilization_30d",
+  CAPACITY_BOOKED_NEXT_7D: "capacity.booked_next_7d",
 } as const;
 
 export type MetricKey = (typeof MetricKey)[keyof typeof MetricKey];
@@ -84,6 +89,36 @@ export const METRIC_DESCRIPTORS: Readonly<Record<MetricKey, MetricDescriptor>> =
     name: "No-Shows Today",
     category: MetricCategory.SCHEDULING,
     unit: MetricUnit.COUNT,
+  },
+  [MetricKey.SCHEDULING_CANCELLATION_RATE_30D]: {
+    key: MetricKey.SCHEDULING_CANCELLATION_RATE_30D,
+    name: "Cancellation Rate (30 days)",
+    category: MetricCategory.SCHEDULING,
+    unit: MetricUnit.PERCENTAGE,
+  },
+  [MetricKey.SCHEDULING_NO_SHOW_RATE_30D]: {
+    key: MetricKey.SCHEDULING_NO_SHOW_RATE_30D,
+    name: "No-Show Rate (30 days)",
+    category: MetricCategory.SCHEDULING,
+    unit: MetricUnit.PERCENTAGE,
+  },
+  [MetricKey.SCHEDULING_BOOKING_LEAD_TIME_DAYS]: {
+    key: MetricKey.SCHEDULING_BOOKING_LEAD_TIME_DAYS,
+    name: "Median Booking Lead Time",
+    category: MetricCategory.SCHEDULING,
+    unit: MetricUnit.DAYS,
+  },
+  [MetricKey.CAPACITY_CHAIR_UTILIZATION_30D]: {
+    key: MetricKey.CAPACITY_CHAIR_UTILIZATION_30D,
+    name: "Chair Utilization (30 days)",
+    category: MetricCategory.UTILIZATION,
+    unit: MetricUnit.PERCENTAGE,
+  },
+  [MetricKey.CAPACITY_BOOKED_NEXT_7D]: {
+    key: MetricKey.CAPACITY_BOOKED_NEXT_7D,
+    name: "Schedule Filled (next 7 days)",
+    category: MetricCategory.UTILIZATION,
+    unit: MetricUnit.PERCENTAGE,
   },
   [MetricKey.PATIENTS_NEW_TODAY]: {
     key: MetricKey.PATIENTS_NEW_TODAY,

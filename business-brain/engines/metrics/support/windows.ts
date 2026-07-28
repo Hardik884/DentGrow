@@ -10,7 +10,12 @@
  * which is what makes the window filters safe.
  */
 
-import type { ClinicDataSnapshot, PaymentSnapshot, TreatmentSnapshot } from "../../../repositories";
+import type {
+  ClinicDataSnapshot,
+  PaymentSnapshot,
+  ScheduleWindow,
+  TreatmentSnapshot,
+} from "../../../repositories";
 import { addDays } from "../../../utils";
 
 /**
@@ -52,4 +57,54 @@ export function paymentsInWindow(
 ): readonly PaymentSnapshot[] {
   const from = windowStart(s.date, days);
   return s.payments.filter((p) => p.paymentDate >= from && p.paymentDate <= s.date);
+}
+
+/**
+ * Whether an appointment still occupies its slot.
+ *
+ * A cancelled or no-show appointment frees the chair, so it must not count as
+ * booked. Shared with the single-day capacity calculators so daily and windowed
+ * utilization cannot drift apart.
+ */
+export function occupiesSlot(status: string): boolean {
+  return status !== "cancelled" && status !== "no_show";
+}
+
+/** Booked slots inside a window. */
+export function bookedInWindow(window: ScheduleWindow): number {
+  return window.appointments.filter((a) => occupiesSlot(a.status)).length;
+}
+
+/**
+ * Fill rate for a window: booked slots as a percentage of slots offered.
+ *
+ * Returns `null` when the clinic offered no capacity at all across the range —
+ * a fill rate against zero slots is undefined, and 0% would read as "nobody
+ * booked" when the truth is "we were never open".
+ *
+ * Capped at 100% for overbooking, matching the single-day calculator.
+ */
+export function fillRate(window: ScheduleWindow): number | null {
+  if (window.totalSlots <= 0) {
+    return null;
+  }
+  const raw = (bookedInWindow(window) / window.totalSlots) * 100;
+  return Math.round(Math.min(100, raw) * 10) / 10;
+}
+
+/** Share of a window's appointments in a given status, as a percentage. */
+export function statusRate(window: ScheduleWindow, status: string): number | null {
+  const total = window.appointments.length;
+  if (total === 0) {
+    return null;
+  }
+  const matching = window.appointments.filter((a) => a.status === status).length;
+  return Math.round((matching / total) * 1000) / 10;
+}
+
+/** Median of a non-empty numeric list. */
+export function median(values: readonly number[]): number {
+  const sorted = [...values].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  return sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid];
 }

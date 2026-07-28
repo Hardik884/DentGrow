@@ -278,6 +278,35 @@ describe.skipIf(!LOCAL_UP)("SupabaseMetricsDataRepository (integration)", () => 
       expect(s.treatments.every((t) => t.isScheduled !== null)).toBe(true);
     });
 
+    it("supplies trailing and forward schedule windows with capacity", async () => {
+      const s = await repository.getClinicSnapshot(CLINIC, DATE);
+      // 30 days ending on DATE; 7 days starting the day after.
+      expect(s.trailingWindow?.from).toBe("2026-02-15");
+      expect(s.trailingWindow?.to).toBe(DATE);
+      expect(s.forwardWindow?.from).toBe("2026-03-17");
+      expect(s.forwardWindow?.to).toBe("2026-03-23");
+
+      // The forward window must contain the future appointment seeded for
+      // P_RETURNING (2026-03-24) only if it falls inside — it does not.
+      expect(s.forwardWindow?.appointments.map((a) => a.id)).not.toContain(
+        "9f000000-0000-4000-8000-000000000091",
+      );
+      // The trailing window contains today's appointments.
+      expect(s.trailingWindow?.appointments.map((a) => a.id)).toContain(
+        "9f000000-0000-4000-8000-000000000031",
+      );
+      // Capacity accumulates across the range, so it exceeds a single day's 8.
+      expect(s.trailingWindow?.totalSlots).toBeGreaterThan(8);
+    });
+
+    it("carries createdAt on every appointment for lead-time analysis", async () => {
+      const s = await repository.getClinicSnapshot(CLINIC, DATE);
+      for (const a of s.appointmentsToday) {
+        expect(a.createdAt).toBeTruthy();
+        expect(Number.isNaN(Date.parse(a.createdAt))).toBe(false);
+      }
+    });
+
     it("supplies the patient roster with last-visit and booking state", async () => {
       const s = await repository.getClinicSnapshot(CLINIC, DATE);
       const roster = s.patientRoster ?? [];

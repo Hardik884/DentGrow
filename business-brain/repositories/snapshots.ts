@@ -18,6 +18,12 @@ export interface AppointmentSnapshot {
   readonly status: string;
   /** ISO-8601 time the appointment is scheduled for. */
   readonly scheduledAt: string;
+  /**
+   * ISO-8601 time the appointment record was created — i.e. when it was booked.
+   * Together with `scheduledAt` this gives booking lead time, the clearest read
+   * on whether demand is ahead of or behind capacity.
+   */
+  readonly createdAt: string;
   /** Planned duration in minutes. */
   readonly durationMinutes: number;
   /** DentGrow appointment_source. */
@@ -122,6 +128,24 @@ export interface PatientRosterEntry {
   readonly hasUpcomingAppointment: boolean;
 }
 
+/**
+ * A date range of schedule activity, with the capacity offered across it.
+ *
+ * Appointments and capacity travel together because every metric that uses a
+ * window needs both: a fill rate is meaningless without the denominator, and
+ * two separately-supplied ranges could silently disagree about their bounds.
+ *
+ * Both ends are inclusive "YYYY-MM-DD" business dates.
+ */
+export interface ScheduleWindow {
+  readonly from: string;
+  readonly to: string;
+  /** Appointments whose `scheduledAt` falls inside the range. */
+  readonly appointments: readonly AppointmentSnapshot[];
+  /** Total bookable slots the clinic offers across the whole range. */
+  readonly totalSlots: number;
+}
+
 /** Clinic capacity for the target date, derived from availability rules. */
 export interface CapacitySnapshot {
   /** Total bookable appointment slots the clinic offers on the target date. */
@@ -170,4 +194,31 @@ export interface ClinicDataSnapshot {
    * existed before the roster was introduced is unaffected by its absence.
    */
   readonly patientRoster?: readonly PatientRosterEntry[];
+
+  /**
+   * The trailing schedule window ending on `date` (inclusive).
+   *
+   * Rates and averages need a denominator larger than one day. Dentistry is
+   * lumpy — a single cancellation swings a daily rate by tens of percent — so a
+   * daily figure is n=1 noise, and thresholds set against it fire on ordinary
+   * quiet days.
+   *
+   * OPTIONAL: a repository that cannot afford the range read omits it, and the
+   * window metrics are withheld rather than reported as zero.
+   */
+  readonly trailingWindow?: ScheduleWindow;
+
+  /**
+   * The forward schedule window starting the day AFTER `date` (inclusive).
+   *
+   * The only forward-looking input the engine has. Everything else reports what
+   * already happened; this is what lets it warn while there is still time to
+   * act — a clinic can look healthy today and be empty next week.
+   *
+   * Excludes `date` itself: today is already half-spent, and counting it would
+   * make "how full is the week ahead" depend on the time of day.
+   *
+   * OPTIONAL, as above.
+   */
+  readonly forwardWindow?: ScheduleWindow;
 }

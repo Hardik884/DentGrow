@@ -12,6 +12,7 @@
 import type {
   AppointmentSnapshot,
   PatientRosterEntry,
+  ScheduleWindow,
   ClinicDataSnapshot,
   FollowUpSnapshot,
   PatientSnapshot,
@@ -37,6 +38,8 @@ export function appointment(over: Partial<AppointmentSnapshot> = {}): Appointmen
     patientId: nextId("pat"),
     status: "scheduled",
     scheduledAt: `${DATE}T10:00:00.000Z`,
+    // Booked the day before by default — a plausible, non-zero lead time.
+    createdAt: `2026-07-27T10:00:00.000Z`,
     durationMinutes: 30,
     source: "walk_in",
     ...over,
@@ -103,6 +106,16 @@ export function rosterEntry(over: Partial<PatientRosterEntry> = {}): PatientRost
   };
 }
 
+export function scheduleWindow(over: Partial<ScheduleWindow> = {}): ScheduleWindow {
+  return {
+    from: "2026-06-29",
+    to: DATE,
+    appointments: [],
+    totalSlots: 0,
+    ...over,
+  };
+}
+
 /**
  * A snapshot on which EVERY metric is measurable.
  *
@@ -115,6 +128,13 @@ export function measurableSnapshot(): ClinicDataSnapshot {
     treatments: [treatment({ cost: 1000, status: "completed" })],
     payments: [payment({ amount: 500 })],
     patientRoster: [rosterEntry()],
+    trailingWindow: scheduleWindow({ appointments: [appointment()], totalSlots: 10 }),
+    forwardWindow: scheduleWindow({
+      from: "2026-07-29",
+      to: "2026-08-04",
+      appointments: [appointment({ scheduledAt: "2026-07-30T10:00:00.000Z" })],
+      totalSlots: 10,
+    }),
   });
 }
 

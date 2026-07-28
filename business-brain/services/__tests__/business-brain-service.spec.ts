@@ -27,8 +27,8 @@ function snapshotFor(clinicId: string, date: string): ClinicDataSnapshot {
     asOf: `${date}T06:30:00.000Z`,
     // A quiet-but-real day: few appointments, low revenue, a queue backlog.
     appointmentsToday: [
-      { id: "a1", patientId: "p1", status: "completed", scheduledAt: `${date}T04:00:00.000Z`, durationMinutes: 30, source: "walk_in" },
-      { id: "a2", patientId: "p2", status: "no_show", scheduledAt: `${date}T05:00:00.000Z`, durationMinutes: 30, source: "website" },
+      { id: "a1", patientId: "p1", status: "completed", scheduledAt: `${date}T04:00:00.000Z`, createdAt: `${date}T00:00:00.000Z`, durationMinutes: 30, source: "walk_in" },
+      { id: "a2", patientId: "p2", status: "no_show", scheduledAt: `${date}T05:00:00.000Z`, createdAt: `${date}T00:00:00.000Z`, durationMinutes: 30, source: "website" },
     ],
     patientsRegisteredToday: [],
     patientsSeenToday: [{ id: "p1", createdAt: "2026-01-01T00:00:00.000Z" }],

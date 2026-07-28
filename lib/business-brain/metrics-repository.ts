@@ -45,6 +45,7 @@ import type { Database } from "@/types/database.types";
 import { DEFAULT_TIMEZONE } from "@/lib/clinic/constants";
 import { getAvailableSlots, type AvailabilityRule } from "@/lib/scheduling/slots";
 import { getUtcBoundariesForLocalDate } from "@/lib/utils";
+import { addDays, dateRange } from "@/business-brain";
 
 /**
  * TYPING NOTE
@@ -76,8 +77,17 @@ interface AppointmentRow {
   patient_id: string;
   status: string;
   scheduled_at: string;
+  created_at: string;
   duration_minutes: number;
   source: string;
+}
+interface UnavailableDateRow {
+  date: string;
+}
+interface ConsultancyBlockDatedRow {
+  date: string;
+  start_time: string;
+  end_time: string;
 }
 interface PatientRow {
   id: string;
@@ -123,10 +133,6 @@ interface AvailabilityRuleRow {
   end_time: string;
   slot_duration_minutes: number;
 }
-interface ConsultancyBlockRow {
-  start_time: string;
-  end_time: string;
-}
 
 /** Postgres `time` columns arrive as "HH:MM:SS"; the slot engine wants "HH:MM". */
 function toHhMm(time: string): string {
@@ -152,7 +158,24 @@ export interface SupabaseMetricsRepositoryOptions {
    * makes a snapshot reproducible after the fact.
    */
   readonly asOf?: string;
+  /**
+   * Length of the trailing schedule window, in days (inclusive of `date`).
+   * Must match the Metrics Engine's TRAILING_DAYS, or the window metrics will be
+   * named `_30d` while measuring something else.
+   */
+  readonly trailingWindowDays?: number;
+  /** Length of the forward schedule window, in days after `date`. */
+  readonly forwardWindowDays?: number;
 }
+
+/**
+ * Defaults mirror `business-brain` METRIC_WINDOWS. They are restated rather than
+ * imported because the window length is part of each metric's NAME
+ * (`production_30d`, `booked_next_7d`); changing one side alone would leave a
+ * metric measuring something its own key denies.
+ */
+const DEFAULT_TRAILING_DAYS = 30;
+const DEFAULT_FORWARD_DAYS = 7;
 
 /**
  * Reads a clinic's day from Supabase and maps it into the narrow, stable shape
@@ -187,6 +210,16 @@ export class SupabaseMetricsDataRepository implements MetricsDataRepository {
     const slotMinutes = cfg?.average_appointment_duration ?? 30;
     const { start: dayStart, end: dayEnd } = getUtcBoundariesForLocalDate(date, timezone);
 
+    const trailingDays = this.options.trailingWindowDays ?? DEFAULT_TRAILING_DAYS;
+    const forwardDays = this.options.forwardWindowDays ?? DEFAULT_FORWARD_DAYS;
+    const trailingFrom = addDays(date, -(trailingDays - 1));
+    const forwardFrom = addDays(date, 1);
+    const forwardTo = addDays(date, forwardDays);
+
+    // One read of the schedule rules covers today, the trailing window and the
+    // forward window — see fetchScheduleInputs.
+    const scheduleInputs = await this.fetchScheduleInputs(clinicId, trailingFrom, forwardTo);
+
     const [
       appointmentsToday,
       patientsRegisteredToday,
@@ -194,9 +227,10 @@ export class SupabaseMetricsDataRepository implements MetricsDataRepository {
       payments,
       queueToday,
       followUps,
-      totalSlotsToday,
       patientsWithFutureAppointment,
       roster,
+      trailingAppointments,
+      forwardAppointments,
     ] = await Promise.all([
       this.fetchAppointments(clinicId, dayStart, dayEnd),
       this.fetchPatientsRegistered(clinicId, dayStart, dayEnd),
@@ -204,9 +238,10 @@ export class SupabaseMetricsDataRepository implements MetricsDataRepository {
       this.fetchPayments(clinicId),
       this.fetchQueue(clinicId, date),
       this.fetchFollowUps(clinicId, date),
-      this.fetchCapacity(clinicId, date, timezone, slotMinutes),
       this.fetchPatientsWithFutureAppointments(clinicId, asOf),
       this.fetchPatientRoster(clinicId),
+      this.fetchAppointmentsInRange(clinicId, trailingFrom, date, timezone),
+      this.fetchAppointmentsInRange(clinicId, forwardFrom, forwardTo, timezone),
     ]);
 
     // Depends on today's appointments, so it cannot join the parallel batch.
@@ -229,7 +264,27 @@ export class SupabaseMetricsDataRepository implements MetricsDataRepository {
       payments,
       queueToday,
       followUps,
-      capacity: { totalSlotsToday },
+      capacity: {
+        totalSlotsToday: this.slotsOnDate(date, scheduleInputs, timezone, slotMinutes),
+      },
+      trailingWindow: {
+        from: trailingFrom,
+        to: date,
+        appointments: trailingAppointments,
+        totalSlots: this.slotsInRange(trailingFrom, date, scheduleInputs, timezone, slotMinutes),
+      },
+      forwardWindow: {
+        from: forwardFrom,
+        to: forwardTo,
+        appointments: forwardAppointments,
+        totalSlots: this.slotsInRange(
+          forwardFrom,
+          forwardTo,
+          scheduleInputs,
+          timezone,
+          slotMinutes,
+        ),
+      },
       patientRoster: roster.map((p) => ({
         id: p.id,
         createdAt: p.created_at,
@@ -248,7 +303,7 @@ export class SupabaseMetricsDataRepository implements MetricsDataRepository {
   ): Promise<AppointmentSnapshot[]> {
     const { data, error } = await this.db
       .from("appointments")
-      .select("id, patient_id, status, scheduled_at, duration_minutes, source")
+      .select("id, patient_id, status, scheduled_at, created_at, duration_minutes, source")
       .eq("clinic_id", clinicId)
       .is("deleted_at", null)
       .gte("scheduled_at", dayStart)
@@ -260,6 +315,7 @@ export class SupabaseMetricsDataRepository implements MetricsDataRepository {
       patientId: a.patient_id,
       status: a.status,
       scheduledAt: a.scheduled_at,
+      createdAt: a.created_at,
       durationMinutes: a.duration_minutes,
       source: a.source,
     }));
@@ -466,61 +522,113 @@ export class SupabaseMetricsDataRepository implements MetricsDataRepository {
   }
 
   /**
-   * Total bookable slots the clinic OFFERS on the date — capacity, not
-   * availability. Booked appointments are deliberately not subtracted here:
-   * the engine divides booked by this figure to get chair utilization, so
-   * netting them off would make utilization always read 0%.
+   * Schedule inputs for a date RANGE, fetched once.
+   *
+   * Capacity is per-day, but querying per day would issue three round-trips for
+   * every date in a 30-day window. Instead the rules, holidays and consultancy
+   * blocks are read once for the widest range needed, and each day's slot count
+   * is computed from them in memory. Query count is therefore constant no matter
+   * how long the windows are.
+   */
+  private async fetchScheduleInputs(clinicId: string, from: string, to: string) {
+    const [rulesResult, unavailableResult, blocksResult] = await Promise.all([
+      this.db
+        .from("availability_rules")
+        .select("day_of_week, start_time, end_time, slot_duration_minutes")
+        .eq("clinic_id", clinicId)
+        .eq("is_active", true),
+      this.db
+        .from("unavailable_dates")
+        .select("date")
+        .eq("clinic_id", clinicId)
+        .gte("date", from)
+        .lte("date", to),
+      this.db
+        .from("consultancy_schedules")
+        .select("date, start_time, end_time")
+        .eq("clinic_id", clinicId)
+        .eq("is_active", true)
+        .gte("date", from)
+        .lte("date", to),
+    ]);
+
+    if (rulesResult.error) throw new Error(`availability_rules: ${rulesResult.error.message}`);
+    if (unavailableResult.error) {
+      throw new Error(`unavailable_dates: ${unavailableResult.error.message}`);
+    }
+    if (blocksResult.error) {
+      throw new Error(`consultancy_schedules: ${blocksResult.error.message}`);
+    }
+
+    const rulesByDow = new Map<number, AvailabilityRule[]>();
+    for (const r of rows<AvailabilityRuleRow & { day_of_week: number }>(rulesResult.data)) {
+      const list = rulesByDow.get(r.day_of_week) ?? [];
+      list.push({
+        startTime: toHhMm(r.start_time),
+        endTime: toHhMm(r.end_time),
+        slotDurationMinutes: r.slot_duration_minutes,
+      });
+      rulesByDow.set(r.day_of_week, list);
+    }
+
+    const closedDates = new Set(rows<UnavailableDateRow>(unavailableResult.data).map((u) => u.date));
+
+    const blocksByDate = new Map<string, Array<{ start: string; end: string }>>();
+    for (const b of rows<ConsultancyBlockDatedRow>(blocksResult.data)) {
+      const list = blocksByDate.get(b.date) ?? [];
+      list.push({ start: toHhMm(b.start_time), end: toHhMm(b.end_time) });
+      blocksByDate.set(b.date, list);
+    }
+
+    return { rulesByDow, closedDates, blocksByDate };
+  }
+
+  /**
+   * Bookable slots the clinic OFFERS on a single date — capacity, not
+   * availability. Booked appointments are deliberately not subtracted: the
+   * engine divides booked by this figure to get utilization, so netting them off
+   * would make utilization always read 0%.
    *
    * Reuses `lib/scheduling/slots.ts` (empty `occupied`, no past-slot cutoff) so
    * capacity is defined in exactly one place, including its handling of rule
    * boundaries and external-consultancy blocks.
    */
-  private async fetchCapacity(
-    clinicId: string,
+  private slotsOnDate(
     date: string,
+    inputs: Awaited<ReturnType<SupabaseMetricsDataRepository["fetchScheduleInputs"]>>,
     timezone: string,
     slotMinutes: number,
-  ): Promise<number> {
-    // A clinic holiday offers no slots at all.
-    const { data: unavailable, error: unavailableError } = await this.db
-      .from("unavailable_dates")
-      .select("id")
-      .eq("clinic_id", clinicId)
-      .eq("date", date)
-      .limit(1);
-    if (unavailableError) throw new Error(`unavailable_dates: ${unavailableError.message}`);
-    if (rows<{ id: string }>(unavailable).length > 0) return 0;
-
-    const [rulesResult, blocksResult] = await Promise.all([
-      this.db
-        .from("availability_rules")
-        .select("start_time, end_time, slot_duration_minutes")
-        .eq("clinic_id", clinicId)
-        .eq("day_of_week", dayOfWeek(date))
-        .eq("is_active", true),
-      this.db
-        .from("consultancy_schedules")
-        .select("start_time, end_time")
-        .eq("clinic_id", clinicId)
-        .eq("date", date)
-        .eq("is_active", true),
-    ]);
-
-    if (rulesResult.error) throw new Error(`availability_rules: ${rulesResult.error.message}`);
-    if (blocksResult.error) throw new Error(`consultancy_schedules: ${blocksResult.error.message}`);
-
-    const rules: AvailabilityRule[] = rows<AvailabilityRuleRow>(rulesResult.data).map((r) => ({
-      startTime: toHhMm(r.start_time),
-      endTime: toHhMm(r.end_time),
-      slotDurationMinutes: r.slot_duration_minutes,
-    }));
+  ): number {
+    if (inputs.closedDates.has(date)) return 0;
+    const rules = inputs.rulesByDow.get(dayOfWeek(date)) ?? [];
     if (rules.length === 0) return 0;
+    const blocked = inputs.blocksByDate.get(date) ?? [];
+    return getAvailableSlots(date, rules, [], timezone, slotMinutes, null, blocked).length;
+  }
 
-    const blockedRanges = rows<ConsultancyBlockRow>(blocksResult.data).map((b) => ({
-      start: toHhMm(b.start_time),
-      end: toHhMm(b.end_time),
-    }));
+  /** Total slots offered across an inclusive date range. */
+  private slotsInRange(
+    from: string,
+    to: string,
+    inputs: Awaited<ReturnType<SupabaseMetricsDataRepository["fetchScheduleInputs"]>>,
+    timezone: string,
+    slotMinutes: number,
+  ): number {
+    return dateRange(from, to).reduce(
+      (sum, d) => sum + this.slotsOnDate(d, inputs, timezone, slotMinutes),
+      0,
+    );
+  }
 
-    return getAvailableSlots(date, rules, [], timezone, slotMinutes, null, blockedRanges).length;
+  /** Appointments whose scheduled time falls inside an inclusive date range. */
+  private async fetchAppointmentsInRange(
+    clinicId: string,
+    from: string,
+    to: string,
+    timezone: string,
+  ): Promise<AppointmentSnapshot[]> {
+    const { start } = getUtcBoundariesForLocalDate(from, timezone);
+    const { end } = getUtcBoundariesForLocalDate(to, timezone);
+    return this.fetchAppointments(clinicId, start, end);
   }
 }

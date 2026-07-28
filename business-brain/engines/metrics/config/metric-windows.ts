@@ -21,4 +21,10 @@ export const METRIC_WINDOWS = {
   TRAILING_DAYS: 30,
   /** Days since last visit before a patient counts as needing reactivation. */
   REACTIVATION_DAYS: 180,
+  /**
+   * Days of forward schedule to assess. Seven is the horizon a clinic can still
+   * act on: enough time to call a recall list and fill gaps, short enough that
+   * the bookings are real rather than aspirational.
+   */
+  FORWARD_DAYS: 7,
 } as const;
