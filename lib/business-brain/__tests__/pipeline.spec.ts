@@ -204,19 +204,24 @@ describe.skipIf(!LOCAL_UP)("Business Brain pipeline (integration)", () => {
     expect(v(MetricKey.CAPACITY_AVAILABLE_SLOTS_TODAY)).toBe(14);
   });
 
-  it("withholds accepted_pending_scheduling — the schema cannot express it", async () => {
+  it("measures accepted_pending_scheduling now that bookings are recorded", async () => {
     const result = await brain.runBusinessBrain(CLINIC, DATE, { startedAt: AS_OF });
-    const present = result.metrics.some((m) =>
+
+    // The metric is produced rather than withheld: the seeded plan has no
+    // booking, so it is genuinely pending scheduling.
+    const metric = result.metrics.find((m) =>
       m.id.startsWith(`${MetricKey.TREATMENT_ACCEPTED_PENDING_SCHEDULING}:`),
     );
-    expect(present).toBe(false);
+    expect(metric?.value).toBe(1);
 
-    // …and the dependent evaluator records that it could not measure, rather
-    // than reporting a fabricated zero.
-    const skipped = result.trace.filter((t) => t.reasoning.startsWith("Skipped:"));
-    expect(
-      skipped.some((t) => t.step === SignalType.CLINICAL_ACCEPTED_TREATMENTS_UNSCHEDULED),
-    ).toBe(true);
+    // The dependent evaluator now reaches a verdict instead of skipping for
+    // missing input. One pending treatment is below the threshold, so it
+    // correctly reports "no signal" rather than raising one.
+    const step = result.trace.find(
+      (t) => t.step === SignalType.CLINICAL_ACCEPTED_TREATMENTS_UNSCHEDULED,
+    );
+    expect(step?.reasoning.startsWith("Skipped:")).toBe(false);
+    expect(step?.reasoning.startsWith("No signal:")).toBe(true);
   });
 
   it("derives signals the seeded conditions should trigger", async () => {

@@ -89,7 +89,22 @@ interface TreatmentRow {
   clinic_share: number | string | null;
   status: string;
   performed_at: string | null;
+  scheduled_appointment_id: string | null;
 }
+
+/** The future appointment a treatment is booked for. */
+interface BookingRow {
+  id: string;
+  status: string;
+  scheduled_at: string;
+}
+
+/**
+ * Appointment statuses under which a booking still holds the work.
+ * A cancelled, no-show or completed appointment no longer does, so the
+ * treatment needs re-booking and counts as pending scheduling.
+ */
+const BOOKING_HOLDS_STATUSES = ["scheduled", "checked_in"];
 interface PaymentRow {
   id: string;
   amount: number | string | null;
@@ -193,11 +208,16 @@ export class SupabaseMetricsDataRepository implements MetricsDataRepository {
       this.fetchCapacity(clinicId, date, timezone, slotMinutes),
     ]);
 
-    // Depends on today's appointments, so it cannot join the parallel batch.
-    const patientsSeenToday = await this.fetchPatientsSeen(
-      clinicId,
-      appointmentsToday.map((a) => a.patientId),
-    );
+    // Both depend on an earlier result, so they cannot join the parallel batch.
+    const [patientsSeenToday, bookings] = await Promise.all([
+      this.fetchPatientsSeen(clinicId, appointmentsToday.map((a) => a.patientId)),
+      this.fetchBookings(
+        clinicId,
+        treatments
+          .map((t) => t.scheduledAppointmentId)
+          .filter((id): id is string => id !== null),
+      ),
+    ]);
 
     return {
       clinicId,
@@ -206,10 +226,10 @@ export class SupabaseMetricsDataRepository implements MetricsDataRepository {
       appointmentsToday,
       patientsRegisteredToday,
       patientsSeenToday,
-      // isScheduled is reported as UNKNOWN, never guessed — see the note above
-      // fetchTreatments. DentGrow cannot currently express which future
-      // appointment a planned treatment is booked for.
-      treatments: treatments.map((t) => ({ ...t, isScheduled: null })),
+      treatments: treatments.map(({ scheduledAppointmentId, ...t }) => ({
+        ...t,
+        isScheduled: this.isBooked(scheduledAppointmentId, bookings, asOf),
+      })),
       payments,
       queueToday,
       followUps,
@@ -290,35 +310,25 @@ export class SupabaseMetricsDataRepository implements MetricsDataRepository {
    * `clinic_share` is nullable in DentGrow (no consultant => no split recorded);
    * it is coalesced to `cost` so the engine always receives a real number.
    *
-   * KNOWN SCHEMA GAP — `isScheduled` is reported as `null` (unknown)
-   * ---------------------------------------------------------------
-   * A treatment is "scheduled" when it was accepted but deliberately not done
-   * during the visit, and is booked for a specific future appointment.
+   * `scheduled_appointment_id` (migration 20260728000000) is the FUTURE
+   * appointment the treatment is booked for; it is resolved into the boolean
+   * `isScheduled` by {@link isBooked}. It is read rather than inferred — the
+   * previously available proxies (a pending follow-up, or any future
+   * appointment the patient happened to have) each answer a different question
+   * and would report accepted work as booked on no evidence.
    *
-   * DentGrow cannot express that. `treatments.appointment_id` is NOT NULL and
-   * records the visit at which the treatment was *proposed* — it is the same
-   * column whether the work happened then or was deferred, so it carries no
-   * information about a future booking.
-   *
-   * The available proxies are all wrong:
-   *   - a pending `follow_ups` row is a recall/review, not a booking for this
-   *     treatment, and a treatment can be booked with no follow-up at all;
-   *   - "the patient has some future appointment" says nothing about whether
-   *     THIS treatment is what that appointment is for.
-   *
-   * Either would report accepted work as booked (or unbooked) on no evidence,
-   * so this repository reports `null` and the Metrics Engine withholds
-   * `treatment.accepted_pending_scheduling` entirely. The dependent evaluator
-   * then skips and records that it could not measure.
-   *
-   * Smallest fix: add `treatments.scheduled_appointment_id uuid null references
-   * appointments(id) on delete set null`. See the "Scheduled treatments" note in
-   * the accompanying report.
+   * CAVEAT — the column is not yet written by the application. Until
+   * `actions/treatments.ts` and the treatment form let a dentist record which
+   * future appointment a planned treatment is booked for, every planned
+   * treatment reads as unbooked and `treatment.accepted_pending_scheduling`
+   * over-reports.
    */
-  private async fetchTreatments(clinicId: string): Promise<Array<Omit<TreatmentSnapshot, "isScheduled">>> {
+  private async fetchTreatments(
+    clinicId: string,
+  ): Promise<Array<Omit<TreatmentSnapshot, "isScheduled"> & { scheduledAppointmentId: string | null }>> {
     const { data, error } = await this.db
       .from("treatments")
-      .select("id, cost, clinic_share, status, performed_at")
+      .select("id, cost, clinic_share, status, performed_at, scheduled_appointment_id")
       .eq("clinic_id", clinicId)
       .is("deleted_at", null);
     if (error) throw new Error(`treatments: ${error.message}`);
@@ -332,8 +342,58 @@ export class SupabaseMetricsDataRepository implements MetricsDataRepository {
         clinicShare: share,
         status: t.status,
         performedAt: t.performed_at,
+        scheduledAppointmentId: t.scheduled_appointment_id,
       };
     });
+  }
+
+  /**
+   * The appointments referenced by `treatments.scheduled_appointment_id`.
+   *
+   * Fetched by id rather than joined so the query stays flat (the hand-written
+   * Database types carry no relationship metadata, so nested selects cannot be
+   * typed), and clinic-scoped so a tampered id cannot pull a foreign row.
+   */
+  private async fetchBookings(
+    clinicId: string,
+    appointmentIds: string[],
+  ): Promise<Map<string, BookingRow>> {
+    const unique = [...new Set(appointmentIds)];
+    if (unique.length === 0) return new Map();
+
+    const { data, error } = await this.db
+      .from("appointments")
+      .select("id, status, scheduled_at")
+      .eq("clinic_id", clinicId)
+      .is("deleted_at", null)
+      .in("id", unique);
+    if (error) throw new Error(`appointments (bookings): ${error.message}`);
+
+    return new Map(rows<BookingRow>(data).map((a) => [a.id, a]));
+  }
+
+  /**
+   * Whether a treatment is genuinely booked for future work.
+   *
+   * All four conditions matter:
+   *   - a booking exists at all;
+   *   - the referenced appointment resolved (not soft-deleted, same clinic);
+   *   - its status still holds the work — a cancelled, no-show or already
+   *     completed appointment does not, so the treatment needs re-booking;
+   *   - it has not already passed. A `scheduled` appointment whose time is in
+   *     the past is stale data, and treating it as booked would hide work that
+   *     in reality was never done.
+   */
+  private isBooked(
+    scheduledAppointmentId: string | null,
+    bookings: Map<string, BookingRow>,
+    asOf: string,
+  ): boolean {
+    if (scheduledAppointmentId === null) return false;
+    const booking = bookings.get(scheduledAppointmentId);
+    if (!booking) return false;
+    if (!BOOKING_HOLDS_STATUSES.includes(booking.status)) return false;
+    return Date.parse(booking.scheduled_at) > Date.parse(asOf);
   }
 
   /** Clinic-wide payments — cumulative, for the same reason as treatments. */

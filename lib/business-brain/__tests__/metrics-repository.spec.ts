@@ -160,6 +160,26 @@ async function seed() {
     { id: "9f000000-0000-4000-8000-0000000000a2", clinic_id: OTHER_CLINIC, appointment_id: "9f000000-0000-4000-8000-0000000000a1", patient_id: P_RETURNING, treatment_type: "Elsewhere", cost: 77777, status: "completed", performed_at: "2026-03-16T05:00:00Z" },
   ]);
 
+  // ── Scheduled-treatment fixtures ────────────────────────────────────────────
+  // Future appointments the planned treatments below may be booked against.
+  await insert("appointments", [
+    // Next week, still active — a booking that holds.
+    { id: "9f000000-0000-4000-8000-000000000091", clinic_id: CLINIC, patient_id: P_RETURNING, dentist_id: DENTIST, scheduled_at: "2026-03-24T04:00:00Z", source: "walk_in", status: "scheduled" },
+    // Next week, but cancelled — the work is no longer held.
+    { id: "9f000000-0000-4000-8000-000000000092", clinic_id: CLINIC, patient_id: P_RETURNING, dentist_id: DENTIST, scheduled_at: "2026-03-25T04:00:00Z", source: "walk_in", status: "cancelled" },
+    // Marked scheduled but its time has already passed — stale, not a booking.
+    { id: "9f000000-0000-4000-8000-000000000093", clinic_id: CLINIC, patient_id: P_RETURNING, dentist_id: DENTIST, scheduled_at: "2026-03-02T04:00:00Z", source: "walk_in", status: "scheduled" },
+  ]);
+
+  await insert("treatments", [
+    // Booked for next week => scheduled.
+    { id: "9f000000-0000-4000-8000-000000000081", clinic_id: CLINIC, appointment_id: "9f000000-0000-4000-8000-000000000031", patient_id: P_RETURNING, treatment_type: "Booked RCT", cost: 100, status: "planned", scheduled_appointment_id: "9f000000-0000-4000-8000-000000000091" },
+    // Booking cancelled => needs re-booking, so NOT scheduled.
+    { id: "9f000000-0000-4000-8000-000000000082", clinic_id: CLINIC, appointment_id: "9f000000-0000-4000-8000-000000000031", patient_id: P_RETURNING, treatment_type: "Cancelled booking", cost: 100, status: "planned", scheduled_appointment_id: "9f000000-0000-4000-8000-000000000092" },
+    // Booking time already passed => stale, NOT scheduled.
+    { id: "9f000000-0000-4000-8000-000000000083", clinic_id: CLINIC, appointment_id: "9f000000-0000-4000-8000-000000000031", patient_id: P_RETURNING, treatment_type: "Past booking", cost: 100, status: "planned", scheduled_appointment_id: "9f000000-0000-4000-8000-000000000093" },
+  ]);
+
   await insert("payments", [
     { id: "9f000000-0000-4000-8000-000000000051", clinic_id: CLINIC, patient_id: P_RETURNING, amount: 2500, method: "cash", payment_date: DATE },
     { id: "9f000000-0000-4000-8000-000000000052", clinic_id: CLINIC, patient_id: P_RETURNING, amount: 500, method: "upi", payment_date: "2026-03-10" },
@@ -228,6 +248,28 @@ describe.skipIf(!LOCAL_UP)("SupabaseMetricsDataRepository (integration)", () => 
       expect(withoutConsultant?.cost).toBe(1000);
     });
 
+    it("reads isScheduled from scheduled_appointment_id, never inferring it", async () => {
+      const s = await repository.getClinicSnapshot(CLINIC, DATE);
+      const find = (suffix: string) => s.treatments.find((t) => t.id.endsWith(suffix));
+
+      // Booked for a future, still-active appointment.
+      expect(find("081")?.isScheduled).toBe(true);
+      // Booking cancelled — the work needs re-booking.
+      expect(find("082")?.isScheduled).toBe(false);
+      // Booking time already passed — stale, not a live booking.
+      expect(find("083")?.isScheduled).toBe(false);
+      // Performed during the visit that recorded it — never booked.
+      expect(find("041")?.isScheduled).toBe(false);
+      // Planned with no booking at all.
+      expect(find("043")?.isScheduled).toBe(false);
+    });
+
+    it("reports a definite answer now that the schema records bookings", async () => {
+      const s = await repository.getClinicSnapshot(CLINIC, DATE);
+      // Previously every treatment was `null` (unknown). Nothing is unknown now.
+      expect(s.treatments.every((t) => t.isScheduled !== null)).toBe(true);
+    });
+
     it("maps queue called_at to startedAt, leaving an active wait open", async () => {
       const s = await repository.getClinicSnapshot(CLINIC, DATE);
       const done = s.queueToday.find((q) => q.status === "completed");
@@ -286,7 +328,11 @@ describe.skipIf(!LOCAL_UP)("SupabaseMetricsDataRepository (integration)", () => 
       // Payments = 2500 + 500 (deleted 4444 excluded) => 6000 - 3000.
       expect(v(MetricKey.REVENUE_OUTSTANDING)).toBe(3000);
       expect(v(MetricKey.REVENUE_COLLECTED_TODAY)).toBe(2500);
-      expect(v(MetricKey.REVENUE_PENDING_TREATMENT_VALUE)).toBe(9000);
+      // 9000 (crown) + 3 x 100 booked-state fixtures, all planned.
+      expect(v(MetricKey.REVENUE_PENDING_TREATMENT_VALUE)).toBe(9300);
+      // Planned treatments not held by a live booking: the crown, the cancelled
+      // booking and the stale one. The one booked for next week is excluded.
+      expect(v(MetricKey.TREATMENT_ACCEPTED_PENDING_SCHEDULING)).toBe(3);
       // 3000 (consultant split) + 1000 (coalesced null) — the ghost row is gone.
       expect(v(MetricKey.REVENUE_CLINIC_SHARE_TODAY)).toBe(4000);
 
