@@ -60,25 +60,27 @@ export interface TreatmentSnapshot {
   /** ISO-8601 time the treatment was performed, or null if not yet performed. */
   readonly performedAt: string | null;
   /**
-   * Whether this treatment is booked to be performed at a FUTURE appointment —
-   * i.e. it was accepted but deliberately not carried out during the visit at
-   * which it was recorded.
+   * Whether follow-through on this treatment has been booked.
    *
-   *   true   the treatment is linked to a future, still-active appointment
-   *   false  it is being performed now, was completed, or has no booking
+   *   true   the patient has at least one upcoming visit
+   *   false  the patient has no upcoming visit
    *   null   NOT DETERMINABLE from the available data
    *
-   * `null` is a first-class value, not a placeholder. DentGrow currently has no
-   * column expressing "this planned treatment will be performed at appointment
-   * X" — `treatments.appointment_id` records the visit at which the treatment
-   * was *proposed*, which says nothing about when it will be done. Rather than
-   * infer it from a proxy (a follow-up, or any future appointment the patient
-   * happens to have), the repository reports `null` and the affected metric is
-   * withheld.
+   * Deliberately defined at the PATIENT level, not per treatment. A repository
+   * answers "does this treatment's patient have another visit booked?", which
+   * is an approximation of "is this specific treatment booked". Modelling the
+   * latter exactly requires a treatment-to-appointment link, and the workflow
+   * cost of asking a dentist to maintain one is not currently justified.
    *
-   * This mirrors the discipline the Signal and Diagnosis engines already apply:
-   * an absence that is "we could not measure" must never be reported as a
-   * measured zero.
+   * The direction of the error is known and one-way: the derived metric
+   * UNDER-reports. Anything it flags as pending scheduling is genuinely
+   * unbooked; some genuinely unbooked work is missed because the patient
+   * happens to have an unrelated appointment.
+   *
+   * `null` remains a first-class value for any repository that cannot determine
+   * booking state at all. The Metrics Engine then withholds the dependent
+   * metric rather than reporting a measured zero — the same discipline the
+   * Signal and Diagnosis engines apply to absent input.
    */
   readonly isScheduled: boolean | null;
 }

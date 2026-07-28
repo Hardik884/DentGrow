@@ -279,7 +279,6 @@ export type Database = {
           opd_charged: boolean;
           xray_taken: boolean;
           xray_cost: number | null;
-          scheduled_appointment_id: string | null;
           deleted_at: string | null;
           created_at: string;
           updated_at: string;
@@ -305,7 +304,6 @@ export type Database = {
           opd_charged?: boolean;
           xray_taken?: boolean;
           xray_cost?: number | null;
-          scheduled_appointment_id?: string | null;
           deleted_at?: string | null;
           created_at?: string;
           updated_at?: string;
@@ -331,7 +329,6 @@ export type Database = {
           opd_charged?: boolean;
           xray_taken?: boolean;
           xray_cost?: number | null;
-          scheduled_appointment_id?: string | null;
           deleted_at?: string | null;
           created_at?: string;
           updated_at?: string;
