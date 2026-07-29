@@ -38,7 +38,6 @@ export const MetricKey = {
   TREATMENT_ACCEPTED_PENDING_SCHEDULING: "treatment.accepted_pending_scheduling",
   TREATMENT_COMPLETED_TODAY: "treatment.completed_today",
   TREATMENT_AVERAGE_CASE_VALUE_30D: "treatment.average_case_value_30d",
-  TREATMENT_CASE_ACCEPTANCE_RATE_30D: "treatment.case_acceptance_rate_30d",
   // Capacity
   CAPACITY_CHAIR_UTILIZATION: "capacity.chair_utilization",
   CAPACITY_AVAILABLE_SLOTS_TODAY: "capacity.available_slots_today",
@@ -195,12 +194,6 @@ export const METRIC_DESCRIPTORS: Readonly<Record<MetricKey, MetricDescriptor>> =
     name: "Treatments Completed Today",
     category: MetricCategory.CLINICAL,
     unit: MetricUnit.COUNT,
-  },
-  [MetricKey.TREATMENT_CASE_ACCEPTANCE_RATE_30D]: {
-    key: MetricKey.TREATMENT_CASE_ACCEPTANCE_RATE_30D,
-    name: "Case Acceptance Rate (30 days)",
-    category: MetricCategory.CLINICAL,
-    unit: MetricUnit.PERCENTAGE,
   },
   [MetricKey.CAPACITY_CHAIR_UTILIZATION]: {
     key: MetricKey.CAPACITY_CHAIR_UTILIZATION,

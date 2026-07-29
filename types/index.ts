@@ -83,8 +83,6 @@ export const TreatmentStatus = {
   IN_PROGRESS: "in_progress",
   COMPLETED:   "completed",
   CANCELLED:   "cancelled",
-  /** Patient was offered this treatment and refused it. Drives case acceptance. */
-  DECLINED:    "declined",
 } as const;
 export type TreatmentStatus = (typeof TreatmentStatus)[keyof typeof TreatmentStatus];
 
@@ -453,7 +451,7 @@ export const CreateTreatmentSchema = z.object({
   patient_visible_notes: z.string().max(2000).optional(),
   medications: z.array(MedicationSchema).max(30).optional(),
   cost: z.number({ invalid_type_error: "Cost is required" }).nonnegative("Cost cannot be negative"),
-  status: z.enum(["planned", "in_progress", "completed", "cancelled", "declined"]).default("planned"),
+  status: z.enum(["planned", "in_progress", "completed", "cancelled"]).default("planned"),
   // Whether an OPD consultation fee should be collected for this treatment.
   // Drives visibility of the OPD payments subsection on the Patient Visit page.
   opd_charged: z.boolean().default(false),

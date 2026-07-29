@@ -60,7 +60,6 @@ describe("metric manifest", () => {
         MetricKey.SCHEDULING_CANCELLATION_RATE_30D,
         MetricKey.SCHEDULING_NO_SHOW_RATE_30D,
         MetricKey.TREATMENT_AVERAGE_CASE_VALUE_30D,
-        MetricKey.TREATMENT_CASE_ACCEPTANCE_RATE_30D,
       ].sort(),
     );
   });

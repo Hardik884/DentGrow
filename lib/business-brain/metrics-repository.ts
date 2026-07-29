@@ -102,7 +102,6 @@ interface TreatmentRow {
   id: string;
   cost: number | string | null;
   status: string;
-  created_at: string;
   performed_at: string | null;
   patient_id: string;
 }
@@ -395,7 +394,7 @@ export class SupabaseMetricsDataRepository implements MetricsDataRepository {
   ): Promise<Array<Omit<TreatmentSnapshot, "isScheduled"> & { patientId: string }>> {
     const { data, error } = await this.db
       .from("treatments")
-      .select("id, cost, status, created_at, performed_at, patient_id")
+      .select("id, cost, status, performed_at, patient_id")
       .eq("clinic_id", clinicId)
       .is("deleted_at", null);
     if (error) throw new Error(`treatments: ${error.message}`);
@@ -406,7 +405,6 @@ export class SupabaseMetricsDataRepository implements MetricsDataRepository {
         id: t.id,
         cost,
         status: t.status,
-        createdAt: t.created_at,
         performedAt: t.performed_at,
         patientId: t.patient_id,
       };

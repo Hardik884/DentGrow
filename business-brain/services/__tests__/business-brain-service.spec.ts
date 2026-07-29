@@ -33,7 +33,7 @@ function snapshotFor(clinicId: string, date: string): ClinicDataSnapshot {
     patientsRegisteredToday: [],
     patientsSeenToday: [{ id: "p1", createdAt: "2026-01-01T00:00:00.000Z" }],
     treatments: [
-      { id: "t1", cost: 60000, createdAt: `${date}T00:00:00.000Z`, status: "planned", performedAt: null, isScheduled: false },
+      { id: "t1", cost: 60000, status: "planned", performedAt: null, isScheduled: false },
     ],
     payments: [],
     queueToday: [

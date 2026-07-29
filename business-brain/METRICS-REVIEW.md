@@ -3,10 +3,17 @@
 **Date:** 2026-07-28 · **Reviewing:** 19 metrics in `business-brain/engines/metrics/`
 **Lens:** dentist, clinic owner, practice manager, SaaS product designer — not only engineer.
 
-> **Implementation status (2026-07-28):** all MVP additions are built, the three
-> orphan metrics are removed, and `declined` has been added to `treatment_status`
-> for case acceptance. The engine now produces **26** metrics. Remaining items are
-> Phase 2 and Future Intelligence, unchanged.
+> **Implementation status (2026-07-28):** all MVP additions are built and the
+> three orphan metrics are removed. The engine produces **25** metrics.
+>
+> **Case acceptance rate was built and then deliberately reverted.** Recorded
+> here so it is not rebuilt by mistake: the metric is only meaningful if declines
+> are captured *consistently*, and distinguishing "Cancelled" from "Declined" is
+> a judgement call staff would make inconsistently under time pressure. An
+> unrecorded decline is indistinguishable from an acceptance, so the metric
+> reports ~100% and reads as a result rather than as missing data — worse than
+> having no metric, because it looks authoritative. Revisit only alongside a
+> workflow that makes capturing a decline unavoidable rather than optional.
 
 ---
 
@@ -196,7 +203,7 @@ Valuable once history accumulates or new capture exists.
 
 | Metric | Why it must wait | Needs |
 |---|---|---|
-| **Case acceptance rate** — presented vs accepted treatment value | The single most important dental KPI, and **the schema cannot express it**. `treatment_status` has no `presented` or `declined` state, so a plan the patient refuses is indistinguishable from one an admin cancelled. | Schema: `declined` status or a `presented_at`/`decision` field. **Only proposed change with High value.** |
+| **Case acceptance rate** — presented vs accepted treatment value | ⛔ **Built and reverted 2026-07-28 — see the status note at the top before reconsidering.** The single most important dental KPI, and **the schema cannot express it**. `treatment_status` has no `presented` or `declined` state, so a plan the patient refuses is indistinguishable from one an admin cancelled. | Schema: `declined` status or a `presented_at`/`decision` field. **Only proposed change with High value.** |
 | **Revenue forecast (next 30d)** | Needs ≥6 months of history for any seasonality signal | Historical metric persistence |
 | **Seasonality index** | Same — dentistry has real seasonal patterns (festivals, school holidays, insurance year-end) | ≥12 months |
 | **Clinic health score** | A composite is only trustworthy once its components are individually validated. Building it early creates a number nobody can explain — the definition of a vanity metric. | Validated MVP metrics + tuning |

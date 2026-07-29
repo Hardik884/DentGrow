@@ -32,7 +32,6 @@ import {
   acceptedTreatmentsPendingScheduling,
   treatmentsCompletedToday,
   averageCaseValue30d,
-  caseAcceptanceRate30d,
 } from "./treatment-metrics";
 import {
   chairUtilization,
@@ -88,7 +87,6 @@ export const METRIC_CALCULATORS: readonly MetricCalculator[] = [
   acceptedTreatmentsPendingScheduling,
   treatmentsCompletedToday,
   averageCaseValue30d,
-  caseAcceptanceRate30d,
   // Capacity
   chairUtilization,
   availableSlotsToday,

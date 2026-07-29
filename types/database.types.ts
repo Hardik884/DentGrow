@@ -273,7 +273,7 @@ export type Database = {
           internal_notes: string | null;
           patient_visible_notes: string | null;
           cost: number;
-          status: "planned" | "in_progress" | "completed" | "cancelled" | "declined";
+          status: "planned" | "in_progress" | "completed" | "cancelled";
           performed_at: string | null;
           medications: Json;
           opd_charged: boolean;
@@ -298,7 +298,7 @@ export type Database = {
           internal_notes?: string | null;
           patient_visible_notes?: string | null;
           cost?: number;
-          status?: "planned" | "in_progress" | "completed" | "cancelled" | "declined";
+          status?: "planned" | "in_progress" | "completed" | "cancelled";
           performed_at?: string | null;
           medications?: Json;
           opd_charged?: boolean;
@@ -323,7 +323,7 @@ export type Database = {
           internal_notes?: string | null;
           patient_visible_notes?: string | null;
           cost?: number;
-          status?: "planned" | "in_progress" | "completed" | "cancelled" | "declined";
+          status?: "planned" | "in_progress" | "completed" | "cancelled";
           performed_at?: string | null;
           medications?: Json;
           opd_charged?: boolean;
@@ -791,7 +791,7 @@ export type Database = {
       appointment_source: "walk_in" | "phone_call" | "website" | "referral" | "other";
       appointment_status: "scheduled" | "checked_in" | "in_progress" | "completed" | "cancelled" | "no_show";
       queue_status: "waiting" | "in_progress" | "completed";
-      treatment_status: "planned" | "in_progress" | "completed" | "cancelled" | "declined";
+      treatment_status: "planned" | "in_progress" | "completed" | "cancelled";
       payment_method: "cash" | "upi" | "card" | "bank_transfer";
       follow_up_status: "pending" | "completed" | "cancelled";
       appointment_history_action: "created" | "rescheduled" | "cancelled" | "status_changed";

@@ -53,19 +53,8 @@ export interface TreatmentSnapshot {
    * the consultant split (see `lib/billing/revenue.ts`).
    */
   readonly cost: number;
-  /**
-   * DentGrow treatment_status: planned | in_progress | completed | cancelled |
-   * declined. `declined` means the patient refused the treatment; `cancelled`
-   * means the clinic called it off. Only the former counts against case
-   * acceptance, so they must never be conflated.
-   */
+  /** DentGrow treatment_status: planned | in_progress | completed | cancelled. */
   readonly status: string;
-  /**
-   * ISO-8601 time the treatment record was created — i.e. when it was presented
-   * to the patient. Case acceptance is measured over treatments PRESENTED in a
-   * window, which is a different set from those performed in it.
-   */
-  readonly createdAt: string;
   /** ISO-8601 time the treatment was performed, or null if not yet performed. */
   readonly performedAt: string | null;
   /**

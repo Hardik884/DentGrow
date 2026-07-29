@@ -31,7 +31,6 @@ const STATUS_VARIANT_MAP: Record<
   in_progress: "info",
   completed: "success",
   cancelled: "error",
-  declined: "error",
 };
 
 interface TreatmentsViewProps {
