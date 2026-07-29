@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { resolveSession } from "@/lib/auth/session";
 import { checkReceptionistPaymentAccess } from "@/actions/clinic-settings";
 import { DashboardSidebar } from "@/components/layouts/DashboardSidebar";
+import { isBusinessBrainEnabled } from "@/lib/feature-flags";
 
 // Every dashboard route is authenticated and reads request cookies, so it is
 // inherently per-request dynamic. Declaring it here prevents Next from
@@ -33,12 +34,18 @@ export default async function DashboardLayout({
     ? await checkReceptionistPaymentAccess()
     : false;
 
+  // Business Brain is a development surface, allow-listed per clinic. Resolved
+  // here so the nav entry never renders for a clinic that cannot open the page.
+  const showBusinessBrain =
+    profile.role === "dentist" && isBusinessBrainEnabled(profile.clinic_id);
+
   return (
     <div className="flex h-screen overflow-hidden bg-[#FAFAFA]">
       <DashboardSidebar 
         role={profile.role} 
         fullName={profile.full_name ?? ""} 
         allowReceptionistPayments={allowReceptionistPayments}
+        showBusinessBrain={showBusinessBrain}
       />
       <main className="flex-1 overflow-y-auto">
         {children}
