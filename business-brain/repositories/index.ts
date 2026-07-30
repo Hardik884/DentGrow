@@ -7,3 +7,4 @@
  */
 export * from "./snapshots";
 export * from "./metrics-data-repository";
+export * from "./metric-history-store";

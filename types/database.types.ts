@@ -583,6 +583,41 @@ export type Database = {
           },
         ]
       }
+      metric_history: {
+        Row: {
+          clinic_id: string
+          created_at: string
+          measured_at: string
+          metric_date: string
+          metric_key: string
+          value: number
+        }
+        Insert: {
+          clinic_id: string
+          created_at?: string
+          measured_at: string
+          metric_date: string
+          metric_key: string
+          value: number
+        }
+        Update: {
+          clinic_id?: string
+          created_at?: string
+          measured_at?: string
+          metric_date?: string
+          metric_key?: string
+          value?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "metric_history_clinic_id_fkey"
+            columns: ["clinic_id"]
+            isOneToOne: false
+            referencedRelation: "clinics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       patient_portal_links: {
         Row: {
           created_at: string

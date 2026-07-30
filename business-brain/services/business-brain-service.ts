@@ -34,9 +34,10 @@ import type {
   EngineError,
   ExecutionContext,
 } from "../types";
-import type { MetricsDataRepository } from "../repositories";
+import type { MetricHistoryStore, MetricsDataRepository } from "../repositories";
 import { logger, type Logger } from "../utils";
 import { DentGrowMetricsEngine } from "../engines/metrics";
+import { MetricKey, buildMetric } from "../engines/metrics/metric-ids";
 import { DentGrowSignalEngine } from "../engines/signals";
 import {
   DentGrowDiagnosisEngine,
@@ -130,6 +131,17 @@ export interface BusinessBrainResult {
 /** Construction dependencies. The repository is the only external collaborator. */
 export interface BusinessBrainDependencies {
   readonly repository: MetricsDataRepository;
+  /**
+   * Where measured metrics are stored and read back from.
+   *
+   * OPTIONAL. Without it the run still works — history is recomputed from the
+   * live database exactly as before — so no caller is forced to provide storage
+   * to get a result. With it, days already measured are read rather than
+   * recomputed, which is both faster and more faithful: a measurement recorded
+   * on the day needs no reconstruction, and reconstruction cannot recover facts
+   * the schema does not version.
+   */
+  readonly historyStore?: MetricHistoryStore;
   readonly logger?: Logger;
   /** Threshold overrides forwarded to the Signal Engine. */
   readonly signalConfig?: DeepPartial<SignalThresholdConfig>;
@@ -194,6 +206,7 @@ function stage(
  */
 export class BusinessBrain {
   private readonly repository: MetricsDataRepository;
+  private readonly historyStore?: MetricHistoryStore;
   private readonly log: Logger;
   private readonly clock: () => number;
   private readonly metricsEngine: DentGrowMetricsEngine;
@@ -202,6 +215,7 @@ export class BusinessBrain {
 
   constructor(deps: BusinessBrainDependencies) {
     this.repository = deps.repository;
+    this.historyStore = deps.historyStore;
     this.log = deps.logger ?? logger;
     this.clock = deps.clock ?? (() => Date.now());
     this.metricsEngine = new DentGrowMetricsEngine(deps.repository, { logger: this.log });
@@ -404,8 +418,19 @@ export class BusinessBrain {
 
   /**
    * Load the `days` calendar days immediately before `date` as metrics-only
-   * history, ascending. A day whose snapshot cannot be read is omitted and
-   * logged; the Diagnosis Engine reconstructs the gap as `unknown`.
+   * history, ascending.
+   *
+   * Stored measurements are preferred over recomputation, for two reasons. They
+   * are far cheaper — recomputing a week means a week of full clinic snapshots
+   * on every dashboard load — and they are more faithful, because a value
+   * recorded on the day it was measured cannot be distorted by anything that
+   * happened since. Recomputation can only approximate whatever the schema does
+   * not version.
+   *
+   * Days the store does not have are computed, so history is never simply
+   * missing because the job has not run yet. A day that can be neither read nor
+   * computed is omitted and logged; the Diagnosis Engine reconstructs the gap as
+   * `unknown` rather than assuming a quiet day.
    */
   private async loadHistory(
     clinicId: string,
@@ -417,8 +442,12 @@ export class BusinessBrain {
       wanted.push(addDays(date, -offset));
     }
 
+    const stored = await this.readStoredHistory(clinicId, wanted);
+
     const loaded = await Promise.all(
       wanted.map(async (day): Promise<MetricsOnlyDay | null> => {
+        const fromStore = stored.get(day);
+        if (fromStore !== undefined) return fromStore;
         try {
           return { date: day, metrics: await this.metricsEngine.calculateMetrics(clinicId, day) };
         } catch (error) {
@@ -433,6 +462,78 @@ export class BusinessBrain {
     );
 
     return loaded.filter((day): day is MetricsOnlyDay => day !== null);
+  }
+
+  /**
+   * Stored history for the wanted days, keyed by date.
+   *
+   * A store failure is not a run failure: it degrades to recomputation, which is
+   * exactly what happened before a store existed. Losing the cache must never
+   * cost a dentist their dashboard.
+   *
+   * A stored day with no metrics is DISCARDED rather than returned, so it falls
+   * through to recomputation. An empty day is indistinguishable from "everything
+   * measured zero", which would invent a quiet day the clinic never had.
+   */
+  private async readStoredHistory(
+    clinicId: string,
+    wanted: readonly string[],
+  ): Promise<Map<string, MetricsOnlyDay>> {
+    const byDate = new Map<string, MetricsOnlyDay>();
+    if (this.historyStore === undefined || wanted.length === 0) return byDate;
+
+    try {
+      const days = await this.historyStore.readMetricDays(
+        clinicId,
+        wanted[0],
+        wanted[wanted.length - 1],
+      );
+      for (const day of days) {
+        if (day.metrics.length === 0) continue;
+        byDate.set(day.date, {
+          date: day.date,
+          metrics: day.metrics.map((m) =>
+            buildMetric(m.key as MetricKey, m.value, clinicId, day.date, m.measuredAt),
+          ),
+        });
+      }
+    } catch (error) {
+      this.log.warn("Business Brain could not read stored history; recomputing instead", {
+        clinicId,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+    return byDate;
+  }
+
+  /**
+   * Record a day's measurements so future runs read them instead of
+   * reconstructing them.
+   *
+   * Best-effort and deliberately non-fatal: persistence is an optimisation and
+   * an accuracy improvement, never a precondition for answering. A failed write
+   * costs the next run some time, not its result.
+   */
+  async persistMetrics(clinicId: string, date: string, metrics: readonly Metric[]): Promise<void> {
+    if (this.historyStore === undefined || metrics.length === 0) return;
+    try {
+      await this.historyStore.writeMetricDay(clinicId, {
+        date,
+        metrics: metrics.map((m) => ({
+          // Metric ids are `key:clinicId:date`, and the key itself contains a
+          // dot but never a colon — so the first segment is the key.
+          key: m.id.slice(0, m.id.indexOf(":")),
+          value: m.value,
+          measuredAt: m.timestamp,
+        })),
+      });
+    } catch (error) {
+      this.log.warn("Business Brain could not persist metrics", {
+        clinicId,
+        date,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
   }
 }
 

@@ -16,15 +16,18 @@ import { getClinicConfig } from "@/lib/clinic/config";
 import { getTodayInTimezone } from "@/lib/utils";
 import { BusinessBrain, type BusinessBrainResult } from "@/business-brain";
 import { SupabaseMetricsDataRepository } from "./metrics-repository";
+import { SupabaseMetricHistoryStore } from "./metric-history-store";
 
 /**
  * Days of history loaded so the Diagnosis Engine can classify persistence —
  * whether something is a one-off, ongoing, worsening or improving.
  *
  * The engine's `minimumHistoryDays` is 3, so 7 gives it a real window while
- * staying inside one clinic-week. Each day is a separate snapshot read, so this
- * is the main cost of a dashboard load; it is acceptable for the demo clinic and
- * is the first thing to tune if the page ever feels slow.
+ * staying inside one clinic-week.
+ *
+ * Days already recorded in `metric_history` are read rather than recomputed, so
+ * the cost of this is one snapshot per day the persistence job has not yet
+ * covered — in a steady state, none.
  */
 const HISTORY_DAYS = 7;
 
@@ -38,10 +41,15 @@ export interface DashboardRun {
 /**
  * Run the pipeline for the caller's clinic on a business date.
  *
- * Read-only: the orchestrator's only collaborator is the repository, whose sole
- * method is a read. Uses the request's own Supabase session rather than the
- * service role, so RLS still applies and the dashboard cannot see further than
- * the dentist can.
+ * Read-only, and deliberately kept that way: a page render must not write, and
+ * `pipeline.spec.ts` asserts the whole run leaves every table's row count
+ * unchanged. Recording measurements is a separate, explicit step — see
+ * `persistMetricDay` in ./persist-metrics.ts.
+ *
+ * Uses the request's own Supabase session rather than the service role, so RLS
+ * still applies and the dashboard cannot see further than the dentist can. That
+ * is also why the history store here can only ever read: `metric_history` grants
+ * SELECT to a dentist and INSERT to nobody.
  *
  * @param date Business date "YYYY-MM-DD". Defaults to today in the clinic's
  *             timezone — not the server's.
@@ -57,7 +65,10 @@ export async function runDashboardBrain(date?: string): Promise<DashboardRun> {
   // cause as the TYPING NOTE in ./metrics-repository.ts.
   const supabase = (await createServerClient()) as unknown as SupabaseClient<Database>;
   const repository = new SupabaseMetricsDataRepository(supabase);
-  const brain = new BusinessBrain({ repository });
+  const brain = new BusinessBrain({
+    repository,
+    historyStore: new SupabaseMetricHistoryStore(supabase),
+  });
 
   const result = await brain.runBusinessBrain(clinicId, businessDate, {
     historyDays: HISTORY_DAYS,

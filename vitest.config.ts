@@ -7,6 +7,9 @@ export default defineConfig({
     // application modules the same way the app does.
     alias: {
       "@": fileURLToPath(new URL(".", import.meta.url)),
+      // See test/server-only-stub.ts — the real package cannot resolve outside
+      // a Next build, and the modules that import it are worth testing.
+      "server-only": fileURLToPath(new URL("./test/server-only-stub.ts", import.meta.url)),
     },
   },
   test: {

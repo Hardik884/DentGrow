@@ -9,6 +9,10 @@ import {
   verifyExplanation,
   type Diagnosis,
 } from "@/business-brain";
+import { addDays } from "@/business-brain";
+import { getClinicConfig } from "@/lib/clinic/config";
+import { getTodayInTimezone } from "@/lib/utils";
+import { persistMetricRange, type PersistResult } from "@/lib/business-brain/persist-metrics";
 import type { ActionResult } from "@/types";
 
 /**
@@ -121,5 +125,52 @@ export async function explainDiagnosis(
     }
     console.error("[explainDiagnosis]", error);
     return { data: null, error: EXPLANATION_UNAVAILABLE };
+  }
+}
+
+/**
+ * Record measured metrics so history stops being reconstructed.
+ *
+ * The pipeline reads `metric_history` for its history days and recomputes only
+ * what is missing, so without something writing to that table the optimisation
+ * never engages and every dashboard load re-derives a full week. This is that
+ * writer, exposed as an explicit action rather than a side effect of rendering:
+ * a page render must not write, and `pipeline.spec.ts` asserts the whole run
+ * leaves every table's row count unchanged.
+ *
+ * Records COMPLETED days only. Today's figures are still moving — a snapshot
+ * taken at 11:00 does not describe the day — so freezing today would store a
+ * half-finished number as if it were the day's result. The range therefore ends
+ * yesterday.
+ *
+ * Idempotent: the store upserts on (clinic, date, key), so re-running corrects
+ * rather than duplicates, and re-running after a data fix is how a correction
+ * propagates.
+ *
+ * @param days How many completed days back to record, ending yesterday.
+ */
+export async function recordMetricHistory(days = 30): Promise<ActionResult<PersistResult>> {
+  try {
+    // Same gate as the dashboard: this is a development surface.
+    const { profile } = await resolveSession();
+    if (!profile || profile.role !== "dentist") {
+      return { data: null, error: "Forbidden" };
+    }
+    if (!isBusinessBrainEnabled(profile.clinic_id)) {
+      return { data: null, error: "Not available for this clinic." };
+    }
+
+    const bounded = Math.min(Math.max(1, Math.trunc(days)), 365);
+    const { timezone } = await getClinicConfig();
+    // Yesterday in the CLINIC's timezone, not the server's: a job running at
+    // 00:30 UTC would otherwise record the wrong day for a clinic in IST.
+    const to = addDays(getTodayInTimezone(timezone), -1);
+    const from = addDays(to, -(bounded - 1));
+
+    const result = await persistMetricRange(profile.clinic_id, from, to);
+    return { data: result, error: null };
+  } catch (error) {
+    console.error("[recordMetricHistory]", error);
+    return { data: null, error: "Could not record metric history." };
   }
 }
