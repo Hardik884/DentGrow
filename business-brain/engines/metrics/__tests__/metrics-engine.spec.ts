@@ -52,7 +52,9 @@ const populated = snapshot({
   appointmentsToday: [appointment({ status: "completed" }), appointment({ status: "no_show" })],
   payments: [payment({ amount: 2500 })],
   treatments: [treatment({ cost: 4000, status: "completed" })],
-  capacity: { totalSlotsToday: 8 },
+  // 4 open hours on one chair. The no-show frees its chair, so only the
+  // completed 30-minute appointment counts: 30 of 240 minutes.
+  capacity: { openMinutesToday: 240, chairCount: 1, typicalAppointmentMinutes: 30 },
 });
 
 function byKey(metrics: { id: string; value: number }[], key: string): number | undefined {

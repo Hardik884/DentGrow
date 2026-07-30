@@ -39,7 +39,8 @@ import {
   availableSlotsToday,
   chairUtilization30d,
   bookedNext7d,
-  totalSlotsToday,
+  openMinutesToday,
+  appointmentCapacityToday,
 } from "./capacity-metrics";
 import {
   cancellationRate30d,
@@ -95,7 +96,8 @@ export const METRIC_CALCULATORS: readonly MetricCalculator[] = [
   availableSlotsToday,
   chairUtilization30d,
   bookedNext7d,
-  totalSlotsToday,
+  openMinutesToday,
+  appointmentCapacityToday,
 ];
 
 export * from "./appointment-metrics";

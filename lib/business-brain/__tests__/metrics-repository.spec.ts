@@ -286,8 +286,8 @@ describe.skipIf(!LOCAL_UP)("SupabaseMetricsDataRepository (integration)", () => 
       expect(s.trailingWindow?.appointments.map((a) => a.id)).toContain(
         "9f000000-0000-4000-8000-000000000031",
       );
-      // Capacity accumulates across the range, so it exceeds a single day's 8.
-      expect(s.trailingWindow?.totalSlots).toBeGreaterThan(8);
+      // Capacity accumulates across the range, so it exceeds a single day's 240.
+      expect(s.trailingWindow?.openChairMinutes).toBeGreaterThan(240);
     });
 
     it("carries createdAt on every appointment for lead-time analysis", async () => {
@@ -332,8 +332,81 @@ describe.skipIf(!LOCAL_UP)("SupabaseMetricsDataRepository (integration)", () => 
 
     it("derives capacity from the matching weekday's rules only", async () => {
       const s = await repository.getClinicSnapshot(CLINIC, DATE);
-      // 09:00–13:00 at 30 min = 8 slots. The other weekday's 18-slot rule is ignored.
-      expect(s.capacity.totalSlotsToday).toBe(8);
+      // 09:00–13:00 = 240 minutes. The other weekday's 09:00–18:00 rule is ignored.
+      expect(s.capacity.openMinutesToday).toBe(240);
+      expect(s.capacity.typicalAppointmentMinutes).toBe(30);
+    });
+
+    it("measures open time from the rule window, NOT from its step size", async () => {
+      // The regression this replaced. `slot_duration_minutes` is a step for
+      // generating candidate start times, and those overlap — a 240-minute
+      // window stepped every 10 minutes yields 24 of them. Capacity must not
+      // move when only the step changes.
+      await raw
+        .from("availability_rules")
+        .update({ slot_duration_minutes: 10 })
+        .eq("clinic_id", CLINIC)
+        .eq("day_of_week", DOW);
+      try {
+        const s = await repository.getClinicSnapshot(CLINIC, DATE);
+        expect(s.capacity.openMinutesToday).toBe(240);
+      } finally {
+        await raw
+          .from("availability_rules")
+          .update({ slot_duration_minutes: 30 })
+          .eq("clinic_id", CLINIC)
+          .eq("day_of_week", DOW);
+      }
+    });
+
+    it("defaults an unconfigured clinic to one chair", async () => {
+      const s = await repository.getClinicSnapshot(CLINIC, DATE);
+      expect(s.capacity.chairCount).toBe(1);
+    });
+
+    it("multiplies capacity by the clinic's chair count", async () => {
+      const single = await repository.getClinicSnapshot(CLINIC, DATE);
+      await raw.from("clinic_settings").update({ chair_count: 3 }).eq("clinic_id", CLINIC);
+      try {
+        const s = await repository.getClinicSnapshot(CLINIC, DATE);
+        expect(s.capacity.chairCount).toBe(3);
+        // `openMinutesToday` stays per-chair — the engine applies the multiplier.
+        // The windows carry chair-minutes, so they scale here.
+        expect(s.capacity.openMinutesToday).toBe(240);
+        expect(s.trailingWindow?.openChairMinutes).toBe(
+          (single.trailingWindow?.openChairMinutes ?? 0) * 3,
+        );
+
+        const engine = new DentGrowMetricsEngine(repository);
+        const metrics = await engine.calculateMetrics(CLINIC, DATE);
+        const v = (key: string) => metrics.find((m) => m.id.startsWith(`${key}:`))?.value;
+        // Same two 30-minute appointments against 3x the chair time.
+        expect(v(MetricKey.CAPACITY_OPEN_MINUTES_TODAY)).toBe(720);
+        expect(v(MetricKey.CAPACITY_CHAIR_UTILIZATION)).toBe(8.3);
+        expect(v(MetricKey.CAPACITY_APPOINTMENT_CAPACITY_TODAY)).toBe(24);
+      } finally {
+        await raw.from("clinic_settings").update({ chair_count: 1 }).eq("clinic_id", CLINIC);
+      }
+    });
+
+    it("counts a long appointment as more chair time than a short one", async () => {
+      await raw
+        .from("appointments")
+        .update({ duration_minutes: 120 })
+        .eq("id", "9f000000-0000-4000-8000-000000000031");
+      try {
+        const engine = new DentGrowMetricsEngine(repository);
+        const metrics = await engine.calculateMetrics(CLINIC, DATE);
+        const v = (key: string) => metrics.find((m) => m.id.startsWith(`${key}:`))?.value;
+        // 120 + 30 of 240 minutes, versus 25% when both were 30.
+        expect(v(MetricKey.CAPACITY_CHAIR_UTILIZATION)).toBe(62.5);
+        expect(v(MetricKey.CAPACITY_AVAILABLE_SLOTS_TODAY)).toBe(3);
+      } finally {
+        await raw
+          .from("appointments")
+          .update({ duration_minutes: 30 })
+          .eq("id", "9f000000-0000-4000-8000-000000000031");
+      }
     });
 
     it("stamps the snapshot with the injected capture time", async () => {
@@ -349,8 +422,8 @@ describe.skipIf(!LOCAL_UP)("SupabaseMetricsDataRepository (integration)", () => 
       expect(s.queueToday).toEqual([]);
       expect(s.patientsRegisteredToday).toEqual([]);
       expect(s.patientsSeenToday).toEqual([]);
-      // …and no availability rule exists for that clinic, so it offers no slots.
-      expect(s.capacity.totalSlotsToday).toBe(0);
+      // …and no availability rule exists for that clinic, so it is never open.
+      expect(s.capacity.openMinutesToday).toBe(0);
       // Treatments are cumulative by design (outstanding balance is a running
       // total), so this clinic still sees its own — and only its own.
       expect(s.treatments.map((t) => t.id)).toEqual(["9f000000-0000-4000-8000-0000000000a2"]);
@@ -386,7 +459,9 @@ describe.skipIf(!LOCAL_UP)("SupabaseMetricsDataRepository (integration)", () => 
       expect(v(MetricKey.FOLLOWUPS_OVERDUE)).toBe(1);
 
       expect(v(MetricKey.TREATMENT_COMPLETED_TODAY)).toBe(2);
-      // 2 of 8 slots occupied.
+      // Two 30-minute appointments in 240 open minutes on one chair.
+      expect(v(MetricKey.CAPACITY_OPEN_MINUTES_TODAY)).toBe(240);
+      expect(v(MetricKey.CAPACITY_APPOINTMENT_CAPACITY_TODAY)).toBe(8);
       expect(v(MetricKey.CAPACITY_CHAIR_UTILIZATION)).toBe(25);
       expect(v(MetricKey.CAPACITY_AVAILABLE_SLOTS_TODAY)).toBe(6);
 

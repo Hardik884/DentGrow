@@ -132,14 +132,21 @@ export function calibrateThresholds(metrics: readonly Metric[]): CalibrationResu
   const treatment: Record<string, number> = {};
 
   // ── Capacity-denominated ──────────────────────────────────────────────────
-  const slots = valueOf(metrics, MetricKey.CAPACITY_TOTAL_SLOTS_TODAY);
-  if (slots !== undefined && slots > 0) {
-    const value = atLeastOne(slots * CALIBRATION_RATIOS.MINIMUM_BOOKED_SLOT_SHARE);
+  // Sized from how many appointments actually FIT today — the clinic's open
+  // chair-time divided by its typical appointment length — not from a count of
+  // candidate start times. Those overlap, so they run several times higher than
+  // real capacity, and a floor derived from them would have been several times
+  // too high: a clinic booked to a perfectly ordinary level would be told its
+  // day was thin. The distortion also varied by weekday, so the same clinic
+  // would have been held to a different standard on a Monday than a Friday.
+  const capacity = valueOf(metrics, MetricKey.CAPACITY_APPOINTMENT_CAPACITY_TODAY);
+  if (capacity !== undefined && capacity > 0) {
+    const value = atLeastOne(capacity * CALIBRATION_RATIOS.MINIMUM_BOOKED_SLOT_SHARE);
     appointments.minimumDailyAppointments = value;
     applied.push({
       path: "appointments.minimumDailyAppointments",
       value,
-      basis: `${Math.round(CALIBRATION_RATIOS.MINIMUM_BOOKED_SLOT_SHARE * 100)}% of the ${slots} appointment slots offered today`,
+      basis: `${Math.round(CALIBRATION_RATIOS.MINIMUM_BOOKED_SLOT_SHARE * 100)}% of the ${capacity} appointments that fit in today's opening hours`,
     });
   }
 

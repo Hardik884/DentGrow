@@ -557,6 +557,11 @@ export const UpdateClinicSettingsSchema = z.object({
   email: z.string().email().optional().or(z.literal("")),
   address: z.string().max(500).optional(),
   average_appointment_duration: z.number().int().positive(),
+  // Treatment chairs that can be occupied at once. Mirrors the database CHECK:
+  // 0 chairs would make the clinic's capacity zero and its utilization a divide
+  // by zero. Capped at a level no single-site practice reaches, so a typo in a
+  // number field cannot silently make every capacity reading meaningless.
+  chair_count: z.number().int().min(1).max(50),
   timezone: z.string().min(1),
   registration_number: z.string().max(100).optional().or(z.literal("")),
   allow_receptionist_payments: z.boolean().default(false),

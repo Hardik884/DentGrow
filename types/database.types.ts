@@ -511,6 +511,7 @@ export type Database = {
           address: string | null;
           clinic_hours: Json | null;
           average_appointment_duration: number;
+          chair_count: number
           timezone: string;
           registration_number: string | null;
           allow_receptionist_payments: boolean;
@@ -528,6 +529,7 @@ export type Database = {
           address?: string | null;
           clinic_hours?: Json | null;
           average_appointment_duration?: number;
+          chair_count?: number
           timezone?: string;
           registration_number?: string | null;
           allow_receptionist_payments?: boolean;
@@ -545,6 +547,7 @@ export type Database = {
           address?: string | null;
           clinic_hours?: Json | null;
           average_appointment_duration?: number;
+          chair_count?: number
           timezone?: string;
           registration_number?: string | null;
           allow_receptionist_payments?: boolean;

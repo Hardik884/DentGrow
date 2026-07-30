@@ -168,3 +168,60 @@ export function getAvailableSlots(
   const unique = [...new Set(availableSlots)];
   return unique.sort();
 }
+
+/**
+ * openMinutes
+ *
+ * Total minutes a clinic is open on one day, given its availability rules and
+ * any consultancy blocks.
+ *
+ * This is capacity. It is NOT the number of entries generateSlots() returns:
+ * `slotDurationMinutes` is a STEP SIZE for candidate start times, so a rule from
+ * 09:00-13:00 at 10-minute steps yields 24 candidates that overlap each other.
+ * You cannot book 24 half-hour appointments in four hours. Counting candidates
+ * as capacity inflates a clinic's apparent room by the ratio of appointment
+ * length to step size, and the distortion changes whenever the step changes —
+ * so the same clinic reads differently on different weekdays.
+ *
+ * Rules are UNIONED, not summed. Two rules covering 09:00-13:00 and 09:00-23:59
+ * describe one open period, and adding their lengths would count the overlap
+ * twice. Blocked ranges are subtracted from the union for the same reason.
+ *
+ * Pure: minutes-since-midnight arithmetic only, no Date, no timezone, no clock.
+ */
+export function openMinutes(
+  rules: AvailabilityRule[],
+  blockedRanges?: Array<{ start: string; end: string }>
+): number {
+  const merge = (spans: Array<[number, number]>): Array<[number, number]> => {
+    const sorted = spans
+      .filter(([s, e]) => e > s)
+      .sort((a, b) => a[0] - b[0]);
+    const merged: Array<[number, number]> = [];
+    for (const [start, end] of sorted) {
+      const last = merged[merged.length - 1];
+      if (last && start <= last[1]) {
+        last[1] = Math.max(last[1], end);
+      } else {
+        merged.push([start, end]);
+      }
+    }
+    return merged;
+  };
+
+  const open = merge(rules.map((r) => [toMinutes(r.startTime), toMinutes(r.endTime)]));
+  const blocked = merge(
+    (blockedRanges ?? []).map((b) => [toMinutes(b.start), toMinutes(b.end)])
+  );
+
+  let total = 0;
+  for (const [start, end] of open) {
+    let covered = end - start;
+    for (const [bStart, bEnd] of blocked) {
+      const overlap = Math.min(end, bEnd) - Math.max(start, bStart);
+      if (overlap > 0) covered -= overlap;
+    }
+    total += Math.max(0, covered);
+  }
+  return total;
+}

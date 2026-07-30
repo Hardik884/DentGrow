@@ -134,14 +134,44 @@ export interface ScheduleWindow {
   readonly to: string;
   /** Appointments whose `scheduledAt` falls inside the range. */
   readonly appointments: readonly AppointmentSnapshot[];
-  /** Total bookable slots the clinic offers across the whole range. */
-  readonly totalSlots: number;
+  /**
+   * Chair-minutes the clinic is open across the whole range: the sum of each
+   * day's open minutes multiplied by its chair count.
+   */
+  readonly openChairMinutes: number;
 }
 
-/** Clinic capacity for the target date, derived from availability rules. */
+/**
+ * Clinic capacity for the target date, expressed in TIME rather than slot count.
+ *
+ * `availability_rules.slot_duration_minutes` is a step size for generating
+ * candidate start times, not a unit of capacity: at 10-minute steps a four-hour
+ * window yields 24 overlapping candidates, and you cannot book 24 half-hour
+ * appointments in four hours. Counting candidates inflates capacity by the ratio
+ * of appointment length to step size, and the distortion changes with the step —
+ * so the same clinic would read differently on different weekdays.
+ *
+ * Minutes have none of those problems and are exact at any granularity.
+ */
 export interface CapacitySnapshot {
-  /** Total bookable appointment slots the clinic offers on the target date. */
-  readonly totalSlotsToday: number;
+  /**
+   * Minutes the clinic is open on the target date: the union of its active
+   * availability rules, less consultancy blocks, zero on a closed day.
+   * Per chair — multiply by {@link chairCount} for total treatable capacity.
+   */
+  readonly openMinutesToday: number;
+  /**
+   * Chairs that can be occupied at once. Always at least 1. A clinic with three
+   * chairs genuinely delivers three appointments an hour, and treating it as one
+   * makes utilization read triple and pin at its cap.
+   */
+  readonly chairCount: number;
+  /**
+   * Typical appointment length in minutes (`clinic_settings.
+   * average_appointment_duration`). Used only to express spare time in a unit a
+   * dentist thinks in — "room for about 4 more appointments".
+   */
+  readonly typicalAppointmentMinutes: number;
 }
 
 /**

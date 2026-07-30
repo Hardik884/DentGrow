@@ -14,6 +14,13 @@ function formatMetric(metric: Metric): string {
     case "percentage":
       return `${metric.value}%`;
     case "minutes":
+      // Chair time runs to hundreds of minutes, which nobody reads as a
+      // duration. Above two hours, show hours — trimming a trailing ".0" so a
+      // whole working day reads "8 hr" rather than "8.0 hr". Kept in minutes on
+      // the metric itself, because that is the unit the arithmetic is exact in.
+      if (metric.value >= 120) {
+        return `${(Math.round((metric.value / 60) * 10) / 10).toString()} hr`;
+      }
       return `${metric.value} min`;
     case "hours":
       return `${metric.value} hr`;

@@ -29,17 +29,17 @@ function pathValue(overrides: unknown, path: string): unknown {
 }
 
 describe("capacity-denominated thresholds", () => {
-  it("sizes the volume threshold from the slots this clinic offered", () => {
-    const { overrides, applied } = calibrateThresholds([m(MetricKey.CAPACITY_TOTAL_SLOTS_TODAY, 16)]);
+  it("sizes the volume threshold from the appointments that fit today", () => {
+    const { overrides, applied } = calibrateThresholds([m(MetricKey.CAPACITY_APPOINTMENT_CAPACITY_TODAY, 16)]);
     // 30% of 16 slots.
     expect(pathValue(overrides, "appointments.minimumDailyAppointments")).toBe(5);
-    expect(applied[0].basis).toContain("16 appointment slots");
+    expect(applied[0].basis).toContain("16 appointments that fit");
   });
 
   it("gives a small clinic a smaller threshold than a large one", () => {
     // The whole point: one constant cannot serve both.
-    const small = calibrateThresholds([m(MetricKey.CAPACITY_TOTAL_SLOTS_TODAY, 6)]);
-    const large = calibrateThresholds([m(MetricKey.CAPACITY_TOTAL_SLOTS_TODAY, 40)]);
+    const small = calibrateThresholds([m(MetricKey.CAPACITY_APPOINTMENT_CAPACITY_TODAY, 6)]);
+    const large = calibrateThresholds([m(MetricKey.CAPACITY_APPOINTMENT_CAPACITY_TODAY, 40)]);
     const s = pathValue(small.overrides, "appointments.minimumDailyAppointments") as number;
     const l = pathValue(large.overrides, "appointments.minimumDailyAppointments") as number;
     expect(s).toBeLessThan(l);
@@ -47,15 +47,15 @@ describe("capacity-denominated thresholds", () => {
     expect(l).toBe(12);
   });
 
-  it("never derives a threshold of zero, however few slots are offered", () => {
-    // 30% of 1 slot rounds to 0, and a threshold of 0 either never fires or
+  it("never derives a threshold of zero, however little capacity there is", () => {
+    // 30% of 1 appointment rounds to 0, and a threshold of 0 either never fires or
     // always does depending on direction. One is the smallest meaningful value.
-    const { overrides } = calibrateThresholds([m(MetricKey.CAPACITY_TOTAL_SLOTS_TODAY, 1)]);
+    const { overrides } = calibrateThresholds([m(MetricKey.CAPACITY_APPOINTMENT_CAPACITY_TODAY, 1)]);
     expect(pathValue(overrides, "appointments.minimumDailyAppointments")).toBe(1);
   });
 
   it("derives nothing on a closed day rather than sizing from zero", () => {
-    const { overrides, applied } = calibrateThresholds([m(MetricKey.CAPACITY_TOTAL_SLOTS_TODAY, 0)]);
+    const { overrides, applied } = calibrateThresholds([m(MetricKey.CAPACITY_APPOINTMENT_CAPACITY_TODAY, 0)]);
     expect(overrides).toEqual({});
     expect(applied).toEqual([]);
   });
@@ -100,7 +100,7 @@ describe("refuses to derive from nothing", () => {
     // Production of zero must not become a threshold of zero, which would make
     // every outstanding balance look excessive on the clinic's first day.
     const { overrides } = calibrateThresholds([
-      m(MetricKey.CAPACITY_TOTAL_SLOTS_TODAY, 16),
+      m(MetricKey.CAPACITY_APPOINTMENT_CAPACITY_TODAY, 16),
       m(MetricKey.REVENUE_PRODUCTION_30D, 0),
       m(MetricKey.REVENUE_COLLECTED_30D, 0),
     ]);
@@ -119,7 +119,7 @@ describe("refuses to derive from nothing", () => {
 
 describe("what is deliberately NOT calibrated", () => {
   const { overrides } = calibrateThresholds([
-    m(MetricKey.CAPACITY_TOTAL_SLOTS_TODAY, 16),
+    m(MetricKey.CAPACITY_APPOINTMENT_CAPACITY_TODAY, 16),
     m(MetricKey.REVENUE_PRODUCTION_30D, 180_000),
     m(MetricKey.REVENUE_COLLECTED_30D, 150_000),
   ]);
@@ -146,9 +146,11 @@ describe("what is deliberately NOT calibrated", () => {
   });
 
   it("leaves thresholds whose honest denominator does not exist yet", () => {
-    // maximumQueueLength wants a chair count and overdueFollowupLimit wants an
-    // active roster size. Neither exists, and deriving them from something else
-    // would invent a relationship rather than measure one.
+    // maximumQueueLength wants the chair count, which now exists on the snapshot
+    // but is configuration rather than a measurement, so it is not published as
+    // a metric and calibration cannot see it. overdueFollowupLimit wants an
+    // active roster size, which no metric reports at all. Deriving either from
+    // something else would invent a relationship rather than measure one.
     expect(merged.queue.maximumQueueLength).toBe(
       DEFAULT_SIGNAL_THRESHOLDS.queue.maximumQueueLength,
     );
@@ -160,7 +162,7 @@ describe("what is deliberately NOT calibrated", () => {
 
 describe("determinism and transparency", () => {
   const metrics = [
-    m(MetricKey.CAPACITY_TOTAL_SLOTS_TODAY, 16),
+    m(MetricKey.CAPACITY_APPOINTMENT_CAPACITY_TODAY, 16),
     m(MetricKey.REVENUE_PRODUCTION_30D, 180_000),
   ];
 

@@ -113,16 +113,18 @@ describe("bookingLeadTimeDays", () => {
 });
 
 describe("chairUtilization30d", () => {
-  it("averages booked against offered slots across the window", () => {
+  it("averages booked against open chair-time across the window", () => {
     const s = snapshot({
-      trailingWindow: scheduleWindow({ appointments: mixed, totalSlots: 8 }),
+      trailingWindow: scheduleWindow({ appointments: mixed, openChairMinutes: 240 }),
     });
-    // 2 of 4 still occupy a slot (cancelled and no-show free it): 2/8.
+    // 2 of 4 still occupy the chair (cancelled and no-show free it): 60 of 240.
     expect(valueOf(chairUtilization30d, s)).toBe(25);
   });
 
   it("WITHHOLDS when the clinic offered no capacity across the window", () => {
-    const s = snapshot({ trailingWindow: scheduleWindow({ appointments: mixed, totalSlots: 0 }) });
+    const s = snapshot({
+      trailingWindow: scheduleWindow({ appointments: mixed, openChairMinutes: 0 }),
+    });
     expect(isWithheld(chairUtilization30d, s)).toBe(true);
   });
 
@@ -138,7 +140,7 @@ describe("bookedNext7d", () => {
         from: "2026-07-29",
         to: "2026-08-04",
         appointments: [appointment(), appointment(), appointment()],
-        totalSlots: 20,
+        openChairMinutes: 600,
       }),
     });
     expect(valueOf(bookedNext7d, s)).toBe(15);
@@ -148,26 +150,26 @@ describe("bookedNext7d", () => {
     const s = snapshot({
       forwardWindow: scheduleWindow({
         appointments: [appointment({ status: "cancelled" }), appointment({ status: "scheduled" })],
-        totalSlots: 10,
+        openChairMinutes: 300,
       }),
     });
     expect(valueOf(bookedNext7d, s)).toBe(10);
   });
 
   it("WITHHOLDS for a closed week — not open is not the same as not booked", () => {
-    const s = snapshot({ forwardWindow: scheduleWindow({ appointments: [], totalSlots: 0 }) });
+    const s = snapshot({ forwardWindow: scheduleWindow({ appointments: [], openChairMinutes: 0 }) });
     expect(isWithheld(bookedNext7d, s)).toBe(true);
   });
 
   it("reports 0% for an open but empty week — that is the warning it exists for", () => {
-    const s = snapshot({ forwardWindow: scheduleWindow({ appointments: [], totalSlots: 20 }) });
+    const s = snapshot({ forwardWindow: scheduleWindow({ appointments: [], openChairMinutes: 600 }) });
     expect(valueOf(bookedNext7d, s)).toBe(0);
   });
 
   it("reads the forward window, never the trailing one", () => {
     const s = snapshot({
-      trailingWindow: scheduleWindow({ appointments: mixed, totalSlots: 4 }),
-      forwardWindow: scheduleWindow({ appointments: [], totalSlots: 20 }),
+      trailingWindow: scheduleWindow({ appointments: mixed, openChairMinutes: 120 }),
+      forwardWindow: scheduleWindow({ appointments: [], openChairMinutes: 600 }),
     });
     expect(valueOf(bookedNext7d, s)).toBe(0);
     expect(valueOf(chairUtilization30d, s)).toBe(50);

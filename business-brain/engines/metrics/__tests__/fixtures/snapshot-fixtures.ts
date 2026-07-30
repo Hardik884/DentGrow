@@ -109,7 +109,7 @@ export function scheduleWindow(over: Partial<ScheduleWindow> = {}): ScheduleWind
     from: "2026-06-29",
     to: DATE,
     appointments: [],
-    totalSlots: 0,
+    openChairMinutes: 0,
     ...over,
   };
 }
@@ -126,12 +126,12 @@ export function measurableSnapshot(): ClinicDataSnapshot {
     treatments: [treatment({ cost: 1000, status: "completed" })],
     payments: [payment({ amount: 500 })],
     patientRoster: [rosterEntry()],
-    trailingWindow: scheduleWindow({ appointments: [appointment()], totalSlots: 10 }),
+    trailingWindow: scheduleWindow({ appointments: [appointment()], openChairMinutes: 300 }),
     forwardWindow: scheduleWindow({
       from: "2026-07-29",
       to: "2026-08-04",
       appointments: [appointment({ scheduledAt: "2026-07-30T10:00:00.000Z" })],
-      totalSlots: 10,
+      openChairMinutes: 300,
     }),
   });
 }
@@ -149,7 +149,7 @@ export function snapshot(over: Partial<ClinicDataSnapshot> = {}): ClinicDataSnap
     payments: [],
     queueToday: [],
     followUps: [],
-    capacity: { totalSlotsToday: 0 },
+    capacity: { openMinutesToday: 0, chairCount: 1, typicalAppointmentMinutes: 30 },
     ...over,
   };
 }

@@ -44,7 +44,8 @@ export const MetricKey = {
   CAPACITY_AVAILABLE_SLOTS_TODAY: "capacity.available_slots_today",
   CAPACITY_CHAIR_UTILIZATION_30D: "capacity.chair_utilization_30d",
   CAPACITY_BOOKED_NEXT_7D: "capacity.booked_next_7d",
-  CAPACITY_TOTAL_SLOTS_TODAY: "capacity.total_slots_today",
+  CAPACITY_OPEN_MINUTES_TODAY: "capacity.open_minutes_today",
+  CAPACITY_APPOINTMENT_CAPACITY_TODAY: "capacity.appointment_capacity_today",
 } as const;
 
 export type MetricKey = (typeof MetricKey)[keyof typeof MetricKey];
@@ -167,9 +168,15 @@ export const METRIC_DESCRIPTORS: Readonly<Record<MetricKey, MetricDescriptor>> =
     category: MetricCategory.REVENUE,
     unit: MetricUnit.CURRENCY,
   },
-  [MetricKey.CAPACITY_TOTAL_SLOTS_TODAY]: {
-    key: MetricKey.CAPACITY_TOTAL_SLOTS_TODAY,
-    name: "Appointment Slots Offered Today",
+  [MetricKey.CAPACITY_OPEN_MINUTES_TODAY]: {
+    key: MetricKey.CAPACITY_OPEN_MINUTES_TODAY,
+    name: "Chair Time Open Today",
+    category: MetricCategory.UTILIZATION,
+    unit: MetricUnit.MINUTES,
+  },
+  [MetricKey.CAPACITY_APPOINTMENT_CAPACITY_TODAY]: {
+    key: MetricKey.CAPACITY_APPOINTMENT_CAPACITY_TODAY,
+    name: "Appointments That Fit Today",
     category: MetricCategory.UTILIZATION,
     unit: MetricUnit.COUNT,
   },
@@ -217,7 +224,7 @@ export const METRIC_DESCRIPTORS: Readonly<Record<MetricKey, MetricDescriptor>> =
   },
   [MetricKey.CAPACITY_AVAILABLE_SLOTS_TODAY]: {
     key: MetricKey.CAPACITY_AVAILABLE_SLOTS_TODAY,
-    name: "Available Appointment Slots Today",
+    name: "Room For More Appointments Today",
     category: MetricCategory.UTILIZATION,
     unit: MetricUnit.COUNT,
   },

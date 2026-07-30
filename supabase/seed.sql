@@ -129,8 +129,12 @@ insert into clinics (id, name, dentist_name)
 values ('00000000-0000-0000-0000-000000000001', 'My Dental Clinic', 'Dr. Demo')
 on conflict (id) do nothing;
 
-insert into clinic_settings (clinic_id, clinic_name, timezone, average_appointment_duration)
-values ('00000000-0000-0000-0000-000000000001', 'My Dental Clinic', 'Asia/Kolkata', 30)
+-- Two chairs, so the demo clinic exercises the chair multiplier in capacity
+-- metrics rather than the default single-chair path.
+insert into clinic_settings (
+  clinic_id, clinic_name, timezone, average_appointment_duration, chair_count
+)
+values ('00000000-0000-0000-0000-000000000001', 'My Dental Clinic', 'Asia/Kolkata', 30, 2)
 on conflict (clinic_id) do nothing;
 
 insert into auth.users (

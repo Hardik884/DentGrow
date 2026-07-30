@@ -43,7 +43,7 @@ import type {
 } from "@/business-brain";
 import type { Database } from "@/types/database.types";
 import { DEFAULT_TIMEZONE } from "@/lib/clinic/constants";
-import { getAvailableSlots, type AvailabilityRule } from "@/lib/scheduling/slots";
+import { openMinutes, type AvailabilityRule } from "@/lib/scheduling/slots";
 import { getUtcBoundariesForLocalDate } from "@/lib/utils";
 import { addDays, dateRange } from "@/business-brain";
 
@@ -71,6 +71,7 @@ function rows<T>(data: unknown): T[] {
 interface ClinicSettingsRow {
   timezone: string | null;
   average_appointment_duration: number | null;
+  chair_count: number | null;
 }
 interface AppointmentRow {
   id: string;
@@ -200,13 +201,17 @@ export class SupabaseMetricsDataRepository implements MetricsDataRepository {
     // capacity, so they must be resolved before anything date-scoped runs.
     const { data: settings } = await this.db
       .from("clinic_settings")
-      .select("timezone, average_appointment_duration")
+      .select("timezone, average_appointment_duration, chair_count")
       .eq("clinic_id", clinicId)
       .maybeSingle();
 
     const cfg = (settings ?? null) as ClinicSettingsRow | null;
     const timezone = cfg?.timezone ?? DEFAULT_TIMEZONE;
-    const slotMinutes = cfg?.average_appointment_duration ?? 30;
+    const typicalAppointmentMinutes = cfg?.average_appointment_duration ?? 30;
+    // A clinic that has never set a chair count is a one-chair clinic. Guarded
+    // against 0 as well as null: capacity is open time x chairs, so a zero here
+    // would report a working clinic as having no capacity at all.
+    const chairCount = Math.max(1, cfg?.chair_count ?? 1);
     const { start: dayStart, end: dayEnd } = getUtcBoundariesForLocalDate(date, timezone);
 
     const trailingDays = this.options.trailingWindowDays ?? DEFAULT_TRAILING_DAYS;
@@ -264,25 +269,23 @@ export class SupabaseMetricsDataRepository implements MetricsDataRepository {
       queueToday,
       followUps,
       capacity: {
-        totalSlotsToday: this.slotsOnDate(date, scheduleInputs, timezone, slotMinutes),
+        openMinutesToday: this.openMinutesOnDate(date, scheduleInputs),
+        chairCount,
+        typicalAppointmentMinutes,
       },
       trailingWindow: {
         from: trailingFrom,
         to: date,
         appointments: trailingAppointments,
-        totalSlots: this.slotsInRange(trailingFrom, date, scheduleInputs, timezone, slotMinutes),
+        openChairMinutes:
+          this.openMinutesInRange(trailingFrom, date, scheduleInputs) * chairCount,
       },
       forwardWindow: {
         from: forwardFrom,
         to: forwardTo,
         appointments: forwardAppointments,
-        totalSlots: this.slotsInRange(
-          forwardFrom,
-          forwardTo,
-          scheduleInputs,
-          timezone,
-          slotMinutes,
-        ),
+        openChairMinutes:
+          this.openMinutesInRange(forwardFrom, forwardTo, scheduleInputs) * chairCount,
       },
       patientRoster: roster.map((p) => ({
         id: p.id,
@@ -587,31 +590,42 @@ export class SupabaseMetricsDataRepository implements MetricsDataRepository {
    * capacity is defined in exactly one place, including its handling of rule
    * boundaries and external-consultancy blocks.
    */
-  private slotsOnDate(
+  /**
+   * Minutes one chair is open on a date: the union of that weekday's active
+   * rules, less any consultancy block, zero when the clinic is shut.
+   *
+   * Deliberately NOT `getAvailableSlots(...).length`, which is what this used to
+   * be. That function is correct for booking — it validates that a full
+   * appointment fits inside a rule window — but its return is a list of
+   * candidate START TIMES stepped at `slot_duration_minutes`, and those overlap.
+   * A 09:00-13:00 rule stepped every 10 minutes yields 24 candidates for four
+   * hours of chair time. Counting them as capacity inflated the denominator by
+   * the ratio of appointment length to step size, so utilization read roughly a
+   * third of the truth on this clinic's Mondays and a different fraction on its
+   * Fridays.
+   *
+   * Timezone plays no part: rules are wall-clock times and their length is the
+   * same in any zone. Only the closed-date and block lookups are date-keyed, and
+   * the caller already resolves those in clinic-local terms.
+   */
+  private openMinutesOnDate(
     date: string,
     inputs: Awaited<ReturnType<SupabaseMetricsDataRepository["fetchScheduleInputs"]>>,
-    timezone: string,
-    slotMinutes: number,
   ): number {
     if (inputs.closedDates.has(date)) return 0;
     const rules = inputs.rulesByDow.get(dayOfWeek(date)) ?? [];
     if (rules.length === 0) return 0;
-    const blocked = inputs.blocksByDate.get(date) ?? [];
-    return getAvailableSlots(date, rules, [], timezone, slotMinutes, null, blocked).length;
+    return openMinutes(rules, inputs.blocksByDate.get(date) ?? []);
   }
 
   /** Total slots offered across an inclusive date range. */
-  private slotsInRange(
+  /** Open minutes per chair summed across an inclusive date range. */
+  private openMinutesInRange(
     from: string,
     to: string,
     inputs: Awaited<ReturnType<SupabaseMetricsDataRepository["fetchScheduleInputs"]>>,
-    timezone: string,
-    slotMinutes: number,
   ): number {
-    return dateRange(from, to).reduce(
-      (sum, d) => sum + this.slotsOnDate(d, inputs, timezone, slotMinutes),
-      0,
-    );
+    return dateRange(from, to).reduce((sum, d) => sum + this.openMinutesOnDate(d, inputs), 0);
   }
 
   /** Appointments whose scheduled time falls inside an inclusive date range. */

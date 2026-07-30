@@ -41,7 +41,7 @@ function snapshotFor(clinicId: string, date: string): ClinicDataSnapshot {
       { id: "q2", status: "waiting", checkedInAt: `${date}T05:10:00.000Z`, startedAt: null },
     ],
     followUps: [],
-    capacity: { totalSlotsToday: 16 },
+    capacity: { openMinutesToday: 480, chairCount: 1, typicalAppointmentMinutes: 30 },
   };
 }
 

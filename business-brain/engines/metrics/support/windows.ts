@@ -11,6 +11,7 @@
  */
 
 import type {
+  AppointmentSnapshot,
   ClinicDataSnapshot,
   PaymentSnapshot,
   ScheduleWindow,
@@ -70,25 +71,39 @@ export function occupiesSlot(status: string): boolean {
   return status !== "cancelled" && status !== "no_show";
 }
 
-/** Booked slots inside a window. */
-export function bookedInWindow(window: ScheduleWindow): number {
-  return window.appointments.filter((a) => occupiesSlot(a.status)).length;
+/**
+ * Chair-minutes consumed by a set of appointments.
+ *
+ * The unit of capacity is time, not appointment count: a 10-minute check and a
+ * 60-minute root canal are one appointment each but six times apart in chair
+ * use. Counting them equally is what made a busy clinic read as idle.
+ *
+ * A missing or nonsensical duration falls back to 30 minutes rather than 0.
+ * Zero would silently erase a real booking from the numerator and report the
+ * chair as free while a patient is in it; 30 is the schema default and the
+ * DentGrow-wide default appointment length, so the fallback is the same
+ * assumption the booking screen already makes.
+ */
+export function bookedMinutes(appointments: readonly AppointmentSnapshot[]): number {
+  return appointments
+    .filter((a) => occupiesSlot(a.status))
+    .reduce((sum, a) => sum + (a.durationMinutes > 0 ? a.durationMinutes : 30), 0);
 }
 
 /**
- * Fill rate for a window: booked slots as a percentage of slots offered.
+ * Fill rate for a window: booked chair-minutes as a percentage of open ones.
  *
  * Returns `null` when the clinic offered no capacity at all across the range —
- * a fill rate against zero slots is undefined, and 0% would read as "nobody
+ * a fill rate against zero open time is undefined, and 0% would read as "nobody
  * booked" when the truth is "we were never open".
  *
  * Capped at 100% for overbooking, matching the single-day calculator.
  */
 export function fillRate(window: ScheduleWindow): number | null {
-  if (window.totalSlots <= 0) {
+  if (window.openChairMinutes <= 0) {
     return null;
   }
-  const raw = (bookedInWindow(window) / window.totalSlots) * 100;
+  const raw = (bookedMinutes(window.appointments) / window.openChairMinutes) * 100;
   return Math.round(Math.min(100, raw) * 10) / 10;
 }
 
