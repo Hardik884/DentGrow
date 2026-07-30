@@ -108,6 +108,7 @@ interface TreatmentRow {
   status: string;
   performed_at: string | null;
   patient_id: string;
+  created_at: string;
 }
 
 /**
@@ -203,7 +204,7 @@ export class SupabaseMetricsDataRepository implements MetricsDataRepository {
   }
 
   async getClinicSnapshot(clinicId: string, date: string): Promise<ClinicDataSnapshot> {
-    const asOf = this.options.asOf ?? new Date().toISOString();
+    const clock = this.options.asOf ?? new Date().toISOString();
 
     // Clinic settings drive both the day boundaries and the slot size used for
     // capacity, so they must be resolved before anything date-scoped runs.
@@ -222,6 +223,23 @@ export class SupabaseMetricsDataRepository implements MetricsDataRepository {
     const chairCount = Math.max(1, cfg?.chair_count ?? 1);
     const { start: dayStart, end: dayEnd } = getUtcBoundariesForLocalDate(date, timezone);
 
+    // POINT IN TIME
+    // -------------
+    // `asOf` is the moment the snapshot describes, and for a past date that is
+    // the END OF THAT DAY — not now. This used to be the wall clock regardless
+    // of `date`, which meant every historical day was measured with today's
+    // knowledge: "outstanding balance last Tuesday" returned today's balance,
+    // and "does this patient have an upcoming visit" asked about today's future.
+    //
+    // The Diagnosis Engine reads those history days to decide whether a breach
+    // is sustained, improving or intermittent. Feeding it the same current
+    // figure for all seven days made every cumulative metric a flat line, so a
+    // threshold crossed this morning was classified as sustained for a week.
+    //
+    // Clamped rather than replaced: for today's date the clock is still the
+    // right answer, because a snapshot taken at 11:00 must not claim to know
+    // the afternoon.
+    const asOf = clock < dayEnd ? clock : dayEnd;
     const trailingDays = this.options.trailingWindowDays ?? DEFAULT_TRAILING_DAYS;
     const forwardDays = this.options.forwardWindowDays ?? DEFAULT_FORWARD_DAYS;
     const trailingFrom = addDays(date, -(trailingDays - 1));
@@ -246,12 +264,12 @@ export class SupabaseMetricsDataRepository implements MetricsDataRepository {
     ] = await Promise.all([
       this.fetchAppointments(clinicId, dayStart, dayEnd),
       this.fetchPatientsRegistered(clinicId, dayStart, dayEnd),
-      this.fetchTreatments(clinicId),
-      this.fetchPayments(clinicId),
+      this.fetchTreatments(clinicId, asOf),
+      this.fetchPayments(clinicId, date),
       this.fetchQueue(clinicId, date),
       this.fetchFollowUps(clinicId, date),
       this.fetchPatientsWithFutureAppointments(clinicId, asOf),
-      this.fetchPatientRoster(clinicId),
+      this.fetchPatientRoster(clinicId, asOf),
       this.fetchAppointmentsInRange(clinicId, trailingFrom, date, timezone),
       this.fetchAppointmentsInRange(clinicId, forwardFrom, forwardTo, timezone),
     ]);
@@ -400,26 +418,63 @@ export class SupabaseMetricsDataRepository implements MetricsDataRepository {
    * Anything it flags is genuinely unbooked; some genuinely unbooked work will
    * be missed because the patient has some other appointment.
    */
+  /**
+   * Treatments that existed as of the snapshot moment.
+   *
+   * Cumulative by design — outstanding balance is a running total, not a daily
+   * figure — but cumulative up to `asOf`, not up to now. A treatment raised
+   * after the date being measured was not on the clinic's books then, and
+   * counting it made every historical balance equal to today's.
+   *
+   * The bound is the ECONOMIC event, not the row's creation time, because this
+   * app supports backdating (migration 20260713000000): a dentist can record on
+   * Wednesday work that was performed on Monday. Monday's balance should
+   * include that work — the treatment happened, whatever time the keyboard was
+   * touched. So:
+   *
+   *   performed_at set    -> on the books once the work was performed
+   *   performed_at null   -> planned or cancelled; on the books once created
+   *
+   * Status is corrected on the same evidence. A treatment performed after `asOf`
+   * cannot have been `completed` then, so it is reported as `planned` — which is
+   * what it must have been, derived from a recorded timestamp rather than
+   * guessed — and only if it had been created by then.
+   *
+   * RESIDUAL, and the reason metric persistence is worth building: status
+   * changes are not versioned. A treatment cancelled tomorrow reads as
+   * cancelled in yesterday's snapshot, because nothing records when it was
+   * cancelled. The effect is a slight UNDER-statement of historical pending
+   * value, and no query can close it — only storing each day's metrics as they
+   * were measured can.
+   */
   private async fetchTreatments(
     clinicId: string,
+    asOf: string,
   ): Promise<Array<Omit<TreatmentSnapshot, "isScheduled"> & { patientId: string }>> {
     const { data, error } = await this.db
       .from("treatments")
-      .select("id, cost, status, performed_at, patient_id")
+      .select("id, cost, status, performed_at, patient_id, created_at")
       .eq("clinic_id", clinicId)
-      .is("deleted_at", null);
+      .is("deleted_at", null)
+      .or(`performed_at.lte.${asOf},created_at.lte.${asOf}`);
     if (error) throw new Error(`treatments: ${error.message}`);
 
-    return rows<TreatmentRow>(data).map((t) => {
-      const cost = Number(t.cost ?? 0);
-      return {
-        id: t.id,
-        cost,
-        status: t.status,
-        performedAt: t.performed_at,
-        patientId: t.patient_id,
-      };
-    });
+    return rows<TreatmentRow>(data)
+      .map((t) => {
+        const performedAt = t.performed_at;
+        const performedByNow = performedAt !== null && performedAt <= asOf;
+        // Not yet performed at this moment. It counts as pipeline only if it
+        // had been raised by then; otherwise it did not exist at all.
+        if (!performedByNow && t.created_at > asOf) return null;
+        return {
+          id: t.id,
+          cost: Number(t.cost ?? 0),
+          status: performedByNow ? t.status : "planned",
+          performedAt: performedByNow ? performedAt : null,
+          patientId: t.patient_id,
+        };
+      })
+      .filter((t): t is NonNullable<typeof t> => t !== null);
   }
 
   /**
@@ -433,15 +488,52 @@ export class SupabaseMetricsDataRepository implements MetricsDataRepository {
    * history — the same unbounded-read caveat as treatments and payments. Fine at
    * pilot scale; needs bounding before a clinic with years of records.
    */
-  private async fetchPatientRoster(clinicId: string): Promise<PatientRosterRow[]> {
-    const { data, error } = await this.db
-      .from("patients")
-      .select("id, created_at, last_visit")
-      .eq("clinic_id", clinicId)
-      .is("deleted_at", null);
-    if (error) throw new Error(`patients (roster): ${error.message}`);
+  /**
+   * The clinic's roster as it stood at `asOf`.
+   *
+   * Membership is bounded exactly: a patient registered after the date was not
+   * on the roster then, and counting them made the historical roster grow
+   * backwards in time.
+   *
+   * `last_visit` is deliberately NOT read from the column. That column is a
+   * maintained counter holding the CURRENT most recent visit, so on a
+   * historical day it reports visits that had not happened yet — which is
+   * precisely backwards for a metric whose job is finding patients not seen in
+   * a long time. It is derived from completed appointments instead, which carry
+   * their own dates and can therefore be asked about any moment.
+   */
+  private async fetchPatientRoster(clinicId: string, asOf: string): Promise<PatientRosterRow[]> {
+    const [rosterResult, visitsResult] = await Promise.all([
+      this.db
+        .from("patients")
+        .select("id, created_at")
+        .eq("clinic_id", clinicId)
+        .is("deleted_at", null)
+        .lte("created_at", asOf),
+      this.db
+        .from("appointments")
+        .select("patient_id, scheduled_at")
+        .eq("clinic_id", clinicId)
+        .is("deleted_at", null)
+        .eq("status", "completed")
+        .lte("scheduled_at", asOf),
+    ]);
+    if (rosterResult.error) throw new Error(`patients (roster): ${rosterResult.error.message}`);
+    if (visitsResult.error) throw new Error(`patients (last visit): ${visitsResult.error.message}`);
 
-    return rows<PatientRosterRow>(data);
+    const lastVisit = new Map<string, string>();
+    for (const v of rows<{ patient_id: string; scheduled_at: string }>(visitsResult.data)) {
+      const current = lastVisit.get(v.patient_id);
+      if (current === undefined || v.scheduled_at > current) {
+        lastVisit.set(v.patient_id, v.scheduled_at);
+      }
+    }
+
+    return rows<{ id: string; created_at: string }>(rosterResult.data).map((p) => ({
+      id: p.id,
+      created_at: p.created_at,
+      last_visit: lastVisit.get(p.id) ?? null,
+    }));
   }
 
   /**
@@ -471,13 +563,22 @@ export class SupabaseMetricsDataRepository implements MetricsDataRepository {
     return new Set(rows<{ patient_id: string }>(data).map((a) => a.patient_id));
   }
 
-  /** Clinic-wide payments — cumulative, for the same reason as treatments. */
-  private async fetchPayments(clinicId: string): Promise<PaymentSnapshot[]> {
+  /**
+   * Clinic-wide payments — cumulative, for the same reason as treatments, and
+   * bounded by the same moment.
+   *
+   * Exact, unlike treatments: `payment_date` records when the money arrived, so
+   * "payments received on or before D" needs no reconstruction. The bound is on
+   * the calendar date rather than a timestamp because that is the column's
+   * granularity.
+   */
+  private async fetchPayments(clinicId: string, date: string): Promise<PaymentSnapshot[]> {
     const { data, error } = await this.db
       .from("payments")
       .select("id, amount, payment_date")
       .eq("clinic_id", clinicId)
-      .is("deleted_at", null);
+      .is("deleted_at", null)
+      .lte("payment_date", date);
     if (error) throw new Error(`payments: ${error.message}`);
 
     return rows<PaymentRow>(data).map((p) => ({

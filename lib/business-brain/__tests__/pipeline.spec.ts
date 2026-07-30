@@ -129,6 +129,10 @@ async function seed() {
     treatment_type: "Full Mouth Rehab",
     cost: 80000,
     status: "planned",
+    // Explicit: a planned treatment has no performed_at, so `created_at` is what
+    // places it on the clinic's books. Left to default it would be stamped with
+    // the real wall clock and fall outside this scenario's date entirely.
+    created_at: "2026-03-16T04:30:00Z",
   });
 
   // Two patients waiting since well before the capture moment.

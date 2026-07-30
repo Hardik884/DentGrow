@@ -213,6 +213,14 @@ export function zonedDateToUTC(localDatetime: string, timezone: string): Date {
   // is versus what we want.
   const naiveUtc = new Date(localDatetime.endsWith("Z") ? localDatetime : `${localDatetime}Z`);
 
+  // Intl reports whole seconds only, so the offset must be measured from a
+  // whole-second instant. Comparing a moment that carries milliseconds against
+  // Intl's truncated rendering folds those milliseconds into the offset: the
+  // end of an IST day, 23:59:59.999, came out as 18:30:00.998Z instead of
+  // 18:29:59.999Z — 999ms into the NEXT day, so consecutive day windows
+  // overlapped and an event on the boundary belonged to both.
+  const naiveUtcWholeSecond = new Date(Math.floor(naiveUtc.getTime() / 1000) * 1000);
+
   // Get what the target timezone says this UTC moment is
   const parts = new Intl.DateTimeFormat("en-CA", {
     timeZone: timezone,
@@ -223,7 +231,7 @@ export function zonedDateToUTC(localDatetime: string, timezone: string): Date {
     minute: "2-digit",
     second: "2-digit",
     hour12: false,
-  }).formatToParts(naiveUtc);
+  }).formatToParts(naiveUtcWholeSecond);
 
   const get = (type: string) => parts.find((p) => p.type === type)?.value ?? "0";
   const tzYear = parseInt(get("year"));
@@ -247,7 +255,7 @@ export function zonedDateToUTC(localDatetime: string, timezone: string): Date {
   const targetLocal = new Date(Date.UTC(yr, (mo ?? 1) - 1, dy, hr, mn, Math.floor(sc), msVal));
 
   // Offset in ms = naiveUtc - tzDate  (how far off was our "naive UTC" from the real local time)
-  const offsetMs = naiveUtc.getTime() - tzDate.getTime();
+  const offsetMs = naiveUtcWholeSecond.getTime() - tzDate.getTime();
 
   return new Date(targetLocal.getTime() + offsetMs);
 }

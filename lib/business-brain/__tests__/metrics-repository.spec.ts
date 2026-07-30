@@ -151,15 +151,15 @@ async function seed() {
 
   await insert("treatments", [
     // Completed today, consultant took 40% => clinic keeps 3000.
-    { id: "9f000000-0000-4000-8000-000000000041", clinic_id: CLINIC, appointment_id: "9f000000-0000-4000-8000-000000000031", patient_id: P_RETURNING, treatment_type: "Root Canal", cost: 5000, status: "completed", performed_at: "2026-03-16T05:00:00Z" },
+    { id: "9f000000-0000-4000-8000-000000000041", clinic_id: CLINIC, appointment_id: "9f000000-0000-4000-8000-000000000031", patient_id: P_RETURNING, treatment_type: "Root Canal", cost: 5000, status: "completed", performed_at: "2026-03-16T05:00:00Z", created_at: "2026-03-16T05:00:00Z" },
     // Completed today, no consultant => clinic_share NULL, must coalesce to cost.
-    { id: "9f000000-0000-4000-8000-000000000042", clinic_id: CLINIC, appointment_id: "9f000000-0000-4000-8000-000000000031", patient_id: P_RETURNING, treatment_type: "Cleaning", cost: 1000, status: "completed", performed_at: "2026-03-16T05:30:00Z" },
+    { id: "9f000000-0000-4000-8000-000000000042", clinic_id: CLINIC, appointment_id: "9f000000-0000-4000-8000-000000000031", patient_id: P_RETURNING, treatment_type: "Cleaning", cost: 1000, status: "completed", performed_at: "2026-03-16T05:30:00Z", created_at: "2026-03-16T05:30:00Z" },
     // Planned — must NOT count towards outstanding.
-    { id: "9f000000-0000-4000-8000-000000000043", clinic_id: CLINIC, appointment_id: "9f000000-0000-4000-8000-000000000031", patient_id: P_RETURNING, treatment_type: "Crown", cost: 9000, status: "planned" },
+    { id: "9f000000-0000-4000-8000-000000000043", clinic_id: CLINIC, appointment_id: "9f000000-0000-4000-8000-000000000031", patient_id: P_RETURNING, treatment_type: "Crown", cost: 9000, status: "planned", created_at: "2026-03-16T05:00:00Z" },
     // Soft-deleted — must be invisible to every revenue metric.
-    { id: "9f000000-0000-4000-8000-000000000044", clinic_id: CLINIC, appointment_id: "9f000000-0000-4000-8000-000000000031", patient_id: P_RETURNING, treatment_type: "Ghost", cost: 99999, status: "completed", performed_at: "2026-03-16T05:00:00Z", deleted_at: "2026-03-16T06:00:00Z" },
+    { id: "9f000000-0000-4000-8000-000000000044", clinic_id: CLINIC, appointment_id: "9f000000-0000-4000-8000-000000000031", patient_id: P_RETURNING, treatment_type: "Ghost", cost: 99999, status: "completed", performed_at: "2026-03-16T05:00:00Z", deleted_at: "2026-03-16T06:00:00Z", created_at: "2026-03-16T05:00:00Z" },
     // Other clinic.
-    { id: "9f000000-0000-4000-8000-0000000000a2", clinic_id: OTHER_CLINIC, appointment_id: "9f000000-0000-4000-8000-0000000000a1", patient_id: P_RETURNING, treatment_type: "Elsewhere", cost: 77777, status: "completed", performed_at: "2026-03-16T05:00:00Z" },
+    { id: "9f000000-0000-4000-8000-0000000000a2", clinic_id: OTHER_CLINIC, appointment_id: "9f000000-0000-4000-8000-0000000000a1", patient_id: P_RETURNING, treatment_type: "Elsewhere", cost: 77777, status: "completed", performed_at: "2026-03-16T05:00:00Z", created_at: "2026-03-16T05:00:00Z" },
   ]);
 
   // ── Scheduled-treatment fixtures (patient-level approximation) ─────────────
@@ -175,9 +175,9 @@ async function seed() {
 
   await insert("treatments", [
     // Patient has an upcoming visit => counts as scheduled.
-    { id: "9f000000-0000-4000-8000-000000000081", clinic_id: CLINIC, appointment_id: "9f000000-0000-4000-8000-000000000031", patient_id: P_RETURNING, treatment_type: "Booked patient", cost: 100, status: "planned" },
+    { id: "9f000000-0000-4000-8000-000000000081", clinic_id: CLINIC, appointment_id: "9f000000-0000-4000-8000-000000000031", patient_id: P_RETURNING, treatment_type: "Booked patient", cost: 100, status: "planned", created_at: "2026-03-16T05:00:00Z" },
     // Patient's only future appointments are cancelled / no-show => pending.
-    { id: "9f000000-0000-4000-8000-000000000082", clinic_id: CLINIC, appointment_id: "9f000000-0000-4000-8000-000000000032", patient_id: P_NEW, treatment_type: "Unbooked patient", cost: 100, status: "planned" },
+    { id: "9f000000-0000-4000-8000-000000000082", clinic_id: CLINIC, appointment_id: "9f000000-0000-4000-8000-000000000032", patient_id: P_NEW, treatment_type: "Unbooked patient", cost: 100, status: "planned", created_at: "2026-03-16T05:00:00Z" },
   ]);
 
   // Reactivation + window fixtures.
@@ -187,6 +187,21 @@ async function seed() {
     // Never attended — acquisition, not lapse.
     { id: P_NEVER, clinic_id: CLINIC, name: "Never seen", created_at: "2024-01-01T10:00:00Z" },
   ]);
+
+  // The visit behind P_LAPSED's last_visit. The repository derives last-visit
+  // from completed appointments rather than reading the patients column, so the
+  // column alone is not enough to make a patient look lapsed — and should not
+  // be, since the column holds today's answer and cannot be asked about a past
+  // date. P_NEVER deliberately gets no appointment at all.
+  await insert("appointments", {
+    id: "9f000000-0000-4000-8000-000000000035",
+    clinic_id: CLINIC,
+    patient_id: P_LAPSED,
+    dentist_id: DENTIST,
+    scheduled_at: "2025-01-10T10:00:00Z",
+    source: "walk_in",
+    status: "completed",
+  });
 
   await insert("payments", [
     { id: "9f000000-0000-4000-8000-000000000051", clinic_id: CLINIC, patient_id: P_RETURNING, amount: 2500, method: "cash", payment_date: DATE },
@@ -480,6 +495,96 @@ describe.skipIf(!LOCAL_UP)("SupabaseMetricsDataRepository (integration)", () => 
       const engine = new DentGrowMetricsEngine(repository);
       const a = await engine.calculateMetrics(CLINIC, DATE);
       const b = await engine.calculateMetrics(CLINIC, DATE);
+      expect(a).toEqual(b);
+    });
+  });
+
+  /**
+   * A snapshot for a PAST date must describe that date, not today.
+   *
+   * This is what the Diagnosis Engine's persistence classification rests on: it
+   * reads a run of history days to decide whether a breach is sustained,
+   * improving or intermittent. When every historical day reported today's
+   * cumulative figures, those metrics were a flat line by construction — so a
+   * threshold first crossed this morning was reported as having been breached
+   * all week, and a genuinely improving balance could never be seen improving.
+   *
+   * DATE is 2026-03-16 and everything above is seeded on or around it, so
+   * 2026-03-10 is a real "before" — after the 500 payment, before all the rest.
+   */
+  describe("point-in-time history", () => {
+    const EARLIER = "2026-03-10";
+
+    it("excludes treatments that had not happened yet", async () => {
+      const s = await repository.getClinicSnapshot(CLINIC, EARLIER);
+      // Every seeded treatment is performed or created on 2026-03-16.
+      expect(s.treatments).toEqual([]);
+    });
+
+    it("excludes payments that had not been received yet", async () => {
+      const s = await repository.getClinicSnapshot(CLINIC, EARLIER);
+      // The 500 on 2026-03-10 has arrived; the 2500 on DATE has not.
+      expect(s.payments.map((p) => p.amount)).toEqual([500]);
+    });
+
+    it("reports the balance as it stood, not as it stands now", async () => {
+      const engine = new DentGrowMetricsEngine(repository);
+      const v = async (date: string, key: string) =>
+        (await engine.calculateMetrics(CLINIC, date)).find((m) => m.id.startsWith(`${key}:`))
+          ?.value;
+
+      // The regression in one assertion: these two must differ.
+      expect(await v(DATE, MetricKey.REVENUE_OUTSTANDING)).toBe(3000);
+      expect(await v(EARLIER, MetricKey.REVENUE_OUTSTANDING)).toBe(0);
+    });
+
+    it("excludes pipeline work that had not been proposed yet", async () => {
+      const engine = new DentGrowMetricsEngine(repository);
+      const metrics = await engine.calculateMetrics(CLINIC, EARLIER);
+      const v = (key: string) => metrics.find((m) => m.id.startsWith(`${key}:`))?.value;
+      expect(v(MetricKey.REVENUE_PENDING_TREATMENT_VALUE)).toBe(0);
+    });
+
+    it("excludes patients who had not registered yet", async () => {
+      const s = await repository.getClinicSnapshot(CLINIC, EARLIER);
+      const ids = (s.patientRoster ?? []).map((p) => p.id);
+      // P_NEW registered on 2026-03-16; P_LAPSED and P_NEVER in 2024.
+      expect(ids).not.toContain(P_NEW);
+      expect(ids).toContain(P_LAPSED);
+    });
+
+    it("does not credit a visit that had not happened yet", async () => {
+      // P_RETURNING's completed visit is on DATE. Asked about the 10th, the
+      // roster must not already show it — the patients.last_visit column would
+      // have, because it only ever holds the current answer.
+      const s = await repository.getClinicSnapshot(CLINIC, EARLIER);
+      const returning = (s.patientRoster ?? []).find((p) => p.id === P_RETURNING);
+      expect(returning?.lastVisit).toBeNull();
+
+      const today = await repository.getClinicSnapshot(CLINIC, DATE);
+      expect((today.patientRoster ?? []).find((p) => p.id === P_RETURNING)?.lastVisit)
+        .not.toBeNull();
+    });
+
+    it("stamps a past snapshot with the end of that day, not the clock", async () => {
+      // The mechanism behind all of the above, and what makes "is this visit
+      // upcoming?" mean upcoming-as-of-then. The clinic is IST, so the day ends
+      // at 18:29:59.999Z.
+      const s = await repository.getClinicSnapshot(CLINIC, EARLIER);
+      expect(s.asOf).toBe("2026-03-10T18:29:59.999Z");
+    });
+
+    it("still measures today with the real clock, not end of day", async () => {
+      // Clamping must not round today's capture moment forward: a snapshot
+      // taken at noon cannot claim to know the afternoon.
+      const s = await repository.getClinicSnapshot(CLINIC, DATE);
+      expect(s.asOf).toBe(AS_OF);
+    });
+
+    it("is deterministic for a historical date", async () => {
+      const engine = new DentGrowMetricsEngine(repository);
+      const a = await engine.calculateMetrics(CLINIC, EARLIER);
+      const b = await engine.calculateMetrics(CLINIC, EARLIER);
       expect(a).toEqual(b);
     });
   });
