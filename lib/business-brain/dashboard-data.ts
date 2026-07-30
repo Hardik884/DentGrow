@@ -9,14 +9,17 @@
  */
 
 import "server-only";
+import { after } from "next/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/database.types";
 import { createServerClient } from "@/lib/supabase/server";
 import { getClinicConfig } from "@/lib/clinic/config";
 import { getTodayInTimezone } from "@/lib/utils";
+import { addDays } from "@/business-brain";
 import { BusinessBrain, type BusinessBrainResult } from "@/business-brain";
 import { SupabaseMetricsDataRepository } from "./metrics-repository";
 import { SupabaseMetricHistoryStore } from "./metric-history-store";
+import { recordRecomputedHistory } from "./persist-metrics";
 
 /**
  * Days of history loaded so the Diagnosis Engine can classify persistence —
@@ -73,6 +76,23 @@ export async function runDashboardBrain(date?: string): Promise<DashboardRun> {
   const result = await brain.runBusinessBrain(clinicId, businessDate, {
     historyDays: HISTORY_DAYS,
   });
+
+  // Self-healing history.
+  //
+  // The run just measured every history day the store did not have. Writing
+  // those back means the next load reads them instead of measuring them again,
+  // so history fills itself the first time anyone opens the page — no scheduler,
+  // no external job.
+  //
+  // `after` runs this once the response has been sent, so the render itself
+  // stays read-only and the dentist never waits on a write. Only COMPLETED days
+  // are recorded: today's figures are still moving, and freezing them would
+  // store a half-finished number as if it were the day's result.
+  const lastCompletedDay = addDays(businessDate, -1);
+  const finishedDays = result.recomputedHistory.filter((day) => day.date <= lastCompletedDay);
+  if (finishedDays.length > 0) {
+    after(() => recordRecomputedHistory(clinicId, finishedDays));
+  }
 
   return { result, clinicId, date: businessDate, timezone };
 }

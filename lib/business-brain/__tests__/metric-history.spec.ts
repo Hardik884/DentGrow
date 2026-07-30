@@ -22,7 +22,11 @@ import { BusinessBrain, MetricKey } from "@/business-brain";
 import type { MetricHistoryStore, StoredMetricDay } from "@/business-brain";
 import { SupabaseMetricsDataRepository } from "../metrics-repository";
 import { SupabaseMetricHistoryStore } from "../metric-history-store";
-import { persistMetricDay, persistMetricRange } from "../persist-metrics";
+import {
+  persistMetricDay,
+  persistMetricRange,
+  recordRecomputedHistory,
+} from "../persist-metrics";
 
 const URL = process.env.SUPABASE_TEST_URL ?? "http://127.0.0.1:54321";
 const KEY =
@@ -392,6 +396,97 @@ describe.skipIf(!LOCAL_UP)("metric history (integration)", () => {
       });
       const { data } = await (anon as any).from("metric_history").select("value");
       expect(data ?? []).toEqual([]);
+    });
+  });
+
+  /**
+   * History that fills itself.
+   *
+   * The run already measures every day the store could not supply, so writing
+   * those back closes the gap permanently — the first person to open the
+   * dashboard after a gap pays for it, and nobody pays again. This is why no
+   * cron or external scheduler is needed for the performance win.
+   */
+  describe("self-healing history", () => {
+    const repository = new SupabaseMetricsDataRepository(db, { asOf: AS_OF });
+
+    it("reports the days it had to measure, so a caller can record them", async () => {
+      await raw.from("metric_history").delete().eq("clinic_id", CLINIC);
+      const brain = new BusinessBrain({ repository, historyStore: store });
+      const result = await brain.runBusinessBrain(CLINIC, "2026-03-20", {
+        startedAt: AS_OF,
+        historyDays: 3, // 17, 18, 19
+      });
+      expect(result.recomputedHistory.map((d) => d.date)).toEqual([
+        "2026-03-17",
+        "2026-03-18",
+        "2026-03-19",
+      ]);
+      expect(result.recomputedHistory.every((d) => d.metrics.length > 0)).toBe(true);
+    });
+
+    it("reports nothing once every day is stored", async () => {
+      await persistMetricRange(CLINIC, "2026-03-17", "2026-03-19", db);
+      const brain = new BusinessBrain({ repository, historyStore: store });
+      const result = await brain.runBusinessBrain(CLINIC, "2026-03-20", {
+        startedAt: AS_OF,
+        historyDays: 3,
+      });
+      expect(result.recomputedHistory).toEqual([]);
+    });
+
+    it("closes the gap: a second run measures nothing", async () => {
+      await raw.from("metric_history").delete().eq("clinic_id", CLINIC);
+
+      let snapshots = 0;
+      const counting = {
+        getClinicSnapshot: (c: string, d: string) => {
+          snapshots += 1;
+          return repository.getClinicSnapshot(c, d);
+        },
+      };
+      const brain = new BusinessBrain({ repository: counting, historyStore: store });
+      const opts = { startedAt: AS_OF, historyDays: 3 };
+
+      const first = await brain.runBusinessBrain(CLINIC, "2026-03-20", opts);
+      // What the dashboard does after the response is sent.
+      await recordRecomputedHistory(CLINIC, first.recomputedHistory, db);
+      const afterFirst = snapshots;
+
+      snapshots = 0;
+      const second = await brain.runBusinessBrain(CLINIC, "2026-03-20", opts);
+
+      expect(afterFirst).toBe(4); // 3 history days + the target day
+      expect(second.recomputedHistory).toEqual([]);
+      expect(snapshots).toBe(1); // only the target day, which is always live
+    });
+
+    it("records the same values the run reported", async () => {
+      await raw.from("metric_history").delete().eq("clinic_id", CLINIC);
+      const brain = new BusinessBrain({ repository, historyStore: store });
+      const result = await brain.runBusinessBrain(CLINIC, "2026-03-20", {
+        startedAt: AS_OF,
+        historyDays: 3,
+      });
+      await recordRecomputedHistory(CLINIC, result.recomputedHistory, db);
+
+      const stored = await store.readMetricDays(CLINIC, "2026-03-18", "2026-03-18");
+      const measured = result.recomputedHistory.find((d) => d.date === "2026-03-18");
+      const measuredOutstanding = measured?.metrics.find((m) =>
+        m.id.startsWith(`${MetricKey.REVENUE_OUTSTANDING}:`),
+      )?.value;
+      expect(outstanding(stored[0])).toBe(measuredOutstanding);
+      expect(outstanding(stored[0])).toBe(20000);
+    });
+
+    it("never throws, so a post-response write cannot break anything", async () => {
+      // By the time this runs the response is already sent; there is nobody left
+      // to report an error to, so it must swallow rather than reject.
+      await expect(
+        recordRecomputedHistory("not-a-uuid", [
+          { date: "2026-03-18", metrics: [{ id: "x.y:c:d", value: 1, timestamp: AS_OF }] },
+        ], db),
+      ).resolves.toBeUndefined();
     });
   });
 });

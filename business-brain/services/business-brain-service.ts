@@ -124,6 +124,17 @@ export interface BusinessBrainResult {
   /** Combined decision trace from the Signal and Diagnosis engines. */
   readonly trace: readonly DecisionTrace[];
   readonly execution: BusinessBrainExecution;
+  /**
+   * History days this run had to RECOMPUTE because the store did not have them,
+   * with the metrics it measured. Empty when history was fully stored, when no
+   * store was supplied, or when no history was requested.
+   *
+   * Returned rather than written, so the run stays read-only: a caller decides
+   * whether to record them, and can do it after the response rather than during
+   * a render. Carrying the metrics costs nothing — they are already in memory —
+   * and saves the caller measuring the same days a second time.
+   */
+  readonly recomputedHistory: readonly MetricsOnlyDay[];
   /** Set when a stage rejected its input; identifies the first failure. */
   readonly error?: EngineError;
 }
@@ -255,6 +266,9 @@ export class BusinessBrain {
     };
 
     const stages: BusinessBrainStage[] = [];
+    // History days this run had to measure itself. Local to the run: the service
+    // deliberately holds no per-run state, so two concurrent runs cannot mix.
+    let recomputedHistory: readonly MetricsOnlyDay[] = [];
     const finish = (
       fields: Pick<BusinessBrainResult, "metrics" | "signals" | "diagnoses" | "trace"> & {
         error?: EngineError;
@@ -272,6 +286,7 @@ export class BusinessBrain {
         diagnoses: fields.diagnoses,
         trace: fields.trace,
         error: fields.error,
+        recomputedHistory,
         execution: {
           clinicId,
           date,
@@ -332,7 +347,12 @@ export class BusinessBrain {
     // History is optional context for persistence classification. A day that
     // cannot be read is skipped rather than failing the run — the Diagnosis
     // Engine treats a gap as `unknown`, which is the correct outcome.
-    const history = historyDays > 0 ? await this.loadHistory(clinicId, date, historyDays) : [];
+    const loadedHistory =
+      historyDays > 0
+        ? await this.loadHistory(clinicId, date, historyDays)
+        : { days: [] as MetricsOnlyDay[], recomputed: [] as MetricsOnlyDay[] };
+    const history = loadedHistory.days;
+    recomputedHistory = loadedHistory.recomputed;
 
     // ── Stage 2: Signals ─────────────────────────────────────────────────────
     // Thresholds are sized from this clinic's own facts before evaluation. An
@@ -436,20 +456,26 @@ export class BusinessBrain {
     clinicId: string,
     date: string,
     days: number,
-  ): Promise<MetricsOnlyDay[]> {
+  ): Promise<{ days: MetricsOnlyDay[]; recomputed: MetricsOnlyDay[] }> {
     const wanted: string[] = [];
     for (let offset = days; offset >= 1; offset -= 1) {
       wanted.push(addDays(date, -offset));
     }
 
     const stored = await this.readStoredHistory(clinicId, wanted);
+    const recomputed: MetricsOnlyDay[] = [];
 
     const loaded = await Promise.all(
       wanted.map(async (day): Promise<MetricsOnlyDay | null> => {
         const fromStore = stored.get(day);
         if (fromStore !== undefined) return fromStore;
         try {
-          return { date: day, metrics: await this.metricsEngine.calculateMetrics(clinicId, day) };
+          const measured = {
+            date: day,
+            metrics: await this.metricsEngine.calculateMetrics(clinicId, day),
+          };
+          recomputed.push(measured);
+          return measured;
         } catch (error) {
           this.log.warn("Business Brain could not load a history day; treating it as unknown", {
             clinicId,
@@ -461,7 +487,11 @@ export class BusinessBrain {
       }),
     );
 
-    return loaded.filter((day): day is MetricsOnlyDay => day !== null);
+    return {
+      days: loaded.filter((day): day is MetricsOnlyDay => day !== null),
+      // Ascending, so a caller writing them back does so in calendar order.
+      recomputed: recomputed.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0)),
+    };
   }
 
   /**

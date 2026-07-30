@@ -1,10 +1,21 @@
 /**
  * Recording measured metrics.
  *
- * Separate from the dashboard path on purpose. Running the Business Brain is
- * read-only — a page render must not write, and `pipeline.spec.ts` asserts the
- * whole run leaves every table's row count unchanged. This is the explicit
- * writer, called by a scheduled job (or a one-off backfill), never by a render.
+ * Separate from the pipeline on purpose. Running the Business Brain is
+ * read-only — `pipeline.spec.ts` asserts the whole run leaves every table's row
+ * count unchanged — so every write lives here instead.
+ *
+ * Two callers, both explicit:
+ *
+ *   recordRecomputedHistory  the dashboard, via `after()`, once the response has
+ *                            been sent. This is what makes history self-healing
+ *                            without any scheduler: the run already measured the
+ *                            days the store lacked, so writing them back means
+ *                            nobody measures them again.
+ *   persistMetricRange       a backfill or, if one is ever added, a daily job.
+ *
+ * Neither runs DURING a render — `after()` is deferred past the response, so the
+ * page itself still writes nothing and the dentist never waits on a write.
  *
  * Uses the SERVICE ROLE, because `metric_history` grants SELECT to a dentist and
  * INSERT to nobody: a client that could write here could fabricate the clinic's
@@ -111,4 +122,44 @@ export async function persistYesterday(
   db?: SupabaseClient<Database>,
 ): Promise<void> {
   await persistMetricDay(clinicId, addDays(todayInClinicTimezone, -1), db);
+}
+
+/**
+ * Record history days a run had to measure itself.
+ *
+ * The pipeline returns the days it could not read from the store, with the
+ * metrics it measured for them. Writing those back is what makes history
+ * self-healing: the first person to open the dashboard after a gap closes it,
+ * and every load after that reads instead of measures. No scheduler involved.
+ *
+ * Best-effort by design, and never thrown from. The caller runs this after the
+ * response has already been sent, so there is nobody left to tell — a failed
+ * write costs the next load some time, not its result.
+ *
+ * The caller is responsible for passing COMPLETED days only. Recording today
+ * would freeze a half-finished figure as if it were the day's result.
+ */
+export async function recordRecomputedHistory(
+  clinicId: string,
+  days: readonly { date: string; metrics: readonly { id: string; value: number; timestamp: string }[] }[],
+  db?: SupabaseClient<Database>,
+): Promise<void> {
+  if (days.length === 0) return;
+  try {
+    const client = db ?? (createAdminClient() as unknown as SupabaseClient<Database>);
+    const store = new SupabaseMetricHistoryStore(client);
+    for (const day of days) {
+      if (day.metrics.length === 0) continue;
+      await store.writeMetricDay(clinicId, {
+        date: day.date,
+        metrics: day.metrics.map((m) => ({
+          key: m.id.slice(0, m.id.indexOf(":")),
+          value: m.value,
+          measuredAt: m.timestamp,
+        })),
+      });
+    }
+  } catch (error) {
+    console.error("[recordRecomputedHistory]", error);
+  }
 }
