@@ -50,19 +50,22 @@ import { addDays, dateRange } from "@/business-brain";
 /**
  * TYPING NOTE
  * -----------
- * `types/database.types.ts` is hand-maintained and does not satisfy
- * @supabase/supabase-js's `GenericSchema` contract (no per-table
- * `Relationships`), so `.from(...).select(...)` infers `never` and the client
- * appears untyped. That is why 16 files in this codebase fall back to
- * `type DbClient = any`.
+ * Sixteen files in this codebase fall back to `type DbClient = any` because the
+ * Supabase client appears untyped: `.from(...).select(...)` infers `never`.
+ *
+ * The cause is a version skew between packages, NOT the schema types.
+ * `@supabase/ssr` 0.6.1 declares `createServerClient` as returning
+ * `SupabaseClient<Database, SchemaName, Schema>`, a three-parameter form from an
+ * older `@supabase/supabase-js`; the installed 2.110 has since changed that
+ * signature, so the schema object lands in a slot expecting a schema NAME and
+ * every table resolves to `never`. Regenerating `types/database.types.ts` was
+ * necessary but does not fix it — the fix is aligning the two packages, which
+ * carries runtime risk and belongs in its own change.
  *
  * Rather than spread `any` further, every query below declares the exact row
  * shape it selects and narrows the result once through {@link rows}. The
  * mapping code is then fully typed against these declarations — only the
  * client boundary is loose, and it is loose in exactly one place per query.
- *
- * The real fix is `npm run gen:types` (now possible against local Supabase),
- * which reshapes types repo-wide and belongs in its own change.
  */
 function rows<T>(data: unknown): T[] {
   return (data ?? []) as T[];
@@ -110,8 +113,13 @@ interface TreatmentRow {
 /**
  * Appointment statuses that still represent a real upcoming visit.
  * A cancelled or no-show appointment is not one the patient will attend.
+ *
+ * `as const` is load-bearing: it types this as a tuple of literals rather than
+ * `string[]`, so the generated `appointment_status` enum checks every entry at
+ * compile time. A typo here would otherwise silently match no rows and report
+ * every patient as having nothing booked.
  */
-const LIVE_APPOINTMENT_STATUSES = ["scheduled", "checked_in", "in_progress", "completed"];
+const LIVE_APPOINTMENT_STATUSES = ["scheduled", "checked_in", "in_progress", "completed"] as const;
 interface PaymentRow {
   id: string;
   amount: number | string | null;
