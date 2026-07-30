@@ -80,3 +80,21 @@ export function bookedNext7d(s: ClinicDataSnapshot): Metric | null {
   if (value === null) return null;
   return buildMetric(MetricKey.CAPACITY_BOOKED_NEXT_7D, value, s.clinicId, s.date, s.asOf);
 }
+
+/**
+ * Appointment slots the clinic OFFERED today, before any booking.
+ *
+ * The denominator behind chair utilization, published as a fact in its own
+ * right because it is also the only honest basis for sizing a volume threshold:
+ * "few appointments" means nothing until you know how many the clinic was open
+ * for. Threshold calibration reads it (see signals/config/calibration.ts).
+ */
+export function totalSlotsToday(s: ClinicDataSnapshot): Metric {
+  return buildMetric(
+    MetricKey.CAPACITY_TOTAL_SLOTS_TODAY,
+    s.capacity.totalSlotsToday,
+    s.clinicId,
+    s.date,
+    s.asOf,
+  );
+}

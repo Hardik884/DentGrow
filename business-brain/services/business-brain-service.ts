@@ -46,7 +46,14 @@ import {
   type DiagnosisConfig,
 } from "../engines/diagnosis";
 import type { MetricsOnlyDay } from "../engines/diagnosis-engine";
-import type { DeepPartial, SignalThresholdConfig } from "../engines/signals";
+import {
+  calibrateThresholds,
+  mergeOverrides,
+  DEFAULT_SIGNAL_THRESHOLDS,
+  type DeepPartial,
+  type SignalThresholdConfig,
+  type ThresholdCalibration,
+} from "../engines/signals";
 
 /**
  * Contract version of the pipeline this service runs.
@@ -95,6 +102,12 @@ export interface BusinessBrainExecution {
   readonly historyDaysRequested: number;
   /** Prior days actually loaded; fewer means some could not be read. */
   readonly historyDaysLoaded: number;
+  /**
+   * Thresholds sized from this clinic's data instead of the global defaults.
+   * Empty when calibration was off or nothing could be derived. Recorded so a
+   * tailored threshold is never applied silently.
+   */
+  readonly calibration: readonly ThresholdCalibration[];
   readonly stages: readonly BusinessBrainStage[];
 }
 
@@ -147,6 +160,14 @@ export interface RunBusinessBrainOptions {
    * `minimumHistoryDays` is 3, so 7 is a sensible production value.
    */
   readonly historyDays?: number;
+  /**
+   * Size clinic-dependent thresholds from this clinic's own measured facts
+   * rather than the global defaults. Defaults to true.
+   *
+   * Off means every clinic is judged against the same constants, which is what
+   * produces daily false alarms at a small clinic and silence at a large one.
+   */
+  readonly calibrateThresholds?: boolean;
   readonly requestedBy?: string;
   readonly role?: string;
 }
@@ -176,7 +197,7 @@ export class BusinessBrain {
   private readonly log: Logger;
   private readonly clock: () => number;
   private readonly metricsEngine: DentGrowMetricsEngine;
-  private readonly signalEngine: DentGrowSignalEngine;
+  private readonly signalConfig?: DeepPartial<SignalThresholdConfig>;
   private readonly diagnosisEngine: DentGrowDiagnosisEngine;
 
   constructor(deps: BusinessBrainDependencies) {
@@ -184,7 +205,9 @@ export class BusinessBrain {
     this.log = deps.logger ?? logger;
     this.clock = deps.clock ?? (() => Date.now());
     this.metricsEngine = new DentGrowMetricsEngine(deps.repository, { logger: this.log });
-    this.signalEngine = new DentGrowSignalEngine({ logger: this.log, config: deps.signalConfig });
+    // The Signal Engine is built per run: its thresholds may be sized from the
+    // metrics of the clinic-day being analysed, which are not known until then.
+    this.signalConfig = deps.signalConfig;
     this.diagnosisEngine = new DentGrowDiagnosisEngine({
       logger: this.log,
       config: deps.diagnosisConfig,
@@ -222,6 +245,7 @@ export class BusinessBrain {
       fields: Pick<BusinessBrainResult, "metrics" | "signals" | "diagnoses" | "trace"> & {
         error?: EngineError;
         historyDaysLoaded: number;
+        calibration?: readonly ThresholdCalibration[];
       },
     ): BusinessBrainResult => {
       const completedMs = this.clock();
@@ -244,6 +268,7 @@ export class BusinessBrain {
           version: BUSINESS_BRAIN_VERSION,
           historyDaysRequested: historyDays,
           historyDaysLoaded: fields.historyDaysLoaded,
+          calibration: fields.calibration ?? [],
           stages,
         },
       };
@@ -296,8 +321,26 @@ export class BusinessBrain {
     const history = historyDays > 0 ? await this.loadHistory(clinicId, date, historyDays) : [];
 
     // ── Stage 2: Signals ─────────────────────────────────────────────────────
+    // Thresholds are sized from this clinic's own facts before evaluation. An
+    // explicitly supplied config still wins: a deliberate override must not be
+    // silently replaced by an automatic one.
+    const calibration =
+      options.calibrateThresholds === false
+        ? { overrides: {}, applied: [] as readonly ThresholdCalibration[] }
+        : calibrateThresholds(metrics);
+
+    const signalEngine = new DentGrowSignalEngine({
+      logger: this.log,
+      config: this.signalConfig
+        ? mergeOverrides(
+            mergeOverrides(DEFAULT_SIGNAL_THRESHOLDS, calibration.overrides),
+            this.signalConfig,
+          )
+        : calibration.overrides,
+    });
+
     const signalsStart = this.clock();
-    const signalResult = this.signalEngine.run({ metrics, date }, context);
+    const signalResult = signalEngine.run({ metrics, date }, context);
     stages.push(
       stage(BusinessBrainStageName.SIGNALS, {
         ok: signalResult.ok,
@@ -319,6 +362,7 @@ export class BusinessBrain {
         trace: signalTrace,
         error: signalResult.error,
         historyDaysLoaded: history.length,
+        calibration: calibration.applied,
       });
     }
     const signals = signalResult.data;
@@ -354,6 +398,7 @@ export class BusinessBrain {
       trace,
       error: diagnosisResult.error,
       historyDaysLoaded: history.length,
+      calibration: calibration.applied,
     });
   }
 

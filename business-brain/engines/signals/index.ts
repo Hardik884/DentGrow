@@ -12,3 +12,4 @@ export * from "./evaluators/types";
 export * from "./evaluators/registry";
 export * from "./generate-signals";
 export * from "./signal-engine";
+export * from "./config/calibration";

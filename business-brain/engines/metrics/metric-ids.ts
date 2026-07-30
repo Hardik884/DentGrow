@@ -28,6 +28,7 @@ export const MetricKey = {
   REVENUE_PENDING_TREATMENT_VALUE: "revenue.pending_treatment_value",
   REVENUE_PRODUCTION_30D: "revenue.production_30d",
   REVENUE_COLLECTION_RATE_30D: "revenue.collection_rate_30d",
+  REVENUE_COLLECTED_30D: "revenue.collected_30d",
   // Queue
   QUEUE_PATIENTS_WAITING: "queue.patients_waiting",
   QUEUE_AVERAGE_WAITING_TIME: "queue.average_waiting_time",
@@ -43,6 +44,7 @@ export const MetricKey = {
   CAPACITY_AVAILABLE_SLOTS_TODAY: "capacity.available_slots_today",
   CAPACITY_CHAIR_UTILIZATION_30D: "capacity.chair_utilization_30d",
   CAPACITY_BOOKED_NEXT_7D: "capacity.booked_next_7d",
+  CAPACITY_TOTAL_SLOTS_TODAY: "capacity.total_slots_today",
 } as const;
 
 export type MetricKey = (typeof MetricKey)[keyof typeof MetricKey];
@@ -158,6 +160,18 @@ export const METRIC_DESCRIPTORS: Readonly<Record<MetricKey, MetricDescriptor>> =
     name: "Average Case Value (30 days)",
     category: MetricCategory.CLINICAL,
     unit: MetricUnit.CURRENCY,
+  },
+  [MetricKey.REVENUE_COLLECTED_30D]: {
+    key: MetricKey.REVENUE_COLLECTED_30D,
+    name: "Revenue Collected (30 days)",
+    category: MetricCategory.REVENUE,
+    unit: MetricUnit.CURRENCY,
+  },
+  [MetricKey.CAPACITY_TOTAL_SLOTS_TODAY]: {
+    key: MetricKey.CAPACITY_TOTAL_SLOTS_TODAY,
+    name: "Appointment Slots Offered Today",
+    category: MetricCategory.UTILIZATION,
+    unit: MetricUnit.COUNT,
   },
   [MetricKey.QUEUE_PATIENTS_WAITING]: {
     key: MetricKey.QUEUE_PATIENTS_WAITING,

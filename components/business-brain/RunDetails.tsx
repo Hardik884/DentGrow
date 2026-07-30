@@ -12,6 +12,13 @@ interface RunDetailsProps {
   unmeasured: readonly UnmeasuredItem[];
 }
 
+/** Turn "appointments.minimumDailyAppointments" into something readable. */
+function humaniseThresholdPath(path: string): string {
+  const leaf = path.includes(".") ? path.slice(path.indexOf(".") + 1) : path;
+  const words = leaf.replace(/([A-Z])/g, " $1").toLowerCase().trim();
+  return words.charAt(0).toUpperCase() + words.slice(1);
+}
+
 const STAGE_LABELS: Record<string, string> = {
   metrics: "Measured the clinic",
   signals: "Checked against thresholds",
@@ -79,6 +86,27 @@ export function RunDetails({ execution, unmeasured }: RunDetailsProps) {
                     <span className="text-xs text-[#A1A1AA] text-right max-w-[60%] leading-relaxed">
                       {item.reason}
                     </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {/* Thresholds sized from this clinic rather than the global defaults. */}
+          {execution.calibration.length > 0 && (
+            <div>
+              <p className="text-xs font-medium text-[#71717A] uppercase tracking-wider">
+                Limits tailored to your clinic
+              </p>
+              <p className="text-xs text-[#A1A1AA] mt-1 leading-relaxed">
+                These were sized from your own figures rather than a fixed number, so a quiet
+                day at a small clinic is not treated the same as one at a large clinic.
+              </p>
+              <ul className="mt-2.5 divide-y divide-[#F4F4F5] border border-[#F4F4F5] rounded-lg">
+                {execution.calibration.map((c) => (
+                  <li key={c.path} className="px-3 py-2.5">
+                    <p className="text-sm text-[#09090B]">{humaniseThresholdPath(c.path)}</p>
+                    <p className="text-xs text-[#A1A1AA] mt-0.5 leading-relaxed">{c.basis}</p>
                   </li>
                 ))}
               </ul>

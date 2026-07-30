@@ -25,6 +25,7 @@ import {
   pendingTreatmentValue,
   production30d,
   collectionRate30d,
+  collected30d,
 } from "./revenue-metrics";
 import { patientsWaiting, averageWaitingTime } from "./queue-metrics";
 import { followUpsDueToday, overdueFollowUps } from "./follow-up-metrics";
@@ -38,6 +39,7 @@ import {
   availableSlotsToday,
   chairUtilization30d,
   bookedNext7d,
+  totalSlotsToday,
 } from "./capacity-metrics";
 import {
   cancellationRate30d,
@@ -77,6 +79,7 @@ export const METRIC_CALCULATORS: readonly MetricCalculator[] = [
   pendingTreatmentValue,
   production30d,
   collectionRate30d,
+  collected30d,
   // Queue
   patientsWaiting,
   averageWaitingTime,
@@ -92,6 +95,7 @@ export const METRIC_CALCULATORS: readonly MetricCalculator[] = [
   availableSlotsToday,
   chairUtilization30d,
   bookedNext7d,
+  totalSlotsToday,
 ];
 
 export * from "./appointment-metrics";

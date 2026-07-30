@@ -101,3 +101,19 @@ export function collectionRate30d(s: ClinicDataSnapshot): Metric | null {
   const value = Math.round((collected / produced) * 1000) / 10;
   return buildMetric(MetricKey.REVENUE_COLLECTION_RATE_30D, value, s.clinicId, s.date, s.asOf);
 }
+
+/**
+ * Cash collected over the trailing window.
+ *
+ * The numerator inside {@link collectionRate30d}, published separately because
+ * a clinic owner reads it directly as "what I took in this month", and because
+ * it is the correct yardstick for sizing a daily-revenue threshold: today's cash
+ * should be judged against this clinic's own typical daily cash, not a constant.
+ */
+export function collected30d(s: ClinicDataSnapshot): Metric {
+  const value = paymentsInWindow(s, METRIC_WINDOWS.TRAILING_DAYS).reduce(
+    (sum, p) => sum + p.amount,
+    0,
+  );
+  return buildMetric(MetricKey.REVENUE_COLLECTED_30D, value, s.clinicId, s.date, s.asOf);
+}

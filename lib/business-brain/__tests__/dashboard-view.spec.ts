@@ -115,6 +115,7 @@ function result(over: Partial<BusinessBrainResult> = {}): BusinessBrainResult {
       version: "0.5.0",
       historyDaysRequested: 7,
       historyDaysLoaded: 7,
+      calibration: [],
       stages: [],
     },
     ...over,
