@@ -173,3 +173,72 @@ RULES:
 - For medical questions, always respond: "Please consult your dentist for medical advice."
 - Keep responses friendly and concise — patients may be on mobile.`;
 }
+
+/**
+ * buildDiagnosisExplanationPrompt
+ *
+ * Rewrites one Business Brain diagnosis into plain English a dentist can read
+ * between patients.
+ *
+ * The engine's own wording is precise but written for auditability: phrases like
+ * "chair utilization and booked appointment volume were both below their
+ * configured thresholds" are correct and unreadable in a hurry. This prompt asks
+ * for the same meaning in the words a dentist would actually use.
+ *
+ * The model is a writer, not an analyst. It is given a closed set of facts and
+ * told to restate them. Two rules do the heavy lifting:
+ *
+ *   - No new numbers. Anything numeric must be copied from the facts, because a
+ *     wrong figure in a money summary is worse than no summary. Enforced after
+ *     generation by verifyExplanation(), which discards output that invents one.
+ *   - No advice. The Business Brain reports what it observes and what the
+ *     evidence settles; telling a clinic what to do is a later phase and a
+ *     different accountability. Also enforced after generation.
+ */
+export function buildDiagnosisExplanationPrompt(params: {
+  title: string;
+  summary: string;
+  facts: string[];
+  supported: string[];
+  ruledOut: string[];
+  undetermined: string[];
+  persistence: string;
+}): string {
+  const section = (label: string, items: string[]) =>
+    items.length > 0 ? `${label}\n${items.map((i) => `- ${i}`).join("\n")}` : "";
+
+  return `You are writing for a dentist who owns a small clinic. They are busy, they are not an analyst, and they will read this between patients.
+
+Rewrite the finding below in plain, everyday English.
+
+FINDING
+${params.title}
+${params.summary}
+
+WHAT WAS MEASURED
+${params.facts.map((f) => `- ${f}`).join("\n")}
+
+${section("WHAT THE EVIDENCE SUPPORTS", params.supported)}
+
+${section("WHAT THE EVIDENCE RULES OUT", params.ruledOut)}
+
+${section("WHAT THE DATA CANNOT TELL US YET", params.undetermined)}
+
+HOW LONG THIS HAS BEEN GOING ON
+${params.persistence}
+
+HOW TO WRITE IT
+- Two or three short sentences. Under 60 words total.
+- Everyday words only. Write "how full the chairs were" instead of "chair utilization"; "money owed" instead of "outstanding balance"; "treatment the patient agreed to but has not booked" instead of "accepted pending scheduling".
+- No jargon, no statistics vocabulary, no words like threshold, metric, signal, correlated, configured, or parameter.
+- Plain sentences. No bullet points, no headings, no bold.
+- Speak directly to the dentist as "you" and "your clinic".
+- If something cannot be determined yet, say so in one short clause. Do not guess which explanation is right.
+
+RULES YOU MUST NOT BREAK
+- Do not state any number, amount, percentage or count that does not already appear above. Copy figures exactly as written, or leave them out.
+- Do not tell the dentist what to do. Do not suggest, recommend, advise, or say anything should or must happen. Describe the situation only.
+- Do not add causes, context or explanations of your own. Only restate what is above.
+
+Write only the explanation. No preamble, no closing line.`;
+}

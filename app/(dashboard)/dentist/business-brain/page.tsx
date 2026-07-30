@@ -98,7 +98,10 @@ export default async function BusinessBrainPage() {
         title="Why this is happening"
         description="Observations that correlate, with the explanations the evidence supports and rules out."
       >
-        <DiagnosisList diagnoses={view.diagnoses} />
+        <DiagnosisList
+          diagnoses={view.diagnoses}
+          signalDescriptions={result.signals.map((s) => s.description)}
+        />
       </Section>
 
       <Section title="The numbers" description="Every measurement taken for this day.">
