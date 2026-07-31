@@ -20,6 +20,9 @@ export default defineConfig({
       // run against the local Supabase stack and skip themselves when it is not
       // running — see lib/business-brain/__tests__.
       "lib/**/*.spec.ts",
+      // Route handlers are tested by importing and calling them directly, so no
+      // dev server is involved. The auth cases here must run everywhere.
+      "app/**/*.spec.ts",
     ],
     environment: "node",
     // Integration specs talk to Postgres over HTTP; the default 5s is tight for
