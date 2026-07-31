@@ -20,8 +20,24 @@ export const Availability = {
   AVAILABLE: "available",
   /** Needs per-entity rows (which patients, which appointments, which invoices). */
   REQUIRES_ENTITY_DATA: "requires_entity_data",
-  /** Needs a measurement the Metrics Engine does not currently produce. */
+  /**
+   * Needs a measurement the Metrics Engine does not currently produce, FROM DATA
+   * THE CLINIC ALREADY HOLDS. A development task and nothing more.
+   */
   REQUIRES_NEW_METRIC: "requires_new_metric",
+  /**
+   * Needs the clinic to start RECORDING something it does not record at all.
+   *
+   * Deliberately separate from `requires_new_metric`, because the two are not
+   * remotely the same size of job. A new metric is an afternoon's work over rows
+   * that already exist. New data capture means a schema change, a change to what
+   * staff are asked to do at the chair, and a wait until enough of it accumulates
+   * to measure — a product decision, not an engineering one.
+   *
+   * Conflating them made this catalogue read as nine cheap tasks when eight of
+   * them were not tasks for the Metrics Engine at all.
+   */
+  REQUIRES_DATA_CAPTURE: "requires_data_capture",
   /** Computable from existing metrics, but only over more days than were supplied. */
   REQUIRES_LONGER_HISTORY: "requires_longer_history",
 } as const;
@@ -179,64 +195,64 @@ export const DISCRIMINATORS = {
   REMINDER_DELIVERY_LOG: {
     slug: "reminder_delivery_log",
     description:
-      "Whether an appointment reminder was dispatched and delivered for each affected appointment: nothing currently recorded distinguishes a reminder that was never sent from one that was sent and ignored.",
-    availability: Availability.REQUIRES_NEW_METRIC,
+      "Whether an appointment reminder was dispatched and delivered for each affected appointment. NOT RECORDED: DentGrow sends no reminders and keeps no dispatch log, so a reminder that was never sent and one that was sent and ignored are indistinguishable. Needs a communications log keyed to the appointment.",
+    availability: Availability.REQUIRES_DATA_CAPTURE,
     portMethod: null,
   },
   BOOKING_CHANNEL_ACTIVITY: {
     slug: "booking_channel_activity",
     description:
-      "Booking requests received and declined per channel, including calls not converted to appointments: it separates open slots that no patient asked for from open slots that were never offered.",
-    availability: Availability.REQUIRES_NEW_METRIC,
+      "Booking requests received and declined per channel, including calls not converted to appointments. PARTIALLY RECORDED: `appointments.source` gives the channel for bookings that were made, but an enquiry that never became an appointment leaves no row at all — and the unconverted side is the half that separates open slots nobody asked for from open slots never offered.",
+    availability: Availability.REQUIRES_DATA_CAPTURE,
     portMethod: null,
   },
   PROVIDER_AVAILABILITY_ROSTER: {
     slug: "provider_availability_roster",
     description:
-      "Published clinician availability against chair-hours actually opened for booking: it separates idle chairs with no clinician rostered from idle chairs that were bookable.",
-    availability: Availability.REQUIRES_NEW_METRIC,
+      "Chair-hours actually opened for booking on the day, from the clinic's own availability rules and chair count: it separates idle chairs with nothing rostered from idle chairs that were bookable and went unbooked.",
+    availability: Availability.AVAILABLE,
     portMethod: null,
   },
   SERVICE_TIME_DISTRIBUTION: {
     slug: "service_time_distribution",
     description:
-      "Actual versus scheduled duration per appointment: it separates queueing caused by appointments overrunning from queueing caused by arrival timing.",
-    availability: Availability.REQUIRES_NEW_METRIC,
-    portMethod: null,
+      "Actual versus scheduled duration per appointment, from when the patient was called in to when they were finished with: it separates queueing caused by appointments overrunning their booked length from queueing caused by patients arriving together.",
+    availability: Availability.REQUIRES_ENTITY_DATA,
+    portMethod: "listAppointmentArrivals",
   },
   DISCOUNT_AND_WRITEOFF_LOG: {
     slug: "discount_and_writeoff_log",
     description:
-      "Discounts, write-offs, and payment-plan uptake applied to today's billing: it separates revenue reduced at the point of billing from revenue billed and not collected.",
-    availability: Availability.REQUIRES_NEW_METRIC,
+      "Discounts, write-offs, and payment-plan uptake applied to today's billing. NOT RECORDED: treatments carry a cost and payments carry an amount, with nothing between them for a discount or a write-off, so a reduced bill and an unpaid bill are indistinguishable.",
+    availability: Availability.REQUIRES_DATA_CAPTURE,
     portMethod: null,
   },
   PATIENT_ACQUISITION_SOURCE: {
     slug: "patient_acquisition_source",
     description:
-      "Referral source and enquiry volume per channel for new patients: it separates fewer enquiries reaching the clinic from enquiries arriving and not converting.",
-    availability: Availability.REQUIRES_NEW_METRIC,
+      "Referral source and enquiry volume per channel for new patients. PARTIALLY RECORDED: `appointments.source` gives the channel each new patient arrived through, but enquiries that never became appointments are not recorded — and without them, fewer enquiries reaching the clinic cannot be separated from enquiries arriving and not converting.",
+    availability: Availability.REQUIRES_DATA_CAPTURE,
     portMethod: null,
   },
   POST_VISIT_FEEDBACK: {
     slug: "post_visit_feedback",
     description:
-      "Recorded patient feedback or satisfaction following the last completed visit: nothing currently recorded distinguishes patients who chose not to return from patients who were never contacted.",
-    availability: Availability.REQUIRES_NEW_METRIC,
+      "Recorded patient feedback or satisfaction following the last completed visit. NOT RECORDED: DentGrow captures no feedback of any kind, so patients who chose not to return and patients who were never contacted are indistinguishable.",
+    availability: Availability.REQUIRES_DATA_CAPTURE,
     portMethod: null,
   },
   TREATMENT_COST_BARRIER: {
     slug: "treatment_cost_barrier",
     description:
-      "Quoted value per accepted-but-unscheduled plan alongside payment-plan availability and uptake: it separates plans deferred over cost from plans deferred for other reasons.",
-    availability: Availability.REQUIRES_NEW_METRIC,
+      "Quoted value per accepted-but-unscheduled plan alongside payment-plan availability and uptake. PARTIALLY RECORDED: quoted values are available and already surfaced by `listPendingTreatments`, but DentGrow has no concept of a payment plan, so a plan deferred over cost cannot be separated from one deferred for another reason.",
+    availability: Availability.REQUIRES_DATA_CAPTURE,
     portMethod: null,
   },
   CATCHMENT_DEMAND_BASELINE: {
     slug: "catchment_demand_baseline",
     description:
-      "A demand baseline outside the clinic's own records, such as seasonality or local enquiry volume: it separates a clinic-specific fall in patients from a fall affecting the whole catchment.",
-    availability: Availability.REQUIRES_NEW_METRIC,
+      "A demand baseline outside the clinic's own records, such as seasonality or local enquiry volume. NOT HELD: by definition this is not in the clinic's data at all, and no amount of internal measurement substitutes for it.",
+    availability: Availability.REQUIRES_DATA_CAPTURE,
     portMethod: null,
   },
 } as const satisfies Record<string, DiscriminatorSpec>;

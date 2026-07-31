@@ -189,7 +189,15 @@ export function TreatmentForm({ treatmentId, appointmentId, patientId, onSuccess
           xray_cost: result.data.xray_cost != null ? Number(result.data.xray_cost) : null,
           performed_at: date ? (time ? `${date}T${time}` : date) : undefined,
           consultant_id: result.data.consultant_id ?? "",
-          commission_type: result.data.commission_type ?? undefined,
+          // `commission_type` is a text column with a CHECK, so the database
+          // types it as `string`. Narrow it here rather than asserting: a value
+          // outside the pair would otherwise be handed to a select that cannot
+          // display it, leaving the field blank with no indication why.
+          commission_type:
+            result.data.commission_type === "percentage" ||
+            result.data.commission_type === "fixed"
+              ? result.data.commission_type
+              : undefined,
           commission_value:
             result.data.commission_value != null
               ? Number(result.data.commission_value)

@@ -19,3 +19,4 @@ export * from "./matchers/unclustered";
 export * from "./ports/diagnosis-context-port";
 export * from "./diagnose";
 export * from "./diagnosis-engine";
+export * from "./resolution";

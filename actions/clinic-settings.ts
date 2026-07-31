@@ -132,6 +132,7 @@ export async function updateClinicSettings(
           email: parsed.data.email || null,
           address: parsed.data.address || null,
           average_appointment_duration: parsed.data.average_appointment_duration,
+          chair_count: parsed.data.chair_count,
           timezone: parsed.data.timezone,
           registration_number: parsed.data.registration_number || null,
           allow_receptionist_payments: parsed.data.allow_receptionist_payments ?? false,

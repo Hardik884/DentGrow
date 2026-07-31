@@ -447,6 +447,7 @@ Clinic-specific configuration stored per clinic. Used as the source of truth for
 | `address` | `text` | Full clinic address |
 | `clinic_hours` | `jsonb` | Operating hours per day (see format below) |
 | `average_appointment_duration` | `integer` | Minutes; used for wait-time estimation. Default: 30 |
+| `chair_count` | `integer` | Treatment chairs usable at once. Default: 1, minimum 1 |
 | `created_at` | `timestamptz` | Auto-set |
 | `updated_at` | `timestamptz` | Auto-updated |
 
@@ -466,6 +467,7 @@ Clinic-specific configuration stored per clinic. Used as the source of truth for
 **Used by:**
 - Patient AI Assistant `getClinicInformation` tool — clinic hours, phone, address, email are read from here, never hardcoded in prompts.
 - Queue wait-time estimation — `average_appointment_duration` drives the formula.
+- Capacity measurement — `chair_count` multiplies open time into total treatable capacity (see the note under Slot generation).
 - Appointment scheduling — slot boundaries respect clinic hours.
 - Future n8n reminder workflows — contact details sourced from here.
 
@@ -502,6 +504,22 @@ Weekly recurring rules that define when appointment slots are available.
 - Algorithm: for each active rule matching the requested date's `day_of_week`, generate all slot start times between `start_time` and `end_time` at `slot_duration_minutes` intervals, then subtract slots already occupied by existing appointments with status not in (`cancelled`, `no_show`).
 - Double-booking prevention: a slot is occupied if any appointment exists at the same `dentist_id` + `scheduled_at`.
 - `getAvailableSlots(date, clinicId)` is a typed server-side function used by the patient portal, receptionist UI, and Patient AI Assistant tool.
+
+> ⚠️ **`slot_duration_minutes` is a STEP SIZE, not a unit of capacity.** The slots
+> `getAvailableSlots` returns are candidate *start times*, and they OVERLAP — a
+> 09:00–13:00 rule stepped every 10 minutes yields 24 of them for four hours of
+> chair time. The function is correct for booking, because it separately checks
+> that a full appointment fits inside the window. But counting its results is
+> never a measure of how much work a clinic can do: it inflates capacity by the
+> ratio of appointment length to step size, and because clinics set different
+> steps on different weekdays, the same clinic reads differently on a Monday than
+> a Friday.
+>
+> **To measure capacity, use `openMinutes(rules, blocks)` from
+> `lib/scheduling/slots.ts`** — the union of the day's rule windows less any
+> consultancy block — and multiply by `clinic_settings.chair_count`. Booked
+> capacity is the sum of `appointments.duration_minutes`, never an appointment
+> count, since real appointments run from 10 to 60 minutes.
 
 **Future support:** the `availability_rules` table is designed to support per-dentist rules (add `dentist_id` column) when multi-dentist scheduling is introduced.
 
@@ -1043,6 +1061,7 @@ create table clinic_settings (
   address text,
   clinic_hours jsonb,               -- see Section 5.9 for JSON format
   average_appointment_duration integer not null default 30,
+  chair_count integer not null default 1 check (chair_count >= 1),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );

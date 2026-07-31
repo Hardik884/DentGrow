@@ -69,6 +69,7 @@ export function ClinicSettingsForm({ initialSettings }: ClinicSettingsFormProps)
       email: initialSettings?.email ?? "",
       address: initialSettings?.address ?? "",
       average_appointment_duration: initialSettings?.average_appointment_duration ?? 30,
+      chair_count: initialSettings?.chair_count ?? 1,
       timezone: initialSettings?.timezone ?? "Asia/Kolkata",
       registration_number: initialSettings?.registration_number ?? "",
       allow_receptionist_payments: initialSettings?.allow_receptionist_payments ?? false,
@@ -161,6 +162,25 @@ export function ClinicSettingsForm({ initialSettings }: ClinicSettingsFormProps)
               <Select id="avg_duration" {...register("average_appointment_duration", { valueAsNumber: true })} disabled={isSubmitting}>
                 {[10, 15, 20, 30, 45, 60, 90].map((d) => (
                   <option key={d} value={d}>{d} min</option>
+                ))}
+              </Select>
+            </Field>
+
+            <Field
+              label="Treatment Chairs"
+              htmlFor="chair_count"
+              required
+              hint="How many patients can be treated at the same time"
+            >
+              <Select
+                id="chair_count"
+                {...register("chair_count", { valueAsNumber: true })}
+                disabled={isSubmitting}
+              >
+                {[1, 2, 3, 4, 5, 6, 7, 8].map((c) => (
+                  <option key={c} value={c}>
+                    {c} {c === 1 ? "chair" : "chairs"}
+                  </option>
                 ))}
               </Select>
             </Field>

@@ -13,17 +13,22 @@ import type { Metric } from "../../domain";
 export const MetricKey = {
   // Appointments
   APPOINTMENTS_TOTAL_TODAY: "appointments.total_today",
-  APPOINTMENTS_COMPLETED_TODAY: "appointments.completed_today",
-  APPOINTMENTS_UPCOMING_TODAY: "appointments.upcoming_today",
   APPOINTMENTS_CANCELLED_TODAY: "appointments.cancelled_today",
   APPOINTMENTS_NO_SHOWS_TODAY: "appointments.no_shows_today",
+  SCHEDULING_CANCELLATION_RATE_30D: "scheduling.cancellation_rate_30d",
+  SCHEDULING_NO_SHOW_RATE_30D: "scheduling.no_show_rate_30d",
+  SCHEDULING_BOOKING_LEAD_TIME_DAYS: "scheduling.booking_lead_time_days",
   // Patients
   PATIENTS_NEW_TODAY: "patients.new_today",
   PATIENTS_RETURNING_TODAY: "patients.returning_today",
+  PATIENTS_REACTIVATION_CANDIDATES: "patients.reactivation_candidates",
   // Revenue
   REVENUE_COLLECTED_TODAY: "revenue.collected_today",
   REVENUE_OUTSTANDING: "revenue.outstanding",
   REVENUE_PENDING_TREATMENT_VALUE: "revenue.pending_treatment_value",
+  REVENUE_PRODUCTION_30D: "revenue.production_30d",
+  REVENUE_COLLECTION_RATE_30D: "revenue.collection_rate_30d",
+  REVENUE_COLLECTED_30D: "revenue.collected_30d",
   // Queue
   QUEUE_PATIENTS_WAITING: "queue.patients_waiting",
   QUEUE_AVERAGE_WAITING_TIME: "queue.average_waiting_time",
@@ -33,9 +38,14 @@ export const MetricKey = {
   // Treatment
   TREATMENT_ACCEPTED_PENDING_SCHEDULING: "treatment.accepted_pending_scheduling",
   TREATMENT_COMPLETED_TODAY: "treatment.completed_today",
+  TREATMENT_AVERAGE_CASE_VALUE_30D: "treatment.average_case_value_30d",
   // Capacity
   CAPACITY_CHAIR_UTILIZATION: "capacity.chair_utilization",
   CAPACITY_AVAILABLE_SLOTS_TODAY: "capacity.available_slots_today",
+  CAPACITY_CHAIR_UTILIZATION_30D: "capacity.chair_utilization_30d",
+  CAPACITY_BOOKED_NEXT_7D: "capacity.booked_next_7d",
+  CAPACITY_OPEN_MINUTES_TODAY: "capacity.open_minutes_today",
+  CAPACITY_APPOINTMENT_CAPACITY_TODAY: "capacity.appointment_capacity_today",
 } as const;
 
 export type MetricKey = (typeof MetricKey)[keyof typeof MetricKey];
@@ -56,18 +66,6 @@ export const METRIC_DESCRIPTORS: Readonly<Record<MetricKey, MetricDescriptor>> =
     category: MetricCategory.SCHEDULING,
     unit: MetricUnit.COUNT,
   },
-  [MetricKey.APPOINTMENTS_COMPLETED_TODAY]: {
-    key: MetricKey.APPOINTMENTS_COMPLETED_TODAY,
-    name: "Completed Appointments Today",
-    category: MetricCategory.SCHEDULING,
-    unit: MetricUnit.COUNT,
-  },
-  [MetricKey.APPOINTMENTS_UPCOMING_TODAY]: {
-    key: MetricKey.APPOINTMENTS_UPCOMING_TODAY,
-    name: "Upcoming Appointments Today",
-    category: MetricCategory.SCHEDULING,
-    unit: MetricUnit.COUNT,
-  },
   [MetricKey.APPOINTMENTS_CANCELLED_TODAY]: {
     key: MetricKey.APPOINTMENTS_CANCELLED_TODAY,
     name: "Cancelled Appointments Today",
@@ -79,6 +77,36 @@ export const METRIC_DESCRIPTORS: Readonly<Record<MetricKey, MetricDescriptor>> =
     name: "No-Shows Today",
     category: MetricCategory.SCHEDULING,
     unit: MetricUnit.COUNT,
+  },
+  [MetricKey.SCHEDULING_CANCELLATION_RATE_30D]: {
+    key: MetricKey.SCHEDULING_CANCELLATION_RATE_30D,
+    name: "Cancellation Rate (30 days)",
+    category: MetricCategory.SCHEDULING,
+    unit: MetricUnit.PERCENTAGE,
+  },
+  [MetricKey.SCHEDULING_NO_SHOW_RATE_30D]: {
+    key: MetricKey.SCHEDULING_NO_SHOW_RATE_30D,
+    name: "No-Show Rate (30 days)",
+    category: MetricCategory.SCHEDULING,
+    unit: MetricUnit.PERCENTAGE,
+  },
+  [MetricKey.SCHEDULING_BOOKING_LEAD_TIME_DAYS]: {
+    key: MetricKey.SCHEDULING_BOOKING_LEAD_TIME_DAYS,
+    name: "Median Booking Lead Time",
+    category: MetricCategory.SCHEDULING,
+    unit: MetricUnit.DAYS,
+  },
+  [MetricKey.CAPACITY_CHAIR_UTILIZATION_30D]: {
+    key: MetricKey.CAPACITY_CHAIR_UTILIZATION_30D,
+    name: "Chair Utilization (30 days)",
+    category: MetricCategory.UTILIZATION,
+    unit: MetricUnit.PERCENTAGE,
+  },
+  [MetricKey.CAPACITY_BOOKED_NEXT_7D]: {
+    key: MetricKey.CAPACITY_BOOKED_NEXT_7D,
+    name: "Schedule Filled (next 7 days)",
+    category: MetricCategory.UTILIZATION,
+    unit: MetricUnit.PERCENTAGE,
   },
   [MetricKey.PATIENTS_NEW_TODAY]: {
     key: MetricKey.PATIENTS_NEW_TODAY,
@@ -109,6 +137,48 @@ export const METRIC_DESCRIPTORS: Readonly<Record<MetricKey, MetricDescriptor>> =
     name: "Pending Treatment Value",
     category: MetricCategory.REVENUE,
     unit: MetricUnit.CURRENCY,
+  },
+  [MetricKey.REVENUE_PRODUCTION_30D]: {
+    key: MetricKey.REVENUE_PRODUCTION_30D,
+    name: "Production (30 days)",
+    category: MetricCategory.REVENUE,
+    unit: MetricUnit.CURRENCY,
+  },
+  [MetricKey.REVENUE_COLLECTION_RATE_30D]: {
+    key: MetricKey.REVENUE_COLLECTION_RATE_30D,
+    name: "Collection Rate (30 days)",
+    category: MetricCategory.REVENUE,
+    unit: MetricUnit.PERCENTAGE,
+  },
+  [MetricKey.PATIENTS_REACTIVATION_CANDIDATES]: {
+    key: MetricKey.PATIENTS_REACTIVATION_CANDIDATES,
+    name: "Patients Due for Reactivation",
+    category: MetricCategory.RETENTION,
+    unit: MetricUnit.COUNT,
+  },
+  [MetricKey.TREATMENT_AVERAGE_CASE_VALUE_30D]: {
+    key: MetricKey.TREATMENT_AVERAGE_CASE_VALUE_30D,
+    name: "Average Case Value (30 days)",
+    category: MetricCategory.CLINICAL,
+    unit: MetricUnit.CURRENCY,
+  },
+  [MetricKey.REVENUE_COLLECTED_30D]: {
+    key: MetricKey.REVENUE_COLLECTED_30D,
+    name: "Revenue Collected (30 days)",
+    category: MetricCategory.REVENUE,
+    unit: MetricUnit.CURRENCY,
+  },
+  [MetricKey.CAPACITY_OPEN_MINUTES_TODAY]: {
+    key: MetricKey.CAPACITY_OPEN_MINUTES_TODAY,
+    name: "Chair Time Open Today",
+    category: MetricCategory.UTILIZATION,
+    unit: MetricUnit.MINUTES,
+  },
+  [MetricKey.CAPACITY_APPOINTMENT_CAPACITY_TODAY]: {
+    key: MetricKey.CAPACITY_APPOINTMENT_CAPACITY_TODAY,
+    name: "Appointments That Fit Today",
+    category: MetricCategory.UTILIZATION,
+    unit: MetricUnit.COUNT,
   },
   [MetricKey.QUEUE_PATIENTS_WAITING]: {
     key: MetricKey.QUEUE_PATIENTS_WAITING,
@@ -154,7 +224,7 @@ export const METRIC_DESCRIPTORS: Readonly<Record<MetricKey, MetricDescriptor>> =
   },
   [MetricKey.CAPACITY_AVAILABLE_SLOTS_TODAY]: {
     key: MetricKey.CAPACITY_AVAILABLE_SLOTS_TODAY,
-    name: "Available Appointment Slots Today",
+    name: "Room For More Appointments Today",
     category: MetricCategory.UTILIZATION,
     unit: MetricUnit.COUNT,
   },

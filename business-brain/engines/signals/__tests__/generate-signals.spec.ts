@@ -434,13 +434,19 @@ describe("generateSignals — failure isolation", () => {
         reason: `evaluated with ${ctx.metrics.size} metric(s)`,
       }),
     };
+    const supplied = metrics(HEALTHY_CLINIC);
     const result = evaluateSignals(
-      { metrics: metrics(HEALTHY_CLINIC), clinicId: CLINIC_ID, date: DATE, now: NOW },
+      { metrics: supplied, clinicId: CLINIC_ID, date: DATE, now: NOW },
       [broken, working],
     );
     expect(result.error).toBeUndefined();
     expect(result.traces[1].reasoning).toBe("Skipped: evaluator threw (boom).");
-    expect(result.traces[2].reasoning).toContain("evaluated with 18 metric(s)");
+    // Derived from the fixture rather than restated: this test is about the
+    // surviving evaluator still seeing the full metric set, not about how many
+    // metrics the engine happens to define today.
+    expect(result.traces[2].reasoning).toContain(
+      `evaluated with ${supplied.length} metric(s)`,
+    );
   });
 });
 

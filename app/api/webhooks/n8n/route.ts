@@ -1,5 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server";
 
+import { secretsMatch } from "@/lib/security/timing-safe";
+
 /**
  * POST /api/webhooks/n8n
  *
@@ -23,8 +25,10 @@ export async function POST(request: NextRequest) {
   try {
     const secret = request.headers.get("x-n8n-secret");
 
-    // Validate shared secret
-    if (!secret || secret !== process.env.N8N_WEBHOOK_SECRET) {
+    // Validate shared secret. The comment below has always claimed a
+    // constant-time comparison; `!==` short-circuits at the first differing
+    // byte, so it was not one. Now it is.
+    if (!secretsMatch(secret, process.env.N8N_WEBHOOK_SECRET)) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 

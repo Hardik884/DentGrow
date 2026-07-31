@@ -17,6 +17,7 @@ import {
   CreditCard,
   Pill,
   Briefcase,
+  BrainCircuit,
   type LucideIcon,
 } from "lucide-react";
 
@@ -39,6 +40,16 @@ const DENTIST_NAV: NavItem[] = [
   { label: "Settings",          href: "/dentist/settings",     icon: Settings },
 ];
 
+/**
+ * Shown only for clinics on the Business Brain allow-list. Inserted before
+ * Settings so the analysis surfaces sit together with Analytics.
+ */
+const BUSINESS_BRAIN_NAV_ITEM: NavItem = {
+  label: "Business Brain",
+  href: "/dentist/business-brain",
+  icon: BrainCircuit,
+};
+
 // Base receptionist nav (always shown)
 const BASE_RECEPTIONIST_NAV: NavItem[] = [
   { label: "Today's Dashboard", href: "/receptionist",              icon: LayoutDashboard },
@@ -58,9 +69,16 @@ interface DashboardSidebarProps {
   role: "dentist" | "receptionist" | "patient";
   fullName: string;
   allowReceptionistPayments?: boolean;
+  /** Business Brain is allow-listed per clinic; resolved server-side. */
+  showBusinessBrain?: boolean;
 }
 
-export function DashboardSidebar({ role, fullName, allowReceptionistPayments = false }: DashboardSidebarProps) {
+export function DashboardSidebar({
+  role,
+  fullName,
+  allowReceptionistPayments = false,
+  showBusinessBrain = false,
+}: DashboardSidebarProps) {
   const pathname = usePathname();
   
   // Build receptionist nav dynamically based on payment access
@@ -68,7 +86,15 @@ export function DashboardSidebar({ role, fullName, allowReceptionistPayments = f
     ? [...BASE_RECEPTIONIST_NAV, PAYMENTS_NAV_ITEM]
     : BASE_RECEPTIONIST_NAV;
 
-  const navItems = role === "dentist" ? DENTIST_NAV : receptionistNav;
+  const dentistNav = showBusinessBrain
+    ? [
+        ...DENTIST_NAV.slice(0, DENTIST_NAV.length - 1),
+        BUSINESS_BRAIN_NAV_ITEM,
+        DENTIST_NAV[DENTIST_NAV.length - 1],
+      ]
+    : DENTIST_NAV;
+
+  const navItems = role === "dentist" ? dentistNav : receptionistNav;
 
   // Initials for avatar
   const initials = fullName

@@ -31,7 +31,13 @@ function calculateFromSnapshot(snapshot: ClinicDataSnapshot, log: Logger): Metri
   const metrics: Metric[] = [];
   for (const calculate of METRIC_CALCULATORS) {
     try {
-      metrics.push(calculate(snapshot));
+      const metric = calculate(snapshot);
+      // `null` is a deliberate withholding, not a failure: the calculator ran
+      // and determined the metric is not measurable from this snapshot. It is
+      // omitted silently so downstream evaluators skip on missing input.
+      if (metric !== null) {
+        metrics.push(metric);
+      }
     } catch (error) {
       log.warn("Metric calculation failed; skipping", {
         engine: "MetricsEngine",

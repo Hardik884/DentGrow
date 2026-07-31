@@ -134,9 +134,16 @@ export async function completeAppointmentCascade(
   // ── 2) Mark the appointment's active queue entry completed ───────────────
   // Keeps the live queue consistent regardless of which path triggered
   // completion (the dentist status control no longer leaves stale entries).
+  //
+  // `completed_at` is stamped here and nowhere else. Together with `called_at`
+  // it is the only record of how long an appointment ACTUALLY took — the
+  // duration on the appointment row is the one someone typed when booking, which
+  // is a plan rather than an observation. The filter on waiting/in_progress
+  // means an entry already closed is not restamped, so the value records the
+  // first completion and never drifts.
   await db
     .from("queue_entries")
-    .update({ status: "completed" })
+    .update({ status: "completed", completed_at: now })
     .eq("appointment_id", appointmentId)
     .eq("clinic_id", clinicId)
     .in("status", ["waiting", "in_progress"]);

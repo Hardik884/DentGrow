@@ -72,6 +72,7 @@ export const demandSupplyMismatchMatcher: PatternMatcher = {
       MetricKey.TREATMENT_ACCEPTED_PENDING_SCHEDULING,
     );
     const newPatients = metricValue(ctx, MetricKey.PATIENTS_NEW_TODAY);
+    const openMinutes = metricValue(ctx, MetricKey.CAPACITY_OPEN_MINUTES_TODAY);
     const { treatment, patients } = ctx.config.signals;
 
     const pendingKnown = pendingValue !== undefined && acceptedPending !== undefined;
@@ -209,12 +210,50 @@ export const demandSupplyMismatchMatcher: PatternMatcher = {
       });
     }
 
-    hypotheses.push({
-      slug: "capacity_not_offered",
-      statement: CAPACITY_NOT_OFFERED,
-      status: "undetermined",
-      requires: ["PROVIDER_AVAILABILITY_ROSTER", "BOOKING_CHANNEL_ACTIVITY"],
-    });
+    // Whether the clinic offered any chair time at all is now measurable:
+    // `capacity.open_minutes_today` is the union of the day's availability rules
+    // multiplied by the chair count. Zero means nothing was rostered, and an
+    // empty chair is then not a demand problem at all — the chair was never on
+    // offer. Anything above zero rules that explanation out.
+    //
+    // The remaining half of the question — whether the open slots were actually
+    // OFFERED through a booking channel — still needs data DentGrow does not
+    // record, so the hypothesis is only settled in the direction the open-minutes
+    // figure can settle it.
+    if (openMinutes === undefined) {
+      hypotheses.push({
+        slug: "capacity_not_offered",
+        statement: CAPACITY_NOT_OFFERED,
+        status: "undetermined",
+        requires: ["PROVIDER_AVAILABILITY_ROSTER", "BOOKING_CHANNEL_ACTIVITY"],
+      });
+    } else if (openMinutes <= 0) {
+      hypotheses.push({
+        slug: "capacity_not_offered",
+        statement: CAPACITY_NOT_OFFERED,
+        status: "supported",
+        supporting: [
+          {
+            slug: "no-chair-time-open",
+            description: `The clinic opened ${formatValue(openMinutes, MetricUnit.MINUTES)} of chair time on this day, so no appointment could have been booked into it.`,
+            data: { openMinutes },
+          },
+        ],
+      });
+    } else {
+      hypotheses.push({
+        slug: "capacity_not_offered",
+        statement: CAPACITY_NOT_OFFERED,
+        status: "contradicted",
+        contradicting: [
+          {
+            slug: "chair-time-was-open",
+            description: `The clinic opened ${formatValue(openMinutes, MetricUnit.MINUTES)} of chair time on this day, so capacity existed and was available to book against.`,
+            data: { openMinutes },
+          },
+        ],
+      });
+    }
 
     return emit(ctx, {
       pattern: DiagnosisPattern.DEMAND_SUPPLY_MISMATCH,

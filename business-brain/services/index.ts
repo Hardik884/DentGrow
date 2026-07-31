@@ -1,12 +1,10 @@
 /**
- * Business Brain — Services (reserved).
+ * Business Brain — Services barrel.
  *
- * Services will orchestrate engines and coordinate cross-engine flows in
- * later phases (e.g. running the Metrics -> Signal -> Diagnosis pipeline for
- * a clinic). They contain orchestration logic, never data access (that is the
- * repositories' job) and never React/UI concerns.
- *
- * Intentionally empty in Phase 1 — no service is implemented yet.
+ * Services orchestrate engines and coordinate cross-engine flows. They contain
+ * orchestration only — never business logic (that belongs to the engines),
+ * never data access (that is the repositories' job), and never React/UI
+ * concerns.
  */
 
-export {};
+export * from "./business-brain-service";

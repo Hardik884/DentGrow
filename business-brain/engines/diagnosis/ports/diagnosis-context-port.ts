@@ -117,8 +117,9 @@ export interface OutstandingBalanceRow {
 }
 
 /**
- * Scheduled versus actual arrival for one appointment.
- * Serves: appointment_arrival_times.
+ * Scheduled versus actual, for one appointment: when the patient arrived, and
+ * how long the appointment really took.
+ * Serves: appointment_arrival_times, service_time_distribution.
  */
 export interface AppointmentArrivalRow {
   readonly appointmentId: string;
@@ -130,6 +131,22 @@ export interface AppointmentArrivalRow {
   readonly arrivalDeltaMinutes: number | null;
   /** ISO-8601 moment the patient was seen, when recorded. */
   readonly seenAt: string | null;
+  /** ISO-8601 moment the patient was finished with, when recorded. */
+  readonly finishedAt: string | null;
+  /**
+   * Minutes the appointment was PLANNED to take, as booked.
+   *
+   * A plan, not an observation — which is exactly why it needs comparing
+   * against the actual.
+   */
+  readonly scheduledMinutes: number;
+  /**
+   * Minutes the appointment ACTUALLY took, seen to finished.
+   *
+   * `null` when either end was not recorded. Never inferred from anything else:
+   * a guessed duration would fabricate the quantity this exists to measure.
+   */
+  readonly actualMinutes: number | null;
 }
 
 /**
@@ -166,7 +183,23 @@ export interface CompletedTreatmentRow {
  * Read-only, entity-level context for discriminating between hypotheses that
  * daily aggregate metrics cannot separate.
  *
- * NOT IMPLEMENTED IN THIS PHASE. Nothing calls these methods yet.
+ * ## `null` means "cannot answer", `[]` means "asked, found nothing"
+ *
+ * Every method may return `null`, and the distinction is the whole point. A
+ * deployment whose schema cannot record something must be able to SAY so: an
+ * empty array claims the clinic had no cancellations, no overdue recalls, no
+ * unpaid balances — a much stronger statement, and a false one.
+ *
+ * This is the same discipline the rest of the module already applies. A metric
+ * that cannot be measured is withheld rather than reported as zero; an evaluator
+ * that could not run is `skipped` rather than `no_signal`; a hypothesis with no
+ * evidence is `undetermined` rather than rejected. A discriminator reading `[]`
+ * as "none" where the truth is "unrecorded" would resolve a hypothesis it has no
+ * business resolving.
+ *
+ * An implementation returns `null` for anything its schema genuinely cannot
+ * answer, permanently and by construction — not for a transient failure, which
+ * should throw and be handled as a failure.
  */
 export interface DiagnosisContextPort {
   /**
@@ -177,14 +210,14 @@ export interface DiagnosisContextPort {
    * losses cluster in particular times or treatment types, and whether lost
    * capacity was recovered.
    */
-  listCancellationEvents(window: EntityWindow): Promise<readonly CancellationEvent[]>;
+  listCancellationEvents(window: EntityWindow): Promise<readonly CancellationEvent[] | null>;
 
   /**
    * Prior attendance history for the patients who did not attend in the window.
    *
    * Discriminates repeat non-attenders from first-time non-attenders.
    */
-  listNoShowHistory(window: EntityWindow): Promise<readonly NoShowHistoryRow[]>;
+  listNoShowHistory(window: EntityWindow): Promise<readonly NoShowHistoryRow[] | null>;
 
   /**
    * Accepted treatments still unscheduled at the end of the window, with age,
@@ -194,7 +227,7 @@ export interface DiagnosisContextPort {
    * long ago, and a backlog concentrated in long or high-value work from one
    * spread across routine work.
    */
-  listPendingTreatments(window: EntityWindow): Promise<readonly PendingTreatmentRow[]>;
+  listPendingTreatments(window: EntityWindow): Promise<readonly PendingTreatmentRow[] | null>;
 
   /**
    * Unpaid balances outstanding at the end of the window, with age and amount.
@@ -204,7 +237,7 @@ export interface DiagnosisContextPort {
    */
   listOutstandingBalances(
     window: EntityWindow,
-  ): Promise<readonly OutstandingBalanceRow[]>;
+  ): Promise<readonly OutstandingBalanceRow[] | null>;
 
   /**
    * Scheduled versus actual arrival for the window's appointments.
@@ -214,7 +247,7 @@ export interface DiagnosisContextPort {
    */
   listAppointmentArrivals(
     window: EntityWindow,
-  ): Promise<readonly AppointmentArrivalRow[]>;
+  ): Promise<readonly AppointmentArrivalRow[] | null>;
 
   /**
    * Contact attempts recorded against follow-ups overdue in the window.
@@ -224,7 +257,7 @@ export interface DiagnosisContextPort {
    */
   listRecallContactAttempts(
     window: EntityWindow,
-  ): Promise<readonly RecallContactAttemptRow[]>;
+  ): Promise<readonly RecallContactAttemptRow[] | null>;
 
   /**
    * Treatments completed in the window with billed and collected value.
@@ -234,5 +267,5 @@ export interface DiagnosisContextPort {
    */
   listCompletedTreatments(
     window: EntityWindow,
-  ): Promise<readonly CompletedTreatmentRow[]>;
+  ): Promise<readonly CompletedTreatmentRow[] | null>;
 }

@@ -4,6 +4,8 @@
 
 import type { Metric } from "../../../domain";
 import type { ClinicDataSnapshot } from "../../../repositories";
+import { addDays } from "../../../utils";
+import { METRIC_WINDOWS } from "../config/metric-windows";
 import { MetricKey, buildMetric } from "../metric-ids";
 
 /** Returns the "YYYY-MM-DD" calendar date portion of an ISO timestamp. */
@@ -35,4 +37,41 @@ export function returningPatientsToday(s: ClinicDataSnapshot): Metric {
     }
   }
   return buildMetric(MetricKey.PATIENTS_RETURNING_TODAY, seen.size, s.clinicId, s.date, s.asOf);
+}
+
+/**
+ * Patients due for reactivation — on the roster, last seen longer ago than the
+ * recall interval, and with no upcoming appointment booked.
+ *
+ * This is the most directly actionable metric the engine produces: it is not a
+ * number, it is a call list. Reactivation is the cheapest revenue in dentistry
+ * because these patients already chose the clinic once. Most practices have
+ * hundreds and have never counted them.
+ *
+ * A patient who has never attended (`lastVisit === null`) is deliberately
+ * EXCLUDED. They are an acquisition problem, not a lapsed one, and mixing the
+ * two would make the list unusable for its purpose.
+ *
+ * WITHHELD when the snapshot carries no roster: the repository could not supply
+ * the data, which is different from a clinic having nobody to reactivate.
+ */
+export function reactivationCandidates(s: ClinicDataSnapshot): Metric | null {
+  const roster = s.patientRoster;
+  if (roster === undefined) {
+    return null;
+  }
+  const cutoff = addDays(s.date, -METRIC_WINDOWS.REACTIVATION_DAYS);
+  const value = roster.filter(
+    (p) =>
+      p.lastVisit !== null &&
+      p.lastVisit.slice(0, 10) < cutoff &&
+      !p.hasUpcomingAppointment,
+  ).length;
+  return buildMetric(
+    MetricKey.PATIENTS_REACTIVATION_CANDIDATES,
+    value,
+    s.clinicId,
+    s.date,
+    s.asOf,
+  );
 }
