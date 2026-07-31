@@ -27,7 +27,7 @@
  * of the payload so a caller can compare results directly.
  */
 
-import type { Diagnosis, Metric, Signal } from "../domain";
+import type { Constraint, Diagnosis, Metric, Signal } from "../domain";
 import type {
   Confidence,
   DecisionTrace,
@@ -37,6 +37,8 @@ import type {
 import type { MetricHistoryStore, MetricsDataRepository } from "../repositories";
 import { logger, type Logger } from "../utils";
 import { DentGrowMetricsEngine } from "../engines/metrics";
+import { deriveConstraints } from "../engines/constraint";
+import { proposeStrategies, type ReasonedStrategy } from "../engines/strategy";
 import { MetricKey, buildMetric } from "../engines/metrics/metric-ids";
 import { DentGrowSignalEngine } from "../engines/signals";
 import {
@@ -84,6 +86,7 @@ export const BusinessBrainStageName = {
   METRICS: "metrics",
   SIGNALS: "signals",
   DIAGNOSIS: "diagnosis",
+  STRATEGY: "strategy",
 } as const;
 export type BusinessBrainStageName =
   (typeof BusinessBrainStageName)[keyof typeof BusinessBrainStageName];
@@ -149,6 +152,22 @@ export interface BusinessBrainResult {
    * and saves the caller measuring the same days a second time.
    */
   readonly recomputedHistory: readonly MetricsOnlyDay[];
+  /**
+   * The bottlenecks the day's diagnoses point at, worst first.
+   *
+   * Several diagnoses commonly describe one problem — the patterns are
+   * overlapping views rather than a partition — so this is what turns six
+   * findings into the two or three things actually limiting the clinic.
+   */
+  readonly constraints: readonly Constraint[];
+  /**
+   * What to do about them. The only advisory output the pipeline produces.
+   *
+   * A strategy is either CORRECTIVE, acting on a cause the engine settled, or
+   * INVESTIGATIVE, proposing the measurement that would settle it. Nothing is
+   * ever recommended against an undetermined cause.
+   */
+  readonly strategies: readonly ReasonedStrategy[];
   /** Set when a stage rejected its input; identifies the first failure. */
   readonly error?: EngineError;
 }
@@ -295,6 +314,8 @@ export class BusinessBrain {
     // History days this run had to measure itself. Local to the run: the service
     // deliberately holds no per-run state, so two concurrent runs cannot mix.
     let recomputedHistory: readonly MetricsOnlyDay[] = [];
+    let constraints: readonly Constraint[] = [];
+    let strategies: readonly ReasonedStrategy[] = [];
     const finish = (
       fields: Pick<BusinessBrainResult, "metrics" | "signals" | "diagnoses" | "trace"> & {
         error?: EngineError;
@@ -313,6 +334,8 @@ export class BusinessBrain {
         trace: fields.trace,
         error: fields.error,
         recomputedHistory,
+        constraints,
+        strategies,
         execution: {
           clinicId,
           date,
@@ -461,6 +484,32 @@ export class BusinessBrain {
     // cancellation query — and a run with no diagnoses touches nothing.
     const diagnosed = diagnosisResult.data ?? [];
     const resolved = await this.resolveEntityContext(clinicId, date, diagnosed, startedAt);
+
+    // ── Stage 5: Constraints and strategy ────────────────────────────────────
+    // The first point in the pipeline where anything is recommended. Kept behind
+    // the same failure isolation as every other stage: a throw here costs the
+    // advice, not the findings the dentist came for.
+    const strategyStart = this.clock();
+    let strategyOk = true;
+    try {
+      constraints = deriveConstraints(resolved, clinicId, date, startedAt).constraints;
+      strategies = proposeStrategies(constraints, resolved, clinicId, date, startedAt).strategies;
+    } catch (error) {
+      strategyOk = false;
+      this.log.warn("Business Brain could not derive strategy; findings are unaffected", {
+        clinicId,
+        date,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+    stages.push(
+      stage(BusinessBrainStageName.STRATEGY, {
+        ok: strategyOk,
+        executed: true,
+        outputCount: strategies.length,
+        durationMs: this.clock() - strategyStart,
+      }),
+    );
 
     const trace = [...signalTrace, ...(diagnosisResult.trace ?? [])];
     return finish({

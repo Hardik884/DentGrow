@@ -106,6 +106,8 @@ function result(over: Partial<BusinessBrainResult> = {}): BusinessBrainResult {
     diagnoses: [],
     trace: [],
     recomputedHistory: [],
+    constraints: [],
+    strategies: [],
     execution: {
       clinicId: "c",
       date: "2026-07-28",

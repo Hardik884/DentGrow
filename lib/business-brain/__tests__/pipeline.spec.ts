@@ -291,7 +291,12 @@ describe.skipIf(!LOCAL_UP)("Business Brain pipeline (integration)", () => {
     expect(result.execution.startedAt).toBe(AS_OF);
     expect(result.execution.version).toMatch(/^\d+\.\d+\.\d+$/);
     expect(result.execution.durationMs).toBeGreaterThanOrEqual(0);
-    expect(result.execution.stages).toHaveLength(3);
+    expect(result.execution.stages.map((s) => s.stage)).toEqual([
+      "metrics",
+      "signals",
+      "diagnosis",
+      "strategy",
+    ]);
     for (const s of result.execution.stages) {
       expect(s.durationMs).toBeGreaterThanOrEqual(0);
     }
@@ -307,5 +312,57 @@ describe.skipIf(!LOCAL_UP)("Business Brain pipeline (integration)", () => {
     expect(result.ok).toBe(true);
     expect(result.metrics.length).toBeGreaterThan(0);
     expect(result.metrics.every((m) => m.value === 0)).toBe(true);
+  });
+
+  /**
+   * Strategy is the only advisory output the pipeline produces, so the limit on
+   * that licence is worth asserting against real data rather than only against
+   * hand-built diagnoses.
+   */
+  describe("strategy", () => {
+    it("never recommends acting on a cause the engine did not settle", async () => {
+      const result = await brain.runBusinessBrain(CLINIC, DATE, {
+        startedAt: AS_OF,
+        historyDays: 3,
+      });
+
+      const settled = new Set(
+        result.diagnoses.flatMap((d) =>
+          d.hypotheses.filter((h) => h.status === "supported").map((h) => h.id),
+        ),
+      );
+
+      for (const strategy of result.strategies) {
+        if (strategy.kind === "corrective") {
+          expect(strategy.basedOn.length).toBeGreaterThan(0);
+          for (const id of strategy.basedOn) {
+            expect(settled.has(id), `${strategy.id} acts on an unsettled hypothesis`).toBe(true);
+          }
+        } else {
+          // Investigative strategies propose a measurement, never an action, so
+          // they must not claim to rest on a cause.
+          expect(strategy.basedOn).toEqual([]);
+        }
+      }
+    });
+
+    it("derives constraints only from patterns the diagnoses actually produced", async () => {
+      const result = await brain.runBusinessBrain(CLINIC, DATE, { startedAt: AS_OF });
+      const diagnosisIds = new Set(result.diagnoses.map((d) => d.id));
+      for (const constraint of result.constraints) {
+        expect((constraint.relatedDiagnosisIds ?? []).length).toBeGreaterThan(0);
+        for (const id of constraint.relatedDiagnosisIds ?? []) {
+          expect(diagnosisIds.has(id)).toBe(true);
+        }
+      }
+    });
+
+    it("ties every strategy to a constraint that exists in the same run", async () => {
+      const result = await brain.runBusinessBrain(CLINIC, DATE, { startedAt: AS_OF });
+      const constraintIds = new Set(result.constraints.map((c) => c.id));
+      for (const strategy of result.strategies) {
+        expect(constraintIds.has(strategy.constraintId)).toBe(true);
+      }
+    });
   });
 });

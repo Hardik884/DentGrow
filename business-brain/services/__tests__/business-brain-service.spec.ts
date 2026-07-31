@@ -67,7 +67,7 @@ function brainWith(repository: MetricsDataRepository) {
 }
 
 describe("BusinessBrain orchestration", () => {
-  it("runs all three stages and returns their outputs", async () => {
+  it("runs every stage and returns their outputs", async () => {
     const result = await brainWith(new RecordingRepository()).runBusinessBrain(CLINIC, DATE, {
       startedAt: STARTED_AT,
       correlationId: "corr-1",
@@ -80,6 +80,7 @@ describe("BusinessBrain orchestration", () => {
       "metrics",
       "signals",
       "diagnosis",
+      "strategy",
     ]);
     expect(result.execution.stages.every((s) => s.executed && s.ok)).toBe(true);
   });
