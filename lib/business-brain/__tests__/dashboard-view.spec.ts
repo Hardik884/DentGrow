@@ -108,6 +108,7 @@ function result(over: Partial<BusinessBrainResult> = {}): BusinessBrainResult {
     recomputedHistory: [],
     constraints: [],
     strategies: [],
+    valueAtStake: new Map(),
     execution: {
       clinicId: "c",
       date: "2026-07-28",

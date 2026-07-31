@@ -27,7 +27,7 @@
  * of the payload so a caller can compare results directly.
  */
 
-import type { Constraint, Diagnosis, Metric, Signal } from "../domain";
+import type { Constraint, Diagnosis, Metric, Signal, Value } from "../domain";
 import type {
   Confidence,
   DecisionTrace,
@@ -38,6 +38,7 @@ import type { MetricHistoryStore, MetricsDataRepository } from "../repositories"
 import { logger, type Logger } from "../utils";
 import { DentGrowMetricsEngine } from "../engines/metrics";
 import { deriveConstraints } from "../engines/constraint";
+import { deriveValues } from "../engines/value";
 import { proposeStrategies, type ReasonedStrategy } from "../engines/strategy";
 import { MetricKey, buildMetric } from "../engines/metrics/metric-ids";
 import { DentGrowSignalEngine } from "../engines/signals";
@@ -168,6 +169,14 @@ export interface BusinessBrainResult {
    * ever recommended against an undetermined cause.
    */
   readonly strategies: readonly ReasonedStrategy[];
+  /**
+   * What is measurably at stake in each bottleneck, keyed by constraint id.
+   *
+   * Present size, never projected gain: how much of it acting would recover is a
+   * fact about the future that nothing here measures. A constraint absent from
+   * this map could not be sized from the metrics available.
+   */
+  readonly valueAtStake: ReadonlyMap<string, readonly Value[]>;
   /** Set when a stage rejected its input; identifies the first failure. */
   readonly error?: EngineError;
 }
@@ -316,6 +325,7 @@ export class BusinessBrain {
     let recomputedHistory: readonly MetricsOnlyDay[] = [];
     let constraints: readonly Constraint[] = [];
     let strategies: readonly ReasonedStrategy[] = [];
+    let valueAtStake: ReadonlyMap<string, readonly Value[]> = new Map();
     const finish = (
       fields: Pick<BusinessBrainResult, "metrics" | "signals" | "diagnoses" | "trace"> & {
         error?: EngineError;
@@ -336,6 +346,7 @@ export class BusinessBrain {
         recomputedHistory,
         constraints,
         strategies,
+        valueAtStake,
         execution: {
           clinicId,
           date,
@@ -493,7 +504,18 @@ export class BusinessBrain {
     let strategyOk = true;
     try {
       constraints = deriveConstraints(resolved, clinicId, date, startedAt).constraints;
-      strategies = proposeStrategies(constraints, resolved, clinicId, date, startedAt).strategies;
+      // Sizes each bottleneck from metrics already computed, so strategies of
+      // equal urgency are ordered by how much is actually sitting in them.
+      const valued = deriveValues(constraints, metrics, startedAt);
+      valueAtStake = valued.byConstraint;
+      strategies = proposeStrategies(
+        constraints,
+        resolved,
+        clinicId,
+        date,
+        startedAt,
+        valued.byConstraint,
+      ).strategies;
     } catch (error) {
       strategyOk = false;
       this.log.warn("Business Brain could not derive strategy; findings are unaffected", {

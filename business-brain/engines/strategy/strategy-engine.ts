@@ -44,7 +44,10 @@ import {
   type Diagnosis,
   type Hypothesis,
   type Strategy,
+  type Value,
+  ValueType,
 } from "../../domain";
+import { compareValueAtStake } from "../value";
 import { Priority, Severity } from "../../types";
 
 /** How a strategy earns its place. */
@@ -175,6 +178,24 @@ const INVESTIGATIVE_BY_CATEGORY: Readonly<Record<ConstraintCategory, string>> = 
   [ConstraintCategory.ACQUISITION]: "why fewer new patients are arriving",
 };
 
+/**
+ * The kind of value acting on each bottleneck would produce.
+ *
+ * A category, not a promise. Acquisition is absent for the same reason it has no
+ * measurable size: nothing records the patients who did not arrive.
+ */
+const VALUE_TYPES_BY_CATEGORY: Readonly<Record<ConstraintCategory, readonly ValueType[]>> = {
+  [ConstraintCategory.REVENUE_LEAKAGE]: [ValueType.REVENUE_RECOVERED],
+  [ConstraintCategory.TREATMENT_ACCEPTANCE]: [
+    ValueType.REVENUE_RECOVERED,
+    ValueType.APPOINTMENTS_BOOKED,
+  ],
+  [ConstraintCategory.CAPACITY]: [ValueType.APPOINTMENTS_BOOKED, ValueType.HOURS_SAVED],
+  [ConstraintCategory.SCHEDULING]: [ValueType.APPOINTMENTS_BOOKED],
+  [ConstraintCategory.RETENTION]: [ValueType.RETENTION_IMPROVED],
+  [ConstraintCategory.ACQUISITION]: [ValueType.OTHER],
+};
+
 /** Hypothesis slug from its `<diagnosisId>#h.<slug>` id. */
 function slugOf(hypothesis: Hypothesis): string {
   const at = hypothesis.id.lastIndexOf("#h.");
@@ -200,6 +221,13 @@ export function proposeStrategies(
   clinicId: string,
   date: string,
   now: string,
+  /**
+   * What is measurably at stake per constraint, used only to order strategies
+   * of EQUAL priority. Optional: without it the ordering falls back to the
+   * stable id comparison, so a caller that cannot size its constraints gets the
+   * same strategies in a slightly less useful order rather than none.
+   */
+  valueByConstraint?: ReadonlyMap<string, readonly Value[]>,
 ): StrategyResult {
   const byId = new Map(diagnoses.map((d) => [d.id, d]));
   const strategies: ReasonedStrategy[] = [];
@@ -245,6 +273,10 @@ export function proposeStrategies(
         basedOn: [entry.hypothesis.id],
         diagnosisIds: [...entry.diagnosisIds].sort(),
         rationale: entry.hypothesis.statement,
+        // The KIND of value acting here would produce — a category, never an
+        // amount. Promising a figure would require knowing how effective the
+        // action is, which nothing measures.
+        expectedValueTypes: VALUE_TYPES_BY_CATEGORY[constraint.category],
         createdAt: now,
       });
     }
@@ -289,6 +321,15 @@ export function proposeStrategies(
     const byPriority = PRIORITY_RANK[b.priority] - PRIORITY_RANK[a.priority];
     if (byPriority !== 0) return byPriority;
     if (a.kind !== b.kind) return a.kind === StrategyKind.CORRECTIVE ? -1 : 1;
+    // Size only breaks ties inside a priority band, never across one. Severity
+    // is how urgent, value is how big; letting a large slow problem outrank a
+    // small urgent one would invent an exchange rate between money and risk that
+    // nobody chose.
+    const byStake = compareValueAtStake(
+      valueByConstraint?.get(a.constraintId),
+      valueByConstraint?.get(b.constraintId),
+    );
+    if (byStake !== 0) return byStake;
     return a.id.localeCompare(b.id);
   });
 
