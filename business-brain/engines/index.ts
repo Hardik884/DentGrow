@@ -18,6 +18,7 @@ export * from "./diagnosis";
 export * from "./constraint-engine";
 export * from "./strategy-engine";
 export * from "./workflow-engine";
+export * from "./workflow";
 export * from "./action-engine";
 export * from "./outcome-engine";
 export * from "./value-engine";

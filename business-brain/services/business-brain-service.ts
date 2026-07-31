@@ -40,6 +40,8 @@ import { DentGrowMetricsEngine } from "../engines/metrics";
 import { deriveConstraints } from "../engines/constraint";
 import { deriveValues } from "../engines/value";
 import { proposeStrategies, type ReasonedStrategy } from "../engines/strategy";
+import { generateWorkflows } from "../engines/workflow";
+import type { Workflow } from "../domain";
 import { MetricKey, buildMetric } from "../engines/metrics/metric-ids";
 import { DentGrowSignalEngine } from "../engines/signals";
 import {
@@ -177,6 +179,12 @@ export interface BusinessBrainResult {
    * this map could not be sized from the metrics available.
    */
   readonly valueAtStake: ReadonlyMap<string, readonly Value[]>;
+  /**
+   * Execution plans derived from the strategies. Each workflow answers: what
+   * needs doing, why, who, when, how much effort, and what the expected outcome
+   * is. Deterministic: same strategies always produce the same workflows.
+   */
+  readonly workflows: readonly Workflow[];
   /** Set when a stage rejected its input; identifies the first failure. */
   readonly error?: EngineError;
 }
@@ -325,6 +333,7 @@ export class BusinessBrain {
     let recomputedHistory: readonly MetricsOnlyDay[] = [];
     let constraints: readonly Constraint[] = [];
     let strategies: readonly ReasonedStrategy[] = [];
+    let workflows: readonly Workflow[] = [];
     let valueAtStake: ReadonlyMap<string, readonly Value[]> = new Map();
     const finish = (
       fields: Pick<BusinessBrainResult, "metrics" | "signals" | "diagnoses" | "trace"> & {
@@ -347,6 +356,7 @@ export class BusinessBrain {
         constraints,
         strategies,
         valueAtStake,
+        workflows,
         execution: {
           clinicId,
           date,
@@ -516,6 +526,14 @@ export class BusinessBrain {
         startedAt,
         valued.byConstraint,
       ).strategies;
+      // Workflows are the execution plans derived from strategies.
+      workflows = generateWorkflows(
+        strategies,
+        constraints,
+        clinicId,
+        date,
+        startedAt,
+      ).workflows;
     } catch (error) {
       strategyOk = false;
       this.log.warn("Business Brain could not derive strategy; findings are unaffected", {

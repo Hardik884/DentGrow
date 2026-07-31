@@ -9,6 +9,7 @@ import {
   buildFocusCards,
   headlineMetrics,
 } from "@/lib/business-brain/dashboard-view";
+import { buildWorkflowGroups, buildWorkflowSummary } from "@/lib/business-brain/workflow-view";
 import { formatDate } from "@/lib/utils";
 import { EmptyState } from "@/components/ui/empty-state";
 import { BrainStatusBanner } from "@/components/business-brain/BrainStatusBanner";
@@ -16,6 +17,7 @@ import { FocusCard } from "@/components/business-brain/FocusCard";
 import { SignalList } from "@/components/business-brain/SignalList";
 import { TodaysNumbers } from "@/components/business-brain/TodaysNumbers";
 import { RunDetails } from "@/components/business-brain/RunDetails";
+import { WorkflowSection } from "@/components/business-brain/WorkflowSection";
 
 export const metadata: Metadata = {
   title: "Business Brain",
@@ -67,6 +69,8 @@ export default async function BusinessBrainPage() {
   const view = buildDashboardView(result);
   const focus = buildFocusCards(result);
   const signalDescriptions = result.signals.map((s) => s.description);
+  const workflowGroups = buildWorkflowGroups(result.workflows);
+  const workflowSummary = buildWorkflowSummary(result.workflows);
 
   // Signals that no focus card already explains.
   //
@@ -125,6 +129,12 @@ export default async function BusinessBrainPage() {
           ))}
         </div>
       )}
+
+      {/* Workflows: structured execution plans for each strategy.
+          Placed between the problems and the supporting data: the dentist has
+          already seen WHAT is wrong (focus cards), and now sees HOW to fix it
+          before diving into the numbers. */}
+      <WorkflowSection groups={workflowGroups} summary={workflowSummary} />
 
       {/* Figures outside their usual range that did not group into any problem.
           Kept visible because hiding them would overstate how much the page

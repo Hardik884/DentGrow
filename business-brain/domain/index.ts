@@ -15,6 +15,7 @@ export * from "./diagnosis";
 export * from "./constraint";
 export * from "./strategy";
 export * from "./value";
+export * from "./workflow";
 export * from "./action";
 export * from "./outcome";
 export * from "./learning";
