@@ -94,6 +94,8 @@ export function TreatmentForm({ treatmentId, appointmentId, patientId, onSuccess
       opd_charged: false,
       xray_taken: false,
       xray_cost: null,
+      discount_amount: undefined,
+      discount_reason: "",
       performed_at: undefined,
       consultant_id: "",
       commission_type: undefined,
@@ -187,6 +189,11 @@ export function TreatmentForm({ treatmentId, appointmentId, patientId, onSuccess
           opd_charged: result.data.opd_charged ?? false,
           xray_taken: result.data.xray_taken ?? false,
           xray_cost: result.data.xray_cost != null ? Number(result.data.xray_cost) : null,
+          discount_amount:
+            result.data.discount_amount != null && Number(result.data.discount_amount) > 0
+              ? Number(result.data.discount_amount)
+              : undefined,
+          discount_reason: result.data.discount_reason ?? "",
           performed_at: date ? (time ? `${date}T${time}` : date) : undefined,
           consultant_id: result.data.consultant_id ?? "",
           // `commission_type` is a text column with a CHECK, so the database
@@ -342,6 +349,39 @@ export function TreatmentForm({ treatmentId, appointmentId, patientId, onSuccess
                 className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                 hasError={!!(errors as Record<string, unknown>).cost}
               />
+            </Field>
+          </div>
+
+          {/* Discount is kept separate from cost on purpose: recording a lower
+              cost would lose the fact that a concession was given, and a reduced
+              bill would then be indistinguishable from an unpaid one. */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Field
+              label="Discount (₹)"
+              htmlFor="discount_amount"
+              hint="Optional — taken off the cost above"
+              error={(errors as Record<string, { message?: string }>).discount_amount?.message}
+            >
+              <Input
+                id="discount_amount"
+                type="number"
+                min={0}
+                step="0.01"
+                placeholder="0"
+                {...register("discount_amount", {
+                  setValueAs: (v) => (v === "" || v === null ? undefined : Number(v)),
+                })}
+                className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                hasError={!!(errors as Record<string, unknown>).discount_amount}
+              />
+            </Field>
+
+            <Field
+              label="Discount Reason"
+              htmlFor="discount_reason"
+              hint="Optional — e.g. goodwill, staff rate, written off"
+            >
+              <Input id="discount_reason" type="text" {...register("discount_reason")} />
             </Field>
           </div>
 

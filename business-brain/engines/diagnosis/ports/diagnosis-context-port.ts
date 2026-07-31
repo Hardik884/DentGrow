@@ -167,15 +167,26 @@ export interface RecallContactAttemptRow {
 }
 
 /**
- * One treatment completed in the window, with what it billed.
- * Serves: completed_treatment_mix.
+ * One treatment completed in the window, with what it billed, what was taken
+ * off, and what was collected.
+ * Serves: completed_treatment_mix, discount_and_writeoff_log.
  */
 export interface CompletedTreatmentRow {
   readonly treatmentId: string;
   readonly patientId: string;
   readonly date: string;
   readonly treatmentType: string;
+  /** Gross list price, before any discount. */
   readonly billedValue: MeasuredAmount;
+  /**
+   * Taken off the bill as a discount or write-off.
+   *
+   * Separate from an unpaid balance, and the distinction is the point: money
+   * given away at the point of billing and money billed and never received are
+   * opposite problems with opposite responses.
+   */
+  readonly discountValue: MeasuredAmount;
+  /** Actually received against this treatment. */
   readonly collectedValue: MeasuredAmount;
 }
 

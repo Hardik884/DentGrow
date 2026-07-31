@@ -1093,6 +1093,8 @@ export type Database = {
           created_at: string
           created_by: string | null
           deleted_at: string | null
+          discount_amount: number
+          discount_reason: string | null
           id: string
           internal_notes: string | null
           medications: Json
@@ -1118,6 +1120,8 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           deleted_at?: string | null
+          discount_amount?: number
+          discount_reason?: string | null
           id?: string
           internal_notes?: string | null
           medications?: Json
@@ -1143,6 +1147,8 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           deleted_at?: string | null
+          discount_amount?: number
+          discount_reason?: string | null
           id?: string
           internal_notes?: string | null
           medications?: Json

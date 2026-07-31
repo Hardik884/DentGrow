@@ -223,9 +223,9 @@ export const DISCRIMINATORS = {
   DISCOUNT_AND_WRITEOFF_LOG: {
     slug: "discount_and_writeoff_log",
     description:
-      "Discounts, write-offs, and payment-plan uptake applied to today's billing. NOT RECORDED: treatments carry a cost and payments carry an amount, with nothing between them for a discount or a write-off, so a reduced bill and an unpaid bill are indistinguishable.",
-    availability: Availability.REQUIRES_DATA_CAPTURE,
-    portMethod: null,
+      "Discounts and write-offs applied against the treatments completed in the window, alongside what was billed and collected: it separates revenue given away at the point of billing from revenue billed and never received.",
+    availability: Availability.REQUIRES_ENTITY_DATA,
+    portMethod: "listCompletedTreatments",
   },
   PATIENT_ACQUISITION_SOURCE: {
     slug: "patient_acquisition_source",

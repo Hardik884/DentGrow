@@ -311,7 +311,7 @@ export async function getOutstandingBalance(
 
     let treatmentQuery = db
       .from("treatments")
-      .select("cost, status")
+      .select("cost, discount_amount, status")
       .eq("patient_id", resolvedPatientId)
       .is("deleted_at", null);
 
@@ -372,7 +372,7 @@ export async function getPortalOutstandingBalance(): Promise<ActionResult<number
     const [{ data: treatmentRows }, { data: paymentRows }] = await Promise.all([
       db
         .from("treatments")
-        .select("cost, status")
+        .select("cost, discount_amount, status")
         .eq("patient_id", link.patient_id)
         .eq("clinic_id", clinicId)
         .is("deleted_at", null),
@@ -472,7 +472,7 @@ export async function getPatientsWithOutstandingBalance(): Promise<
           .is("deleted_at", null),
         db
           .from("treatments")
-          .select("patient_id, cost, status")
+          .select("patient_id, cost, discount_amount, status")
           .eq("clinic_id", cid)
           .is("deleted_at", null),
         db
@@ -632,7 +632,7 @@ export async function getAppointmentPaymentStatuses(
     const [{ data: treatmentRows }, { data: paymentRows }] = await Promise.all([
       db
         .from("treatments")
-        .select("appointment_id, cost, status")
+        .select("appointment_id, cost, discount_amount, status")
         .eq("clinic_id", profile.clinic_id)
         .in("appointment_id", ids)
         .is("deleted_at", null),

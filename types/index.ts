@@ -459,6 +459,16 @@ export const CreateTreatmentSchema = z.object({
   // Cross-field validation is enforced in the form (not here, so .partial() works cleanly).
   xray_taken: z.boolean().default(false),
   xray_cost: z.number().nonnegative("X-ray cost cannot be negative").nullable().optional(),
+  // Amount taken off this bill. `cost` stays the gross list price, so the
+  // patient owes cost - discount_amount. Kept separate rather than folded into
+  // cost so a reduced bill and an unpaid bill remain distinguishable — the
+  // server action additionally rejects a discount larger than the cost, matching
+  // the database CHECK.
+  discount_amount: z
+    .number()
+    .nonnegative("Discount cannot be negative")
+    .optional(),
+  discount_reason: z.string().max(200).optional().or(z.literal("")),
   // Accepts "YYYY-MM-DD", "YYYY-MM-DDTHH:mm", or full ISO strings.
   // The server action normalises this to a proper timestamptz before inserting.
   // Truly optional — can be omitted or left blank without validation failure.

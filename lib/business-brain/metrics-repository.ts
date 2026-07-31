@@ -453,7 +453,7 @@ export class SupabaseMetricsDataRepository implements MetricsDataRepository {
   ): Promise<Array<Omit<TreatmentSnapshot, "isScheduled"> & { patientId: string }>> {
     const { data, error } = await this.db
       .from("treatments")
-      .select("id, cost, status, performed_at, patient_id, created_at")
+      .select("id, cost, discount_amount, status, performed_at, patient_id, created_at")
       .eq("clinic_id", clinicId)
       .is("deleted_at", null)
       .or(`performed_at.lte.${asOf},created_at.lte.${asOf}`);
