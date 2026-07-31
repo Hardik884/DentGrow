@@ -40,6 +40,8 @@ import { DentGrowMetricsEngine } from "../engines/metrics";
 import { MetricKey, buildMetric } from "../engines/metrics/metric-ids";
 import { DentGrowSignalEngine } from "../engines/signals";
 import {
+  applyEntityResolution,
+  portMethodsFor,
   DentGrowDiagnosisEngine,
   addDays,
   isIsoDate,
@@ -47,6 +49,18 @@ import {
   type DiagnosisConfig,
 } from "../engines/diagnosis";
 import type { MetricsOnlyDay } from "../engines/diagnosis-engine";
+import type { DiagnosisContextPort, EntityWindow } from "../engines/diagnosis";
+
+/**
+ * How far back entity context reaches, and how many rows it may return.
+ *
+ * A month gives cancellation timing and pending-plan ageing something to be a
+ * distribution over; a single day would make every resolver fall below its
+ * minimum sample. The row cap is a guard, not a page: a clinic exceeding it has
+ * a bigger problem than a truncated discriminator.
+ */
+const ENTITY_WINDOW_DAYS = 30;
+const ENTITY_ROW_LIMIT = 500;
 import {
   calibrateThresholds,
   mergeOverrides,
@@ -153,6 +167,16 @@ export interface BusinessBrainDependencies {
    * the schema does not version.
    */
   readonly historyStore?: MetricHistoryStore;
+  /**
+   * Entity-level context for resolving discriminators.
+   *
+   * OPTIONAL. Without it the run behaves exactly as before: the matchers still
+   * attach discriminators, and the hypotheses they would separate stay
+   * `undetermined` — which is the correct answer when the measurement was never
+   * taken. With it, the measurements the schema can supply are taken, and the
+   * hypotheses they settle are settled.
+   */
+  readonly contextPort?: DiagnosisContextPort;
   readonly logger?: Logger;
   /** Threshold overrides forwarded to the Signal Engine. */
   readonly signalConfig?: DeepPartial<SignalThresholdConfig>;
@@ -218,6 +242,7 @@ function stage(
 export class BusinessBrain {
   private readonly repository: MetricsDataRepository;
   private readonly historyStore?: MetricHistoryStore;
+  private readonly contextPort?: DiagnosisContextPort;
   private readonly log: Logger;
   private readonly clock: () => number;
   private readonly metricsEngine: DentGrowMetricsEngine;
@@ -227,6 +252,7 @@ export class BusinessBrain {
   constructor(deps: BusinessBrainDependencies) {
     this.repository = deps.repository;
     this.historyStore = deps.historyStore;
+    this.contextPort = deps.contextPort;
     this.log = deps.logger ?? logger;
     this.clock = deps.clock ?? (() => Date.now());
     this.metricsEngine = new DentGrowMetricsEngine(deps.repository, { logger: this.log });
@@ -424,11 +450,23 @@ export class BusinessBrain {
       }),
     );
 
+    // ── Stage 4: Entity-level resolution ─────────────────────────────────────
+    // The matchers have said which measurements would separate their competing
+    // explanations. Where the schema can supply one, take it.
+    //
+    // Fetching happens HERE and not in the engine: the resolvers are pure by
+    // design, and the eslint boundary over engines/diagnosis/** forbids them a
+    // database client. Only the methods this run's discriminators actually name
+    // are fetched, so a run that raises no cancellation question pays for no
+    // cancellation query — and a run with no diagnoses touches nothing.
+    const diagnosed = diagnosisResult.data ?? [];
+    const resolved = await this.resolveEntityContext(clinicId, date, diagnosed, startedAt);
+
     const trace = [...signalTrace, ...(diagnosisResult.trace ?? [])];
     return finish({
       metrics,
       signals,
-      diagnoses: diagnosisResult.data ?? [],
+      diagnoses: resolved,
       trace,
       error: diagnosisResult.error,
       historyDaysLoaded: history.length,
@@ -492,6 +530,94 @@ export class BusinessBrain {
       // Ascending, so a caller writing them back does so in calendar order.
       recomputed: recomputed.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0)),
     };
+  }
+
+  /**
+   * Take the entity-level measurements this run's discriminators call for, and
+   * fold them into the diagnoses.
+   *
+   * Never fatal. Entity context is an enrichment: without it the hypotheses stay
+   * `undetermined`, which is exactly what they were before this stage existed
+   * and a correct answer in its own right. A failed fetch must not cost a
+   * dentist the diagnosis the matchers already produced.
+   */
+  private async resolveEntityContext(
+    clinicId: string,
+    date: string,
+    diagnoses: readonly Diagnosis[],
+    now: string,
+  ): Promise<readonly Diagnosis[]> {
+    const port = this.contextPort;
+    if (port === undefined || diagnoses.length === 0) return diagnoses;
+
+    const wanted = portMethodsFor(diagnoses);
+    if (wanted.length === 0) return diagnoses;
+
+    const window: EntityWindow = {
+      clinicId,
+      from: addDays(date, -(ENTITY_WINDOW_DAYS - 1)),
+      to: date,
+      limit: ENTITY_ROW_LIMIT,
+    };
+
+    try {
+      // Each method is fetched independently and a failure in one is recorded as
+      // "could not answer" rather than failing the rest: partial context yields
+      // fewer conclusions, which is the honest degradation.
+      const ask = async <T>(
+        name: string,
+        fetch: () => Promise<readonly T[] | null>,
+      ): Promise<readonly T[] | null | undefined> => {
+        if (!wanted.includes(name)) return undefined;
+        try {
+          return await fetch();
+        } catch (error) {
+          this.log.warn("Business Brain could not read entity context", {
+            clinicId,
+            date,
+            method: name,
+            error: error instanceof Error ? error.message : String(error),
+          });
+          return null;
+        }
+      };
+
+      const [
+        cancellationEvents,
+        noShowHistory,
+        pendingTreatments,
+        outstandingBalances,
+        appointmentArrivals,
+        completedTreatments,
+      ] = await Promise.all([
+        ask("listCancellationEvents", () => port.listCancellationEvents(window)),
+        ask("listNoShowHistory", () => port.listNoShowHistory(window)),
+        ask("listPendingTreatments", () => port.listPendingTreatments(window)),
+        ask("listOutstandingBalances", () => port.listOutstandingBalances(window)),
+        ask("listAppointmentArrivals", () => port.listAppointmentArrivals(window)),
+        ask("listCompletedTreatments", () => port.listCompletedTreatments(window)),
+      ]);
+
+      return applyEntityResolution(
+        diagnoses,
+        {
+          cancellationEvents,
+          noShowHistory,
+          pendingTreatments,
+          outstandingBalances,
+          appointmentArrivals,
+          completedTreatments,
+        },
+        now,
+      );
+    } catch (error) {
+      this.log.warn("Business Brain could not resolve entity context; leaving hypotheses open", {
+        clinicId,
+        date,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      return diagnoses;
+    }
   }
 
   /**

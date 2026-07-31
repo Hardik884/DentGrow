@@ -21,6 +21,8 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import type { Database } from "@/types/database.types";
 import type { EntityWindow } from "@/business-brain";
+import { applyEntityResolution, DEFAULT_ENTITY_RESOLUTION } from "@/business-brain";
+import type { Diagnosis } from "@/business-brain";
 import { SupabaseDiagnosisContext } from "../diagnosis-context";
 
 const URL = process.env.SUPABASE_TEST_URL ?? "http://127.0.0.1:54321";
@@ -417,6 +419,100 @@ describe.skipIf(!LOCAL_UP)("diagnosis context (integration)", () => {
       });
       expect(empty).toEqual([]);
       expect(empty).not.toBeNull();
+    });
+  });
+
+  /**
+   * Adapter and resolvers, joined.
+   *
+   * The unit specs feed the resolvers literals; these feed them rows that came
+   * out of Postgres. That is the join worth testing — a shape mismatch between
+   * what the adapter returns and what a resolver reads would pass both sets of
+   * unit tests and produce nothing in production.
+   */
+  describe("end to end with the resolvers", () => {
+    const ADVANCE = "cancellation_dominant";
+    const OTHER = "no_show_dominant";
+
+    function pendingDiagnosis(discriminatorSlug: string): Diagnosis {
+      const id = "diagnosis.schedule_attrition:ctx:2026-04-07";
+      const h = (slug: string) => ({
+        id: `${id}#h.${slug}`,
+        statement: `Statement for ${slug}.`,
+        status: "undetermined" as const,
+        confidence: 0.4,
+        supporting: [],
+        contradicting: [],
+        requiredData: ["entity rows"],
+      });
+      return {
+        id,
+        pattern: "schedule_attrition",
+        title: "Appointments booked and then lost",
+        summary: "Seeded losses.",
+        category: "scheduling",
+        severity: "medium",
+        confidence: 0.5,
+        persistence: "transient",
+        signalIds: [],
+        metricIds: [],
+        hypotheses: [h(ADVANCE), h(OTHER)],
+        discriminators: [
+          {
+            id: `${id}#d.${discriminatorSlug}`,
+            description: "Would separate the two.",
+            wouldSeparate: [`${id}#h.${ADVANCE}`, `${id}#h.${OTHER}`],
+            availability: "requires_entity_data" as const,
+          },
+        ],
+        relatedEntities: [],
+        evidence: [],
+        generatedAt: "2026-04-07T06:30:00.000Z",
+      };
+    }
+
+    it("turns real cancellation rows into evidence with the real numbers", async () => {
+      const events = await ctx.listCancellationEvents(WINDOW);
+      const resolved = applyEntityResolution(
+        [pendingDiagnosis("cancellation_timing")],
+        { cancellationEvents: events },
+        "2026-04-07T06:30:00.000Z",
+        DEFAULT_ENTITY_RESOLUTION,
+      );
+      const description = resolved[0].evidence[0]?.description ?? "";
+      // 5 lost appointments seeded (3 cancelled + 2 no-shows), 2 of them with a
+      // recorded cancellation moment.
+      expect(description).toContain("2 of 5 lost appointment(s)");
+      expect(description).toContain("cancellation moment");
+    });
+
+    it("reports the real refill outcome", async () => {
+      const events = await ctx.listCancellationEvents(WINDOW);
+      const resolved = applyEntityResolution(
+        [pendingDiagnosis("slot_refill_outcome")],
+        { cancellationEvents: events },
+        "2026-04-07T06:30:00.000Z",
+        DEFAULT_ENTITY_RESOLUTION,
+      );
+      // Exactly one of the seeded losses had its slot taken.
+      expect(resolved[0].evidence[0]?.description).toContain("1 of 5 vacated slot(s)");
+    });
+
+    it("leaves hypotheses open when the deployment cannot answer", async () => {
+      // The null path, end to end: the adapter returns null for recall contact
+      // attempts, and nothing downstream may read that as "no attempts made".
+      const attempts = await ctx.listRecallContactAttempts(WINDOW);
+      expect(attempts).toBeNull();
+
+      const before = pendingDiagnosis("recall_contact_attempts");
+      const after = applyEntityResolution(
+        [before],
+        { recallContactAttempts: attempts },
+        "2026-04-07T06:30:00.000Z",
+        DEFAULT_ENTITY_RESOLUTION,
+      );
+      expect(after[0]).toEqual(before);
+      expect(after[0].discriminators[0].availability).toBe("requires_entity_data");
     });
   });
 });

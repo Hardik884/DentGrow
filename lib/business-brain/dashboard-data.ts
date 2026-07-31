@@ -19,6 +19,7 @@ import { addDays } from "@/business-brain";
 import { BusinessBrain, type BusinessBrainResult } from "@/business-brain";
 import { SupabaseMetricsDataRepository } from "./metrics-repository";
 import { SupabaseMetricHistoryStore } from "./metric-history-store";
+import { SupabaseDiagnosisContext } from "./diagnosis-context";
 import { recordRecomputedHistory } from "./persist-metrics";
 
 /**
@@ -71,6 +72,10 @@ export async function runDashboardBrain(date?: string): Promise<DashboardRun> {
   const brain = new BusinessBrain({
     repository,
     historyStore: new SupabaseMetricHistoryStore(supabase),
+    // Entity-level rows, so the discriminators the matchers attach are actually
+    // measured rather than left as a list of what would have settled them.
+    // Read-only and still on the request's own session, so RLS applies.
+    contextPort: new SupabaseDiagnosisContext(supabase),
   });
 
   const result = await brain.runBusinessBrain(clinicId, businessDate, {
