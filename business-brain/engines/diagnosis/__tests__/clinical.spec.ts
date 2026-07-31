@@ -29,7 +29,7 @@ describe("pipeline_conversion_failure", () => {
       cost_barrier: "undetermined",
     });
     expect(hypothesis(diagnosis, "patient_deferral").requiredData[0]).toContain(
-      "Days elapsed since acceptance",
+      "Days elapsed since each unbooked plan was recorded",
     );
   });
 

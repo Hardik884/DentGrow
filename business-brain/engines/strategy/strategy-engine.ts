@@ -104,67 +104,227 @@ const PRIORITY_RANK: Readonly<Record<string, number>> = {
  * "the schedule is leaking" warrants different responses depending on whether
  * patients cancelled early or did not turn up at all.
  *
- * A slug absent from this table produces no corrective strategy. That is the
- * safe direction: an unrecognised cause yields silence rather than generic
- * advice that happens to fit the category.
+ * ## Completeness is enforced, not aspirational
+ *
+ * Every hypothesis slug the Diagnosis Engine can emit is accounted for exactly
+ * once: either here, with a corrective strategy, or in `CAUSES_WITHOUT_STRATEGY`
+ * below, with a written reason it deserves none. `strategy-coverage.spec.ts`
+ * enumerates the slugs the matchers actually produce and fails if any slug is
+ * missing from both tables, or if a template here names a slug no matcher emits.
+ * That is what keeps this playbook from drifting behind the Diagnosis Engine.
+ *
+ * A slug absent from BOTH tables would produce no corrective strategy — silence
+ * rather than generic advice — but the coverage test exists so that silence is
+ * always a deliberate, documented choice and never an oversight.
  */
 const CORRECTIVE_BY_HYPOTHESIS: Readonly<
   Record<string, { title: string; description: string }>
 > = {
+  // ── Scheduling: schedule_attrition ────────────────────────────────────────
   cancellation_dominant: {
     title: "Recover the slots that are released early",
     description:
-      "Lost appointments were predominantly cancellations made with enough notice to refill the slot. A short list of patients waiting for an earlier date makes those releases recoverable rather than lost.",
+      "Lost appointments were predominantly cancellations made with enough notice to refill the slot. Keep a short standby list of patients waiting for an earlier date and call them the moment a cancellation comes in, so the released time is rebooked rather than lost.",
   },
   no_show_dominant: {
-    title: "Confirm attendance before the appointment",
+    title: "Confirm attendance the day before",
     description:
-      "Lost appointments were predominantly no-shows, where the slot was held until the appointment time and then went unused. Confirming the day before is what converts a silent loss into a slot released early enough to refill.",
+      "Lost appointments were predominantly no-shows, where the slot was held until the appointment time and then went unused. Call or message each patient the day before to confirm; a no-show turned into an early cancellation is a slot you can still refill.",
+  },
+  slot_clustering: {
+    title: "Fix the specific slots and treatments that keep emptying",
+    description:
+      "Cancellations and no-shows concentrate in particular times of day or treatment types rather than falling evenly. Review those specific slots and treatments, and change how they are booked — a deposit, a shorter lead time, a confirmation call — or stop offering the worst-performing ones.",
   },
   patient_level_pattern: {
     title: "Handle the repeat non-attenders differently",
     description:
-      "Non-attendance is concentrated among patients who have missed before, rather than spread across the patient base. A different booking arrangement for that small group addresses the losses without changing anything for everyone else.",
+      "Non-attendance is concentrated among patients who have missed before, rather than spread across the patient base. Book that small group into same-week slots, ask for a deposit, or call to confirm personally, without changing anything for everyone else.",
   },
-  slot_clustering: {
-    title: "Look at the times and treatments that are being lost",
+  reminder_process: {
+    title: "Make sure every patient gets a reminder before their visit",
     description:
-      "Losses concentrate in particular appointment times or treatment types rather than falling evenly across the day, so the pattern is in what is being booked rather than in the patients booking it.",
+      "The lost appointments are spread across patients and slots rather than concentrated, the pattern that shows when reminders are not reaching people. Put a day-before reminder call or message on every booking and tick each one off, so no appointment goes unconfirmed.",
   },
+
+  // ── Financial: collection_gap ─────────────────────────────────────────────
+  systemic_process: {
+    title: "Collect at checkout, every time",
+    description:
+      "The collection gap has repeated across consecutive days, so it is the routine rather than a one-off lag. Take payment — or formally record the balance and a payment date — before the patient leaves the chair, and make it a fixed step in checkout.",
+  },
+  patient_balances: {
+    title: "Chase the balances that have been unpaid longest",
+    description:
+      "The unpaid book is weighted toward balances outstanding for weeks, not toward today's billing. Send statements and call those specific patients to arrange payment or a plan, starting with the largest and oldest.",
+  },
+
+  // ── Financial: revenue_shortfall ──────────────────────────────────────────
+  volume: {
+    title: "Fill the schedule — the day was quiet, not underpriced",
+    description:
+      "Revenue was low because fewer appointments happened and less treatment was delivered, not because work went uncollected. Put the effort into booking patients — work the recall list and the waiting treatment plans — rather than into billing.",
+  },
+  yield: {
+    title: "Collect for the work you delivered today",
+    description:
+      "The day's appointment and treatment volume was normal, but the money did not come in. Check that every completed treatment was charged and paid for, or its balance formally recorded, before the patient left.",
+  },
+  case_mix: {
+    title: "Check that patients are being offered the treatment they need",
+    description:
+      "Revenue was lower because the work completed was lower-value, not because it went unpaid. Review whether patients who need larger treatment are being presented complete plans rather than only the immediate fix.",
+  },
+
+  // ── Operational: capacity_ceiling ─────────────────────────────────────────
+  demand_exceeds_capacity: {
+    title: "Add chair time on the days you are turning full",
+    description:
+      "Demand met the clinic's ceiling while patients were still queueing, so the limit is chair time rather than interest. Consider an extra session, a longer day, or protecting your highest-value slots on the busiest days.",
+  },
+  schedule_overbooking: {
+    title: "Book realistic lengths for the treatments that overrun",
+    description:
+      "The schedule looks full because appointments are booked shorter than they actually take, so a full day turns into a queue. Lengthen the booked time for the treatment types that consistently run over.",
+  },
+
+  // ── Operational: throughput_congestion ────────────────────────────────────
+  capacity_bound: {
+    title: "Relieve your busiest sessions",
+    description:
+      "Patients waited because the chair was full through the day, not because of how the day was arranged. The lever is capacity — an added session, or fewer appointments packed into the peak sessions.",
+  },
+  flow_bound: {
+    title: "Spread the day's bookings so patients aren't stacked",
+    description:
+      "Patients waited while chairs sat empty, so the queue comes from how the day is arranged rather than from a lack of capacity. Even out appointment spacing and stagger arrival times so people are not all booked into the same part of the day.",
+  },
+  service_time_variance: {
+    title: "Book the time appointments actually take",
+    description:
+      "Appointments are consistently running past their booked length, so the queue builds from durations that are too short on paper rather than from patients arriving together. Lengthen the booked slots for the treatments that overrun.",
+  },
+  arrival_punctuality: {
+    title: "Spread arrivals across the session",
+    description:
+      "Patients are arriving together rather than across the session, and the queue forms from arrival timing rather than from appointments overrunning. Stagger appointment times and set clear arrival windows so patients do not all turn up at once.",
+  },
+
+  // ── Retention: patient_base_erosion ───────────────────────────────────────
+  acquisition_driven: {
+    title: "Rebuild new-patient flow",
+    description:
+      "First-time registrations fell below the daily minimum. The lever is new-patient supply — ask satisfied patients for referrals, keep your Google and maps listing current and reviewed, and follow up enquiries that never became bookings.",
+  },
+  retention_driven: {
+    title: "Bring existing patients back on recall",
+    description:
+      "Returning-patient volume fell against the prior period. Work the recall list — call patients who are due or overdue for a check-up and book them a visit before they lapse.",
+  },
+
+  // ── Retention: recall_process_failure ─────────────────────────────────────
+  recall_execution: {
+    title: "Work the overdue recall list this week",
+    description:
+      "Returning visits dropped while new-patient numbers held steady and the recall list is overdue, so the gap is in bringing existing patients back rather than in demand. Set aside time to call every overdue recall and book them in.",
+  },
+
+  // ── Clinical: pipeline_conversion_failure ─────────────────────────────────
+  no_available_capacity: {
+    title: "Open chair time to place the treatment that is waiting",
+    description:
+      "Patients have planned treatment and no next visit because the book was full when they were ready. Open additional slots — a session or extended hours — and place the waiting plans into them.",
+  },
+  booking_follow_through: {
+    title: "Book the next visit before the patient leaves",
+    description:
+      "Chairs were free, yet patients with planned treatment left without a date. Make booking the next appointment part of checkout, so no plan walks out of the clinic unscheduled.",
+  },
+  patient_deferral: {
+    title: "Follow up the plans that have been sitting for weeks",
+    description:
+      "A large share of planned treatment has been waiting well beyond a normal booking gap, so these patients deferred rather than declined. Call them, re-present the plan, and book the visit.",
+  },
+  cost_barrier: {
+    title: "Offer a payment option for the high-value plans that are stuck",
+    description:
+      "The unbooked backlog is concentrated in expensive treatments, which points to cost as the barrier. Offer staged payment or phased treatment so patients can start rather than keep deferring.",
+  },
+
+  // ── Operational: demand_supply_mismatch ───────────────────────────────────
   unconverted_demand: {
     title: "Book the patients who have a plan and no next visit",
     description:
-      "Planned treatment is sitting with patients who have nothing in the book, while chair time went unused on the same day. The work and the capacity both exist; what is missing is the appointment.",
+      "Planned treatment is sitting with patients who have nothing in the book, while chair time went unused on the same day. The work and the capacity both exist; call those patients and put them into the open slots.",
   },
   insufficient_demand: {
     title: "Bring patients back before filling new capacity",
     description:
-      "Chair time went unused and the planned-treatment pipeline is thin, so the shortfall is in patients to see rather than in time to see them.",
+      "Chair time went unused and the planned-treatment pipeline is thin, so the shortfall is in patients to see rather than in time to see them. Work the recall and reactivation lists before adding more open slots.",
   },
   capacity_not_offered: {
     title: "Open chair time before treating the day as quiet",
     description:
-      "No bookable chair time was published for this day, so an empty schedule reflects what was offered rather than what patients wanted.",
+      "No bookable chair time was published for this day, so an empty schedule reflects what was offered rather than what patients wanted. Publish availability and open slots patients can actually book into.",
   },
-  uncollected: {
-    title: "Collect for the work already delivered",
-    description:
-      "Treatments were completed and the money against them has not arrived. The work is done; the shortfall is in collection rather than in what was charged.",
+};
+
+/**
+ * The hypothesis slugs that have a corrective strategy, exported so the coverage
+ * test can compare them against what the matchers actually emit.
+ */
+export const STRATEGISED_CAUSES: ReadonlySet<string> = new Set(
+  Object.keys(CORRECTIVE_BY_HYPOTHESIS),
+);
+
+/**
+ * Hypothesis slugs the engine can emit that deliberately carry no corrective
+ * strategy, each with the reason. Two kinds live here, and the distinction
+ * matters to a reader:
+ *
+ *   - "benign"  the engine CAN settle it, but the settled finding is that no
+ *               action is warranted. Inventing a fix would contradict the
+ *               diagnosis, not support it.
+ *   - "unsettleable"  the engine can NEVER settle it — the discriminators that
+ *               would are data DentGrow does not hold — so it is always
+ *               undetermined and handled by the investigative fallback instead.
+ *
+ * This is the other half of the coverage contract: the test treats a slug here
+ * as fully accounted for, so anything NOT here and NOT in
+ * `CORRECTIVE_BY_HYPOTHESIS` is an unhandled cause and fails the build.
+ */
+export const CAUSES_WITHOUT_STRATEGY: Readonly<
+  Record<string, { kind: "benign" | "unsettleable"; reason: string }>
+> = {
+  billing_lag: {
+    kind: "benign",
+    reason:
+      "Settled only when the collection gap appeared on a single day and cleared. The finding is a same-day billing lag — the money arrived late, not never — which is why the matcher separates it from systemic_process. A 'collect faster' action would contradict the diagnosis; monitoring is the correct response.",
   },
-  case_mix: {
-    title: "Look at what is being treated, not what is being collected",
-    description:
-      "Revenue is lower because the work completed was lower-value, not because it went unpaid. Collection is not the limiting factor here.",
+  capacity_suppresses_acquisition: {
+    kind: "unsettleable",
+    reason:
+      "Never reaches supported. Whether a full schedule is turning enquiries away needs booking-channel and enquiry data DentGrow does not record (booking_channel_activity, patient_acquisition_source), so it stays undetermined and the investigative fallback names those measurements.",
   },
-  overrunning: {
-    title: "Book the time appointments actually take",
-    description:
-      "Appointments are consistently running past their booked length, so the queue builds from durations that are too short on paper rather than from patients arriving together.",
+  external_demand: {
+    kind: "unsettleable",
+    reason:
+      "Never reaches supported. Whether demand across the catchment moved needs a baseline outside the clinic's own records (catchment_demand_baseline), which by definition it does not hold.",
   },
-  arrival_bunching: {
-    title: "Spread arrivals across the session",
-    description:
-      "Patients are arriving together rather than across the session, and the queue forms from arrival timing rather than from appointments overrunning.",
+  contact_reachability: {
+    kind: "unsettleable",
+    reason:
+      "Never reaches supported. Separating recalls never attempted from recalls that did not reach the patient needs a contact-attempt log (recall_contact_attempts); the port returns null because DentGrow records none.",
+  },
+  patient_choice: {
+    kind: "unsettleable",
+    reason:
+      "Never reaches supported. Whether reached patients chose not to return needs post-visit feedback (post_visit_feedback), which DentGrow does not capture.",
+  },
+  measured_condition: {
+    kind: "unsettleable",
+    reason:
+      "The unclustered_signal safety net's only hypothesis, always undetermined by design: a single signal with no correlating signal cannot imply a cause. The investigative fallback names the longer-history measurement that would.",
   },
 };
 

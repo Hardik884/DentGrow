@@ -310,13 +310,13 @@ describe("focus cards", () => {
 
   function strategy(over: Record<string, unknown> = {}) {
     return {
-      id: "strategy.revenue_leakage.uncollected:c:2026-07-28",
-      title: "Collect for the work already delivered",
+      id: "strategy.revenue_leakage.systemic_process:c:2026-07-28",
+      title: "Collect at checkout, every time",
       description: "Treatments were completed and the money has not arrived.",
       constraintId: CONSTRAINT_ID,
       priority: "high" as const,
       kind: "corrective" as const,
-      basedOn: ["d1#h.uncollected"],
+      basedOn: ["d1#h.systemic_process"],
       diagnosisIds: ["d1"],
       rationale: "Statement.",
       createdAt: "2026-07-28T06:30:00.000Z",

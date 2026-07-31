@@ -223,7 +223,7 @@ function diagnosis(over: Partial<Diagnosis>): Diagnosis {
 
 describe("ranking strategies", () => {
   const diagnoses = [
-    diagnosis({ id: "a", pattern: "collection_gap", severity: "high", hypotheses: [hypothesis("uncollected")] }),
+    diagnosis({ id: "a", pattern: "collection_gap", severity: "high", hypotheses: [hypothesis("systemic_process")] }),
     diagnosis({
       id: "b",
       pattern: "pipeline_conversion_failure",
@@ -259,7 +259,7 @@ describe("ranking strategies", () => {
     // A large slow problem must not outrank a small urgent one — that would
     // quietly set an exchange rate between money and risk that nobody chose.
     const urgentButSmall = [
-      diagnosis({ id: "a", pattern: "collection_gap", severity: "critical", hypotheses: [hypothesis("uncollected")] }),
+      diagnosis({ id: "a", pattern: "collection_gap", severity: "critical", hypotheses: [hypothesis("systemic_process")] }),
       diagnosis({
         id: "b",
         pattern: "pipeline_conversion_failure",

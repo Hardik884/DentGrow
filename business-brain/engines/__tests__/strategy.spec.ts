@@ -194,16 +194,16 @@ describe("acting only on what was settled", () => {
 
   it("names each recommendation's cause, so it can be judged rather than trusted", () => {
     const { strategies } = strategiesFor([
-      diagnosis({ hypotheses: [hypothesis("uncollected", "supported")] }),
+      diagnosis({ hypotheses: [hypothesis("no_show_dominant", "supported")] }),
     ]);
-    expect(strategies[0].rationale).toBe("Statement for uncollected.");
+    expect(strategies[0].rationale).toBe("Statement for no_show_dominant.");
     expect(strategies[0].diagnosisIds).toEqual(["dx"]);
   });
 
   it("tells a clinic about one cause once, however many diagnoses found it", () => {
     const { strategies } = strategiesFor([
-      diagnosis({ id: "a", pattern: "collection_gap", hypotheses: [hypothesis("uncollected", "supported")] }),
-      diagnosis({ id: "b", pattern: "revenue_shortfall", hypotheses: [hypothesis("uncollected", "supported")] }),
+      diagnosis({ id: "a", pattern: "collection_gap", hypotheses: [hypothesis("systemic_process", "supported")] }),
+      diagnosis({ id: "b", pattern: "revenue_shortfall", hypotheses: [hypothesis("systemic_process", "supported")] }),
     ]);
     const corrective = strategies.filter((s) => s.kind === StrategyKind.CORRECTIVE);
     expect(corrective).toHaveLength(1);
@@ -286,7 +286,7 @@ describe("ordering", () => {
         id: "b",
         pattern: "collection_gap",
         severity: "critical",
-        hypotheses: [hypothesis("uncollected", "supported")],
+        hypotheses: [hypothesis("systemic_process", "supported")],
       }),
     ]);
     expect(strategies[0].priority).toBe("critical");
@@ -295,7 +295,7 @@ describe("ordering", () => {
   it("produces byte-identical output across repeated runs", () => {
     const input = [
       diagnosis({ id: "a", pattern: "schedule_attrition", hypotheses: [hypothesis("no_show_dominant", "supported")] }),
-      diagnosis({ id: "b", pattern: "collection_gap", hypotheses: [hypothesis("uncollected", "supported")] }),
+      diagnosis({ id: "b", pattern: "collection_gap", hypotheses: [hypothesis("systemic_process", "supported")] }),
     ];
     expect(JSON.stringify(strategiesFor(input))).toBe(JSON.stringify(strategiesFor(input)));
   });
@@ -303,7 +303,7 @@ describe("ordering", () => {
   it("is insensitive to the order diagnoses arrive in", () => {
     const input = [
       diagnosis({ id: "a", pattern: "schedule_attrition", hypotheses: [hypothesis("no_show_dominant", "supported")] }),
-      diagnosis({ id: "b", pattern: "collection_gap", hypotheses: [hypothesis("uncollected", "supported")] }),
+      diagnosis({ id: "b", pattern: "collection_gap", hypotheses: [hypothesis("systemic_process", "supported")] }),
     ];
     expect(strategiesFor(input).strategies.map((s) => s.id)).toEqual(
       strategiesFor([...input].reverse()).strategies.map((s) => s.id),
