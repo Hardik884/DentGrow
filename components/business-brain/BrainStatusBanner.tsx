@@ -57,18 +57,11 @@ export function BrainStatusBanner({
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2 sm:justify-end shrink-0">
-          {status.signalCount > 0 && (
-            <Badge variant={style.badge}>
-              {status.signalCount} {status.signalCount === 1 ? "signal" : "signals"}
-            </Badge>
-          )}
-          {status.diagnosisCount > 0 && (
-            <Badge variant="secondary">
-              {status.diagnosisCount} {status.diagnosisCount === 1 ? "pattern" : "patterns"}
-            </Badge>
-          )}
-        </div>
+        {/* Signal and pattern counts used to sit here. They are pipeline
+            stages: one problem routinely produces three signals and two
+            patterns, so the chips said "7 signals, 4 patterns" directly above a
+            heading that correctly said three things need attention. Two counts
+            that disagree teach a reader to trust neither. */}
       </div>
 
       {/* Coverage — how much of the picture this verdict rests on. */}

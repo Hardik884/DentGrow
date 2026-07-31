@@ -4,13 +4,17 @@ import { AlertTriangle } from "lucide-react";
 import { resolveSession } from "@/lib/auth/session";
 import { isBusinessBrainEnabled } from "@/lib/feature-flags";
 import { runDashboardBrain } from "@/lib/business-brain/dashboard-data";
-import { buildDashboardView } from "@/lib/business-brain/dashboard-view";
+import {
+  buildDashboardView,
+  buildFocusCards,
+  headlineMetrics,
+} from "@/lib/business-brain/dashboard-view";
 import { formatDate } from "@/lib/utils";
 import { EmptyState } from "@/components/ui/empty-state";
 import { BrainStatusBanner } from "@/components/business-brain/BrainStatusBanner";
+import { FocusCard } from "@/components/business-brain/FocusCard";
 import { SignalList } from "@/components/business-brain/SignalList";
-import { DiagnosisList } from "@/components/business-brain/DiagnosisList";
-import { MetricGrid } from "@/components/business-brain/MetricGrid";
+import { TodaysNumbers } from "@/components/business-brain/TodaysNumbers";
 import { RunDetails } from "@/components/business-brain/RunDetails";
 
 export const metadata: Metadata = {
@@ -61,6 +65,23 @@ export default async function BusinessBrainPage() {
 
   const { result, date } = run;
   const view = buildDashboardView(result);
+  const focus = buildFocusCards(result);
+  const signalDescriptions = result.signals.map((s) => s.description);
+
+  // Signals that no focus card already explains.
+  //
+  // Filtered down to the individual signal, not merely "is anything ungrouped".
+  // The looser version re-listed EVERY signal underneath the cards, so a dentist
+  // read "5 appointments lost" in a card and then met the cancellation rate and
+  // no-show rate again as separate items below — the same problem told twice in
+  // two vocabularies, which is the thing this page was restructured to stop.
+  const explainedSignalIds = new Set(
+    focus.flatMap((card) => card.diagnoses.flatMap((d) => d.signalIds)),
+  );
+  const looseEnds = result.signals.filter((s) => !explainedSignalIds.has(s.id));
+  const looseEndGroups = view.signalGroups
+    .map((g) => ({ ...g, signals: g.signals.filter((s) => !explainedSignalIds.has(s.id)) }))
+    .filter((g) => g.signals.length > 0);
 
   // A stage rejected its input. Show what did complete rather than nothing.
   if (!result.ok) {
@@ -87,26 +108,42 @@ export default async function BusinessBrainPage() {
         confidence={result.execution.stages.find((s) => s.stage === "signals")?.confidence}
       />
 
-      <Section
-        title="What deserves attention"
-        description="Measurements that crossed a threshold today."
-      >
-        <SignalList groups={view.signalGroups} />
-      </Section>
+      {/* One card per problem, worst first. This replaced separate "signals"
+          and "diagnoses" sections, which described the same problem twice in two
+          vocabularies and left the reader to work out they were one thing. */}
+      {focus.length > 0 && (
+        <div className="space-y-3">
+          {focus.map((card, i) => (
+            <FocusCard
+              key={card.id}
+              card={card}
+              signalDescriptions={signalDescriptions}
+              // The top problem opens its reasoning; the rest stay folded, so
+              // the page is scannable before it is readable.
+              defaultOpen={i === 0}
+            />
+          ))}
+        </div>
+      )}
 
-      <Section
-        title="Why this is happening"
-        description="Observations that correlate, with the explanations the evidence supports and rules out."
-      >
-        <DiagnosisList
-          diagnoses={view.diagnoses}
-          signalDescriptions={result.signals.map((s) => s.description)}
-        />
-      </Section>
+      {/* Figures outside their usual range that did not group into any problem.
+          Kept visible because hiding them would overstate how much the page
+          understands, and kept SEPARATE because the engine cannot say what they
+          mean — presenting them alongside explained problems would imply it can. */}
+      {looseEnds.length > 0 && (
+        <Section
+          title="Other figures worth a look"
+          description="These were outside their usual range but do not point to any of the areas above."
+        >
+          <SignalList groups={looseEndGroups} />
+        </Section>
+      )}
 
-      <Section title="The numbers" description="Every measurement taken for this day.">
-        <MetricGrid groups={view.metricGroups} />
-      </Section>
+      <TodaysNumbers
+        headline={headlineMetrics(result.metrics)}
+        groups={view.metricGroups}
+        measuredCount={view.measuredCount}
+      />
 
       <RunDetails execution={result.execution} unmeasured={view.unmeasured} />
     </PageShell>

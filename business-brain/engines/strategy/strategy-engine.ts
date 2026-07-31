@@ -289,10 +289,17 @@ export function proposeStrategies(
 
     // The discriminators already name the measurements that would settle this,
     // so the proposal can be specific rather than "look into it".
+    // First sentence only. The catalogue's descriptions are a developer
+    // deliverable and continue into implementation notes — schema caveats, port
+    // method names — which are exactly right in the catalogue and unreadable on
+    // a dentist's dashboard. The opening sentence is the measurement itself.
     const wanted = related
       .flatMap((d) => d.discriminators)
       .filter((d) => d.availability !== "available")
-      .map((d) => d.description);
+      .map((d) => {
+        const stop = d.description.indexOf(". ");
+        return stop === -1 ? d.description : d.description.slice(0, stop + 1);
+      });
     const subject = INVESTIGATIVE_BY_CATEGORY[constraint.category];
 
     strategies.push({
@@ -301,7 +308,11 @@ export function proposeStrategies(
       description:
         wanted.length === 0
           ? `The findings behind this did not settle a cause, so acting on one would be guesswork. What would separate the possibilities has not been identified either.`
-          : `The findings behind this did not settle a cause, so acting on one would be guesswork. ${wanted.length} measurement(s) would separate the possibilities, beginning with: ${wanted[0]}`,
+          : `The findings behind this did not settle a cause, so acting on one would be guesswork. ${
+              wanted.length === 1
+                ? "One measurement would settle it"
+                : `${wanted.length} measurements would settle it, starting with this one`
+            }: ${wanted[0]}`,
       constraintId: constraint.id,
       // Deliberately capped below the constraint's own priority: knowing that
       // something is unexplained is less urgent than acting on something

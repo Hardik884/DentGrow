@@ -113,15 +113,28 @@ export function humaniseStep(step: string): string {
  * credibility. This is a direct restatement of the worst severity present, which
  * is always traceable to a specific signal.
  */
-function buildStatus(signals: readonly Signal[], diagnoses: readonly Diagnosis[]): StatusView {
+/**
+ * The one line at the top, answering the only question a dentist opens this page
+ * with: is there anything I need to deal with?
+ *
+ * Counted in PROBLEMS, not in signals or diagnoses. Those are pipeline stages:
+ * one problem routinely produces three signals and two diagnoses, so
+ * "3 observations, correlated into 2 patterns" told a reader about our
+ * architecture and left them to work out that it was one thing. A constraint is
+ * already the deduplicated problem, so it is the honest thing to count.
+ */
+function buildStatus(
+  signals: readonly Signal[],
+  diagnoses: readonly Diagnosis[],
+  problemCount: number,
+): StatusView {
   const counts = { signalCount: signals.length, diagnosisCount: diagnoses.length };
 
   if (signals.length === 0) {
     return {
       status: "steady",
-      headline: "Nothing needs attention",
-      detail:
-        "Every check ran and none crossed its threshold. This reflects today's data only.",
+      headline: "Nothing needs attention today",
+      detail: "Every check ran and none crossed its limit. This covers today only.",
       ...counts,
     };
   }
@@ -131,26 +144,22 @@ function buildStatus(signals: readonly Signal[], diagnoses: readonly Diagnosis[]
     "info",
   );
 
-  const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
+  // A signal that grouped into no constraint is real but unexplained, so it is
+  // reported as something to look at rather than counted as a problem the page
+  // can describe.
   const detail =
-    diagnoses.length > 0
-      ? `${plural(signals.length, "observation", "observations")}, correlated into ${plural(
-          diagnoses.length,
-          "pattern",
-          "patterns",
-        )}.`
-      : `${plural(signals.length, "observation", "observations")}. No pattern correlates them yet.`;
+    problemCount === 0
+      ? `${signals.length} ${signals.length === 1 ? "figure" : "figures"} outside their usual range, not yet tied to a single cause.`
+      : `${problemCount} ${problemCount === 1 ? "area" : "areas"} to look at, worst first.`;
 
-  if (worst === "critical") {
-    return { status: "critical", headline: "Critical observations", detail, ...counts };
-  }
-  if (worst === "high") {
-    return { status: "attention", headline: "Needs attention", detail, ...counts };
-  }
-  if (worst === "medium") {
-    return { status: "watch", headline: "Worth watching", detail, ...counts };
-  }
-  return { status: "watch", headline: "Minor observations", detail, ...counts };
+  const headline =
+    problemCount === 0
+      ? "Something looks unusual"
+      : `${problemCount} ${problemCount === 1 ? "thing needs" : "things need"} your attention`;
+
+  if (worst === "critical") return { status: "critical", headline, detail, ...counts };
+  if (worst === "high") return { status: "attention", headline, detail, ...counts };
+  return { status: "watch", headline, detail, ...counts };
 }
 
 /**
@@ -196,7 +205,7 @@ export function buildDashboardView(result: BusinessBrainResult): DashboardView {
     .sort((a, b) => severityRank(a.severity) - severityRank(b.severity));
 
   return {
-    status: buildStatus(result.signals, result.diagnoses),
+    status: buildStatus(result.signals, result.diagnoses, result.constraints.length),
     signalGroups,
     diagnoses,
     metricGroups: buildMetricGroups(result.metrics),
@@ -243,4 +252,149 @@ const AVAILABILITY_LABELS: Record<string, string> = {
 
 export function availabilityLabel(availability: string): string {
   return AVAILABILITY_LABELS[availability] ?? availability;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Focus cards
+//
+// The dashboard's organising unit, and a deliberate departure from the pipeline
+// that produces it.
+//
+// The engines think in stages: a signal crosses a threshold, diagnoses correlate
+// signals, constraints group diagnoses, strategies address constraints. Showing
+// those stages as sections meant a dentist read the same problem three times in
+// three vocabularies — "Outstanding balance is high", then "Work delivered is
+// not converting to cash", then a recommendation about collection. Each section
+// was individually correct and the page as a whole was repetitive, so the reader
+// had to work out which items were the same problem before they could count how
+// many problems they had.
+//
+// A dentist's questions, in the order they ask them, are: is anything wrong,
+// what is the biggest one, how much is it costing me, what do I do, and only
+// then why do you say that. A focus card answers all five in that order, one
+// card per real problem.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** What a dentist should do about one problem. */
+export interface FocusAction {
+  /** "Do this" for a settled cause; "Find out" when the cause is not settled. */
+  readonly kind: "act" | "find_out";
+  readonly title: string;
+  readonly description: string;
+}
+
+/** One problem, sized, with what to do about it and why. */
+export interface FocusCard {
+  readonly id: string;
+  /** Plain-language name of the problem. */
+  readonly title: string;
+  readonly severity: Severity;
+  /**
+   * How much is sitting in this problem, already formatted — "₹42,000",
+   * "6 hr 0 min", "5 appointments". Absent when it could not be measured, which
+   * is different from being zero and must not render as "0".
+   */
+  readonly atStake: string | null;
+  /** Short label for what the figure counts, e.g. "unpaid". */
+  readonly atStakeLabel: string | null;
+  /** What to do. Empty only if the engine proposed nothing at all. */
+  readonly actions: readonly FocusAction[];
+  /** The findings behind it, shown on request rather than by default. */
+  readonly diagnoses: readonly Diagnosis[];
+}
+
+/** Plain-language names, keyed by constraint category. */
+const FOCUS_TITLES: Record<string, string> = {
+  revenue_leakage: "Money owed for work already done",
+  treatment_acceptance: "Treatment agreed but not booked in",
+  capacity: "Chair time going unused",
+  scheduling: "Appointments booked and then lost",
+  retention: "Patients who have stopped coming back",
+  acquisition: "New patients coming in",
+};
+
+/** What the figure on the card counts, in the fewest words that stay accurate. */
+const AT_STAKE_LABELS: Record<string, string> = {
+  revenue_leakage: "still unpaid",
+  treatment_acceptance: "agreed, not booked",
+  capacity: "empty chair time today",
+  scheduling: "lost today",
+  retention: "patients",
+};
+
+/** Format an at-stake amount the way a clinic would say it aloud. */
+function formatAtStake(amount: number, unit: string): string {
+  if (unit === "currency") {
+    return `₹${Math.round(amount).toLocaleString("en-IN")}`;
+  }
+  if (unit === "minutes") {
+    const hours = Math.floor(amount / 60);
+    const minutes = Math.round(amount % 60);
+    if (hours === 0) return `${minutes} min`;
+    return minutes === 0 ? `${hours} hr` : `${hours} hr ${minutes} min`;
+  }
+  return `${amount}`;
+}
+
+/**
+ * Build one card per problem, worst first.
+ *
+ * Constraints already carry the grouping and the ordering, so this is a
+ * presentation projection and not a second opinion: it renames, formats and
+ * attaches, and decides nothing the engines have not already decided.
+ */
+export function buildFocusCards(result: BusinessBrainResult): readonly FocusCard[] {
+  const diagnosisById = new Map(result.diagnoses.map((d) => [d.id, d]));
+
+  return result.constraints.map((constraint): FocusCard => {
+    const values = result.valueAtStake.get(constraint.id);
+    const value = values?.[0];
+
+    const actions = result.strategies
+      .filter((s) => s.constraintId === constraint.id)
+      .map((s): FocusAction => ({
+        kind: s.kind === "corrective" ? "act" : "find_out",
+        title: s.title,
+        description: s.description,
+      }));
+
+    return {
+      id: constraint.id,
+      title: FOCUS_TITLES[constraint.category] ?? constraint.name,
+      severity: constraint.severity,
+      // Null rather than zero when unmeasured: "we did not measure this" and
+      // "this is nothing" are different answers, and a dentist reading a zero
+      // would take the second.
+      atStake: value === undefined ? null : formatAtStake(value.amount, value.unit),
+      atStakeLabel: value === undefined ? null : (AT_STAKE_LABELS[constraint.category] ?? null),
+      actions,
+      diagnoses: (constraint.relatedDiagnosisIds ?? [])
+        .map((id) => diagnosisById.get(id))
+        .filter((d): d is Diagnosis => d !== undefined),
+    };
+  });
+}
+
+/**
+ * The handful of figures worth showing without being asked.
+ *
+ * The full set runs past twenty tiles, which is a wall rather than a summary —
+ * the three numbers that changed get the same weight as the seventeen that did
+ * not. These are the ones a dentist checks daily regardless of whether anything
+ * is wrong; the rest stay one click away.
+ */
+export const HEADLINE_METRIC_KEYS: readonly string[] = [
+  "appointments.total_today",
+  "treatment.completed_today",
+  "revenue.collected_today",
+  "revenue.outstanding",
+  "capacity.chair_utilization",
+  "queue.patients_waiting",
+];
+
+/** Headline metrics, in the fixed order above; absent ones simply do not show. */
+export function headlineMetrics(metrics: readonly Metric[]): readonly Metric[] {
+  return HEADLINE_METRIC_KEYS.map((key) =>
+    metrics.find((m) => m.id.startsWith(`${key}:`)),
+  ).filter((m): m is Metric => m !== undefined);
 }

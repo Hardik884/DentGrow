@@ -163,7 +163,11 @@ function DiagnosisCard({
         <div className="flex items-start justify-between gap-3">
           <h4 className="text-sm font-semibold text-[#09090B] leading-snug">{diagnosis.title}</h4>
           <div className="flex items-center gap-1.5 shrink-0">
-            <Badge variant={SEVERITY_BADGE[diagnosis.severity]}>{diagnosis.severity}</Badge>
+            {/* Capitalised rather than the raw enum: "critical" in lower case
+                reads as a value that escaped rather than a label chosen. */}
+            <Badge variant={SEVERITY_BADGE[diagnosis.severity]}>
+              {diagnosis.severity.charAt(0).toUpperCase() + diagnosis.severity.slice(1)}
+            </Badge>
             <Badge variant={PERSISTENCE_BADGE[diagnosis.persistence] ?? "outline"}>
               {persistenceLabel(diagnosis.persistence)}
             </Badge>
