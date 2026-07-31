@@ -47,6 +47,17 @@ const SCENARIOS = [
   ISOLATED_SIGNAL,
 ];
 
+/** Every diagnosis the corpus produces, with and without history. */
+function everyDiagnosis() {
+  const all = [];
+  for (const values of SCENARIOS) {
+    for (const history of [undefined, [-3, -2, -1].map((offset) => run(values, { date: shiftDate(DATE, offset) }))]) {
+      all.push(...diagnoseRun(run(values, { previous: PRIOR }), { history }).diagnoses);
+    }
+  }
+  return all;
+}
+
 /** Discriminator slugs actually attached to a diagnosis across the corpus. */
 function emittedSlugs(): Set<string> {
   const slugs = new Set<string>();
@@ -74,6 +85,7 @@ describe("discriminator manifest", () => {
     const groups: readonly Availability[] = [
       Availability.REQUIRES_ENTITY_DATA,
       Availability.REQUIRES_NEW_METRIC,
+      Availability.REQUIRES_DATA_CAPTURE,
       Availability.REQUIRES_LONGER_HISTORY,
       Availability.AVAILABLE,
     ];
@@ -89,5 +101,29 @@ describe("discriminator manifest", () => {
     // eslint-disable-next-line no-console
     console.log(lines.join("\n"));
     expect(ALL_DISCRIMINATORS.length).toBe(27);
+  });
+
+  /**
+   * The domain type states this as an if-and-only-if: a hypothesis the engine
+   * settled needs nothing further, and one it could not settle must say what it
+   * would take. Nothing enforced it until now — a matcher could list `requires`
+   * on a settled hypothesis and no test would notice.
+   */
+  it("lists required data if and only if a hypothesis is undetermined", () => {
+    for (const diagnosis of everyDiagnosis()) {
+      for (const h of diagnosis.hypotheses) {
+        if (h.status === "undetermined") {
+          expect(
+            h.requiredData.length,
+            `${diagnosis.pattern}/${h.id} is undetermined and names nothing that would settle it`,
+          ).toBeGreaterThan(0);
+        } else {
+          expect(
+            h.requiredData,
+            `${diagnosis.pattern}/${h.id} is ${h.status} yet still asks for data`,
+          ).toEqual([]);
+        }
+      }
+    }
   });
 });

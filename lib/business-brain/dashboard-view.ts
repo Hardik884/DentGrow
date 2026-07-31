@@ -238,6 +238,7 @@ const AVAILABILITY_LABELS: Record<string, string> = {
   requires_longer_history: "Needs more history",
   requires_entity_data: "Needs record-level data",
   requires_new_metric: "Needs a new measurement",
+  requires_data_capture: "Needs something the clinic does not record yet",
 };
 
 export function availabilityLabel(availability: string): string {

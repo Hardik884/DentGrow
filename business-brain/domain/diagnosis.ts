@@ -107,6 +107,7 @@ export interface Discriminator {
     | "available"
     | "requires_entity_data"
     | "requires_new_metric"
+    | "requires_data_capture"
     | "requires_longer_history";
 }
 
