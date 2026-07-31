@@ -1,5 +1,4 @@
 import { cn } from "@/lib/utils";
-import { Badge } from "@/components/ui/badge";
 import type { StatusView } from "@/lib/business-brain/dashboard-view";
 import { confidenceLabel } from "@/lib/business-brain/dashboard-view";
 
