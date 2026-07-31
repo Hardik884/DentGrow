@@ -216,9 +216,9 @@ export const DISCRIMINATORS = {
   SERVICE_TIME_DISTRIBUTION: {
     slug: "service_time_distribution",
     description:
-      "Actual versus scheduled duration per appointment. PARTIALLY RECORDED: `appointments.duration_minutes` is the scheduled side and `queue_entries.called_at` is when the patient was seen, but nothing records when the appointment ENDED, so actual duration cannot be measured. Needs an end-of-service timestamp.",
-    availability: Availability.REQUIRES_DATA_CAPTURE,
-    portMethod: null,
+      "Actual versus scheduled duration per appointment, from when the patient was called in to when they were finished with: it separates queueing caused by appointments overrunning their booked length from queueing caused by patients arriving together.",
+    availability: Availability.REQUIRES_ENTITY_DATA,
+    portMethod: "listAppointmentArrivals",
   },
   DISCOUNT_AND_WRITEOFF_LOG: {
     slug: "discount_and_writeoff_log",

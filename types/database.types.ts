@@ -895,6 +895,7 @@ export type Database = {
           called_at: string | null
           checked_in_at: string
           clinic_id: string
+          completed_at: string | null
           id: string
           patient_id: string
           position: number
@@ -906,6 +907,7 @@ export type Database = {
           called_at?: string | null
           checked_in_at?: string
           clinic_id: string
+          completed_at?: string | null
           id?: string
           patient_id: string
           position: number
@@ -917,6 +919,7 @@ export type Database = {
           called_at?: string | null
           checked_in_at?: string
           clinic_id?: string
+          completed_at?: string | null
           id?: string
           patient_id?: string
           position?: number
@@ -1983,6 +1986,7 @@ export type Database = {
         Args: { p_notes?: string; p_patient_id: string; p_scheduled_at: string }
         Returns: string
       }
+      run_metric_history_job: { Args: never; Returns: undefined }
     }
     Enums: {
       appointment_history_action:

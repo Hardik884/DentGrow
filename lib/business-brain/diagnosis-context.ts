@@ -412,7 +412,7 @@ export class SupabaseDiagnosisContext implements DiagnosisContextPort {
     const { start, end } = bounds(window);
     const { data, error } = await this.db
       .from("appointments")
-      .select("id, scheduled_at")
+      .select("id, scheduled_at, duration_minutes")
       .eq("clinic_id", window.clinicId)
       .is("deleted_at", null)
       .not("status", "in", "(cancelled)")
@@ -422,21 +422,29 @@ export class SupabaseDiagnosisContext implements DiagnosisContextPort {
       .limit(window.limit);
     if (error) throw new Error(`appointment arrivals: ${error.message}`);
 
-    const appointments = rows<{ id: string; scheduled_at: string }>(data);
+    const appointments = rows<{
+      id: string;
+      scheduled_at: string;
+      duration_minutes: number;
+    }>(data);
     if (appointments.length === 0) return [];
 
     const { data: queueData, error: queueError } = await this.db
       .from("queue_entries")
-      .select("appointment_id, checked_in_at, called_at")
+      .select("appointment_id, checked_in_at, called_at, completed_at")
       .eq("clinic_id", window.clinicId)
       .in("appointment_id", appointments.map((a) => a.id));
     if (queueError) throw new Error(`appointment arrivals (queue): ${queueError.message}`);
 
-    const arrivals = new Map<string, { checked_in_at: string; called_at: string | null }>();
+    const arrivals = new Map<
+      string,
+      { checked_in_at: string; called_at: string | null; completed_at: string | null }
+    >();
     for (const q of rows<{
       appointment_id: string;
       checked_in_at: string;
       called_at: string | null;
+      completed_at: string | null;
     }>(queueData)) {
       arrivals.set(q.appointment_id, q);
     }
@@ -455,6 +463,20 @@ export class SupabaseDiagnosisContext implements DiagnosisContextPort {
             ? null
             : Math.round((Date.parse(arrivedAt) - Date.parse(a.scheduled_at)) / 60_000),
         seenAt: entry?.called_at ?? null,
+        finishedAt: entry?.completed_at ?? null,
+        scheduledMinutes: a.duration_minutes,
+        // Seen to finished. Null unless BOTH ends were recorded — an appointment
+        // still in the chair, or one whose queue entry was never closed, has no
+        // duration, and inventing one would fabricate the measurement.
+        actualMinutes:
+          entry?.called_at && entry.completed_at
+            ? Math.max(
+                0,
+                Math.round(
+                  (Date.parse(entry.completed_at) - Date.parse(entry.called_at)) / 60_000,
+                ),
+              )
+            : null,
       };
     });
   }

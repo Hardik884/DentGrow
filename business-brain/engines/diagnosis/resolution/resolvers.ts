@@ -472,6 +472,74 @@ const appointmentArrivalTimes: DiscriminatorResolver = (ctx, input) => {
 };
 
 /**
+ * Whether appointments ran over the time they were booked for.
+ *
+ * The counterpart to arrival timing, and the other half of "why is the clinic
+ * running late". Both produce a queue; they call for opposite responses, and a
+ * waiting-room photograph cannot tell them apart.
+ *
+ * Only appointments with BOTH ends recorded are measured. One still in the chair
+ * has no duration yet, and one whose queue entry was never closed has none at
+ * all — counting either as a fast appointment would drag the average down and
+ * hide the overrun this exists to find.
+ */
+const serviceTimeDistribution: DiscriminatorResolver = (ctx, input) => {
+  const rows = ctx.appointmentArrivals;
+  if (rows == null || rows.length === 0) return null;
+
+  const measured = rows.filter((r) => r.actualMinutes !== null && r.scheduledMinutes > 0);
+  if (measured.length === 0) {
+    return observed(
+      input,
+      "service-time",
+      `${rows.length} appointment(s) in the window, none with both a start and an end recorded, so actual duration could not be measured.`,
+      { appointments: rows.length, measured: 0 },
+    );
+  }
+
+  const overruns = measured.map(
+    (r) => (r.actualMinutes as number) - r.scheduledMinutes,
+  );
+  const medianOverrun = round2(median(overruns));
+  const medianActual = round2(median(measured.map((r) => r.actualMinutes as number)));
+  const medianScheduled = round2(median(measured.map((r) => r.scheduledMinutes)));
+  const ranLong = measured.filter(
+    (r) => (r.actualMinutes as number) > r.scheduledMinutes,
+  );
+  const ranLongShare = share(ranLong.length, measured.length);
+
+  const description =
+    `${measured.length} of ${rows.length} appointment(s) had both a start and an end recorded. ` +
+    `Median booked ${formatValue(medianScheduled, MetricUnit.MINUTES)} against median actual ` +
+    `${formatValue(medianActual, MetricUnit.MINUTES)}, a difference of ` +
+    `${formatValue(Math.abs(medianOverrun), MetricUnit.MINUTES)} ` +
+    `${medianOverrun > 0 ? "longer" : medianOverrun < 0 ? "shorter" : "either way"} than booked. ` +
+    `${ranLong.length} (${formatValue(ranLongShare, MetricUnit.PERCENTAGE)}) ran past their booked length.`;
+  const data = {
+    appointments: rows.length,
+    measured: measured.length,
+    medianScheduled,
+    medianActual,
+    medianOverrun,
+    ranLongShare,
+  };
+
+  if (measured.length < input.config.minimumSample) {
+    return observed(input, "service-time", `${description} Sample below the configured minimum of ${input.config.minimumSample}, so overrunning is not called.`, data);
+  }
+
+  const overrunning = hypothesis(input, 0);
+  const arrivalTiming = hypothesis(input, 1);
+  const mostlyOverran = ranLongShare >= input.config.majorityShare * 100;
+
+  return {
+    evidence: [evidence(input, "service-time", description, data)],
+    supports: mostlyOverran ? slugs(overrunning) : slugs(arrivalTiming),
+    contradicts: mostlyOverran ? [] : slugs(overrunning),
+  };
+};
+
+/**
  * Every entity-level discriminator this engine can resolve, keyed by catalogue
  * slug.
  *
@@ -490,4 +558,5 @@ export const DISCRIMINATOR_RESOLVERS: Readonly<Record<string, DiscriminatorResol
   [DISCRIMINATORS.OUTSTANDING_INVOICE_AGEING.slug]: outstandingInvoiceAgeing,
   [DISCRIMINATORS.COMPLETED_TREATMENT_MIX.slug]: completedTreatmentMix,
   [DISCRIMINATORS.APPOINTMENT_ARRIVAL_TIMES.slug]: appointmentArrivalTimes,
+  [DISCRIMINATORS.SERVICE_TIME_DISTRIBUTION.slug]: serviceTimeDistribution,
 };

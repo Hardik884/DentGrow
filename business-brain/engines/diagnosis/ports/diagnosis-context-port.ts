@@ -117,8 +117,9 @@ export interface OutstandingBalanceRow {
 }
 
 /**
- * Scheduled versus actual arrival for one appointment.
- * Serves: appointment_arrival_times.
+ * Scheduled versus actual, for one appointment: when the patient arrived, and
+ * how long the appointment really took.
+ * Serves: appointment_arrival_times, service_time_distribution.
  */
 export interface AppointmentArrivalRow {
   readonly appointmentId: string;
@@ -130,6 +131,22 @@ export interface AppointmentArrivalRow {
   readonly arrivalDeltaMinutes: number | null;
   /** ISO-8601 moment the patient was seen, when recorded. */
   readonly seenAt: string | null;
+  /** ISO-8601 moment the patient was finished with, when recorded. */
+  readonly finishedAt: string | null;
+  /**
+   * Minutes the appointment was PLANNED to take, as booked.
+   *
+   * A plan, not an observation — which is exactly why it needs comparing
+   * against the actual.
+   */
+  readonly scheduledMinutes: number;
+  /**
+   * Minutes the appointment ACTUALLY took, seen to finished.
+   *
+   * `null` when either end was not recorded. Never inferred from anything else:
+   * a guessed duration would fabricate the quantity this exists to measure.
+   */
+  readonly actualMinutes: number | null;
 }
 
 /**

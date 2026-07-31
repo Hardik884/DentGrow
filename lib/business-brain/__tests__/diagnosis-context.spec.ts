@@ -174,6 +174,9 @@ async function seed() {
     queue_date: "2026-04-02",
     checked_in_at: "2026-04-02T09:12:00Z", // 12 minutes late
     called_at: "2026-04-02T09:30:00Z",
+    // Booked for 30 minutes, actually took 50 — the overrun the service-time
+    // discriminator exists to find.
+    completed_at: "2026-04-02T10:20:00Z",
   });
 
   await insert("treatments", [
@@ -371,6 +374,25 @@ describe.skipIf(!LOCAL_UP)("diagnosis context (integration)", () => {
       const arrived = arrivals?.find((a) => a.appointmentId === A_ARRIVED);
       expect(arrived?.arrivalDeltaMinutes).toBe(12);
       expect(arrived?.seenAt).toBe("2026-04-02T09:30:00+00:00");
+    });
+
+    it("measures how long the appointment actually took", async () => {
+      // Booked 30 minutes, called in 09:30, finished 10:20 — 50 actual.
+      const arrivals = await ctx.listAppointmentArrivals(WINDOW);
+      const arrived = arrivals?.find((a) => a.appointmentId === A_ARRIVED);
+      expect(arrived?.scheduledMinutes).toBe(30);
+      expect(arrived?.actualMinutes).toBe(50);
+      expect(arrived?.finishedAt).toBe("2026-04-02T10:20:00+00:00");
+    });
+
+    it("leaves actual duration NULL when the visit was never closed out", async () => {
+      // A plan is not an observation. An appointment with no recorded end has no
+      // measurable duration, and substituting the booked length would report the
+      // plan back as if it were the result.
+      const arrivals = await ctx.listAppointmentArrivals(WINDOW);
+      const none = arrivals?.find((a) => a.appointmentId === A_NO_CHECKIN);
+      expect(none?.actualMinutes).toBeNull();
+      expect(none?.finishedAt).toBeNull();
     });
 
     it("leaves arrival NULL when nobody checked the patient in", async () => {
