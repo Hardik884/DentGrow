@@ -28,7 +28,7 @@ export function revenueCollectedToday(s: ClinicDataSnapshot): Metric {
  * describe one business rule and must not diverge. `revenue.spec.ts` asserts
  * this exact set so a change here is always deliberate.
  *
- * `planned` is excluded on purpose: work that has been accepted but not started
+ * `planned` is excluded on purpose: work that has been planned but not started
  * is not yet owed. That value is reported separately by
  * {@link pendingTreatmentValue}; counting it here would double-count it across
  * two metrics and make `revenue.high_outstanding` fire on unbilled work.
@@ -49,8 +49,8 @@ export function outstandingPayments(s: ClinicDataSnapshot): Metric {
 }
 
 /**
- * Pending treatment value — total cost of treatments that are accepted but not
- * yet completed (`planned` or `in_progress`). Represents booked-but-unrealised
+ * Pending treatment value — total cost of treatments that are planned but not
+ * yet completed (`planned` or `in_progress`). Represents recorded-but-unrealised
  * clinical revenue.
  */
 export function pendingTreatmentValue(s: ClinicDataSnapshot): Metric {

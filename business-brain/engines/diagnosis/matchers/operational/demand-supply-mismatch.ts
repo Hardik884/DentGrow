@@ -44,7 +44,7 @@ const OPTIONAL = [
 const INSUFFICIENT_DEMAND =
   "Fewer patients sought appointments on this day than the open schedule could have accommodated.";
 const UNCONVERTED_DEMAND =
-  "Treatment demand that patients had already accepted was not converted into booked appointments.";
+  "Planned treatment demand was not converted into booked appointments even though the chair sat idle.";
 const CAPACITY_NOT_OFFERED =
   "Open appointment capacity existed but was not published or offered to patients through any booking channel.";
 
@@ -138,7 +138,7 @@ export const demandSupplyMismatchMatcher: PatternMatcher = {
           contradicting: [
             {
               slug: "accepted-book",
-              description: `Accepted-but-unscheduled treatment demand is at or above its configured limit, which rules out an absence of demand as the explanation for the idle chair.`,
+              description: `Planned treatment demand is at or above its configured limit, which rules out an absence of demand as the explanation for the idle chair.`,
               data: { pendingValue, acceptedPending },
             },
           ],

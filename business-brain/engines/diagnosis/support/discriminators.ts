@@ -77,7 +77,7 @@ export const DISCRIMINATORS = {
   ACCEPTED_DEMAND_LEVEL: {
     slug: "accepted_demand_level",
     description:
-      "Accepted-but-unscheduled treatment count and pending treatment value, compared against their configured limits: it separates absent demand from demand that exists and was not converted into bookings.",
+      "The count of planned treatments whose patient has no next visit booked and the pending treatment value, compared against their configured limits: it separates absent demand from demand that exists and was not converted into bookings.",
     availability: Availability.AVAILABLE,
     portMethod: null,
   },
@@ -151,7 +151,7 @@ export const DISCRIMINATORS = {
   PENDING_TREATMENT_AGE: {
     slug: "pending_treatment_age",
     description:
-      "Days elapsed since acceptance for each unscheduled treatment: it separates a plan accepted today and not yet booked from a plan accepted weeks ago and still not booked.",
+      "Days elapsed since each unbooked plan was recorded: it separates a plan recorded today with no next visit yet from a plan recorded weeks ago and still with no next visit booked.",
     availability: Availability.REQUIRES_ENTITY_DATA,
     portMethod: "listPendingTreatments",
   },
@@ -244,7 +244,7 @@ export const DISCRIMINATORS = {
   TREATMENT_COST_BARRIER: {
     slug: "treatment_cost_barrier",
     description:
-      "Quoted value per accepted-but-unscheduled plan alongside payment-plan availability and uptake. PARTIALLY RECORDED: quoted values are available and already surfaced by `listPendingTreatments`, but DentGrow has no concept of a payment plan, so a plan deferred over cost cannot be separated from one deferred for another reason.",
+      "Quoted value per unbooked plan alongside payment-plan availability and uptake. PARTIALLY RECORDED: quoted values are available and already surfaced by `listPendingTreatments`, but DentGrow has no concept of a payment plan, so a plan deferred over cost cannot be separated from one deferred for another reason.",
     availability: Availability.REQUIRES_DATA_CAPTURE,
     portMethod: null,
   },

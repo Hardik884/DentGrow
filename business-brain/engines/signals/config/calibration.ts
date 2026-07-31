@@ -73,7 +73,7 @@ export const CALIBRATION_RATIOS = {
   /** Outstanding beyond one month of production is a collections problem. */
   OUTSTANDING_MONTHS_OF_PRODUCTION: 1.0,
   /**
-   * Accepted-but-undelivered work worth more than ~6 weeks of production means
+   * Planned-but-undelivered work worth more than ~6 weeks of production means
    * the pipeline is filling faster than the clinic can deliver it.
    */
   PENDING_MONTHS_OF_PRODUCTION: 1.5,
