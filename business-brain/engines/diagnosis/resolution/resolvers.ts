@@ -261,10 +261,10 @@ const noShowPatientHistory: DiscriminatorResolver = (ctx, input) => {
 // ── Pending work ─────────────────────────────────────────────────────────────
 
 /**
- * How old the unscheduled backlog is.
+ * How old the unbooked backlog is.
  *
- * Separates plans accepted today and not yet booked — normal, and no problem at
- * all — from plans that have been sitting for weeks.
+ * Separates plans recorded today with no next visit yet — normal, and no problem
+ * at all — from plans that have been sitting for weeks.
  */
 const pendingTreatmentAge: DiscriminatorResolver = (ctx, input) => {
   const rows = ctx.pendingTreatments;
@@ -275,8 +275,8 @@ const pendingTreatmentAge: DiscriminatorResolver = (ctx, input) => {
   const aged = rows.filter((r) => r.ageDays >= input.config.agedDays);
   const agedShare = share(aged.length, rows.length);
   const description =
-    `${rows.length} accepted treatment(s) unscheduled. Median age ${formatValue(medianAge, MetricUnit.DAYS)}; ` +
-    `${aged.length} (${formatValue(agedShare, MetricUnit.PERCENTAGE)}) have been unscheduled for at least ` +
+    `${rows.length} planned treatment(s) with no next visit booked. Median age ${formatValue(medianAge, MetricUnit.DAYS)}; ` +
+    `${aged.length} (${formatValue(agedShare, MetricUnit.PERCENTAGE)}) have been waiting for at least ` +
     `${formatValue(input.config.agedDays, MetricUnit.DAYS)}.`;
   const data = { pending: rows.length, medianAge, aged: aged.length, agedShare };
 

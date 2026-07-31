@@ -206,7 +206,11 @@ export const METRIC_DESCRIPTORS: Readonly<Record<MetricKey, MetricDescriptor>> =
   },
   [MetricKey.TREATMENT_ACCEPTED_PENDING_SCHEDULING]: {
     key: MetricKey.TREATMENT_ACCEPTED_PENDING_SCHEDULING,
-    name: "Accepted Treatments Pending Scheduling",
+    // Named for what it reads, not for what the key says. The key is persisted
+    // in `metric_history` so it cannot change; the display name can, and must,
+    // because `planned` is not a record of patient consent and the booking check
+    // is per patient rather than per treatment.
+    name: "Planned Treatments With No Next Visit Booked",
     category: MetricCategory.CLINICAL,
     unit: MetricUnit.COUNT,
   },

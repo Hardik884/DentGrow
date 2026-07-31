@@ -402,16 +402,16 @@ export class SupabaseMetricsDataRepository implements MetricsDataRepository {
    *   false  the patient has no upcoming visit at all
    *
    * It is NOT a treatment-to-appointment mapping. A patient booked for a
-   * cleaning while an accepted crown goes unbooked reads as `true`, and the
+   * cleaning while a planned crown goes unbooked reads as `true`, and the
    * crown will not appear in `treatment.accepted_pending_scheduling`.
    *
    * That imprecision is accepted knowingly. Modelling it exactly needs a
    * treatment-to-appointment link, which would force the dentist to record
-   * which future visit each accepted item belongs to — workflow complexity that
+   * which future visit each planned item belongs to — workflow complexity that
    * is not worth the accuracy at this stage. The approximation still answers
    * the question the clinic actually asks:
    *
-   *   "Do we have accepted treatment plans where the patient has not even
+   *   "Do we have planned treatment where the patient has not even
    *    booked another visit?"
    *
    * The consequence to remember when reading the metric: it UNDER-reports.

@@ -1,9 +1,12 @@
 /**
  * Signal: clinical.large_pending_treatment_value
  *
- * Business rule: treatment that has been planned and accepted but not yet
- * delivered is revenue the clinic has already earned the right to. Past the
- * configured limit, the size of that book is itself the observation.
+ * Business rule: treatment that has been planned but not yet delivered is the
+ * clinic's forward book. Past the configured limit, the size of that book is
+ * itself the observation.
+ *
+ * Not "accepted": `planned` records what the clinic wrote down, not what the
+ * patient agreed to, and the schema cannot tell the two apart.
  */
 
 import { MetricUnit, SignalCategory, SignalType } from "../../../../domain";
@@ -43,7 +46,7 @@ export const largePendingTreatmentValueEvaluator: SignalEvaluator = {
       type: SignalType.CLINICAL_LARGE_PENDING_TREATMENT_VALUE,
       category: SignalCategory.CLINICAL,
       title: "Large pending treatment value",
-      description: `Accepted but undelivered treatment is worth ${formatValue(pending, MetricUnit.CURRENCY)} against a configured limit of ${formatValue(treatment.pendingTreatmentValueLimit, MetricUnit.CURRENCY)}.`,
+      description: `Planned but undelivered treatment is worth ${formatValue(pending, MetricUnit.CURRENCY)} against a configured limit of ${formatValue(treatment.pendingTreatmentValueLimit, MetricUnit.CURRENCY)}.`,
       observed: {
         label: "Pending treatment value",
         value: pending,

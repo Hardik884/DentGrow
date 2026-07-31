@@ -52,7 +52,7 @@ describe("sizing a bottleneck", () => {
     expect(value?.type).toBe("revenue_recovered");
   });
 
-  it("reports unbooked accepted treatment as money", () => {
+  it("reports planned, undelivered treatment as money", () => {
     const { byConstraint } = deriveValues(
       [constraint("treatment_acceptance")],
       [m(MetricKey.REVENUE_PENDING_TREATMENT_VALUE, 80000)],

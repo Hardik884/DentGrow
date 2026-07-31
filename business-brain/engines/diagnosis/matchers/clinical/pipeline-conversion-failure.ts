@@ -1,10 +1,14 @@
 /**
  * Pattern: pipeline_conversion_failure
  *
- * Correlation: treatment that patients have already agreed to is sitting in the
- * plan and not reaching a chair. A stalled pipeline signal says this directly; a
- * large pending value together with a queue of accepted-but-unscheduled
- * treatments says the same thing from two measurements.
+ * Correlation: planned treatment is sitting in the plan and not reaching a
+ * chair. A stalled pipeline signal says this directly; a large pending value
+ * together with a queue of planned treatments whose patients have no next visit
+ * booked says the same thing from two measurements.
+ *
+ * Nothing here knows the patient agreed. `planned` is a plan the clinic
+ * recorded, not consent the patient gave, and the booking check is per patient
+ * rather than per treatment. The wording throughout stays inside those limits.
  *
  * Discrimination — was there room for the work? This is separable, because the
  * clinic's own utilization answers it. Idle chairs alongside an unscheduled
@@ -40,20 +44,20 @@ const REQUIRED = [PIPELINE_STALLED, ...PAIR] as const;
 const OPTIONAL = [SignalType.OPERATIONAL_LOW_CHAIR_UTILIZATION] as const;
 
 const NO_AVAILABLE_CAPACITY =
-  "Accepted treatments remain unscheduled because the schedule had no capacity available to place them in.";
+  "Patients with planned treatment have no next visit booked because the schedule had no capacity available to offer them.";
 const BOOKING_FOLLOW_THROUGH =
-  "Accepted treatments were not converted into booked appointments even though schedule capacity was available.";
+  "Patients with planned treatment left without a next visit booked even though schedule capacity was available.";
 const PATIENT_DEFERRAL =
-  "Patients accepted treatment and then deferred committing to an appointment date.";
+  "Patients with planned treatment deferred committing to an appointment date.";
 const COST_BARRIER =
-  "Treatment cost is holding back scheduling for a subset of the accepted plans.";
+  "Treatment cost is holding back booking for a subset of the planned treatments.";
 
 export const pipelineConversionFailureMatcher: PatternMatcher = {
   pattern: DiagnosisPattern.PIPELINE_CONVERSION_FAILURE,
   category: SignalCategory.CLINICAL,
   requiredSignals: REQUIRED,
   optionalSignals: OPTIONAL,
-  rule: "Requires either a stalled pipeline, or both a large pending treatment value and accepted-unscheduled treatments. Low chair utilization strengthens it.",
+  rule: "Requires either a stalled pipeline, or both a large pending treatment value and planned treatments whose patients have no next visit booked. Low chair utilization strengthens it.",
 
   match(ctx: MatcherContext): MatcherOutcome {
     const stalled = ctx.signals.get(PIPELINE_STALLED);
@@ -80,7 +84,7 @@ export const pipelineConversionFailureMatcher: PatternMatcher = {
 
     const arithmetic: EvidenceNote = {
       slug: "discrimination.capacity-for-pipeline",
-      description: `Unscheduled accepted treatments ${acceptedPending ?? "unavailable"} carrying ${pendingValue === undefined ? "an unavailable" : formatValue(pendingValue, MetricUnit.CURRENCY)} of pending value, against chair utilization ${utilization === undefined ? "unavailable" : formatValue(utilization, MetricUnit.PERCENTAGE)} and ${openSlots ?? "an unavailable number of"} open slot(s). The low-utilization signal is ${idleCapacity ? "present" : "absent"} and the near-full-capacity signal is ${nearFull ? "present" : "absent"}.`,
+      description: `Planned treatments with no next visit booked ${acceptedPending ?? "unavailable"}, against ${pendingValue === undefined ? "an unavailable" : formatValue(pendingValue, MetricUnit.CURRENCY)} of planned and in-progress treatment value, chair utilization ${utilization === undefined ? "unavailable" : formatValue(utilization, MetricUnit.PERCENTAGE)} and ${openSlots ?? "an unavailable number of"} open slot(s). The low-utilization signal is ${idleCapacity ? "present" : "absent"} and the near-full-capacity signal is ${nearFull ? "present" : "absent"}.`,
       data: {
         acceptedPending,
         pendingValue,
@@ -103,7 +107,7 @@ export const pipelineConversionFailureMatcher: PatternMatcher = {
           supporting: [
             {
               slug: "idle-capacity",
-              description: `Chair utilization was below its configured minimum on the same day the accepted-treatment book was above its limit, so schedule capacity existed while the work stayed unbooked.`,
+              description: `Chair utilization was below its configured minimum on the same day the planned-treatment book was above its limit, so schedule capacity existed while those patients left with nothing booked.`,
               data: { utilization, openSlots, acceptedPending },
             },
           ],
@@ -115,7 +119,7 @@ export const pipelineConversionFailureMatcher: PatternMatcher = {
           contradicting: [
             {
               slug: "idle-capacity",
-              description: `Chair utilization was below its configured minimum, so a lack of schedule capacity does not account for the unscheduled work.`,
+              description: `Chair utilization was below its configured minimum, so a lack of schedule capacity does not account for the missing next visits.`,
               data: { utilization, openSlots },
             },
           ],
@@ -130,7 +134,7 @@ export const pipelineConversionFailureMatcher: PatternMatcher = {
           supporting: [
             {
               slug: "near-full",
-              description: `The schedule was at or above the near-capacity mark, so there was little bookable time available for the accepted treatments.`,
+              description: `The schedule was at or above the near-capacity mark, so there was little bookable time to offer those patients.`,
               data: { utilization, openSlots },
             },
           ],
@@ -142,7 +146,7 @@ export const pipelineConversionFailureMatcher: PatternMatcher = {
           contradicting: [
             {
               slug: "near-full",
-              description: `Available capacity was at or below its configured minimum, so unused bookable time does not account for the unscheduled work.`,
+              description: `Available capacity was at or below its configured minimum, so unused bookable time does not account for the missing next visits.`,
               data: { utilization, openSlots },
             },
           ],
@@ -183,8 +187,8 @@ export const pipelineConversionFailureMatcher: PatternMatcher = {
     return emit(ctx, {
       pattern: DiagnosisPattern.PIPELINE_CONVERSION_FAILURE,
       category: SignalCategory.CLINICAL,
-      title: "Accepted treatment not reaching the schedule",
-      summary: `Treatment that patients had already accepted was above its configured limits and had not been converted into booked appointments, so the clinical pipeline and the appointment book diverged.`,
+      title: "Planned treatment not reaching the schedule",
+      summary: `Planned treatment was above its configured limits while the patients carrying it had no next visit booked, so the treatment plans and the appointment book diverged.`,
       contributing,
       requiredSignals: REQUIRED,
       optionalSignals: OPTIONAL,

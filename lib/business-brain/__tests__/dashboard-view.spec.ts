@@ -264,7 +264,7 @@ describe("unmeasured checks", () => {
     );
 
     expect(view.unmeasured).toHaveLength(1);
-    expect(view.unmeasured[0].label).toBe("Accepted treatments unscheduled");
+    expect(view.unmeasured[0].label).toBe("Planned treatment with no next visit booked");
     expect(view.unmeasured[0].reason).toBe(
       "missing metric treatment.accepted_pending_scheduling",
     );

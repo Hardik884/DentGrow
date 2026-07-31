@@ -104,9 +104,13 @@ export interface SignalThresholdConfig {
     readonly minimumAvailableSlots: number;
   };
   readonly treatment: {
-    /** Accepted-but-unbilled treatment value that is too large to ignore (INR). */
+    /** Planned-but-undelivered treatment value that is too large to ignore (INR). */
     readonly pendingTreatmentValueLimit: number;
-    /** Accepted treatments waiting for a date that constitute a backlog. */
+    /**
+     * Planned treatments whose patient has no next visit booked that constitute
+     * a backlog. Named `accepted` for continuity with the metric key; neither
+     * measures patient consent.
+     */
     readonly acceptedUnscheduledLimit: number;
   };
   readonly severity: {

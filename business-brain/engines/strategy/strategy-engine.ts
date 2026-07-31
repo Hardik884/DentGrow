@@ -132,14 +132,14 @@ const CORRECTIVE_BY_HYPOTHESIS: Readonly<
       "Losses concentrate in particular appointment times or treatment types rather than falling evenly across the day, so the pattern is in what is being booked rather than in the patients booking it.",
   },
   unconverted_demand: {
-    title: "Book the treatment that has already been accepted",
+    title: "Book the patients who have a plan and no next visit",
     description:
-      "Accepted treatment is waiting while chair time went unused on the same day. The demand exists and has been agreed; what is missing is the appointment.",
+      "Planned treatment is sitting with patients who have nothing in the book, while chair time went unused on the same day. The work and the capacity both exist; what is missing is the appointment.",
   },
   insufficient_demand: {
     title: "Bring patients back before filling new capacity",
     description:
-      "Chair time went unused and the accepted-treatment pipeline is thin, so the shortfall is in patients to see rather than in time to see them.",
+      "Chair time went unused and the planned-treatment pipeline is thin, so the shortfall is in patients to see rather than in time to see them.",
   },
   capacity_not_offered: {
     title: "Open chair time before treating the day as quiet",
@@ -173,7 +173,8 @@ const INVESTIGATIVE_BY_CATEGORY: Readonly<Record<ConstraintCategory, string>> = 
   [ConstraintCategory.CAPACITY]: "why chair time is going unused",
   [ConstraintCategory.SCHEDULING]: "why booked appointments are being lost",
   [ConstraintCategory.REVENUE_LEAKAGE]: "why delivered work is not turning into money",
-  [ConstraintCategory.TREATMENT_ACCEPTANCE]: "why accepted treatment is not being booked",
+  [ConstraintCategory.TREATMENT_ACCEPTANCE]:
+    "why patients with planned treatment are leaving without a next visit booked",
   [ConstraintCategory.RETENTION]: "why patients are not coming back",
   [ConstraintCategory.ACQUISITION]: "why fewer new patients are arriving",
 };

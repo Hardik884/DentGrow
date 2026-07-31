@@ -12,7 +12,7 @@
  * whole module is built to avoid.
  *
  * What it reports is VALUE AT STAKE: the measured size of the problem as it
- * currently stands. "₹80,000 of accepted treatment is unbooked" is a fact
+ * currently stands. "₹80,000 of planned treatment is undelivered" is a fact
  * already computed by the Metrics Engine. What share of it a clinic recovers is
  * a fact about the future that nobody here can know.
  *
@@ -73,7 +73,10 @@ const VALUE_BY_CATEGORY: Readonly<Record<ConstraintCategory, ValueSpec | null>> 
     type: ValueType.REVENUE_RECOVERED,
     unit: MetricUnit.CURRENCY,
     metrics: [MetricKey.REVENUE_PENDING_TREATMENT_VALUE],
-    describe: () => "Treatment the patient has accepted that has not been booked.",
+    // The metric is the cost of everything `planned` or `in_progress`, which
+    // includes work that IS booked, and `planned` is not a record of consent.
+    // Describing it as accepted-and-unbooked overstated it in both directions.
+    describe: () => "Treatment that is planned or under way and not yet completed.",
   },
   [ConstraintCategory.CAPACITY]: {
     type: ValueType.HOURS_SAVED,

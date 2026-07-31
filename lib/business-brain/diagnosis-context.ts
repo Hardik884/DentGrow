@@ -261,13 +261,15 @@ export class SupabaseDiagnosisContext implements DiagnosisContextPort {
   }
 
   /**
-   * Accepted treatments still unscheduled at the end of the window.
+   * Planned treatments whose patient has no next visit booked at the end of the
+   * window.
    *
    * APPROXIMATION, in two places, both stated rather than hidden:
    *
    * `acceptedOn` is the treatment's `created_at`. DentGrow records no separate
-   * acceptance date, and a planned treatment is created when the plan is agreed,
-   * so the two coincide in ordinary use but are not the same field.
+   * date, and a planned treatment row is created when the clinic records the
+   * plan, so the two coincide in ordinary use but are not the same field. This
+   * is a recorded date, not a record that the patient agreed to anything.
    *
    * "Unscheduled" is resolved at the PATIENT level — does this patient have any
    * upcoming visit — because no treatment-to-appointment link exists. This is

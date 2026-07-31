@@ -2,7 +2,7 @@
  * Signal: clinical.pipeline_stalled
  *
  * Business rule: a relationship no single metric can show. There is a large book
- * of accepted treatment (demand banked), the day is booked below the minimum
+ * of planned treatment (demand banked), the day is booked below the minimum
  * (nothing happening), and slots are still open (capacity free). Demand and
  * capacity both exist on the same day and are not meeting.
  *
@@ -65,7 +65,7 @@ export const pipelineStalledEvaluator: SignalEvaluator = {
       type: SignalType.CLINICAL_PIPELINE_STALLED,
       category: SignalCategory.CLINICAL,
       title: "Treatment pipeline stalled",
-      description: `${formatValue(pending, MetricUnit.CURRENCY)} of accepted treatment is pending while only ${appointments} appointment(s) are booked today and ${openSlots} slot(s) remain open. Pending value exceeds the configured limit of ${formatValue(treatment.pendingTreatmentValueLimit, MetricUnit.CURRENCY)} and booked volume is below the minimum of ${appointmentRules.minimumDailyAppointments}.`,
+      description: `${formatValue(pending, MetricUnit.CURRENCY)} of planned treatment is pending while only ${appointments} appointment(s) are booked today and ${openSlots} slot(s) remain open. Pending value exceeds the configured limit of ${formatValue(treatment.pendingTreatmentValueLimit, MetricUnit.CURRENCY)} and booked volume is below the minimum of ${appointmentRules.minimumDailyAppointments}.`,
       observed: {
         label: "Pending treatment value",
         value: pending,

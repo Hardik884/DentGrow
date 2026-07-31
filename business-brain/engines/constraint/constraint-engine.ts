@@ -63,7 +63,7 @@ const CONSTRAINT_NAMES: Readonly<Record<ConstraintCategory, string>> = {
   [ConstraintCategory.CAPACITY]: "Chair capacity and how much of it was used",
   [ConstraintCategory.SCHEDULING]: "Appointments booked and then lost",
   [ConstraintCategory.REVENUE_LEAKAGE]: "Work delivered against money received",
-  [ConstraintCategory.TREATMENT_ACCEPTANCE]: "Accepted treatment that was not booked",
+  [ConstraintCategory.TREATMENT_ACCEPTANCE]: "Planned treatment with no next visit booked",
   [ConstraintCategory.RETENTION]: "Patients returning, and being brought back",
   [ConstraintCategory.ACQUISITION]: "New patients reaching the clinic",
 };

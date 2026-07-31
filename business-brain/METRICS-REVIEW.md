@@ -69,7 +69,7 @@ that require or optionally read each metric.
 | `appointments.no_shows_today` | Same. | Emit `scheduling.no_show_rate_30d` alongside. |
 | `patients.new_today` | Threshold is `< 1`/day. Binary and jumpy; the config already caps its severity to compensate, which is a smell. | Replace the *signal basis* with a 30-day count. Keep the daily metric as an input. |
 | `patients.returning_today` | Counts visits, not retention. A patient returning today says nothing about whether the base is retained. | Keep; add true retention (MVP-6). |
-| `treatment.accepted_pending_scheduling` | Now a patient-level approximation that under-reports (documented). Value is real but the number is a floor. | Keep, and label it as a floor wherever it is surfaced. Revisit only if case-acceptance tracking lands. |
+| `treatment.accepted_pending_scheduling` | Now a patient-level approximation that under-reports (documented). Value is real but the number is a floor. The key says "accepted"; nothing in the schema records acceptance. | Keep the key — it is persisted in `metric_history`. **Relabelled 2026-07-31** to "Planned Treatments With No Next Visit Booked" everywhere it surfaces, so no user-facing string claims consent or a treatment-to-appointment link. Revisit only if case-acceptance tracking lands. |
 | `followups.due_today` | Only an optional input to one evaluator; on its own it is a work-queue count, not intelligence. | Keep as a dashboard number, not a business metric. |
 
 ### Remove or repurpose (3)
@@ -260,7 +260,7 @@ resulting jumpiness — a smell worth removing once rates exist.
 | **Unbounded loads** | The repository fetches *all* treatments and *all* payments clinic-wide on every run — correct for cumulative outstanding balance, but linear in clinic history. Fine at pilot scale; needs a bounded strategy (or a maintained balance) before a clinic with years of data. |
 | **Daily thresholds on daily samples** | Signals fire on ordinary quiet days, which teaches users to dismiss them. The fastest fix to perceived quality is windowed rates. |
 | **Three metrics feed nothing** | `appointments.completed_today`, `appointments.upcoming_today`, `revenue.clinic_share_today`. Computed for no consumer. |
-| **`accepted_pending_scheduling` under-reports** | Accepted and documented, but must be labelled as a floor wherever surfaced, or it will be read as an all-clear. |
+| **`accepted_pending_scheduling` under-reports** | Known and documented. Relabelled 2026-07-31 to "Planned Treatments With No Next Visit Booked"; the wording must stay patient-level and must not be re-phrased into the language of acceptance. |
 
 ---
 

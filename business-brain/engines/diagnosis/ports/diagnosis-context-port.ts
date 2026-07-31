@@ -88,15 +88,18 @@ export interface NoShowHistoryRow {
 }
 
 /**
- * One accepted treatment that has not been scheduled.
+ * One planned treatment whose patient has no next visit booked.
  * Serves: pending_treatment_age, pending_treatment_composition.
  */
 export interface PendingTreatmentRow {
   readonly treatmentId: string;
   readonly patientId: string;
-  /** "YYYY-MM-DD" the patient accepted the plan. */
+  /**
+   * "YYYY-MM-DD" the plan was recorded. Named `acceptedOn` for continuity;
+   * `planned` is not a record of consent, so this is not an acceptance date.
+   */
   readonly acceptedOn: string;
-  /** Whole days from acceptance to the end of the requested window. */
+  /** Whole days from when the plan was recorded to the end of the requested window. */
   readonly ageDays: number;
   readonly treatmentType: string;
   readonly quotedValue: MeasuredAmount;
@@ -220,12 +223,12 @@ export interface DiagnosisContextPort {
   listNoShowHistory(window: EntityWindow): Promise<readonly NoShowHistoryRow[] | null>;
 
   /**
-   * Accepted treatments still unscheduled at the end of the window, with age,
-   * type, and quoted value.
+   * Planned treatments whose patient has no next visit booked at the end of the
+   * window, with age, type, and quoted value.
    *
-   * Discriminates a plan accepted today and not yet booked from a plan accepted
-   * long ago, and a backlog concentrated in long or high-value work from one
-   * spread across routine work.
+   * Discriminates a plan recorded today with no next visit yet from a plan that
+   * has been sitting long ago, and a backlog concentrated in long or high-value
+   * work from one spread across routine work.
    */
   listPendingTreatments(window: EntityWindow): Promise<readonly PendingTreatmentRow[] | null>;
 

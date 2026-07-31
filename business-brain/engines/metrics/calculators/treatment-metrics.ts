@@ -14,12 +14,24 @@ function toDatePart(iso: string): string {
 }
 
 /**
- * Accepted treatments pending scheduling — treatments the patient has accepted
- * (`planned`) that are not booked to be performed at any future appointment.
+ * Planned treatments whose patient has no next visit booked.
+ *
+ * Two things this does NOT measure, despite the metric key saying "accepted":
+ *
+ *   - Consent. `planned` is a plan the clinic recorded. The schema has no
+ *     `presented` or `declined` state, so a plan the patient refused is
+ *     indistinguishable from one they agreed to.
+ *   - A treatment-to-appointment link. `isScheduled` is resolved at the PATIENT
+ *     level — does this patient have any upcoming visit — so a patient booked for
+ *     a cleaning reads as booked for their crown too.
+ *
+ * The key stays as it is because it is persisted in `metric_history`. Every
+ * user-facing label for it is worded to the two facts above and must not be
+ * re-phrased into the language of acceptance or of a scheduled treatment.
  *
  * Returns `null` — the metric is withheld — when any planned treatment's
  * booking state is unknown (`isScheduled === null`). Counting an unknown as
- * "not scheduled" would report accepted work as unbooked on no evidence, and
+ * "no next visit" would report work as unbooked on no evidence, and
  * `clinical.accepted_treatments_unscheduled` would fire on it. Withholding the
  * metric instead makes the downstream evaluator skip and record that it could
  * not measure, which is the honest outcome.

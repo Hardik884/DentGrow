@@ -158,7 +158,7 @@ export const DISCRIMINATORS = {
   PENDING_TREATMENT_COMPOSITION: {
     slug: "pending_treatment_composition",
     description:
-      "Treatment type and value of each unscheduled accepted treatment: it separates a backlog concentrated in long or high-value procedures from one spread across routine work.",
+      "Treatment type and value of each planned treatment whose patient has no next visit booked: it separates a backlog concentrated in long or high-value procedures from one spread across routine work.",
     availability: Availability.REQUIRES_ENTITY_DATA,
     portMethod: "listPendingTreatments",
   },

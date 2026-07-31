@@ -95,10 +95,26 @@ const CATEGORY_ORDER = [
 ];
 
 /**
+ * Checks whose identifier does not humanise into something truthful.
+ *
+ * `clinical.accepted_treatments_unscheduled` reads back as "Accepted treatments
+ * unscheduled", which claims two things the check does not measure: that the
+ * patient accepted the plan, and that a treatment is tied to an appointment. It
+ * reads `planned` status and asks whether the PATIENT has any upcoming visit.
+ * The identifier is left alone — it is written into the decision trace — and
+ * only the label a dentist reads is corrected here.
+ */
+const STEP_LABELS: Record<string, string> = {
+  "clinical.accepted_treatments_unscheduled": "Planned treatment with no next visit booked",
+};
+
+/**
  * Turn a signal type ("revenue.low_daily_revenue") into a readable check name.
  * Presentation only — the engine's identifiers stay untouched.
  */
 export function humaniseStep(step: string): string {
+  const override = STEP_LABELS[step];
+  if (override !== undefined) return override;
   const name = step.includes(".") ? step.slice(step.indexOf(".") + 1) : step;
   const words = name.replace(/_/g, " ");
   return words.charAt(0).toUpperCase() + words.slice(1);
@@ -303,20 +319,36 @@ export interface FocusCard {
   readonly diagnoses: readonly Diagnosis[];
 }
 
-/** Plain-language names, keyed by constraint category. */
+/**
+ * Plain-language names, keyed by constraint category.
+ *
+ * `treatment_acceptance` is deliberately NOT titled in the language of
+ * acceptance. Nothing in the schema records whether a patient said yes: the
+ * category rests on `planned` treatments whose patient has no upcoming visit
+ * booked. "Treatment agreed but not booked in" asserted both an agreement and a
+ * treatment-to-appointment link, neither of which is measured. The title names
+ * exactly the two facts that are: the plan exists, and there is no next visit.
+ */
 const FOCUS_TITLES: Record<string, string> = {
   revenue_leakage: "Money owed for work already done",
-  treatment_acceptance: "Treatment agreed but not booked in",
+  treatment_acceptance: "Planned treatment with no next visit booked",
   capacity: "Chair time going unused",
   scheduling: "Appointments booked and then lost",
   retention: "Patients who have stopped coming back",
   acquisition: "New patients coming in",
 };
 
-/** What the figure on the card counts, in the fewest words that stay accurate. */
+/**
+ * What the figure on the card counts, in the fewest words that stay accurate.
+ *
+ * The `treatment_acceptance` figure comes from `revenue.pending_treatment_value`
+ * — the cost of everything `planned` or `in_progress` — not from the unbooked
+ * subset. So "agreed, not booked" mislabelled it twice over: the value covers
+ * work that IS booked, and none of it is known to be agreed.
+ */
 const AT_STAKE_LABELS: Record<string, string> = {
   revenue_leakage: "still unpaid",
-  treatment_acceptance: "agreed, not booked",
+  treatment_acceptance: "planned, not yet delivered",
   capacity: "empty chair time today",
   scheduling: "lost today",
   retention: "patients",

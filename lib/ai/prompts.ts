@@ -229,7 +229,7 @@ ${params.persistence}
 
 HOW TO WRITE IT
 - Two or three short sentences. Under 60 words total.
-- Everyday words only. Write "how full the chairs were" instead of "chair utilization"; "money owed" instead of "outstanding balance"; "treatment the patient agreed to but has not booked" instead of "accepted pending scheduling".
+- Everyday words only. Write "how full the chairs were" instead of "chair utilization"; "money owed" instead of "outstanding balance"; "planned treatment where the patient has no next visit booked" instead of "accepted pending scheduling". Never say the patient agreed to or accepted a treatment — nothing in the records shows that.
 - No jargon, no statistics vocabulary, no words like threshold, metric, signal, correlated, configured, or parameter.
 - Plain sentences. No bullet points, no headings, no bold.
 - Speak directly to the dentist as "you" and "your clinic".

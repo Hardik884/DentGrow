@@ -53,7 +53,7 @@ export const demandSupplyMismatchMatcher: PatternMatcher = {
   category: SignalCategory.OPERATIONAL,
   requiredSignals: REQUIRED,
   optionalSignals: OPTIONAL,
-  rule: "Requires both low chair utilization and low appointment volume. Pending treatment value and accepted-unscheduled treatments strengthen it.",
+  rule: "Requires both low chair utilization and low appointment volume. Pending treatment value and planned treatments whose patients have no next visit booked strengthen it.",
 
   match(ctx: MatcherContext): MatcherOutcome {
     const present = ctx.signals.present(REQUIRED);
@@ -87,7 +87,7 @@ export const demandSupplyMismatchMatcher: PatternMatcher = {
 
     const arithmetic: EvidenceNote = {
       slug: "discrimination.demand",
-      description: `Accepted demand measured as pending treatment value ${pendingValue === undefined ? "unavailable" : formatValue(pendingValue, MetricUnit.CURRENCY)} against limit ${formatValue(treatment.pendingTreatmentValueLimit, MetricUnit.CURRENCY)}, and accepted-unscheduled treatments ${acceptedPending ?? "unavailable"} against limit ${treatment.acceptedUnscheduledLimit}. New patients ${newPatients ?? "unavailable"} against minimum ${patients.minimumNewPatientsPerDay}.`,
+      description: `Banked demand measured as pending treatment value ${pendingValue === undefined ? "unavailable" : formatValue(pendingValue, MetricUnit.CURRENCY)} against limit ${formatValue(treatment.pendingTreatmentValueLimit, MetricUnit.CURRENCY)}, and planned treatments with no next visit booked ${acceptedPending ?? "unavailable"} against limit ${treatment.acceptedUnscheduledLimit}. New patients ${newPatients ?? "unavailable"} against minimum ${patients.minimumNewPatientsPerDay}.`,
       data: {
         pendingValue,
         pendingTreatmentValueLimit: treatment.pendingTreatmentValueLimit,
@@ -126,7 +126,7 @@ export const demandSupplyMismatchMatcher: PatternMatcher = {
           supporting: [
             {
               slug: "accepted-book",
-              description: `Accepted treatment demand is at or above its configured limit while the chair was idle, so demand demonstrably existed on this day.`,
+              description: `Planned treatment demand is at or above its configured limit while the chair was idle, so demand demonstrably existed on this day.`,
               data: { pendingValue, acceptedPending },
             },
           ],
@@ -152,7 +152,7 @@ export const demandSupplyMismatchMatcher: PatternMatcher = {
         supporting: [
           {
             slug: "no-pending-no-new",
-            description: `Accepted treatment demand is below its configured limits and new patient registrations are below the daily minimum, so the measured demand for the open capacity was low.`,
+            description: `Planned treatment demand is below its configured limits and new patient registrations are below the daily minimum, so the measured demand for the open capacity was low.`,
             data: { pendingValue, acceptedPending, newPatients },
           },
         ],
@@ -166,7 +166,7 @@ export const demandSupplyMismatchMatcher: PatternMatcher = {
               contradicting: [
                 {
                   slug: "empty-book",
-                  description: `Pending treatment value and accepted-unscheduled treatments are both zero, so there was no accepted demand available to convert.`,
+                  description: `Pending treatment value is zero and no planned treatment is sitting with a patient who has no next visit booked, so there was no banked demand available to convert.`,
                   data: { pendingValue, acceptedPending },
                 },
               ],
@@ -178,7 +178,7 @@ export const demandSupplyMismatchMatcher: PatternMatcher = {
               supporting: [
                 {
                   slug: "sub-threshold-book",
-                  description: `Accepted treatment demand is below its configured limits but not zero, so some unconverted demand may exist below the signal threshold.`,
+                  description: `Planned treatment demand is below its configured limits but not zero, so some unconverted demand may exist below the signal threshold.`,
                   data: { pendingValue, acceptedPending },
                 },
               ],

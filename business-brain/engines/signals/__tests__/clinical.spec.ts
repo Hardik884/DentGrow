@@ -32,7 +32,7 @@ describe("clinical.large_pending_treatment_value", () => {
 });
 
 describe("clinical.accepted_treatments_unscheduled", () => {
-  it("fires on 9 accepted treatments without a date", () => {
+  it("fires on 9 planned treatments whose patient has no next visit booked", () => {
     const signal = expectSignal(
       acceptedTreatmentsUnscheduledEvaluator,
       context(LARGE_PIPELINE_CLINIC),
