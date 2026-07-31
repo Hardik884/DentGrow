@@ -472,65 +472,6 @@ const appointmentArrivalTimes: DiscriminatorResolver = (ctx, input) => {
 };
 
 /**
- * Whether revenue was given away or simply not received.
- *
- * Both leave the clinic with less money than the work was worth, and they are
- * opposite problems: a discount is a decision someone made at the desk, an
- * uncollected balance is a process that did not finish. A revenue total cannot
- * tell them apart, which is why they are separated here.
- */
-const discountAndWriteoffLog: DiscriminatorResolver = (ctx, input) => {
-  const rows = ctx.completedTreatments;
-  if (rows == null || rows.length === 0) return null;
-
-  const billed = rows.reduce((sum, r) => sum + r.billedValue.value, 0);
-  const discounted = rows.reduce((sum, r) => sum + r.discountValue.value, 0);
-  const collected = rows.reduce((sum, r) => sum + r.collectedValue.value, 0);
-  // What was charged after concessions, and therefore what could have been
-  // collected. Never negative: a discount cannot exceed its own bill.
-  const netBilled = Math.max(0, billed - discounted);
-  const uncollected = Math.max(0, netBilled - collected);
-  const withDiscount = rows.filter((r) => r.discountValue.value > 0);
-  const discountShare = share(discounted, billed);
-
-  const description =
-    `${rows.length} treatment(s) completed, billing ${formatValue(round2(billed), MetricUnit.CURRENCY)} gross. ` +
-    `${formatValue(round2(discounted), MetricUnit.CURRENCY)} (${formatValue(discountShare, MetricUnit.PERCENTAGE)}) ` +
-    `was discounted across ${withDiscount.length} treatment(s), leaving ` +
-    `${formatValue(round2(netBilled), MetricUnit.CURRENCY)} chargeable, of which ` +
-    `${formatValue(round2(uncollected), MetricUnit.CURRENCY)} remains uncollected.`;
-  const data = {
-    completed: rows.length,
-    billed: round2(billed),
-    discounted: round2(discounted),
-    netBilled: round2(netBilled),
-    collected: round2(collected),
-    uncollected: round2(uncollected),
-    discountShare,
-    treatmentsDiscounted: withDiscount.length,
-  };
-
-  if (rows.length < input.config.minimumSample) {
-    return observed(input, "discount-writeoff", `${description} Sample below the configured minimum of ${input.config.minimumSample}, so nothing is concluded from the split.`, data);
-  }
-
-  // Whichever is larger is the one the money actually went to. Equal amounts
-  // settle nothing, which is the honest outcome rather than a coin toss.
-  const givenAway = hypothesis(input, 0);
-  const notCollected = hypothesis(input, 1);
-  if (discounted === uncollected) {
-    return observed(input, "discount-writeoff", `${description} Discounts and uncollected billing are equal, so neither is the larger explanation.`, data);
-  }
-
-  const discountDominant = discounted > uncollected;
-  return {
-    evidence: [evidence(input, "discount-writeoff", description, data)],
-    supports: discountDominant ? slugs(givenAway) : slugs(notCollected),
-    contradicts: discountDominant ? slugs(notCollected) : slugs(givenAway),
-  };
-};
-
-/**
  * Whether appointments ran over the time they were booked for.
  *
  * The counterpart to arrival timing, and the other half of "why is the clinic
@@ -618,5 +559,4 @@ export const DISCRIMINATOR_RESOLVERS: Readonly<Record<string, DiscriminatorResol
   [DISCRIMINATORS.COMPLETED_TREATMENT_MIX.slug]: completedTreatmentMix,
   [DISCRIMINATORS.APPOINTMENT_ARRIVAL_TIMES.slug]: appointmentArrivalTimes,
   [DISCRIMINATORS.SERVICE_TIME_DISTRIBUTION.slug]: serviceTimeDistribution,
-  [DISCRIMINATORS.DISCOUNT_AND_WRITEOFF_LOG.slug]: discountAndWriteoffLog,
 };

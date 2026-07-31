@@ -182,8 +182,6 @@ async function seed() {
   await insert("treatments", [
     {
       id: T_PAID,
-      discount_amount: 0,
-      discount_reason: null,
       clinic_id: C,
       appointment_id: A_ARRIVED,
       patient_id: P_BOOKED,
@@ -200,10 +198,6 @@ async function seed() {
       patient_id: P_BOOKED,
       treatment_type: "Crown",
       cost: 20000,
-      // 2,000 off as a goodwill gesture: 18,000 chargeable, 8,000 paid, so
-      // 10,000 uncollected. Discount and shortfall must stay distinguishable.
-      discount_amount: 2000,
-      discount_reason: "Goodwill",
       status: "completed",
       performed_at: "2026-04-03T09:30:00Z",
       created_at: "2026-04-03T09:30:00Z",
@@ -213,8 +207,6 @@ async function seed() {
       // cannot leak into the pending, outstanding or completed lists — the only
       // thing under test here is that the slot's treatment type survives.
       id: T_CANCELLED_SLOT,
-      discount_amount: 0,
-      discount_reason: null,
       clinic_id: C,
       appointment_id: A_EARLY_CANCEL,
       patient_id: P_FIRST,
@@ -225,8 +217,6 @@ async function seed() {
     },
     {
       id: T_PENDING,
-      discount_amount: 0,
-      discount_reason: null,
       clinic_id: C,
       appointment_id: A_ATTENDED,
       patient_id: P_FIRST,
@@ -237,8 +227,6 @@ async function seed() {
     },
     {
       id: T_PENDING_BOOKED,
-      discount_amount: 0,
-      discount_reason: null,
       clinic_id: C,
       appointment_id: A_ATTENDED,
       patient_id: P_BOOKED,
@@ -371,20 +359,10 @@ describe.skipIf(!LOCAL_UP)("diagnosis context (integration)", () => {
       expect(balances?.map((b) => b.invoiceId)).not.toContain(T_PAID);
     });
 
-    it("nets the discount off what is still owed", async () => {
-      // 20,000 billed less 2,000 discount less 8,000 paid. Counting the
-      // concession as a receivable would inflate the book by money the clinic
-      // chose not to charge.
-      const balances = await ctx.listOutstandingBalances(WINDOW);
-      const row = balances?.find((b) => b.invoiceId === T_PART_PAID);
-      expect(row?.amountOutstanding.value).toBe(10000);
-      expect(row?.amountPaid.value).toBe(8000);
-    });
-
     it("reports what is still owed and what has been paid, separately", async () => {
       const balances = await ctx.listOutstandingBalances(WINDOW);
       const row = balances?.find((b) => b.invoiceId === T_PART_PAID);
-      expect(row?.amountOutstanding.value).toBe(10000);
+      expect(row?.amountOutstanding.value).toBe(12000);
       expect(row?.amountPaid.value).toBe(8000);
       expect(row?.ageDays).toBe(4); // 3 April -> 7 April
     });
@@ -428,21 +406,6 @@ describe.skipIf(!LOCAL_UP)("diagnosis context (integration)", () => {
   });
 
   describe("completed treatments", () => {
-    it("keeps discounts apart from uncollected money", async () => {
-      // The whole point: money given away and money never received are opposite
-      // problems that look identical in a revenue total.
-      const completed = await ctx.listCompletedTreatments(WINDOW);
-      const crown = completed?.find((t) => t.treatmentId === T_PART_PAID);
-      expect(crown?.billedValue.value).toBe(20000);
-      expect(crown?.discountValue.value).toBe(2000);
-      expect(crown?.collectedValue.value).toBe(8000);
-    });
-
-    it("reports no discount as zero, not as missing", async () => {
-      const completed = await ctx.listCompletedTreatments(WINDOW);
-      expect(completed?.find((t) => t.treatmentId === T_PAID)?.discountValue.value).toBe(0);
-    });
-
     it("keeps billed and collected apart", async () => {
       // Conflating them is exactly the confusion the discriminator exists to
       // resolve: a cheaper case mix and unpaid work look identical in a total.

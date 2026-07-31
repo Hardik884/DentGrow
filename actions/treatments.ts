@@ -169,17 +169,6 @@ export async function createTreatment(
       }
     }
 
-    // A discount larger than the bill would make the net negative, which the
-    // balance helper clamps to zero — so without this the error would disappear
-    // silently instead of being reported. The database CHECK is the backstop;
-    // this is what turns it into a message the dentist can act on.
-    if ((parsed.data.discount_amount ?? 0) > parsed.data.cost) {
-      return {
-        data: null,
-        error: "Discount cannot be more than the treatment cost.",
-      };
-    }
-
     // Resolve consultant revenue distribution (clinic_share always populated).
     const revenue = await resolveConsultantRevenue(
       db,
@@ -206,8 +195,6 @@ export async function createTreatment(
         opd_charged: parsed.data.opd_charged ?? false,
         xray_taken: parsed.data.xray_taken ?? false,
         xray_cost: parsed.data.xray_taken ? (parsed.data.xray_cost ?? null) : null,
-        discount_amount: parsed.data.discount_amount ?? 0,
-        discount_reason: parsed.data.discount_reason || null,
         performed_at: performedAt,
         created_by: profile.id,
         ...revenue.fields,
@@ -275,12 +262,6 @@ export async function updateTreatment(
     } else if (parsed.data.xray_cost !== undefined) {
       updates.xray_cost = parsed.data.xray_cost ?? null;
     }
-    if (parsed.data.discount_amount !== undefined) {
-      updates.discount_amount = parsed.data.discount_amount;
-    }
-    if (parsed.data.discount_reason !== undefined) {
-      updates.discount_reason = parsed.data.discount_reason || null;
-    }
 
     // Recompute the revenue split whenever the cost or the consultant selection
     // is part of this update. Keeps clinic_share/consultant_share consistent and
@@ -296,7 +277,7 @@ export async function updateTreatment(
       if (effectiveGross === undefined) {
         const { data: current } = await db
           .from("treatments")
-          .select("cost, discount_amount")
+          .select("cost")
           .eq("id", id)
           .eq("clinic_id", profile.clinic_id)
           .is("deleted_at", null)
@@ -558,7 +539,8 @@ export async function getPatientTreatmentHistory(
 
     const { data, error } = await db
       .from("treatments")
-      .select("id, treatment_type, status, cost, discount_amount, performed_at, created_at, patient_visible_notes, appointment_id"
+      .select(
+        "id, treatment_type, status, cost, performed_at, created_at, patient_visible_notes, appointment_id"
       )
       .eq("patient_id", patientId)
       .eq("clinic_id", profile.clinic_id)
@@ -759,7 +741,8 @@ export async function getPatientTreatments(
 
     const { data, error } = await db
       .from("treatments")
-      .select("id, clinic_id, appointment_id, patient_id, treatment_type, patient_visible_notes, medications, cost, discount_amount, status, performed_at, created_at"
+      .select(
+        "id, clinic_id, appointment_id, patient_id, treatment_type, patient_visible_notes, medications, cost, status, performed_at, created_at"
       )
       .eq("patient_id", link.patient_id)
       .is("deleted_at", null)

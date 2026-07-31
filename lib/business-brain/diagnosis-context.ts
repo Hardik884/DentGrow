@@ -280,7 +280,7 @@ export class SupabaseDiagnosisContext implements DiagnosisContextPort {
     const endOfWindow = `${window.to}T23:59:59.999Z`;
     const { data, error } = await this.db
       .from("treatments")
-      .select("id, patient_id, treatment_type, cost, discount_amount, created_at")
+      .select("id, patient_id, treatment_type, cost, created_at")
       .eq("clinic_id", window.clinicId)
       .is("deleted_at", null)
       .eq("status", "planned")
@@ -344,7 +344,7 @@ export class SupabaseDiagnosisContext implements DiagnosisContextPort {
     const endOfWindow = `${window.to}T23:59:59.999Z`;
     const { data, error } = await this.db
       .from("treatments")
-      .select("id, patient_id, cost, discount_amount, performed_at, created_at")
+      .select("id, patient_id, cost, performed_at, created_at")
       .eq("clinic_id", window.clinicId)
       .is("deleted_at", null)
       .in("status", ["completed", "in_progress"])
@@ -357,7 +357,6 @@ export class SupabaseDiagnosisContext implements DiagnosisContextPort {
       id: string;
       patient_id: string;
       cost: number | string | null;
-      discount_amount: number | string | null;
       performed_at: string | null;
       created_at: string;
     }>(data);
@@ -383,11 +382,7 @@ export class SupabaseDiagnosisContext implements DiagnosisContextPort {
     return billable
       .map((t) => {
         const amountPaid = paid.get(t.id) ?? 0;
-        // Net of any discount, matching lib/billing/balance.ts. A discounted
-        // bill is not an unpaid one, and counting the concession as a receivable
-        // would inflate the book by money the clinic chose not to charge.
-        const outstanding =
-          Number(t.cost ?? 0) - Number(t.discount_amount ?? 0) - amountPaid;
+        const outstanding = Number(t.cost ?? 0) - amountPaid;
         // Dated from when the work was done, falling back to when the record was
         // raised for work still in progress.
         const raisedOn = datePart(t.performed_at ?? t.created_at);
@@ -529,7 +524,7 @@ export class SupabaseDiagnosisContext implements DiagnosisContextPort {
     const { start, end } = bounds(window);
     const { data, error } = await this.db
       .from("treatments")
-      .select("id, patient_id, treatment_type, cost, discount_amount, performed_at")
+      .select("id, patient_id, treatment_type, cost, performed_at")
       .eq("clinic_id", window.clinicId)
       .is("deleted_at", null)
       .eq("status", "completed")
@@ -545,7 +540,6 @@ export class SupabaseDiagnosisContext implements DiagnosisContextPort {
       patient_id: string;
       treatment_type: string;
       cost: number | string | null;
-      discount_amount: number | string | null;
       performed_at: string;
     }>(data);
     if (completed.length === 0) return [];
@@ -572,7 +566,6 @@ export class SupabaseDiagnosisContext implements DiagnosisContextPort {
       date: datePart(t.performed_at),
       treatmentType: t.treatment_type,
       billedValue: currency(Number(t.cost ?? 0)),
-      discountValue: currency(Number(t.discount_amount ?? 0)),
       collectedValue: currency(paid.get(t.id) ?? 0),
     }));
   }

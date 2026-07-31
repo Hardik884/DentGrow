@@ -332,7 +332,7 @@ export async function getAnalyticsSummary(
 
     supabase
       .from("treatments")
-      .select("cost, discount_amount, clinic_share, consultant_share, patient_id, status, created_at")
+      .select("cost, clinic_share, consultant_share, patient_id, status, created_at")
       .eq("clinic_id", clinicId).is("deleted_at", null),
 
     supabase
@@ -607,7 +607,7 @@ export async function getTreatmentAnalytics(
 
   const { data } = await supabase
     .from("treatments")
-    .select("treatment_type, cost, discount_amount, clinic_share, consultant_share, status, performed_at")
+    .select("treatment_type, cost, clinic_share, consultant_share, status, performed_at")
     .eq("clinic_id", clinicId)
     .is("deleted_at", null)
     .gte("created_at", startOf(dateFrom))
@@ -670,7 +670,7 @@ export async function getRevenueAnalytics(
 
     supabase
       .from("treatments")
-      .select("cost, discount_amount, patient_id, status")
+      .select("cost, patient_id, status")
       .eq("clinic_id", clinicId).is("deleted_at", null),
 
     supabase
@@ -969,7 +969,7 @@ export async function generateBasicInsights(
 
     supabase
       .from("treatments")
-      .select("treatment_type, cost, discount_amount, clinic_share, consultant_share, status")
+      .select("treatment_type, cost, clinic_share, consultant_share, status")
       .eq("clinic_id", clinicId).is("deleted_at", null),
   ]);
 

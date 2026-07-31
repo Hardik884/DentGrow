@@ -454,7 +454,8 @@ async function executePatientTool(
       getPatientTreatmentsInputSchema.parse(args);
       const { data, error } = await db
         .from("patient_treatments")
-        .select("id, treatment_type, patient_visible_notes, cost, discount_amount, status, performed_at"
+        .select(
+          "id, treatment_type, patient_visible_notes, cost, status, performed_at"
         )
         .order("performed_at", { ascending: false })
         .limit(10);
@@ -474,7 +475,7 @@ async function executePatientTool(
           .limit(10),
         db
           .from("treatments")
-          .select("cost, discount_amount, status")
+          .select("cost, status")
           .eq("patient_id", patientId)
           .is("deleted_at", null),
       ]);
@@ -541,7 +542,7 @@ export async function generatePatientSummary(
         .single(),
       db
         .from("treatments")
-        .select("treatment_type, patient_visible_notes, cost, discount_amount, status, performed_at")
+        .select("treatment_type, patient_visible_notes, cost, status, performed_at")
         .eq("patient_id", patientId)
         .is("deleted_at", null)
         .order("performed_at", { ascending: false })
@@ -573,7 +574,7 @@ export async function generatePatientSummary(
     const [txCostRes, paymentRes] = await Promise.all([
       db
         .from("treatments")
-        .select("cost, discount_amount, status")
+        .select("cost, status")
         .eq("patient_id", patientId)
         .is("deleted_at", null),
       db
