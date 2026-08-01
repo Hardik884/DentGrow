@@ -13,11 +13,11 @@ interface SignalListProps {
 }
 
 const SEVERITY_META: Record<Severity, { label: string; badge: BadgeVariant; bar: string }> = {
-  critical: { label: "Critical", badge: "danger", bar: "bg-[#DC2626]" },
-  high: { label: "High", badge: "danger", bar: "bg-[#DC2626]" },
-  medium: { label: "Medium", badge: "warning", bar: "bg-[#CA8A04]" },
-  low: { label: "Low", badge: "secondary", bar: "bg-[#A1A1AA]" },
-  info: { label: "Info", badge: "outline", bar: "bg-[#D4D4D8]" },
+  critical: { label: "Urgent", badge: "danger", bar: "bg-[#DC2626]" },
+  high: { label: "Important", badge: "danger", bar: "bg-[#DC2626]" },
+  medium: { label: "Worth noting", badge: "warning", bar: "bg-[#CA8A04]" },
+  low: { label: "Minor", badge: "secondary", bar: "bg-[#A1A1AA]" },
+  info: { label: "FYI", badge: "outline", bar: "bg-[#D4D4D8]" },
 };
 
 /**
@@ -56,7 +56,7 @@ function SignalRow({ signal }: { signal: Signal }) {
                 aria-expanded={open}
                 className="inline-flex items-center gap-1 text-xs font-medium text-[#71717A] hover:text-[#09090B] transition-colors"
               >
-                {open ? "Hide" : "Show"} evidence
+                {open ? "Hide" : "Show"} numbers
                 <ChevronDown
                   className={cn("h-3 w-3 transition-transform", open && "rotate-180")}
                   aria-hidden
@@ -93,8 +93,8 @@ export function SignalList({ groups }: SignalListProps) {
     return (
       <div className="bg-white border border-[#E4E4E7] rounded-xl">
         <EmptyState
-          title="Nothing crossed a threshold"
-          description="Every check ran and none of them fired. This reflects the selected day only."
+          title="Nothing unusual today"
+          description="We checked everything and all your numbers look normal."
         />
       </div>
     );

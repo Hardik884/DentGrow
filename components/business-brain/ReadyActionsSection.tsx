@@ -32,21 +32,20 @@ export function ReadyActionsSection({ plans, summary }: ReadyActionsSectionProps
         <div>
           <div className="flex items-center gap-2">
             <MousePointerClick className="h-4 w-4 text-[#52525B]" aria-hidden />
-            <h2 className="text-sm font-semibold text-[#09090B]">Ready actions</h2>
+            <h2 className="text-sm font-semibold text-[#09090B]">Quick shortcuts</h2>
           </div>
           <p className="text-xs text-[#71717A] mt-0.5">
-            Screens already filtered and messages already written. Nothing here is sent — every
-            action waits for you.
+            Pages already filtered and messages already written for you. Nothing sends until you say so.
           </p>
         </div>
         <div className="flex items-center gap-3 shrink-0">
           {summary.preparedCount > 0 && (
             <span className="text-xs font-medium text-[#15803D] bg-[#F0FDF4] px-2 py-1 rounded">
-              {summary.preparedCount} one-click
+              {summary.preparedCount} ready to go
             </span>
           )}
           {summary.draftCount > 0 && (
-            <span className="text-xs text-[#71717A]">{summary.draftCount} drafts</span>
+            <span className="text-xs text-[#71717A]">{summary.draftCount} {summary.draftCount === 1 ? "message" : "messages"} prepared</span>
           )}
         </div>
       </div>

@@ -32,10 +32,10 @@ export function WorkflowSection({ groups, summary }: WorkflowSectionProps) {
         <div>
           <div className="flex items-center gap-2">
             <ClipboardList className="h-4 w-4 text-[#52525B]" aria-hidden />
-            <h2 className="text-sm font-semibold text-[#09090B]">Execution Plan</h2>
+            <h2 className="text-sm font-semibold text-[#09090B]">What to do about it</h2>
           </div>
           <p className="text-xs text-[#71717A] mt-0.5">
-            Step-by-step workflows to address what was found above.
+            Step-by-step guides for the problems found above.
           </p>
         </div>
         <div className="flex items-center gap-3 shrink-0">
@@ -45,7 +45,7 @@ export function WorkflowSection({ groups, summary }: WorkflowSectionProps) {
             </span>
           )}
           <span className="text-xs text-[#71717A]">
-            ~{formatMinutes(summary.totalEstimatedMinutes)} total
+            ~{formatMinutes(summary.totalEstimatedMinutes)} in total
           </span>
         </div>
       </div>

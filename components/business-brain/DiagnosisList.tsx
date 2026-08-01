@@ -30,6 +30,16 @@ const SEVERITY_BADGE: Record<Severity, BadgeVariant> = {
   info: "outline",
 };
 
+function severityToHuman(severity: Severity): string {
+  switch (severity) {
+    case "critical": return "Urgent";
+    case "high": return "Important";
+    case "medium": return "Worth noting";
+    case "low": return "Minor";
+    case "info": return "FYI";
+  }
+}
+
 const PERSISTENCE_BADGE: Record<string, BadgeVariant> = {
   worsening: "danger",
   sustained: "warning",
@@ -62,10 +72,10 @@ function HypothesisRow({ hypothesis }: { hypothesis: Hypothesis }) {
 
   const label =
     status === "supported"
-      ? "Evidence supports this"
+      ? "This matches what we see"
       : status === "contradicted"
-        ? "Evidence rules this out"
-        : "Cannot tell from current data";
+        ? "Doesn't match the data"
+        : "Can't tell yet — need more information";
 
   return (
     <li className="flex items-start gap-2.5 py-2.5">
@@ -118,12 +128,12 @@ function PlainEnglish({
       <div className="mt-3 rounded-lg bg-white border border-[#E4E4E7] p-3.5 animate-fade-in">
         <p className="text-xs font-medium text-[#71717A] uppercase tracking-wider flex items-center gap-1.5">
           <Sparkles className="h-3 w-3" aria-hidden />
-          In plain English
+          In simple terms
         </p>
         <p className="text-sm text-[#09090B] mt-1.5 leading-relaxed">{text}</p>
         <p className="text-xs text-[#A1A1AA] mt-2.5 leading-relaxed">
-          Reworded by AI from the findings above. The figures and conclusions are
-          unchanged — they come from the calculations, not the AI.
+          Rewritten by AI using simpler words. The numbers and conclusions are
+          the same — they come from your clinic data, not the AI.
         </p>
       </div>
     );
@@ -138,7 +148,7 @@ function PlainEnglish({
         className="inline-flex items-center gap-1.5 text-xs font-medium text-[#71717A] hover:text-[#09090B] disabled:text-[#A1A1AA] transition-colors"
       >
         <Sparkles className="h-3 w-3" aria-hidden />
-        {pending ? "Rewording…" : "Explain in plain English"}
+        {pending ? "Simplifying…" : "Explain in simpler words"}
       </button>
       {error && <p className="text-xs text-[#A1A1AA] mt-1.5 leading-relaxed">{error}</p>}
     </div>
@@ -163,10 +173,8 @@ function DiagnosisCard({
         <div className="flex items-start justify-between gap-3">
           <h4 className="text-sm font-semibold text-[#09090B] leading-snug">{diagnosis.title}</h4>
           <div className="flex items-center gap-1.5 shrink-0">
-            {/* Capitalised rather than the raw enum: "critical" in lower case
-                reads as a value that escaped rather than a label chosen. */}
             <Badge variant={SEVERITY_BADGE[diagnosis.severity]}>
-              {diagnosis.severity.charAt(0).toUpperCase() + diagnosis.severity.slice(1)}
+              {severityToHuman(diagnosis.severity)}
             </Badge>
             <Badge variant={PERSISTENCE_BADGE[diagnosis.persistence] ?? "outline"}>
               {persistenceLabel(diagnosis.persistence)}
@@ -179,8 +187,8 @@ function DiagnosisCard({
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-3">
           <span className="text-xs text-[#A1A1AA]">
             {supported > 0
-              ? `${supported} of ${diagnosis.hypotheses.length} explanations supported`
-              : `${undetermined} possible ${undetermined === 1 ? "explanation" : "explanations"}, none ruled in yet`}
+              ? `${supported} of ${diagnosis.hypotheses.length} possible ${diagnosis.hypotheses.length === 1 ? "reason" : "reasons"} looks likely`
+              : `${undetermined} possible ${undetermined === 1 ? "reason" : "reasons"} — can't narrow it down yet`}
           </span>
           <span className="text-xs text-[#A1A1AA]">·</span>
           <span className="text-xs text-[#A1A1AA]">{confidenceLabel(diagnosis.confidence)}</span>
@@ -190,7 +198,7 @@ function DiagnosisCard({
             aria-expanded={open}
             className="inline-flex items-center gap-1 text-xs font-medium text-[#71717A] hover:text-[#09090B] transition-colors ml-auto"
           >
-            {open ? "Hide" : "Examine"}
+            {open ? "Hide" : "See details"}
             <ChevronDown
               className={cn("h-3 w-3 transition-transform", open && "rotate-180")}
               aria-hidden
@@ -203,7 +211,7 @@ function DiagnosisCard({
         <div className="border-t border-[#F4F4F5] bg-[#FAFAFA] px-5 py-4 space-y-5 animate-fade-in">
           <div>
             <p className="text-xs font-medium text-[#71717A] uppercase tracking-wider">
-              Possible explanations
+              Possible reasons
             </p>
             <ul className="mt-1.5 divide-y divide-[#EFEFF1]">
               {diagnosis.hypotheses.map((h) => (
@@ -215,7 +223,7 @@ function DiagnosisCard({
           {diagnosis.discriminators.length > 0 && (
             <div>
               <p className="text-xs font-medium text-[#71717A] uppercase tracking-wider">
-                What would tell these apart
+                What would help us know for sure
               </p>
               <ul className="mt-1.5 space-y-2">
                 {diagnosis.discriminators.map((d) => (
@@ -250,8 +258,8 @@ export function DiagnosisList({ diagnoses, signalDescriptions = [] }: DiagnosisL
     return (
       <div className="bg-white border border-[#E4E4E7] rounded-xl">
         <EmptyState
-          title="No pattern found"
-          description="Nothing today correlates into a recognised pattern. Individual observations are listed above."
+          title="No clear pattern"
+          description="The numbers looked unusual but we couldn't connect them to a specific cause."
         />
       </div>
     );

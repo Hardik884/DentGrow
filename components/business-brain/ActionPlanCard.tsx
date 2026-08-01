@@ -153,7 +153,7 @@ function ActionButton({ action, emphasis = false }: { action: ActionView; emphas
   if (action.href === null) {
     return (
       <span className="shrink-0 text-xs text-[#A1A1AA] mt-0.5">
-        {action.kind === "prepare_draft" ? "Draft below" : "No screen for your role"}
+        {action.kind === "prepare_draft" ? "Message below" : "Not available for your role"}
       </span>
     );
   }
@@ -191,7 +191,7 @@ function ActionMeta({ action }: { action: ActionView }) {
         <div className="flex flex-wrap items-center gap-1.5">
           <span className="inline-flex items-center gap-1 text-[10px] font-medium text-[#16A34A] uppercase tracking-wide">
             <Check className="h-3 w-3" aria-hidden />
-            Pre-applied
+            Already filtered
           </span>
           {action.appliedFilters.map((f) => (
             <span
@@ -207,7 +207,7 @@ function ActionMeta({ action }: { action: ActionView }) {
       {action.readiness !== "prepared" && action.sortHint && (
         <p className="inline-flex items-start gap-1 text-[11px] text-[#B45309]">
           <Hand className="h-3 w-3 mt-0.5 shrink-0" aria-hidden />
-          <span>By hand: {action.sortHint}</span>
+          <span>You'll need to: {action.sortHint}</span>
         </p>
       )}
 
@@ -246,7 +246,7 @@ function DraftBlock({ draft }: { draft: NonNullable<ActionView["draft"]> }) {
       <div className="flex items-center justify-between gap-2 px-3 py-2 bg-[#FAFAFA] border-b border-[#F4F4F5]">
         <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-[#52525B]">
           <MessageSquare className="h-3 w-3" aria-hidden />
-          Draft — not sent
+          Ready to send — not sent yet
         </span>
         <button
           type="button"
@@ -280,7 +280,7 @@ function DraftBlock({ draft }: { draft: NonNullable<ActionView["draft"]> }) {
         {draft.channelLabels.length > 0 && (
           <p className="inline-flex items-center gap-1 text-[11px] text-[#A1A1AA]">
             <Sparkles className="h-3 w-3" aria-hidden />
-            Suitable for {draft.channelLabels.join(", ")} — send it yourself for now
+            You can send this via {draft.channelLabels.join(", ")}
           </p>
         )}
       </div>

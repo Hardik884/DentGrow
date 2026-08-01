@@ -123,7 +123,7 @@ export function WorkflowCard({ workflow, defaultOpen = false }: WorkflowCardProp
               <div className="mt-4 pt-3 border-t border-[#F4F4F5] flex items-start gap-2">
                 <Target className="h-3.5 w-3.5 text-[#16A34A] shrink-0 mt-0.5" aria-hidden />
                 <p className="text-xs text-[#52525B] leading-relaxed">
-                  <span className="font-medium text-[#09090B]">Expected outcome:</span>{" "}
+                  <span className="font-medium text-[#09090B]">What you&apos;ll get:</span>{" "}
                   {workflow.outcomeDescription}
                 </p>
               </div>

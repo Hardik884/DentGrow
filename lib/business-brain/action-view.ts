@@ -127,11 +127,11 @@ export function resolveHref(action: Action, audience: ActionAudience): string | 
 // ─────────────────────────────────────────────────────────────────────────────
 
 const CATEGORY_LABELS: Record<string, string> = {
-  communication: "Contact",
-  scheduling: "Schedule",
-  patient_review: "Patients",
-  financial: "Money",
-  clinical: "Treatment",
+  communication: "Contact patient",
+  scheduling: "Book or reschedule",
+  patient_review: "Check patient records",
+  financial: "Payments",
+  clinical: "Treatments",
   reporting: "Reports",
   configuration: "Settings",
   navigation: "Open",
@@ -145,38 +145,38 @@ const CATEGORY_LABELS: Record<string, string> = {
  * possible place to make clear that DentGrow is not sending anything.
  */
 const KIND_ACTION_LABELS: Record<string, string> = {
-  open_list: "Open list",
+  open_list: "See list",
   open_record: "Open record",
-  open_form: "Open form",
-  open_report: "Open report",
-  prepare_list: "How to work it",
-  prepare_draft: "View draft",
-  review_setting: "Open settings",
+  open_form: "Start here",
+  open_report: "See report",
+  prepare_list: "How to do this",
+  prepare_draft: "See message",
+  review_setting: "Go to settings",
 };
 
 const READINESS_LABELS: Record<string, string> = {
-  prepared: "Ready to use",
-  partially_prepared: "One step by hand",
-  manual: "Opens the screen only",
+  prepared: "Ready — just click",
+  partially_prepared: "One quick step needed",
+  manual: "Opens the page for you",
 };
 
 const EFFORT_LABELS: Record<string, string> = {
   one_click: "One click",
   minutes: "A few minutes",
-  session: "A sitting",
+  session: "Needs some time",
 };
 
 const OWNER_LABELS: Record<string, string> = {
-  dentist: "Dentist",
-  receptionist: "Receptionist",
-  either: "Either",
+  dentist: "You (Dentist)",
+  receptionist: "Front desk",
+  either: "Anyone",
 };
 
 const TIMEFRAME_LABELS: Record<string, string> = {
   today: "Today",
   this_week: "This week",
-  soon: "Within 2 weeks",
-  ongoing: "Ongoing",
+  soon: "In the next 2 weeks",
+  ongoing: "Keep doing",
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -246,13 +246,13 @@ export interface ActionSummary {
 
 /** Human names for the filter keys, so a chip reads as English. */
 const FILTER_KEY_LABELS: Record<string, string> = {
-  status: "Status",
+  status: "Showing",
   filter: "Group",
   dateFrom: "From",
   dateTo: "To",
   from: "From",
   to: "To",
-  treatmentType: "Treatment",
+  treatmentType: "Treatment type",
   paymentType: "Payment type",
   confirmation: "Confirmation",
   tab: "Tab",
@@ -260,10 +260,10 @@ const FILTER_KEY_LABELS: Record<string, string> = {
 };
 
 const FILTER_VALUE_LABELS: Record<string, string> = {
-  no_show: "No-show",
+  no_show: "No-shows",
   in_progress: "In progress",
-  inactive: "Not seen in 6 months",
-  active: "Seen in 6 months",
+  inactive: "Not seen in 6+ months",
+  active: "Seen recently",
   new: "Registered today",
 };
 
@@ -273,12 +273,12 @@ function humanise(value: string): string {
 }
 
 const CHANNEL_LABELS: Record<string, string> = {
-  in_app: "In DentGrow",
+  in_app: "DentGrow",
   whatsapp: "WhatsApp",
   sms: "SMS",
   email: "Email",
-  push: "Push",
-  voice: "Call",
+  push: "Notification",
+  voice: "Phone call",
   calendar: "Calendar",
 };
 

@@ -86,7 +86,7 @@ export function BrainStatusBanner({
       {unmeasuredCount > 0 && (
         <div className="border-t border-[#F4F4F5] px-5 sm:px-6 py-2.5 flex items-center gap-4">
           <p className="text-xs text-[#A1A1AA]">
-            {measuredCount} checks ran · {unmeasuredCount} could not run
+            Checked {measuredCount} things · couldn&apos;t check {unmeasuredCount}
           </p>
         </div>
       )}

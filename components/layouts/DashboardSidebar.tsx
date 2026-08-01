@@ -45,7 +45,7 @@ const DENTIST_NAV: NavItem[] = [
  * Settings so the analysis surfaces sit together with Analytics.
  */
 const BUSINESS_BRAIN_NAV_ITEM: NavItem = {
-  label: "Business Brain",
+  label: "Morning Briefing",
   href: "/dentist/business-brain",
   icon: BrainCircuit,
 };

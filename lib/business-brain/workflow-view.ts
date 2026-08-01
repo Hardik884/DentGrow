@@ -51,29 +51,29 @@ export interface WorkflowGroupView {
 // ─────────────────────────────────────────────────────────────────────────────
 
 const OWNER_LABELS: Record<WorkflowOwner, string> = {
-  dentist: "Dentist",
-  receptionist: "Receptionist",
-  either: "Either",
+  dentist: "You (Dentist)",
+  receptionist: "Front desk",
+  either: "Anyone",
 };
 
 const EFFORT_LABELS: Record<WorkflowEffort, string> = {
   quick: "Under 15 min",
   moderate: "15–60 min",
-  substantial: "Over 1 hour",
+  substantial: "Over an hour",
 };
 
 const TIMEFRAME_LABELS: Record<WorkflowTimeframe, string> = {
-  today: "Today",
+  today: "Do today",
   this_week: "This week",
-  soon: "Within 2 weeks",
-  ongoing: "Ongoing",
+  soon: "In the next 2 weeks",
+  ongoing: "Keep doing",
 };
 
 const PRIORITY_LABELS: Record<string, string> = {
-  critical: "Critical",
-  high: "High",
-  medium: "Medium",
-  low: "Low",
+  critical: "Urgent",
+  high: "Important",
+  medium: "Worth doing",
+  low: "When you have time",
 };
 
 // ─────────────────────────────────────────────────────────────────────────────

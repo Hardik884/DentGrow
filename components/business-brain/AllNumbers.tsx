@@ -35,9 +35,9 @@ export function AllNumbers({ headline, groups, measuredCount }: AllNumbersProps)
         className="w-full flex items-center justify-between gap-3 px-5 py-4 text-left hover:bg-[#FAFAFA] transition-colors cursor-pointer"
       >
         <div className="min-w-0">
-          <h3 className="text-sm font-semibold text-[#09090B]">All measurements</h3>
+          <h3 className="text-sm font-semibold text-[#09090B]">All the numbers</h3>
           <p className="text-xs text-[#71717A] mt-0.5">
-            {measuredCount} figures across revenue, capacity, scheduling, and more
+            {measuredCount} numbers across money, appointments, treatments, and more
           </p>
         </div>
         <ChevronDown

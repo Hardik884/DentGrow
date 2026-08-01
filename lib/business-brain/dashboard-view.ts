@@ -75,13 +75,13 @@ export interface DashboardView {
 
 /** Display names for metric categories, in the order a clinic reads them. */
 const CATEGORY_LABELS: Record<string, string> = {
-  revenue: "Revenue",
-  utilization: "Capacity",
-  scheduling: "Scheduling",
-  clinical: "Treatment",
-  retention: "Retention",
+  revenue: "Money",
+  utilization: "Chair time",
+  scheduling: "Appointments",
+  clinical: "Treatments",
+  retention: "Returning patients",
   acquisition: "New patients",
-  operational: "Today in the clinic",
+  operational: "Today",
 };
 
 const CATEGORY_ORDER = [
@@ -105,7 +105,24 @@ const CATEGORY_ORDER = [
  * only the label a dentist reads is corrected here.
  */
 const STEP_LABELS: Record<string, string> = {
-  "clinical.accepted_treatments_unscheduled": "Planned treatment with no next visit booked",
+  "clinical.accepted_treatments_unscheduled": "Patients with planned treatment but no next visit",
+  "revenue.low_daily_revenue": "Today's earnings",
+  "revenue.high_outstanding": "Unpaid balance",
+  "revenue.outstanding_increasing": "Unpaid balance growing",
+  "revenue.collection_lagging_completions": "Treatments done but not paid for",
+  "scheduling.high_cancellation_rate": "Cancellation rate",
+  "scheduling.high_no_show_rate": "No-show rate",
+  "scheduling.low_appointment_volume": "Number of patients today",
+  "acquisition.low_new_patients": "New patient visits",
+  "retention.returning_volume_dropping": "Returning patients",
+  "retention.followup_backlog": "Overdue check-up reminders",
+  "operational.long_waiting_time": "Waiting time",
+  "operational.queue_backlog": "Patients in the waiting room",
+  "operational.queue_building_up": "Queue growing",
+  "operational.low_chair_utilization": "Chair sitting empty",
+  "operational.near_full_capacity": "Almost fully booked",
+  "clinical.large_pending_treatment_value": "Planned treatments waiting",
+  "clinical.pipeline_stalled": "Patients not coming in for planned work",
 };
 
 /**
@@ -149,8 +166,8 @@ function buildStatus(
   if (signals.length === 0) {
     return {
       status: "steady",
-      headline: "Nothing needs attention today",
-      detail: "Every check ran and none crossed its limit. This covers today only.",
+      headline: "Everything looks good today",
+      detail: "Nothing unusual. Your clinic is running as expected.",
       ...counts,
     };
   }
@@ -160,18 +177,17 @@ function buildStatus(
     "info",
   );
 
-  // A signal that grouped into no constraint is real but unexplained, so it is
-  // reported as something to look at rather than counted as a problem the page
-  // can describe.
   const detail =
     problemCount === 0
-      ? `${signals.length} ${signals.length === 1 ? "figure" : "figures"} outside their usual range, not yet tied to a single cause.`
-      : `${problemCount} ${problemCount === 1 ? "area" : "areas"} to look at, worst first.`;
+      ? `${signals.length === 1 ? "One number" : `${signals.length} numbers`} looked unusual but couldn't be tied to a specific problem.`
+      : `Sorted by importance. The biggest issue is at the top.`;
 
   const headline =
     problemCount === 0
-      ? "Something looks unusual"
-      : `${problemCount} ${problemCount === 1 ? "thing needs" : "things need"} your attention`;
+      ? "Something looks a bit off"
+      : problemCount === 1
+        ? "One thing to look at today"
+        : `${problemCount} things to look at today`;
 
   if (worst === "critical") return { status: "critical", headline, detail, ...counts };
   if (worst === "high") return { status: "attention", headline, detail, ...counts };
@@ -239,19 +255,19 @@ export function buildDashboardView(result: BusinessBrainResult): DashboardView {
  */
 export function confidenceLabel(confidence: number | undefined): string {
   if (confidence === undefined) return "Not reported";
-  if (confidence >= 0.85) return "Fully measured";
-  if (confidence >= 0.6) return "Mostly measured";
-  if (confidence >= 0.4) return "Partly measured";
-  return "Thinly measured";
+  if (confidence >= 0.85) return "Based on complete data";
+  if (confidence >= 0.6) return "Based on most of your data";
+  if (confidence >= 0.4) return "Based on partial data";
+  return "Limited data available";
 }
 
 const PERSISTENCE_LABELS: Record<string, string> = {
-  insufficient_history: "Not enough history",
-  transient: "One-off so far",
-  intermittent: "On and off",
-  sustained: "Ongoing",
-  worsening: "Worsening",
-  improving: "Improving",
+  insufficient_history: "Not enough past data yet",
+  transient: "First time this happened",
+  intermittent: "Happens on and off",
+  sustained: "Has been going on for days",
+  worsening: "Getting worse",
+  improving: "Getting better",
 };
 
 export function persistenceLabel(persistence: string): string {
@@ -260,10 +276,10 @@ export function persistenceLabel(persistence: string): string {
 
 const AVAILABILITY_LABELS: Record<string, string> = {
   available: "Can be checked now",
-  requires_longer_history: "Needs more history",
-  requires_entity_data: "Needs record-level data",
-  requires_new_metric: "Needs a new measurement",
-  requires_data_capture: "Needs something the clinic does not record yet",
+  requires_longer_history: "Need a few more days of data",
+  requires_entity_data: "Need to look at individual records",
+  requires_new_metric: "Need to track something new",
+  requires_data_capture: "Something the clinic doesn't record yet",
 };
 
 export function availabilityLabel(availability: string): string {
@@ -330,12 +346,12 @@ export interface FocusCard {
  * exactly the two facts that are: the plan exists, and there is no next visit.
  */
 const FOCUS_TITLES: Record<string, string> = {
-  revenue_leakage: "Money owed for work already done",
-  treatment_acceptance: "Planned treatment with no next visit booked",
-  capacity: "Chair time going unused",
-  scheduling: "Appointments booked and then lost",
-  retention: "Patients who have stopped coming back",
-  acquisition: "New patients coming in",
+  revenue_leakage: "Patients owe money for completed work",
+  treatment_acceptance: "Patients haven't booked their next visit",
+  capacity: "Your chair was empty today",
+  scheduling: "Patients cancelled or didn't show up",
+  retention: "Patients have stopped coming back",
+  acquisition: "Fewer new patients than usual",
 };
 
 /**
@@ -347,11 +363,11 @@ const FOCUS_TITLES: Record<string, string> = {
  * work that IS booked, and none of it is known to be agreed.
  */
 const AT_STAKE_LABELS: Record<string, string> = {
-  revenue_leakage: "still unpaid",
-  treatment_acceptance: "planned, not yet delivered",
-  capacity: "empty chair time today",
-  scheduling: "lost today",
-  retention: "patients",
+  revenue_leakage: "unpaid",
+  treatment_acceptance: "in planned treatment",
+  capacity: "of empty chair time today",
+  scheduling: "appointments lost today",
+  retention: "patients overdue",
 };
 
 /** Format an at-stake amount the way a clinic would say it aloud. */

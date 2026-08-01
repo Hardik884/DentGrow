@@ -86,7 +86,7 @@ export function FocusCard({
                         : "bg-[#F4F4F5] text-[#52525B]",
                     )}
                   >
-                    {action.kind === "act" ? "Do this" : "Find out"}
+                    {action.kind === "act" ? "Do this" : "Look into"}
                   </span>
                   <p className="text-sm text-[#52525B] leading-relaxed">
                     {action.title}
@@ -109,7 +109,7 @@ export function FocusCard({
               {primaryAction.appliedFilters.length > 0 && (
                 <div className="flex flex-wrap items-center gap-1.5 mt-2">
                   <span className="text-[10px] font-medium text-[#16A34A] uppercase tracking-wide">
-                    Pre-filtered:
+                    Already filtered:
                   </span>
                   {primaryAction.appliedFilters.map((f) => (
                     <span
@@ -135,7 +135,7 @@ export function FocusCard({
               className="w-full flex items-center justify-between gap-3 px-5 py-3 border-t border-[#F4F4F5] text-left hover:bg-[#FAFAFA] transition-colors cursor-pointer"
             >
               <span className="text-sm text-[#52525B]">
-                {detailOpen ? "Less detail" : "More detail"}
+                {detailOpen ? "Show less" : "Show more"}
               </span>
               <ChevronDown
                 className={cn(
@@ -152,7 +152,7 @@ export function FocusCard({
                 {card.actions.length > 1 && (
                   <div className="space-y-2">
                     <p className="text-xs font-medium text-[#71717A] uppercase tracking-wider">
-                      Also consider
+                      Also worth trying
                     </p>
                     {card.actions.slice(1).map((action, i) => (
                       <div key={`${card.id}-extra-action-${i}`} className="flex items-start gap-2.5">
@@ -164,7 +164,7 @@ export function FocusCard({
                               : "bg-[#F4F4F5] text-[#52525B]",
                           )}
                         >
-                          {action.kind === "act" ? "Do this" : "Find out"}
+                          {action.kind === "act" ? "Do this" : "Look into"}
                         </span>
                         <div className="min-w-0">
                           <p className="text-sm text-[#09090B]">{action.title}</p>
@@ -179,7 +179,7 @@ export function FocusCard({
                 {workflows.length > 0 && (
                   <div className="space-y-2">
                     <p className="text-xs font-medium text-[#71717A] uppercase tracking-wider">
-                      Step by step
+                      How to fix this
                     </p>
                     {workflows.slice(0, 1).map((workflow) => (
                       <div key={workflow.id} className="space-y-2">

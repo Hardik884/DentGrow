@@ -21,11 +21,11 @@ function humaniseThresholdPath(path: string): string {
 }
 
 const STAGE_LABELS: Record<string, string> = {
-  metrics: "Measured the clinic",
-  signals: "Checked against thresholds",
-  diagnosis: "Correlated into patterns",
-  strategy: "Proposed actions",
-  actions: "Prepared shortcuts",
+  metrics: "Looked at your clinic numbers",
+  signals: "Checked if anything is unusual",
+  diagnosis: "Figured out what's connected",
+  strategy: "Worked out what to do",
+  actions: "Prepared shortcuts for you",
 };
 
 /**
@@ -51,12 +51,12 @@ export function RunDetails({ execution, unmeasured, looseSignals = [] }: RunDeta
         className="w-full flex items-center justify-between gap-3 px-5 py-4 text-left hover:bg-[#FAFAFA] transition-colors cursor-pointer"
       >
         <div className="min-w-0">
-          <h3 className="text-sm font-semibold text-[#09090B]">How this was worked out</h3>
+          <h3 className="text-sm font-semibold text-[#09090B]">How we worked this out</h3>
           <p className="text-xs text-[#71717A] mt-0.5">
             {unmeasured.length > 0
-              ? `${unmeasured.length} ${unmeasured.length === 1 ? "check" : "checks"} could not run`
-              : "Every check ran"}
-            {looseSignals.length > 0 && ` · ${looseSignals.length} other ${looseSignals.length === 1 ? "figure" : "figures"} noted`}
+              ? `${unmeasured.length} ${unmeasured.length === 1 ? "thing" : "things"} we couldn't check`
+              : "Checked everything we could"}
+            {looseSignals.length > 0 && ` · ${looseSignals.length} other unusual ${looseSignals.length === 1 ? "number" : "numbers"}`}
           </p>
         </div>
         <ChevronDown
@@ -74,10 +74,10 @@ export function RunDetails({ execution, unmeasured, looseSignals = [] }: RunDeta
           {looseSignals.length > 0 && (
             <div>
               <p className="text-xs font-medium text-[#71717A] uppercase tracking-wider">
-                Other figures outside their usual range
+                Other things that looked unusual
               </p>
               <p className="text-xs text-[#A1A1AA] mt-1 leading-relaxed">
-                These crossed a threshold but do not point to any of the problems above.
+                These numbers were different from normal, but we couldn&apos;t connect them to a specific problem.
               </p>
               <ul className="mt-2.5 divide-y divide-[#F4F4F5] border border-[#F4F4F5] rounded-lg">
                 {looseSignals.map((signal) => (
@@ -94,10 +94,10 @@ export function RunDetails({ execution, unmeasured, looseSignals = [] }: RunDeta
           {unmeasured.length > 0 && (
             <div>
               <p className="text-xs font-medium text-[#71717A] uppercase tracking-wider">
-                Checks that could not run
+                Things we couldn&apos;t check
               </p>
               <p className="text-xs text-[#A1A1AA] mt-1 leading-relaxed">
-                These were not evaluated, so nothing above accounts for them.
+                We couldn&apos;t look at these today, so the summary above doesn&apos;t account for them.
               </p>
               <ul className="mt-2.5 divide-y divide-[#F4F4F5] border border-[#F4F4F5] rounded-lg">
                 {unmeasured.map((item, i) => (
@@ -119,7 +119,7 @@ export function RunDetails({ execution, unmeasured, looseSignals = [] }: RunDeta
           {execution.calibration.length > 0 && (
             <div>
               <p className="text-xs font-medium text-[#71717A] uppercase tracking-wider">
-                Limits tailored to your clinic
+                Adjusted for your clinic
               </p>
               <ul className="mt-2.5 divide-y divide-[#F4F4F5] border border-[#F4F4F5] rounded-lg">
                 {execution.calibration.map((c) => (
@@ -135,7 +135,7 @@ export function RunDetails({ execution, unmeasured, looseSignals = [] }: RunDeta
           {/* Pipeline stages */}
           <div>
             <p className="text-xs font-medium text-[#71717A] uppercase tracking-wider">
-              Analysis steps
+              What we did
             </p>
             <ul className="mt-2.5 divide-y divide-[#F4F4F5] border border-[#F4F4F5] rounded-lg">
               {execution.stages.map((stage) => (
@@ -162,13 +162,13 @@ export function RunDetails({ execution, unmeasured, looseSignals = [] }: RunDeta
           {/* Provenance */}
           <dl className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             <div>
-              <dt className="text-xs font-medium text-[#71717A] tracking-wide">History</dt>
+              <dt className="text-xs font-medium text-[#71717A] tracking-wide">Past data used</dt>
               <dd className="text-sm text-[#09090B] mt-0.5">
                 {execution.historyDaysLoaded} of {execution.historyDaysRequested} days
               </dd>
             </div>
             <div>
-              <dt className="text-xs font-medium text-[#71717A] tracking-wide">Time</dt>
+              <dt className="text-xs font-medium text-[#71717A] tracking-wide">Took</dt>
               <dd className="text-sm text-[#09090B] mt-0.5">{execution.durationMs} ms</dd>
             </div>
             <div>
@@ -176,7 +176,7 @@ export function RunDetails({ execution, unmeasured, looseSignals = [] }: RunDeta
               <dd className="text-sm text-[#09090B] mt-0.5">{execution.version}</dd>
             </div>
             <div>
-              <dt className="text-xs font-medium text-[#71717A] tracking-wide">Run ID</dt>
+              <dt className="text-xs font-medium text-[#71717A] tracking-wide">Reference</dt>
               <dd className="text-xs text-[#A1A1AA] mt-1 font-mono truncate">
                 {execution.correlationId}
               </dd>
@@ -184,8 +184,8 @@ export function RunDetails({ execution, unmeasured, looseSignals = [] }: RunDeta
           </dl>
 
           <p className="text-xs text-[#A1A1AA] leading-relaxed border-t border-[#F4F4F5] pt-4">
-            Every figure is calculated from your clinic records using fixed rules. No AI is involved
-            in the analysis. The same data always produces the same result.
+            Everything here is calculated directly from your clinic records using fixed rules.
+            No AI guesses are involved. The same data always gives the same result.
           </p>
         </div>
       )}

@@ -19,7 +19,7 @@ import { RunDetails } from "@/components/business-brain/RunDetails";
 import { AllNumbers } from "@/components/business-brain/AllNumbers";
 
 export const metadata: Metadata = {
-  title: "Business Brain",
+  title: "Morning Briefing",
 };
 
 /**
@@ -47,12 +47,12 @@ export default async function BusinessBrainPage() {
     run = await runDashboardBrain();
   } catch {
     return (
-      <PageShell subtitle="Deterministic clinic analysis">
+      <PageShell subtitle="Your daily clinic check-up">
         <div className="bg-white border border-[#E4E4E7] rounded-xl">
           <EmptyState
             icon={<AlertTriangle className="h-5 w-5" />}
-            title="Analysis could not run"
-            description="Your clinic records could not be read just now. Nothing else in DentGrow is affected — try again shortly."
+            title="Couldn't check your clinic today"
+            description="Something went wrong reading your records. Everything else in DentGrow still works — try refreshing in a minute."
           />
         </div>
       </PageShell>
@@ -77,12 +77,12 @@ export default async function BusinessBrainPage() {
 
   if (!result.ok) {
     return (
-      <PageShell subtitle={`Analysis for ${formatDate(date)}`}>
+      <PageShell subtitle={`${formatDate(date)}`}>
         <div className="bg-white border border-[#E4E4E7] rounded-xl">
           <EmptyState
             icon={<AlertTriangle className="h-5 w-5" />}
-            title="Analysis stopped partway"
-            description="Some of today's data could not be processed. Nothing else in DentGrow is affected."
+            title="Only got part of the picture today"
+            description="Some of your data couldn't be read, so the results below may be incomplete. Everything else in DentGrow still works."
           />
         </div>
         <RunDetails execution={result.execution} unmeasured={view.unmeasured} looseSignals={looseEnds} />
@@ -91,7 +91,7 @@ export default async function BusinessBrainPage() {
   }
 
   return (
-    <PageShell subtitle={`Analysis for ${formatDate(date)}`}>
+    <PageShell subtitle={`${formatDate(date)}`}>
       {/* Section 1: Am I okay today? + key numbers */}
       <BrainStatusBanner
         status={view.status}
@@ -149,7 +149,7 @@ function PageShell({
   return (
     <div className="p-6 space-y-6 max-w-screen-xl">
       <div>
-        <h1 className="text-xl font-semibold text-[#09090B] tracking-tight">Business Brain</h1>
+        <h1 className="text-xl font-semibold text-[#09090B] tracking-tight">Morning Briefing</h1>
         <p className="text-sm text-[#71717A] mt-0.5">{subtitle}</p>
       </div>
       {children}
