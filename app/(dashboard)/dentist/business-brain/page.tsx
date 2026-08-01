@@ -10,6 +10,7 @@ import {
   headlineMetrics,
 } from "@/lib/business-brain/dashboard-view";
 import { buildWorkflowGroups, buildWorkflowSummary } from "@/lib/business-brain/workflow-view";
+import { buildActionPlanViews, buildActionSummary } from "@/lib/business-brain/action-view";
 import { formatDate } from "@/lib/utils";
 import { EmptyState } from "@/components/ui/empty-state";
 import { BrainStatusBanner } from "@/components/business-brain/BrainStatusBanner";
@@ -18,6 +19,7 @@ import { SignalList } from "@/components/business-brain/SignalList";
 import { TodaysNumbers } from "@/components/business-brain/TodaysNumbers";
 import { RunDetails } from "@/components/business-brain/RunDetails";
 import { WorkflowSection } from "@/components/business-brain/WorkflowSection";
+import { ReadyActionsSection } from "@/components/business-brain/ReadyActionsSection";
 
 export const metadata: Metadata = {
   title: "Business Brain",
@@ -34,10 +36,12 @@ export const metadata: Metadata = {
  *
  * Page order answers the questions in the order a dentist asks them:
  *   1. Am I OK today?          -> status banner
- *   2. What needs attention?   -> signals
- *   3. Why is it happening?    -> diagnoses
- *   4. What are the numbers?   -> metrics
- *   5. Can I trust this?       -> run details (collapsed)
+ *   2. What needs attention,
+ *      and why?                -> focus cards (signals + diagnoses + strategy)
+ *   3. How do I do it?         -> execution plan (workflows)
+ *   4. Just do it for me       -> ready actions (prepared screens and drafts)
+ *   5. What are the numbers?   -> metrics
+ *   6. Can I trust this?       -> run details (collapsed)
  */
 export default async function BusinessBrainPage() {
   const { profile } = await resolveSession();
@@ -71,6 +75,11 @@ export default async function BusinessBrainPage() {
   const signalDescriptions = result.signals.map((s) => s.description);
   const workflowGroups = buildWorkflowGroups(result.workflows);
   const workflowSummary = buildWorkflowSummary(result.workflows);
+  // Hrefs are built for the dentist because this page is dentist-only. An action
+  // owned by the receptionist still links to the dentist's route — the person
+  // reading the page is the one clicking.
+  const actionPlans = buildActionPlanViews(result.actionPlans, "dentist");
+  const actionSummary = buildActionSummary(result.actionPlans);
 
   // Signals that no focus card already explains.
   //
@@ -135,6 +144,12 @@ export default async function BusinessBrainPage() {
           already seen WHAT is wrong (focus cards), and now sees HOW to fix it
           before diving into the numbers. */}
       <WorkflowSection groups={workflowGroups} summary={workflowSummary} />
+
+      {/* The final output of the Business Brain: the same plans, reduced to
+          clicks. Placed directly under the execution plan because it is the same
+          work — a workflow says what to do, the action does the navigating and
+          the typing. Nothing here executes; every action prepares. */}
+      <ReadyActionsSection plans={actionPlans} summary={actionSummary} />
 
       {/* Figures outside their usual range that did not group into any problem.
           Kept visible because hiding them would overstate how much the page

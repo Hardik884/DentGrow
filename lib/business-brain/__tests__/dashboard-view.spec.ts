@@ -111,6 +111,7 @@ function result(over: Partial<BusinessBrainResult> = {}): BusinessBrainResult {
     constraints: [],
     strategies: [],
     workflows: [],
+    actionPlans: [],
     valueAtStake: new Map(),
     execution: {
       clinicId: "c",

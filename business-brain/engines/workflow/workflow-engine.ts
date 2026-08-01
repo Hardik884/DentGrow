@@ -580,6 +580,26 @@ const INVESTIGATIVE_TEMPLATES: Readonly<Record<ConstraintCategory, WorkflowTempl
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Template keys
+//
+// The stable, clinic-independent identity of a workflow, and the join key the
+// Action Engine maps its plans on. Exported so `action-coverage.spec.ts` can
+// enumerate the real set rather than restating it — a restated list is exactly
+// how the two engines would drift apart.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** The key an investigative workflow for `category` is filed under. */
+export function investigativeKey(category: ConstraintCategory): string {
+  return `investigate.${category}`;
+}
+
+/** Every workflow template key the engine can produce. */
+export const WORKFLOW_TEMPLATE_KEYS: readonly string[] = [
+  ...Object.keys(CORRECTIVE_TEMPLATES),
+  ...Object.values(ConstraintCategory).map(investigativeKey),
+];
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Priority mapping
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -658,14 +678,16 @@ export function generateWorkflows(
       const template = CORRECTIVE_TEMPLATES[slug];
       if (template === undefined) continue;
 
-      workflows.push(buildWorkflow(template, strategy, category, clinicId, date, now));
+      workflows.push(buildWorkflow(template, slug, strategy, category, clinicId, date, now));
     } else {
       // Investigative
       if (category === null) continue;
       const template = INVESTIGATIVE_TEMPLATES[category];
       if (template === undefined) continue;
 
-      workflows.push(buildWorkflow(template, strategy, category, clinicId, date, now));
+      workflows.push(
+        buildWorkflow(template, investigativeKey(category), strategy, category, clinicId, date, now),
+      );
     }
   }
 
@@ -683,6 +705,7 @@ export function generateWorkflows(
 
 function buildWorkflow(
   template: WorkflowTemplate,
+  templateKey: string,
   strategy: ReasonedStrategy,
   category: ConstraintCategory | null,
   clinicId: string,
@@ -694,6 +717,7 @@ function buildWorkflow(
 
   return {
     id: `workflow.${catPart}.${slug}:${clinicId}:${date}`,
+    templateKey,
     title: template.title,
     reason: template.reason,
     owner: template.owner,

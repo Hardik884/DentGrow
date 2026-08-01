@@ -84,7 +84,12 @@ describe("the pilot clinic can never reach the Business Brain", () => {
           source.includes("runDashboardBrain") ||
           source.includes("runBusinessBrain") ||
           source.includes("persistMetricRange") ||
-          source.includes("persistMetricDay");
+          source.includes("persistMetricDay") ||
+          // Prepared actions are Business Brain output too. A page that renders
+          // them has rendered the Brain, whether or not it ran the pipeline
+          // itself, so it needs the same gate.
+          source.includes("ReadyActionsSection") ||
+          source.includes("buildActionPlanViews");
         if (!reachesBrain) continue;
         if (
           !source.includes("isBusinessBrainEnabled") &&
@@ -110,5 +115,19 @@ describe("the pilot clinic can never reach the Business Brain", () => {
       }
     }
     expect(reaching).toBeGreaterThan(0);
+  });
+
+  it("renders prepared actions from exactly one gated page", () => {
+    // Named explicitly, so moving the Ready Actions section to a second surface
+    // has to be a deliberate edit here rather than a quiet copy-paste.
+    const rendering: string[] = [];
+    for (const root of ["app"]) {
+      for (const file of sourceFiles(root)) {
+        if (readFileSync(file, "utf8").includes("ReadyActionsSection")) rendering.push(file);
+      }
+    }
+    expect(rendering.map((f) => f.replace(/\\/g, "/"))).toEqual([
+      "app/(dashboard)/dentist/business-brain/page.tsx",
+    ]);
   });
 });

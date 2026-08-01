@@ -81,6 +81,7 @@ describe("BusinessBrain orchestration", () => {
       "signals",
       "diagnosis",
       "strategy",
+      "actions",
     ]);
     expect(result.execution.stages.every((s) => s.executed && s.ok)).toBe(true);
   });

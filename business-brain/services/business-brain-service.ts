@@ -41,7 +41,8 @@ import { deriveConstraints } from "../engines/constraint";
 import { deriveValues } from "../engines/value";
 import { proposeStrategies, type ReasonedStrategy } from "../engines/strategy";
 import { generateWorkflows } from "../engines/workflow";
-import type { Workflow } from "../domain";
+import { generateActions } from "../engines/action";
+import type { ActionPlan, Workflow } from "../domain";
 import { MetricKey, buildMetric } from "../engines/metrics/metric-ids";
 import { DentGrowSignalEngine } from "../engines/signals";
 import {
@@ -78,11 +79,12 @@ import {
 /**
  * Contract version of the pipeline this service runs.
  *
- * Phases completed: Metrics (3), Signal (4), Diagnosis (5). Bump it when the
- * shape of a stage's output changes, so a stored or cached result can be told
- * apart from one produced by a later pipeline.
+ * Phases completed: Metrics (3), Signal (4), Diagnosis (5), Constraint/Value/
+ * Strategy/Workflow, Action (6). Bump it when the shape of a stage's output
+ * changes, so a stored or cached result can be told apart from one produced by a
+ * later pipeline.
  */
-export const BUSINESS_BRAIN_VERSION = "0.5.0";
+export const BUSINESS_BRAIN_VERSION = "0.6.0";
 
 /** The stages a run passes through, in order. */
 export const BusinessBrainStageName = {
@@ -90,6 +92,8 @@ export const BusinessBrainStageName = {
   SIGNALS: "signals",
   DIAGNOSIS: "diagnosis",
   STRATEGY: "strategy",
+  /** Prepared actions. Mechanical, advisory, and last. */
+  ACTIONS: "actions",
 } as const;
 export type BusinessBrainStageName =
   (typeof BusinessBrainStageName)[keyof typeof BusinessBrainStageName];
@@ -185,6 +189,15 @@ export interface BusinessBrainResult {
    * is. Deterministic: same strategies always produce the same workflows.
    */
   readonly workflows: readonly Workflow[];
+  /**
+   * What DentGrow can prepare so each workflow takes less effort — one plan per
+   * workflow, each a short ordered list of screens to open already filtered,
+   * drafts to reuse, and forms to fill.
+   *
+   * Prepared, never performed: nothing here sends, writes or schedules anything.
+   * Deterministic like every stage above it.
+   */
+  readonly actionPlans: readonly ActionPlan[];
   /** Set when a stage rejected its input; identifies the first failure. */
   readonly error?: EngineError;
 }
@@ -334,6 +347,7 @@ export class BusinessBrain {
     let constraints: readonly Constraint[] = [];
     let strategies: readonly ReasonedStrategy[] = [];
     let workflows: readonly Workflow[] = [];
+    let actionPlans: readonly ActionPlan[] = [];
     let valueAtStake: ReadonlyMap<string, readonly Value[]> = new Map();
     const finish = (
       fields: Pick<BusinessBrainResult, "metrics" | "signals" | "diagnoses" | "trace"> & {
@@ -357,6 +371,7 @@ export class BusinessBrain {
         strategies,
         valueAtStake,
         workflows,
+        actionPlans,
         execution: {
           clinicId,
           date,
@@ -548,6 +563,32 @@ export class BusinessBrain {
         executed: true,
         outputCount: strategies.length,
         durationMs: this.clock() - strategyStart,
+      }),
+    );
+
+    // ── Stage 6: Actions ─────────────────────────────────────────────────────
+    // Purely mechanical: workflow template key → prepared screens, filters and
+    // drafts. Isolated in its own stage so a fault in the last, least important
+    // stage cannot cost the workflows a dentist can follow perfectly well by
+    // hand — and so the run details show whether it ran at all.
+    const actionsStart = this.clock();
+    let actionsOk = true;
+    try {
+      actionPlans = generateActions(workflows, clinicId, date, startedAt).plans;
+    } catch (error) {
+      actionsOk = false;
+      this.log.warn("Business Brain could not prepare actions; workflows are unaffected", {
+        clinicId,
+        date,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+    stages.push(
+      stage(BusinessBrainStageName.ACTIONS, {
+        ok: actionsOk,
+        executed: true,
+        outputCount: actionPlans.length,
+        durationMs: this.clock() - actionsStart,
       }),
     );
 

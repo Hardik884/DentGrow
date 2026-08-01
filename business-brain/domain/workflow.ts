@@ -97,6 +97,16 @@ export interface WorkflowOutcome {
 export interface Workflow {
   /** Stable identifier: `workflow.<category>.<slug>:<clinicId>:<date>` */
   readonly id: string;
+  /**
+   * Stable key of the template that produced this workflow, independent of
+   * clinic and date: a hypothesis slug like `retention_driven` for a corrective
+   * workflow, or `investigate.<category>` for an investigative one.
+   *
+   * Carried explicitly rather than parsed back out of `id` by consumers. The
+   * Action Engine keys its plans on this, and a key recovered by string-slicing
+   * an id would silently change meaning the first time the id format moved.
+   */
+  readonly templateKey: string;
   /** Short, action-oriented title for the card header. */
   readonly title: string;
   /** Why this workflow exists — the business reason, not the technical one. */

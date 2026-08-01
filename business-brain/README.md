@@ -29,13 +29,32 @@ engines. Each engine takes a typed input plus an `ExecutionContext` and returns
 a uniform `EngineResult<T>`.
 
 ```
-Metrics ─▶ Signal ─▶ Diagnosis ─▶ Constraint ─▶ Strategy ─▶ Workflow
-                                                              │
-                                                              ▼
-                              Learning ◀─ Value ◀─ Outcome ◀─ Action
+Metrics ─▶ Signal ─▶ Diagnosis ─▶ Constraint ─▶ Strategy ─▶ Workflow ─▶ Action
+                                                                          │
+                                                                          ▼
+                                        Learning ◀─ Value ◀─ Outcome ◀────┘
 
                  AIExplanation  (explains outputs & decision traces across the pipeline)
 ```
+
+The chain answers one question per stage:
+
+| Stage | Question |
+| --- | --- |
+| Metrics | What are the numbers? |
+| Signal | Which of them are unusual? |
+| Diagnosis | Why? |
+| Constraint | Which of those are the same problem? |
+| Value | How much is sitting in each? |
+| Strategy | What should be done? |
+| Workflow | How should the clinic approach it? |
+| Action | How can DentGrow help execute it? |
+
+The Action Engine is the last deterministic stage. It converts each workflow into
+prepared work — screens to open already filtered, message drafts to reuse, forms
+to fill — and performs none of it. Nothing in it sends, writes, schedules or calls
+an API, and the `eslint` boundary over `engines/action/**` fails the build if a
+network client, database client or model is imported there.
 
 Principles enforced by this structure:
 
@@ -70,7 +89,9 @@ business-brain/
 │   ├── constraint.ts      # Constraint, ConstraintCategory
 │   ├── strategy.ts        # Strategy
 │   ├── value.ts           # Value, ValueType
-│   ├── action.ts          # Action, ActionType
+│   ├── workflow.ts        # Workflow, WorkflowTask, WorkflowOwner/Effort/Timeframe
+│   ├── action.ts          # Action, ActionPlan, ActionKind/Category/Readiness,
+│   │                      # DentGrowArea, ActionChannel, ActionExecution
 │   ├── outcome.ts         # Outcome, OutcomeStatus
 │   ├── learning.ts        # Learning
 │   └── index.ts
@@ -84,7 +105,6 @@ business-brain/
 │   ├── constraint-engine.ts
 │   ├── strategy-engine.ts
 │   ├── workflow-engine.ts
-│   ├── action-engine.ts
 │   ├── outcome-engine.ts
 │   ├── value-engine.ts
 │   ├── learning-engine.ts
@@ -93,6 +113,13 @@ business-brain/
 │   │   ├── metric-ids.ts          # metric keys, descriptors, buildMetric factory
 │   │   ├── calculators/           # one pure function per metric group
 │   │   └── metrics-engine.ts      # DentGrowMetricsEngine (deterministic)
+│   ├── workflow/          # WorkflowEngine implementation
+│   │   └── workflow-engine.ts     # templates + WORKFLOW_TEMPLATE_KEYS
+│   ├── action/            # ActionEngine implementation (deterministic, side-effect free)
+│   │   ├── action-catalog.ts      # every capability DentGrow can prepare, defined once
+│   │   ├── action-plans.ts        # workflow template key → ordered capabilities
+│   │   ├── action-dates.ts        # the date windows every filter is built from
+│   │   └── action-engine.ts       # generateActions(workflows, clinic, date, now)
 │   └── index.ts
 ├── config/                # Feature flags, engine toggles, thresholds, AI placeholder
 │   ├── config.ts
@@ -136,7 +163,7 @@ business-brain/
 | `ConstraintEngine` | Encode/evaluate real-world limits (capacity, budget, policy). |
 | `StrategyEngine` | Propose constraint-valid strategies for diagnoses. |
 | `WorkflowEngine` | Decompose a strategy into an ordered, executable workflow. |
-| `ActionEngine` | Execute workflow steps as concrete side-effecting actions. |
+| `ActionEngine` | Convert a workflow into work DentGrow has already prepared: filtered screens, message drafts, pre-opened forms. It prepares; it never performs. |
 | `OutcomeEngine` | Measure actual results vs. expectations after actions. |
 | `ValueEngine` | Quantify the business value delivered by outcomes. |
 | `LearningEngine` | Feed outcomes/value back to improve future decisions. |

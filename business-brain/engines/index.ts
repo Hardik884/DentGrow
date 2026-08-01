@@ -19,7 +19,7 @@ export * from "./constraint-engine";
 export * from "./strategy-engine";
 export * from "./workflow-engine";
 export * from "./workflow";
-export * from "./action-engine";
+export * from "./action";
 export * from "./outcome-engine";
 export * from "./value-engine";
 export * from "./learning-engine";

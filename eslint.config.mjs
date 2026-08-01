@@ -17,10 +17,17 @@ const compat = new FlatCompat({
  * They must never reach the database, an LLM, or the network. Doc comments are
  * not the risk — imports are — so the boundary is enforced by lint and fails
  * the build on violation.
+ *
+ * The Action Engine is here for a different reason. It is the stage a reader
+ * would most expect to send a WhatsApp message or write a row, because its whole
+ * subject is doing things — so it is the stage where the "prepares work, never
+ * performs it" rule most needs teeth. Adding a network client, a database client
+ * or a model to it fails the build.
  */
 const PURE_ENGINE_FILES = [
   "business-brain/engines/signals/**/*.ts",
   "business-brain/engines/diagnosis/**/*.ts",
+  "business-brain/engines/action/**/*.ts",
 ];
 
 const FORBIDDEN_IMPORT_PATTERNS = [
