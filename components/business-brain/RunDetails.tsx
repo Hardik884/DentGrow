@@ -4,15 +4,16 @@ import { useState } from "react";
 import { ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
-import type { BusinessBrainResult } from "@/business-brain";
+import type { BusinessBrainResult, Signal } from "@/business-brain";
 import type { UnmeasuredItem } from "@/lib/business-brain/dashboard-view";
 
 interface RunDetailsProps {
   execution: BusinessBrainResult["execution"];
   unmeasured: readonly UnmeasuredItem[];
+  /** Signals that did not group into any diagnosed problem. */
+  looseSignals?: readonly Signal[];
 }
 
-/** Turn "appointments.minimumDailyAppointments" into something readable. */
 function humaniseThresholdPath(path: string): string {
   const leaf = path.includes(".") ? path.slice(path.indexOf(".") + 1) : path;
   const words = leaf.replace(/([A-Z])/g, " $1").toLowerCase().trim();
@@ -23,20 +24,22 @@ const STAGE_LABELS: Record<string, string> = {
   metrics: "Measured the clinic",
   signals: "Checked against thresholds",
   diagnosis: "Correlated into patterns",
+  strategy: "Proposed actions",
+  actions: "Prepared shortcuts",
 };
 
 /**
- * How this was worked out.
+ * Audit trail — how this was worked out.
  *
- * Collapsed by default — a dentist does not need it on a normal day. It exists
- * because the Business Brain's claim is that it is deterministic and does not
- * guess, and a claim like that is only worth anything if it can be inspected.
+ * Collapsed by default. A dentist does not need it on a normal day. It exists
+ * because the Business Brain claims to be deterministic, and that claim is
+ * only credible when it can be inspected.
  *
- * The unavailable-checks list is the most important part: it is the difference
- * between "we checked and found nothing" and "we could not check", which a
- * dashboard that only showed findings would silently conflate.
+ * Now also houses "loose signals" — figures outside their usual range that the
+ * engine could not group into a problem. Previously these were a separate section
+ * that created cognitive overhead without actionable value.
  */
-export function RunDetails({ execution, unmeasured }: RunDetailsProps) {
+export function RunDetails({ execution, unmeasured, looseSignals = [] }: RunDetailsProps) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -45,14 +48,15 @@ export function RunDetails({ execution, unmeasured }: RunDetailsProps) {
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
-        className="w-full flex items-center justify-between gap-3 px-5 py-4 text-left hover:bg-[#FAFAFA] transition-colors"
+        className="w-full flex items-center justify-between gap-3 px-5 py-4 text-left hover:bg-[#FAFAFA] transition-colors cursor-pointer"
       >
         <div className="min-w-0">
           <h3 className="text-sm font-semibold text-[#09090B]">How this was worked out</h3>
           <p className="text-xs text-[#71717A] mt-0.5">
             {unmeasured.length > 0
-              ? `${unmeasured.length} ${unmeasured.length === 1 ? "check" : "checks"} could not run · analysis steps and timing`
-              : "Every check ran · analysis steps and timing"}
+              ? `${unmeasured.length} ${unmeasured.length === 1 ? "check" : "checks"} could not run`
+              : "Every check ran"}
+            {looseSignals.length > 0 && ` · ${looseSignals.length} other ${looseSignals.length === 1 ? "figure" : "figures"} noted`}
           </p>
         </div>
         <ChevronDown
@@ -66,15 +70,34 @@ export function RunDetails({ execution, unmeasured }: RunDetailsProps) {
 
       {open && (
         <div className="border-t border-[#F4F4F5] px-5 py-4 space-y-6 animate-fade-in">
-          {/* What could not be measured — the honest gap. */}
+          {/* Loose signals — figures outside range not tied to a problem */}
+          {looseSignals.length > 0 && (
+            <div>
+              <p className="text-xs font-medium text-[#71717A] uppercase tracking-wider">
+                Other figures outside their usual range
+              </p>
+              <p className="text-xs text-[#A1A1AA] mt-1 leading-relaxed">
+                These crossed a threshold but do not point to any of the problems above.
+              </p>
+              <ul className="mt-2.5 divide-y divide-[#F4F4F5] border border-[#F4F4F5] rounded-lg">
+                {looseSignals.map((signal) => (
+                  <li key={signal.id} className="px-3 py-2.5">
+                    <p className="text-sm text-[#09090B]">{signal.title}</p>
+                    <p className="text-xs text-[#71717A] mt-0.5">{signal.description}</p>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {/* What could not be measured */}
           {unmeasured.length > 0 && (
             <div>
               <p className="text-xs font-medium text-[#71717A] uppercase tracking-wider">
                 Checks that could not run
               </p>
               <p className="text-xs text-[#A1A1AA] mt-1 leading-relaxed">
-                These were not evaluated, so nothing above accounts for them. A check that could
-                not run is not the same as one that found nothing.
+                These were not evaluated, so nothing above accounts for them.
               </p>
               <ul className="mt-2.5 divide-y divide-[#F4F4F5] border border-[#F4F4F5] rounded-lg">
                 {unmeasured.map((item, i) => (
@@ -92,15 +115,11 @@ export function RunDetails({ execution, unmeasured }: RunDetailsProps) {
             </div>
           )}
 
-          {/* Thresholds sized from this clinic rather than the global defaults. */}
+          {/* Thresholds tailored to this clinic */}
           {execution.calibration.length > 0 && (
             <div>
               <p className="text-xs font-medium text-[#71717A] uppercase tracking-wider">
                 Limits tailored to your clinic
-              </p>
-              <p className="text-xs text-[#A1A1AA] mt-1 leading-relaxed">
-                These were sized from your own figures rather than a fixed number, so a quiet
-                day at a small clinic is not treated the same as one at a large clinic.
               </p>
               <ul className="mt-2.5 divide-y divide-[#F4F4F5] border border-[#F4F4F5] rounded-lg">
                 {execution.calibration.map((c) => (
@@ -113,7 +132,7 @@ export function RunDetails({ execution, unmeasured }: RunDetailsProps) {
             </div>
           )}
 
-          {/* Pipeline stages. */}
+          {/* Pipeline stages */}
           <div>
             <p className="text-xs font-medium text-[#71717A] uppercase tracking-wider">
               Analysis steps
@@ -132,7 +151,7 @@ export function RunDetails({ execution, unmeasured }: RunDetailsProps) {
                       {stage.outputCount} {stage.outputCount === 1 ? "result" : "results"}
                     </span>
                     <Badge variant={stage.ok ? "success" : stage.executed ? "danger" : "outline"}>
-                      {stage.ok ? "Complete" : stage.executed ? "Failed" : "Not run"}
+                      {stage.ok ? "Done" : stage.executed ? "Failed" : "Skipped"}
                     </Badge>
                   </span>
                 </li>
@@ -140,24 +159,24 @@ export function RunDetails({ execution, unmeasured }: RunDetailsProps) {
             </ul>
           </div>
 
-          {/* Provenance. */}
+          {/* Provenance */}
           <dl className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             <div>
-              <dt className="text-xs font-medium text-[#71717A] tracking-wide">History used</dt>
+              <dt className="text-xs font-medium text-[#71717A] tracking-wide">History</dt>
               <dd className="text-sm text-[#09090B] mt-0.5">
                 {execution.historyDaysLoaded} of {execution.historyDaysRequested} days
               </dd>
             </div>
             <div>
-              <dt className="text-xs font-medium text-[#71717A] tracking-wide">Analysis time</dt>
+              <dt className="text-xs font-medium text-[#71717A] tracking-wide">Time</dt>
               <dd className="text-sm text-[#09090B] mt-0.5">{execution.durationMs} ms</dd>
             </div>
             <div>
-              <dt className="text-xs font-medium text-[#71717A] tracking-wide">Engine version</dt>
+              <dt className="text-xs font-medium text-[#71717A] tracking-wide">Version</dt>
               <dd className="text-sm text-[#09090B] mt-0.5">{execution.version}</dd>
             </div>
             <div>
-              <dt className="text-xs font-medium text-[#71717A] tracking-wide">Run reference</dt>
+              <dt className="text-xs font-medium text-[#71717A] tracking-wide">Run ID</dt>
               <dd className="text-xs text-[#A1A1AA] mt-1 font-mono truncate">
                 {execution.correlationId}
               </dd>
@@ -165,10 +184,8 @@ export function RunDetails({ execution, unmeasured }: RunDetailsProps) {
           </dl>
 
           <p className="text-xs text-[#A1A1AA] leading-relaxed border-t border-[#F4F4F5] pt-4">
-            Every figure above is calculated directly from your clinic records using fixed rules.
-            No AI is involved, and the same data always produces the same result. The Business
-            Brain reports what it observes and what the evidence does or does not settle — it does
-            not recommend actions.
+            Every figure is calculated from your clinic records using fixed rules. No AI is involved
+            in the analysis. The same data always produces the same result.
           </p>
         </div>
       )}

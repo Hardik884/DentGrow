@@ -1,8 +1,8 @@
-import { Skeleton, SkeletonCard } from "@/components/ui/skeleton";
+import { Skeleton } from "@/components/ui/skeleton";
 
 /**
- * Mirrors the real page's rhythm — status banner, two observation sections,
- * then the metric grid — so the layout does not jump when data arrives.
+ * Mirrors the redesigned page structure — status banner with metrics,
+ * then problem cards — so the layout does not jump when data arrives.
  */
 export default function BusinessBrainLoading() {
   return (
@@ -13,77 +13,59 @@ export default function BusinessBrainLoading() {
         <Skeleton className="h-4 w-56" />
       </div>
 
-      {/* Status banner */}
-      <div className="bg-white border border-[#E4E4E7] rounded-xl p-6 space-y-4">
-        <div className="flex items-start gap-3.5">
-          <Skeleton className="h-2.5 w-2.5 rounded-full mt-1.5" />
-          <div className="flex-1 space-y-2">
-            <Skeleton className="h-5 w-48" />
-            <Skeleton className="h-4 w-72" />
+      {/* Status banner with headline metrics */}
+      <div className="bg-white border border-[#E4E4E7] rounded-xl overflow-hidden">
+        <div className="p-6">
+          <div className="flex items-start gap-3.5">
+            <Skeleton className="h-2.5 w-2.5 rounded-full mt-1.5" />
+            <div className="flex-1 space-y-2">
+              <Skeleton className="h-5 w-48" />
+              <Skeleton className="h-4 w-72" />
+            </div>
           </div>
         </div>
-        <div className="pt-4 border-t border-[#F4F4F5] flex gap-6">
-          {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="space-y-1.5">
-              <Skeleton className="h-3 w-24" />
-              <Skeleton className="h-4 w-12" />
-            </div>
-          ))}
+        <div className="border-t border-[#F4F4F5] px-6 py-4 bg-[#FAFAFA]/50">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="space-y-1.5">
+                <Skeleton className="h-3 w-16" />
+                <Skeleton className="h-5 w-12" />
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 
-      {/* Signals */}
-      <section className="space-y-3">
-        <div className="space-y-1.5">
-          <Skeleton className="h-4 w-44" />
-          <Skeleton className="h-3 w-64" />
-        </div>
-        <div className="bg-white border border-[#E4E4E7] rounded-xl divide-y divide-[#F4F4F5]">
-          {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="px-5 py-4 flex items-start gap-3">
-              <Skeleton className="h-1.5 w-1.5 rounded-full mt-1.5" />
-              <div className="flex-1 space-y-2">
-                <Skeleton className="h-4 w-1/3" />
-                <Skeleton className="h-3.5 w-3/4" />
-                <Skeleton className="h-3 w-24" />
+      {/* Focus cards */}
+      {Array.from({ length: 2 }).map((_, i) => (
+        <div key={i} className="bg-white border border-[#E4E4E7] rounded-xl overflow-hidden flex">
+          <div className="w-1 shrink-0 bg-[#E4E4E7]" />
+          <div className="flex-1 p-5 space-y-3">
+            <div className="flex items-start justify-between gap-4">
+              <Skeleton className="h-5 w-48" />
+              <div className="text-right space-y-1">
+                <Skeleton className="h-7 w-24" />
+                <Skeleton className="h-3 w-16 ml-auto" />
               </div>
             </div>
-          ))}
-        </div>
-      </section>
-
-      {/* Diagnoses */}
-      <section className="space-y-3">
-        <div className="space-y-1.5">
-          <Skeleton className="h-4 w-40" />
-          <Skeleton className="h-3 w-80" />
-        </div>
-        {Array.from({ length: 2 }).map((_, i) => (
-          <div key={i} className="bg-white border border-[#E4E4E7] rounded-xl p-5 space-y-2.5">
-            <Skeleton className="h-4 w-1/3" />
-            <Skeleton className="h-3.5 w-4/5" />
-            <Skeleton className="h-3 w-52" />
-          </div>
-        ))}
-      </section>
-
-      {/* Metrics */}
-      <section className="space-y-3">
-        <div className="space-y-1.5">
-          <Skeleton className="h-4 w-28" />
-          <Skeleton className="h-3 w-56" />
-        </div>
-        {Array.from({ length: 2 }).map((_, g) => (
-          <div key={g} className="space-y-2.5">
-            <Skeleton className="h-3 w-20" />
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-              {Array.from({ length: 4 }).map((_, i) => (
-                <SkeletonCard key={i} />
-              ))}
+            <div className="flex items-center gap-2">
+              <Skeleton className="h-5 w-14 rounded" />
+              <Skeleton className="h-4 w-64" />
             </div>
+            <Skeleton className="h-9 w-28 rounded-lg" />
           </div>
-        ))}
-      </section>
+        </div>
+      ))}
+
+      {/* Collapsed sections */}
+      {Array.from({ length: 2 }).map((_, i) => (
+        <div key={i} className="bg-white border border-[#E4E4E7] rounded-xl px-5 py-4">
+          <div className="space-y-1.5">
+            <Skeleton className="h-4 w-36" />
+            <Skeleton className="h-3 w-56" />
+          </div>
+        </div>
+      ))}
     </div>
   );
 }
