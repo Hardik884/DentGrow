@@ -24,9 +24,16 @@ import {
 } from "@/actions/treatments";
 import { getConsultants } from "@/actions/consultants";
 import { getClinicSettings } from "@/actions/clinic-settings";
+import { getPatientAppointmentsForFollowUp } from "@/actions/follow-ups";
 import type { Consultant } from "@/types";
 import { computeConsultantSplit } from "@/lib/billing/revenue";
-import { TREATMENT_STATUS_LABELS, formatCurrency, cn } from "@/lib/utils";
+import {
+  TREATMENT_STATUS_LABELS,
+  APPOINTMENT_STATUS_LABELS,
+  formatCurrency,
+  formatDateTime,
+  cn,
+} from "@/lib/utils";
 import { queryKeys } from "@/lib/query/keys";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
@@ -72,6 +79,18 @@ export function TreatmentForm({ treatmentId, appointmentId, patientId, onSuccess
   const [opdFee, setOpdFee] = useState<number | null>(null);
 
   const isEdit = !!treatmentId;
+
+  // When launched from the Patient tab (patientId only, no appointmentId — e.g.
+  // Patient profile > Add Treatment), there is no appointment to attach the
+  // treatment to. A treatment must belong to one (CreateTreatmentSchema
+  // requires appointment_id), so the caller has to pick one here instead of
+  // the submit silently failing zod validation with "Please select an
+  // appointment" and no way to act on it.
+  const needsAppointmentPicker = !isEdit && !appointmentId && !!patientId;
+  const [patientAppointments, setPatientAppointments] = useState<
+    Array<{ id: string; scheduled_at: string; status: string }>
+  >([]);
+  const [appointmentsLoading, setAppointmentsLoading] = useState(needsAppointmentPicker);
   const schema = isEdit ? UpdateTreatmentSchema : CreateTreatmentSchema;
 
   const {
@@ -166,9 +185,20 @@ export function TreatmentForm({ treatmentId, appointmentId, patientId, onSuccess
         );
       }
     });
+    if (needsAppointmentPicker && patientId) {
+      getPatientAppointmentsForFollowUp(patientId).then((res) => {
+        if (active) {
+          setPatientAppointments(res.data ?? []);
+          setAppointmentsLoading(false);
+        }
+      });
+    }
     return () => {
       active = false;
     };
+    // patientId/needsAppointmentPicker are derived from props that don't change
+    // across this form instance's lifetime — safe to fetch once on mount.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -278,7 +308,39 @@ export function TreatmentForm({ treatmentId, appointmentId, patientId, onSuccess
         <div className="px-6 py-5 space-y-4">
           {!isEdit && (
             <>
-              <input type="hidden" {...register("appointment_id" as keyof CreateTreatmentInput)} />
+              {needsAppointmentPicker ? (
+                <Field
+                  label="Appointment"
+                  htmlFor="appointment_id"
+                  required
+                  error={(errors as Record<string, { message?: string }>).appointment_id?.message}
+                  hint={
+                    !appointmentsLoading && patientAppointments.length === 0
+                      ? "This patient has no appointments yet. Create an appointment first, then add the treatment from there."
+                      : undefined
+                  }
+                >
+                  <Select
+                    id="appointment_id"
+                    {...register("appointment_id" as keyof CreateTreatmentInput)}
+                    disabled={appointmentsLoading || patientAppointments.length === 0}
+                    hasError={!!(errors as Record<string, unknown>).appointment_id}
+                  >
+                    <option value="">
+                      {appointmentsLoading ? "Loading appointments…" : "Select appointment…"}
+                    </option>
+                    {patientAppointments.map((a) => (
+                      <option key={a.id} value={a.id}>
+                        {formatDateTime(a.scheduled_at)} ·{" "}
+                        {APPOINTMENT_STATUS_LABELS[a.status as keyof typeof APPOINTMENT_STATUS_LABELS] ??
+                          a.status}
+                      </option>
+                    ))}
+                  </Select>
+                </Field>
+              ) : (
+                <input type="hidden" {...register("appointment_id" as keyof CreateTreatmentInput)} />
+              )}
               <input type="hidden" {...register("patient_id" as keyof CreateTreatmentInput)} />
             </>
           )}

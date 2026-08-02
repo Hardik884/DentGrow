@@ -97,6 +97,20 @@ export function formatDateTimeInTimezone(
  * @example
  *   getTodayInTimezone("Asia/Kolkata")  // → "2026-06-20" (even if UTC shows 2026-06-19)
  */
+/**
+ * Whole days from one "YYYY-MM-DD" date to another, positive when `to` is
+ * later. Both are DATE-ONLY strings with no time-of-day or timezone attached,
+ * so parsing each as UTC midnight and diffing is exact — there is no "now" or
+ * "local timezone" involved in comparing two calendar dates to each other.
+ */
+export function daysBetween(from: string, to: string): number {
+  const parse = (d: string) => {
+    const [year, month, day] = d.split("-").map(Number);
+    return Date.UTC(year, month - 1, day);
+  };
+  return Math.round((parse(to) - parse(from)) / 86_400_000);
+}
+
 export function getTodayInTimezone(timezone: string): string {
   try {
     return new Intl.DateTimeFormat("en-CA", {

@@ -23,6 +23,11 @@ export default defineConfig({
       // Route handlers are tested by importing and calling them directly, so no
       // dev server is involved. The auth cases here must run everywhere.
       "app/**/*.spec.ts",
+      // Server Actions ("use server") can't be invoked directly outside a real
+      // Next.js request (they resolve the session from request cookies), so
+      // specs here integration-test the Postgres state they read/write instead
+      // — same local-stack skip contract as lib/**/*.spec.ts.
+      "actions/**/*.spec.ts",
     ],
     environment: "node",
     // Integration specs talk to Postgres over HTTP; the default 5s is tight for

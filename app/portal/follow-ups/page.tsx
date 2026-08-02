@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
-import { getPatientPortalFollowUps } from "@/actions/follow-ups";
+import { getPatientPortalFollowUps, getPortalToday } from "@/actions/follow-ups";
 import { OverdueFollowUpBadge } from "@/components/follow-ups/OverdueFollowUpBadge";
 import { StatusBadge } from "@/components/shared/StatusBadge";
-import { formatDate, FOLLOW_UP_STATUS_LABELS } from "@/lib/utils";
+import { daysBetween, formatDate, FOLLOW_UP_STATUS_LABELS } from "@/lib/utils";
 
 export const metadata: Metadata = {
   title: "My Follow-Ups",
@@ -16,15 +16,18 @@ export const metadata: Metadata = {
  * Patients cannot create or modify follow-ups — read-only.
  */
 export default async function PortalFollowUpsPage() {
-  const result = await getPatientPortalFollowUps();
+  const [result, todayResult] = await Promise.all([
+    getPatientPortalFollowUps(),
+    getPortalToday(),
+  ]);
   const followUps = result.data ?? [];
-
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  // Clinic-local "today" — see getPortalToday for why this can no longer be
+  // computed as `new Date()` at render time.
+  const today = todayResult.data ?? "";
 
   const pending = followUps.filter((f) => f.status === "pending");
-  const overdue = pending.filter((f) => new Date(f.due_date) < today);
-  const upcoming = pending.filter((f) => new Date(f.due_date) >= today);
+  const overdue = pending.filter((f) => f.due_date < today);
+  const upcoming = pending.filter((f) => f.due_date >= today);
   const completed = followUps.filter((f) => f.status === "completed");
 
   return (
@@ -57,11 +60,7 @@ export default async function PortalFollowUpsPage() {
           {overdue.length > 0 && (
             <Section title="Overdue" titleClass="text-red-600">
               {overdue.map((f) => {
-                const dueDate = new Date(f.due_date);
-                dueDate.setHours(0, 0, 0, 0);
-                const diffDays = Math.ceil(
-                  (today.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24)
-                );
+                const diffDays = daysBetween(f.due_date, today);
                 return (
                   <FollowUpCard
                     key={f.id}
@@ -81,11 +80,7 @@ export default async function PortalFollowUpsPage() {
           {upcoming.length > 0 && (
             <Section title="Upcoming">
               {upcoming.map((f) => {
-                const dueDate = new Date(f.due_date);
-                dueDate.setHours(0, 0, 0, 0);
-                const diffDays = Math.ceil(
-                  (dueDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
-                );
+                const diffDays = daysBetween(today, f.due_date);
                 return (
                   <FollowUpCard
                     key={f.id}

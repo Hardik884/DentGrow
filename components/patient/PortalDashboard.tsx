@@ -10,8 +10,10 @@ import { AppointmentCard } from "@/components/shared/AppointmentCard";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Button } from "@/components/ui/button";
 import {
+  daysBetween,
   formatDate,
   formatCurrency,
+  getTodayInTimezone,
   TREATMENT_STATUS_LABELS,
 } from "@/lib/utils";
 import {
@@ -165,16 +167,14 @@ export async function PortalDashboard({ bookingEnabled }: PortalDashboardProps) 
   const allFollowUps = followUpsResult.data ?? [];
   const balance = balanceResult.data ?? 0;
 
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  // Clinic-local "today" — `clinicTimezone` is already resolved above for
+  // appointment-time display, so this reuses it rather than deriving a second,
+  // server-render-time `new Date()` that would silently disagree with it.
+  const today = getTodayInTimezone(clinicTimezone);
 
   const pendingFollowUps = allFollowUps.filter((f) => f.status === "pending");
-  const overdueFollowUps = pendingFollowUps.filter(
-    (f) => new Date(f.due_date) < today
-  );
-  const upcomingFollowUps = pendingFollowUps.filter(
-    (f) => new Date(f.due_date) >= today
-  );
+  const overdueFollowUps = pendingFollowUps.filter((f) => f.due_date < today);
+  const upcomingFollowUps = pendingFollowUps.filter((f) => f.due_date >= today);
 
   const queueData = queueResult.data;
   const isInQueue =
@@ -367,15 +367,8 @@ export async function PortalDashboard({ bookingEnabled }: PortalDashboardProps) 
                 {[...overdueFollowUps, ...upcomingFollowUps]
                   .slice(0, 4)
                   .map((f) => {
-                    const dueDate = new Date(f.due_date);
-                    dueDate.setHours(0, 0, 0, 0);
-                    const isOverdue = dueDate < today;
-                    const diffDays = Math.abs(
-                      Math.ceil(
-                        (dueDate.getTime() - today.getTime()) /
-                          (1000 * 60 * 60 * 24)
-                      )
-                    );
+                    const isOverdue = f.due_date < today;
+                    const diffDays = Math.abs(daysBetween(today, f.due_date));
 
                     return (
                       <div

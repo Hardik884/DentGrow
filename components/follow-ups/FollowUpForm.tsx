@@ -181,6 +181,13 @@ export function FollowUpForm({
   // ── Action dialogs ──────────────────────────────────────────────────────────
   const currentStatus = initialData?.status ?? null;
   const isPendingStatus = currentStatus === "pending";
+  // CREATE-only. Lets a back-entered / historical follow-up be recorded as
+  // already resolved, rather than being forced through "pending" — which, for
+  // a past due_date, immediately (and wrongly) reads as overdue. Unused in
+  // edit mode: an existing follow-up's status changes through Complete /
+  // Cancel, not by re-picking it here.
+  const [initialStatus, setInitialStatus] =
+    useState<"pending" | "completed" | "cancelled">("pending");
   const isDentist  = role === "dentist";
   const [confirmAction, setConfirmAction]           = useState<"complete" | "cancel" | null>(null);
   const [isActioning, startActionTransition]        = useTransition();
@@ -345,6 +352,7 @@ export function FollowUpForm({
       due_time:       dueTime || undefined,
       confirmation_status: confirmationStatus,
       notes:          notes.trim() || undefined,
+      ...(followUpId ? {} : { status: initialStatus }),
     };
 
     startTransition(async () => {
@@ -646,10 +654,55 @@ export function FollowUpForm({
                   ))}
                 </div>
               </Field>
+
+              {/* Initial status — CREATE only. Exists for back-entered /
+                  historical records: a clinic digitising a recall that already
+                  happened (or was cancelled) can say so directly, rather than
+                  having every backdated entry forced through Pending and
+                  immediately read as overdue. */}
+              {!followUpId && (
+                <Field
+                  label="Status"
+                  htmlFor="initial_status"
+                  hint={
+                    initialStatus !== "pending"
+                      ? "For a historical record — this due date will not count as overdue."
+                      : "Leave as Pending for a normal, upcoming recall."
+                  }
+                >
+                  <div
+                    role="radiogroup"
+                    aria-label="Initial status"
+                    className="inline-flex rounded-lg border border-border p-0.5 bg-[#FAFAFA]"
+                  >
+                    {(["pending", "completed", "cancelled"] as const).map((opt) => (
+                      <button
+                        key={opt}
+                        type="button"
+                        role="radio"
+                        aria-checked={initialStatus === opt}
+                        onClick={() => setInitialStatus(opt)}
+                        className={cn(
+                          "px-3 py-1.5 text-xs font-medium rounded-md transition-colors capitalize",
+                          initialStatus === opt
+                            ? "bg-white text-[#09090B] shadow-sm border border-border"
+                            : "text-[#71717A] hover:text-[#09090B]"
+                        )}
+                      >
+                        {opt}
+                      </button>
+                    ))}
+                  </div>
+                </Field>
+              )}
             </div>
 
             {/* ── Appointment Time — available slots only (create mode) ── */}
-            {!followUpId && (
+            {/* Hidden for a historical entry: auto-booking a future appointment
+                for a record being logged as already resolved would create a
+                phantom visit, so the server skips it — this keeps the UI from
+                implying a time picked here does something for that case. */}
+            {!followUpId && initialStatus === "pending" && (
               <Field
                 label="Appointment Time"
                 htmlFor="due_time"

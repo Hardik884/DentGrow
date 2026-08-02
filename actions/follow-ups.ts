@@ -50,9 +50,17 @@ async function resolveSession(): Promise<{
 
 /**
  * todayForClinic — today's date (YYYY-MM-DD) in the clinic's local timezone.
+ *
+ * Exported so every "is this overdue" comparison in the app — server actions
+ * here, and the server components that render follow-up lists — resolves
+ * "today" the same way. Before this was shared, two components computed today
+ * as `new Date()` at RENDER time, which on Vercel runs in the server's system
+ * timezone (UTC), not the clinic's. For a clinic ahead of UTC that briefly
+ * disagreed with the clinic-aware queries already used elsewhere in this file
+ * about exactly when a day rolls over.
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function todayForClinic(db: any, clinicId: string): Promise<string> {
+export async function todayForClinic(db: any, clinicId: string): Promise<string> {
   if (!clinicId) return new Date().toISOString().split("T")[0];
   const { data } = await db
     .from("clinic_settings")
@@ -142,9 +150,12 @@ export async function createFollowUp(
       };
     }
 
-    // Historical follow-ups are permitted (migration / late data entry).
-    // Analytics still classify due_date < today with status = 'pending' as
-    // overdue via the shared "today" comparison — see the queries below.
+    // Historical follow-ups are permitted (migration / late data entry). Such an
+    // entry can be created with status "completed" (or "cancelled") directly —
+    // see CreateFollowUpSchema.status — so a clinic digitising a resolved
+    // recall is not forced through "pending" and then immediately misread as
+    // overdue. A genuinely still-open backdated entry stays "pending" and is
+    // correctly overdue: its due date has, in fact, passed.
 
     const { data, error } = await db
       .from("follow_ups")
@@ -155,7 +166,7 @@ export async function createFollowUp(
         treatment_id:   parsed.data.treatment_id ?? null,
         follow_up_type: parsed.data.follow_up_type,
         due_date:       parsed.data.due_date,
-        status:         "pending",
+        status:         parsed.data.status ?? "pending",
         confirmation_status: parsed.data.confirmation_status ?? "confirmed",
         notes:          parsed.data.notes ?? null,
         created_by:     profile.id,
@@ -175,7 +186,8 @@ export async function createFollowUp(
     // Uses the current user's dentist ID (or the clinic's dentist for
     // receptionists). Links the new appointment back to the follow-up record.
     // Failure here is non-fatal — the follow-up still exists.
-    if (parsed.data.due_time) {
+    const initialStatus = parsed.data.status ?? "pending";
+    if (parsed.data.due_time && initialStatus === "pending") {
       try {
         // Resolve clinic timezone.
         const { data: settings } = await db
@@ -893,6 +905,50 @@ export async function getPatientPortalFollowUps(): Promise<ActionResult<FollowUp
     return { data: (data ?? []) as FollowUp[], error: null };
   } catch (err) {
     console.error("[getPatientPortalFollowUps] unexpected:", err);
+    return { data: null, error: "Unexpected error" };
+  }
+}
+
+// =============================================================================
+// getPortalToday — the authenticated patient's CLINIC's local date
+// =============================================================================
+//
+// The portal pages compute "is this overdue" client-side against a "today"
+// they derive themselves. That used to be `new Date()` at render time, which
+// on Vercel runs in UTC regardless of which clinic (and which timezone) the
+// patient belongs to — the same class of bug fixed in FollowUpList.tsx and
+// PatientFollowUpsTab.tsx. This gives portal pages the same clinic-aware
+// answer those already get, without changing getPatientPortalFollowUps'
+// existing return shape.
+
+export async function getPortalToday(): Promise<ActionResult<string>> {
+  try {
+    const db: DbClient = await createServerClient();
+
+    const {
+      data: { user },
+    } = await db.auth.getUser();
+    if (!user) return { data: null, error: "Unauthorized" };
+
+    const { data: linkData } = await db
+      .from("patient_portal_links")
+      .select("patient_id")
+      .eq("user_id", user.id)
+      .single();
+    const link = linkData as { patient_id: string } | null;
+    if (!link?.patient_id) return { data: null, error: "Portal account not linked." };
+
+    const { data: patientData } = await db
+      .from("patients")
+      .select("clinic_id")
+      .eq("id", link.patient_id)
+      .single();
+    const clinicId = (patientData as { clinic_id: string } | null)?.clinic_id;
+    if (!clinicId) return { data: null, error: "Clinic not found." };
+
+    return { data: await todayForClinic(db, clinicId), error: null };
+  } catch (err) {
+    console.error("[getPortalToday] unexpected:", err);
     return { data: null, error: "Unexpected error" };
   }
 }

@@ -1,5 +1,7 @@
 import Link from "next/link";
-import { getFollowUpsForPatient, getAllFollowUps } from "@/actions/follow-ups";
+import { getFollowUpsForPatient, getAllFollowUps, todayForClinic } from "@/actions/follow-ups";
+import { resolveSession } from "@/lib/auth/session";
+import { daysBetween } from "@/lib/utils";
 import { OverdueFollowUpBadge } from "./OverdueFollowUpBadge";
 import { ConfirmationStatusBadge } from "./ConfirmationStatusBadge";
 import { FollowUpFormDialog } from "./FollowUpFormDialog";
@@ -55,16 +57,22 @@ export async function FollowUpList({
     followUps = result.data?.followUps ?? [];
   }
 
-  // Sort: overdue first, then by due_date ascending
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  // "Today" in the CLINIC's own timezone, not the server's. This used to be
+  // `new Date()` at render time, which on Vercel runs in UTC — for a clinic
+  // ahead of UTC that disagreed with the clinic-aware queries `getAllFollowUps`
+  // itself already uses about exactly when a day rolls over. Comparing plain
+  // "YYYY-MM-DD" strings avoids reintroducing that class of bug: there is no
+  // "now" involved in comparing two calendar dates.
+  const { db, profile } = await resolveSession();
+  const today = profile ? await todayForClinic(db, profile.clinic_id) : "";
 
+  // Sort: overdue first, then by due_date ascending
   const sorted = [...followUps].sort((a, b) => {
-    const aOverdue = a.status === "pending" && new Date(a.due_date) < today;
-    const bOverdue = b.status === "pending" && new Date(b.due_date) < today;
+    const aOverdue = a.status === "pending" && a.due_date < today;
+    const bOverdue = b.status === "pending" && b.due_date < today;
     if (aOverdue && !bOverdue) return -1;
     if (!aOverdue && bOverdue) return 1;
-    return new Date(a.due_date).getTime() - new Date(b.due_date).getTime();
+    return a.due_date < b.due_date ? -1 : a.due_date > b.due_date ? 1 : 0;
   });
 
   return (
@@ -118,16 +126,13 @@ function FollowUpRow({
   baseHref,
 }: {
   followUp: FollowUpWithRelations;
-  today: Date;
+  /** Clinic-local "today", "YYYY-MM-DD". */
+  today: string;
   showPatientLink: boolean;
   baseHref: string;
 }) {
-  const dueDate = new Date(followUp.due_date);
-  dueDate.setHours(0, 0, 0, 0);
-
-  const isOverdue = followUp.status === "pending" && dueDate < today;
-  const diffMs    = dueDate.getTime() - today.getTime();
-  const diffDays  = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+  const isOverdue = followUp.status === "pending" && followUp.due_date < today;
+  const diffDays = daysBetween(today, followUp.due_date);
 
   const followUpType: string = followUp.follow_up_type ?? "";
   const typeLabel = FOLLOW_UP_TYPE_LABELS[followUpType] ?? followUpType ?? "Follow-up";

@@ -1,9 +1,11 @@
-import { getFollowUpsForPatient } from "@/actions/follow-ups";
+import { getFollowUpsForPatient, todayForClinic } from "@/actions/follow-ups";
+import { resolveSession } from "@/lib/auth/session";
 import { OverdueFollowUpBadge } from "./OverdueFollowUpBadge";
 import { FollowUpFormDialog } from "./FollowUpFormDialog";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { ACTION_BUTTON } from "@/lib/ui/action-styles";
 import {
+  daysBetween,
   formatDate,
   formatDateTime,
   FOLLOW_UP_STATUS_LABELS,
@@ -40,11 +42,14 @@ export async function PatientFollowUpsTab({
   const result = await getFollowUpsForPatient(patientId);
   const followUps: FollowUpWithRelations[] = result.data ?? [];
 
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  // Clinic-local "today", not the server's. See the identical note in
+  // FollowUpList.tsx — this used to be `new Date()` at render time, which on
+  // Vercel is UTC regardless of which clinic the patient belongs to.
+  const { db, profile } = await resolveSession();
+  const today = profile ? await todayForClinic(db, profile.clinic_id) : "";
 
-  const overdue  = followUps.filter((f) => f.status === "pending" && new Date(f.due_date) < today);
-  const upcoming = followUps.filter((f) => f.status === "pending" && new Date(f.due_date) >= today);
+  const overdue  = followUps.filter((f) => f.status === "pending" && f.due_date < today);
+  const upcoming = followUps.filter((f) => f.status === "pending" && f.due_date >= today);
   const completed = followUps.filter((f) => f.status === "completed");
   const cancelled = followUps.filter((f) => f.status === "cancelled");
 
@@ -112,11 +117,7 @@ export async function PatientFollowUpsTab({
           {overdue.length > 0 && (
             <TimelineSection title="Overdue" titleClass="text-danger">
               {overdue.map((f) => {
-                const dueDate = new Date(f.due_date);
-                dueDate.setHours(0, 0, 0, 0);
-                const diffDays = Math.ceil(
-                  (today.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24)
-                );
+                const diffDays = daysBetween(f.due_date, today);
                 return (
                   <FollowUpTimelineRow
                     key={f.id}
@@ -136,11 +137,7 @@ export async function PatientFollowUpsTab({
           {upcoming.length > 0 && (
             <TimelineSection title="Upcoming">
               {upcoming.map((f) => {
-                const dueDate = new Date(f.due_date);
-                dueDate.setHours(0, 0, 0, 0);
-                const diffDays = Math.ceil(
-                  (dueDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
-                );
+                const diffDays = daysBetween(today, f.due_date);
                 return (
                   <FollowUpTimelineRow
                     key={f.id}

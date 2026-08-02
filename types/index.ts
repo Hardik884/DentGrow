@@ -444,7 +444,7 @@ export const MedicationSchema = z.object({
 export type MedicationInput = z.infer<typeof MedicationSchema>;
 
 export const CreateTreatmentSchema = z.object({
-  appointment_id: z.string().uuid(),
+  appointment_id: z.string().uuid("Please select an appointment"),
   patient_id: z.string().uuid(),
   treatment_type: z.string().min(1, "Treatment type is required").max(100),
   internal_notes: z.string().max(5000).optional(),
@@ -529,6 +529,17 @@ export const CreateFollowUpSchema = z.object({
   treatment_id: z.string().uuid().optional().or(z.literal("")).transform(v => v || undefined),
   confirmation_status: z.enum(["tentative", "confirmed"]).optional(),
   notes: z.string().max(1000).optional(),
+  /**
+   * Initial status. Defaults to "pending" — every existing caller that omits
+   * this field behaves exactly as before.
+   *
+   * Exists for back-entered / historical records: a clinic digitising a recall
+   * that already happened has no way to say so without this, so it is forced
+   * into "pending" — and since its due_date is necessarily in the past, that
+   * status makes it read as overdue, misreporting resolved history as a missed
+   * follow-up.
+   */
+  status: z.enum(["pending", "completed", "cancelled"]).optional(),
 });
 export type CreateFollowUpInput = z.infer<typeof CreateFollowUpSchema>;
 
