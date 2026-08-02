@@ -409,7 +409,7 @@ export async function getPatient(
     const [{ data: treatmentRows }, { data: paymentRows }] = await Promise.all([
       db
         .from("treatments")
-        .select("cost, status")
+        .select("cost, opd_charged, opd_fee, status")
         .eq("patient_id", id)
         .eq("clinic_id", profile.clinic_id)
         .is("deleted_at", null),
@@ -578,7 +578,7 @@ export async function getOutstandingBalance(
     const [{ data: treatmentRows }, { data: paymentRows }] = await Promise.all([
       db
         .from("treatments")
-        .select("cost, status")
+        .select("cost, opd_charged, opd_fee, status")
         .eq("patient_id", patientId)
         .eq("clinic_id", profile.clinic_id)
         .is("deleted_at", null),

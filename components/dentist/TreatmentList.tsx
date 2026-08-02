@@ -1,8 +1,12 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { Pencil } from "lucide-react";
 import { StatusBadge } from "@/components/shared/StatusBadge";
+import { Dialog } from "@/components/ui/dialog";
 import { TreatmentDetailDialog } from "@/components/dentist/TreatmentDetailModal";
+import { TreatmentForm } from "@/components/dentist/TreatmentForm";
 import { formatDate, formatCurrency, TREATMENT_STATUS_LABELS } from "@/lib/utils";
 import type { Treatment, TreatmentForReceptionist, TreatmentStatus } from "@/types";
 
@@ -14,6 +18,16 @@ interface TreatmentListProps {
   baseHref?: string;
   /** If true, show patient name column (used in clinic-wide list) */
   showPatient?: boolean;
+  /**
+   * Show an Edit control on each row (dentist only).
+   *
+   * Deliberately NOT conditioned on the appointment's status. Clinics find
+   * mistakes after the fact — a cost typed wrong, a treatment recorded against
+   * the wrong tooth — and a record that locks on completion forces them to
+   * either leave it wrong or work around it. The audit trail, not the form, is
+   * what protects history.
+   */
+  editable?: boolean;
 }
 
 const STATUS_VARIANT_MAP: Record<TreatmentStatus, "default" | "info" | "success" | "error"> = {
@@ -35,9 +49,13 @@ export function TreatmentList({
   treatments,
   role,
   showPatient = false,
+  editable = false,
 }: TreatmentListProps) {
   const isDentist = role === "dentist";
+  const router = useRouter();
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const canEdit = isDentist && editable;
 
   if (treatments.length === 0) {
     return (
@@ -101,8 +119,21 @@ export function TreatmentList({
                   ? formatDate(treatment.performed_at)
                   : `Added ${formatDate(treatment.created_at)}`}
               </span>
-              <span className="font-medium text-gray-700">
-                {formatCurrency(Number(treatment.cost))}
+              <span className="flex items-center gap-3">
+                <span className="font-medium text-gray-700">
+                  {formatCurrency(Number(treatment.cost))}
+                </span>
+                {canEdit && (
+                  <button
+                    type="button"
+                    onClick={() => setEditingId(treatment.id)}
+                    className="inline-flex items-center gap-1 text-xs font-medium text-gray-500 hover:text-gray-900 transition-colors cursor-pointer"
+                    aria-label={`Edit ${full.treatment_type ?? "treatment"}`}
+                  >
+                    <Pencil className="h-3 w-3" aria-hidden />
+                    Edit
+                  </button>
+                )}
               </span>
             </div>
           </div>
@@ -115,6 +146,28 @@ export function TreatmentList({
           open={selectedId !== null}
           onClose={() => setSelectedId(null)}
         />
+      )}
+
+      {canEdit && (
+        <Dialog
+          open={editingId !== null}
+          onClose={() => setEditingId(null)}
+          title="Edit Treatment"
+          size="xl"
+        >
+          <div className="p-4">
+            {editingId && (
+              <TreatmentForm
+                treatmentId={editingId}
+                onCancel={() => setEditingId(null)}
+                onSuccess={() => {
+                  setEditingId(null);
+                  router.refresh();
+                }}
+              />
+            )}
+          </div>
+        </Dialog>
       )}
     </div>
   );

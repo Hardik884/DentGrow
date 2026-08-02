@@ -217,6 +217,10 @@ export async function createFollowUp(
               status:           "scheduled",
               notes:            `Follow-up appointment${parsed.data.notes ? `: ${parsed.data.notes}` : ""}`,
               created_by:       profile.id,
+              // Provenance. Without this the visit carries no trace of why it
+              // exists, and its detail page reads as a fresh start even when the
+              // patient owes money from the visit that prompted the recall.
+              follow_up_id:     followUp.id,
             })
             .select("id")
             .single();
@@ -495,7 +499,11 @@ export async function getFollowUp(
       .select(
         "*, " +
         "patient:patients(id, name, phone), " +
-        "appointment:appointments(id, scheduled_at, status), " +
+        // Disambiguated FK. Appointments now reference follow_ups too
+        // (appointments.follow_up_id), so two relationships exist between the
+        // tables and PostgREST cannot guess which one an embed means. This is
+        // the ORIGINATING appointment — the visit that prompted the recall.
+        "appointment:appointments!follow_ups_appointment_id_fkey(id, scheduled_at, status), " +
         "treatment:treatments(id, treatment_type, status)"
       )
       .eq("id", id)
@@ -535,7 +543,11 @@ export async function getFollowUpsForAppointment(
       .select(
         "*, " +
         "patient:patients(id, name, phone), " +
-        "appointment:appointments(id, scheduled_at, status), " +
+        // Disambiguated FK. Appointments now reference follow_ups too
+        // (appointments.follow_up_id), so two relationships exist between the
+        // tables and PostgREST cannot guess which one an embed means. This is
+        // the ORIGINATING appointment — the visit that prompted the recall.
+        "appointment:appointments!follow_ups_appointment_id_fkey(id, scheduled_at, status), " +
         "treatment:treatments(id, treatment_type, status)"
       )
       .eq("appointment_id", appointmentId)
@@ -576,7 +588,11 @@ export async function getFollowUpsForPatient(
       .select(
         "*, " +
         "patient:patients(id, name, phone), " +
-        "appointment:appointments(id, scheduled_at, status), " +
+        // Disambiguated FK. Appointments now reference follow_ups too
+        // (appointments.follow_up_id), so two relationships exist between the
+        // tables and PostgREST cannot guess which one an embed means. This is
+        // the ORIGINATING appointment — the visit that prompted the recall.
+        "appointment:appointments!follow_ups_appointment_id_fkey(id, scheduled_at, status), " +
         "treatment:treatments(id, treatment_type, status)"
       )
       .eq("patient_id", patientId)
@@ -656,7 +672,11 @@ export async function getAllFollowUps(filters?: {
       .select(
         "*, " +
         "patient:patients(id, name, phone), " +
-        "appointment:appointments(id, scheduled_at, status), " +
+        // Disambiguated FK. Appointments now reference follow_ups too
+        // (appointments.follow_up_id), so two relationships exist between the
+        // tables and PostgREST cannot guess which one an embed means. This is
+        // the ORIGINATING appointment — the visit that prompted the recall.
+        "appointment:appointments!follow_ups_appointment_id_fkey(id, scheduled_at, status), " +
         "treatment:treatments(id, treatment_type, status)",
         { count: "exact" }
       )
@@ -727,7 +747,11 @@ export async function getOverdueFollowUps(): Promise<
       .select(
         "*, " +
         "patient:patients(id, name, phone), " +
-        "appointment:appointments(id, scheduled_at, status), " +
+        // Disambiguated FK. Appointments now reference follow_ups too
+        // (appointments.follow_up_id), so two relationships exist between the
+        // tables and PostgREST cannot guess which one an embed means. This is
+        // the ORIGINATING appointment — the visit that prompted the recall.
+        "appointment:appointments!follow_ups_appointment_id_fkey(id, scheduled_at, status), " +
         "treatment:treatments(id, treatment_type, status)"
       )
       .eq("clinic_id", profile.clinic_id)

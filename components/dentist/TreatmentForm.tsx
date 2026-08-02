@@ -69,6 +69,7 @@ export function TreatmentForm({ treatmentId, appointmentId, patientId, onSuccess
   const [dentistName, setDentistName] = useState<string | null>(null);
   // Whether the clinic has X-ray charges enabled (defaults true while loading).
   const [xrayEnabled, setXrayEnabled] = useState(true);
+  const [opdFee, setOpdFee] = useState<number | null>(null);
 
   const isEdit = !!treatmentId;
   const schema = isEdit ? UpdateTreatmentSchema : CreateTreatmentSchema;
@@ -115,6 +116,7 @@ export function TreatmentForm({ treatmentId, appointmentId, patientId, onSuccess
 
   // ── X-ray toggle ─────────────────────────────────────────────────────────────
   const xrayTakenValue = watch("xray_taken") as boolean | undefined;
+  const opdChargedValue = watch("opd_charged") as boolean | undefined;
 
   // "Performed At" may be any historical date so migrated records can be
   // logged accurately. Future dates remain blocked (a treatment cannot have
@@ -156,6 +158,12 @@ export function TreatmentForm({ treatmentId, appointmentId, patientId, onSuccess
       if (active) {
         // Default is true; only disable when the setting is explicitly false.
         setXrayEnabled(res.data?.enable_xray_charges !== false);
+        // Shown so the receptionist can see what turning OPD on will charge.
+        // The server resolves the amount independently — this is display only,
+        // and the form never sends a fee.
+        setOpdFee(
+          res.data?.default_opd_fee != null ? Number(res.data.default_opd_fee) : null,
+        );
       }
     });
     return () => {
@@ -276,8 +284,6 @@ export function TreatmentForm({ treatmentId, appointmentId, patientId, onSuccess
           )}
 
           <input type="hidden" {...register("performed_at" as keyof CreateTreatmentInput)} />
-          {/* opd_charged kept as hidden false — backend logic unchanged */}
-          <input type="hidden" {...register("opd_charged" as keyof CreateTreatmentInput)} />
 
           <Field label="Treatment Type" htmlFor="treatment-type" required error={(errors as Record<string, {message?: string}>).treatment_type?.message}>
             <Select
@@ -363,6 +369,60 @@ export function TreatmentForm({ treatmentId, appointmentId, patientId, onSuccess
                 disabled={!performedDate}
                 aria-label="Treatment time"
               />
+            </div>
+          </Field>
+
+          {/* ── OPD consultation ────────────────────────────────── */}
+          {/* Yes/No only. The fee itself is the clinic's setting and is applied
+              server-side, so there is no amount to type and no way for two
+              visits on the same day to be billed differently by mistake. */}
+          <Field
+            label="OPD Consultation"
+            htmlFor="opd-charged"
+            hint={
+              opdFee != null && opdFee > 0
+                ? `Charges the clinic's consultation fee of ${formatCurrency(opdFee)}`
+                : "No consultation fee is set for this clinic — set one in Clinic Settings"
+            }
+          >
+            <div
+              id="opd-charged"
+              role="radiogroup"
+              aria-label="OPD consultation charged"
+              className="inline-flex rounded-lg border border-[#E4E4E7] bg-[#FAFAFA] p-0.5"
+            >
+              <button
+                type="button"
+                role="radio"
+                aria-checked={!opdChargedValue}
+                onClick={() =>
+                  setValue("opd_charged" as keyof CreateTreatmentInput, false as never)
+                }
+                className={cn(
+                  "px-4 py-1.5 text-xs font-semibold rounded-md transition-colors cursor-pointer",
+                  !opdChargedValue
+                    ? "bg-white text-[#09090B] shadow-sm border border-[#E4E4E7]"
+                    : "text-[#71717A] hover:text-[#09090B]"
+                )}
+              >
+                No
+              </button>
+              <button
+                type="button"
+                role="radio"
+                aria-checked={!!opdChargedValue}
+                onClick={() =>
+                  setValue("opd_charged" as keyof CreateTreatmentInput, true as never)
+                }
+                className={cn(
+                  "px-4 py-1.5 text-xs font-semibold rounded-md transition-colors cursor-pointer",
+                  opdChargedValue
+                    ? "bg-[#18181B] text-white shadow-sm"
+                    : "text-[#71717A] hover:text-[#09090B]"
+                )}
+              >
+                Yes
+              </button>
             </div>
           </Field>
 

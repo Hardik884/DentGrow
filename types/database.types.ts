@@ -95,6 +95,7 @@ export type Database = {
           deleted_at: string | null
           dentist_id: string
           duration_minutes: number
+          follow_up_id: string | null
           id: string
           medical_history: Json | null
           notes: string | null
@@ -114,6 +115,7 @@ export type Database = {
           deleted_at?: string | null
           dentist_id: string
           duration_minutes?: number
+          follow_up_id?: string | null
           id?: string
           medical_history?: Json | null
           notes?: string | null
@@ -133,6 +135,7 @@ export type Database = {
           deleted_at?: string | null
           dentist_id?: string
           duration_minutes?: number
+          follow_up_id?: string | null
           id?: string
           medical_history?: Json | null
           notes?: string | null
@@ -164,6 +167,27 @@ export type Database = {
             columns: ["dentist_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointments_follow_up_id_fkey"
+            columns: ["follow_up_id"]
+            isOneToOne: false
+            referencedRelation: "active_follow_ups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointments_follow_up_id_fkey"
+            columns: ["follow_up_id"]
+            isOneToOne: false
+            referencedRelation: "follow_ups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointments_follow_up_id_fkey"
+            columns: ["follow_up_id"]
+            isOneToOne: false
+            referencedRelation: "overdue_follow_ups"
             referencedColumns: ["id"]
           },
           {
@@ -1097,6 +1121,7 @@ export type Database = {
           internal_notes: string | null
           medications: Json
           opd_charged: boolean
+          opd_fee: number
           patient_id: string
           patient_visible_notes: string | null
           performed_at: string | null
@@ -1122,6 +1147,7 @@ export type Database = {
           internal_notes?: string | null
           medications?: Json
           opd_charged?: boolean
+          opd_fee?: number
           patient_id: string
           patient_visible_notes?: string | null
           performed_at?: string | null
@@ -1147,6 +1173,7 @@ export type Database = {
           internal_notes?: string | null
           medications?: Json
           opd_charged?: boolean
+          opd_fee?: number
           patient_id?: string
           patient_visible_notes?: string | null
           performed_at?: string | null

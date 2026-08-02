@@ -7,6 +7,7 @@ import { AppointmentHistoryTimeline } from "@/components/shared/AppointmentHisto
 import { AppointmentStatusBadge } from "@/components/shared/AppointmentStatusBadge";
 import { AppointmentTreatmentsSection } from "@/components/dentist/AppointmentTreatmentsSection";
 import { AppointmentPaymentsSection } from "@/components/dentist/AppointmentPaymentsSection";
+import { PatientFinancialTimeline } from "@/components/dentist/PatientFinancialTimeline";
 import { AppointmentFollowUpsSection } from "@/components/dentist/AppointmentFollowUpsSection";
 import { ClinicalTextCard } from "@/components/shared/ClinicalTextCard";
 import { MedicalHistoryCard } from "@/components/shared/MedicalHistoryCard";
@@ -164,6 +165,18 @@ export default async function DentistAppointmentDetailPage({ params }: Props) {
       <AppointmentTreatmentsSection
         appointmentId={appt.id}
         patientId={appt.patient_id}
+        patientName={appt.patient.name}
+      />
+
+      {/* ── The patient's running account, across every visit ─
+           Placed ABOVE the per-visit panel on purpose: a follow-up visit has no
+           treatments or payments of its own yet, so the panel below renders
+           empty and reads as "nothing owed". This is the context that stops
+           that misreading. */}
+      <PatientFinancialTimeline
+        patientId={appt.patient_id}
+        appointmentId={appt.id}
+        followUpId={appt.follow_up_id}
       />
 
       {/* ── Payments for this appointment (OPD + Treatment) ─── */}

@@ -9,6 +9,8 @@ import type { Treatment } from "@/types";
 interface AppointmentTreatmentsSectionProps {
   appointmentId: string;
   patientId: string;
+  /** Used only to personalise the follow-up prompt. */
+  patientName?: string;
 }
 
 /**
@@ -20,6 +22,7 @@ interface AppointmentTreatmentsSectionProps {
 export async function AppointmentTreatmentsSection({
   appointmentId,
   patientId,
+  patientName,
 }: AppointmentTreatmentsSectionProps) {
   const result = await getTreatmentsForAppointment(appointmentId);
   const treatments = (result.data ?? []) as Treatment[];
@@ -42,9 +45,13 @@ export async function AppointmentTreatmentsSection({
               </p>
             )}
           </div>
+          {/* promptFollowUp: recording treatment is the moment the next visit
+              is decided, and the moment a clinic forgets to book it. */}
           <TreatmentFormDialog
             appointmentId={appointmentId}
             patientId={patientId}
+            patientName={patientName}
+            promptFollowUp
             triggerVariant="outline"
             triggerSize="sm"
           >
@@ -55,7 +62,15 @@ export async function AppointmentTreatmentsSection({
 
         {result.error && <p className="text-sm text-red-600">{result.error}</p>}
 
-        <TreatmentList treatments={treatments} role="dentist" baseHref="/dentist" />
+        {/* editable: a completed appointment is not a sealed record. Clinics
+            discover mistakes later, and locking the form only forces a
+            workaround. */}
+        <TreatmentList
+          treatments={treatments}
+          role="dentist"
+          baseHref="/dentist"
+          editable
+        />
       </div>
 
       {/* ── Past Treatment History (visually separated) ───── */}

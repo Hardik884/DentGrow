@@ -62,10 +62,14 @@ export async function PatientTreatmentsTab({
         </p>
       )}
 
+      {/* Editable for the dentist here too: the patient profile is the other
+          place a mistake gets noticed, and TreatmentList only honours this for
+          the dentist role. */}
       <TreatmentList
         treatments={treatments}
         role={role}
         baseHref={baseHref}
+        editable
       />
     </div>
   );

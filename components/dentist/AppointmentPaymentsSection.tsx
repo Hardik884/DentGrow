@@ -50,12 +50,16 @@ export async function AppointmentPaymentsSection({
   const payments = (paymentsResult.data ?? []) as Payment[];
   const error = treatmentsResult.error || paymentsResult.error;
 
-  // Partition payments: treatment-linked and unassigned treatment payments.
-  // OPD payments are preserved in the DB but not shown in the UI (backend intact).
+  // Partition payments: treatment-linked, and everything else on this visit.
+  //
+  // OPD payments used to be dropped here entirely, which was defensible while
+  // the OPD toggle was hidden. Now that a consultation fee can be CHARGED, a
+  // hidden payment against it would leave the visit looking part-paid with no
+  // explanation, so consultation payments fall into the unassigned bucket and
+  // are shown alongside the rest.
   const paymentsByTreatment = new Map<string, Payment[]>();
   const unassignedPayments: Payment[] = [];
   for (const p of payments) {
-    if (p.payment_type === "opd") continue;
     if (p.treatment_id) {
       const list = paymentsByTreatment.get(p.treatment_id) ?? [];
       list.push(p);

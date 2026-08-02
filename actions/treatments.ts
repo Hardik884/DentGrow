@@ -133,6 +133,37 @@ async function resolveSession(): Promise<{
 // createTreatment — dentist only
 // =============================================================================
 
+/**
+ * The consultation fee to record on a treatment, resolved SERVER-SIDE.
+ *
+ * The receptionist ticks a box; they never type an amount. The fee comes from
+ * the clinic's own setting, which is the whole point of the toggle — one less
+ * number to get wrong at the front desk, and one less way for two visits on the
+ * same day to be billed differently.
+ *
+ * Snapshotted rather than looked up at read time. `default_opd_fee` is the
+ * CURRENT fee, so reading it live would re-price every past visit the moment a
+ * clinic changed its rate — a bill from March silently becoming a different
+ * number in August. A financial record keeps the price it was charged at.
+ *
+ * Returns 0 when OPD is off, and also when the clinic has configured no fee:
+ * charging an amount nobody set would be inventing a price.
+ */
+async function resolveOpdFee(
+  db: DbClient,
+  clinicId: string,
+  opdCharged: boolean,
+): Promise<number> {
+  if (!opdCharged) return 0;
+  const { data } = await db
+    .from("clinic_settings")
+    .select("default_opd_fee")
+    .eq("clinic_id", clinicId)
+    .maybeSingle();
+  const fee = Number((data as { default_opd_fee?: number | null } | null)?.default_opd_fee ?? 0);
+  return Number.isFinite(fee) && fee > 0 ? fee : 0;
+}
+
 export async function createTreatment(
   input: unknown
 ): Promise<ActionResult<Treatment>> {
@@ -169,6 +200,10 @@ export async function createTreatment(
       }
     }
 
+    // OPD is a yes/no at the front desk; the amount is the clinic's own setting.
+    const opdCharged = parsed.data.opd_charged ?? false;
+    const opdFee = await resolveOpdFee(db, profile.clinic_id, opdCharged);
+
     // Resolve consultant revenue distribution (clinic_share always populated).
     const revenue = await resolveConsultantRevenue(
       db,
@@ -192,7 +227,8 @@ export async function createTreatment(
         medications: parsed.data.medications ?? [],
         cost: parsed.data.cost,
         status: parsed.data.status ?? "planned",
-        opd_charged: parsed.data.opd_charged ?? false,
+        opd_charged: opdCharged,
+        opd_fee: opdFee,
         xray_taken: parsed.data.xray_taken ?? false,
         xray_cost: parsed.data.xray_taken ? (parsed.data.xray_cost ?? null) : null,
         performed_at: performedAt,
@@ -254,7 +290,13 @@ export async function updateTreatment(
     if (parsed.data.medications !== undefined) updates.medications = parsed.data.medications ?? [];
     if (parsed.data.cost !== undefined) updates.cost = parsed.data.cost;
     if (parsed.data.status !== undefined) updates.status = parsed.data.status;
-    if (parsed.data.opd_charged !== undefined) updates.opd_charged = parsed.data.opd_charged;
+    if (parsed.data.opd_charged !== undefined) {
+      updates.opd_charged = parsed.data.opd_charged;
+      // Re-resolved on every toggle so switching OPD off clears the charge
+      // rather than leaving a fee attached to a visit that is no longer billed
+      // for one. Turning it back on re-snapshots at today's rate.
+      updates.opd_fee = await resolveOpdFee(db, profile.clinic_id, parsed.data.opd_charged);
+    }
     if (parsed.data.xray_taken !== undefined) {
       updates.xray_taken = parsed.data.xray_taken;
       // Clear xray_cost automatically when x-ray is disabled
