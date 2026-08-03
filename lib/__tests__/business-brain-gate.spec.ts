@@ -118,12 +118,18 @@ describe("the pilot clinic can never reach the Business Brain", () => {
   });
 
   it("renders prepared actions from exactly one gated page", () => {
-    // Named explicitly, so moving the Ready Actions section to a second surface
-    // has to be a deliberate edit here rather than a quiet copy-paste.
+    // Named explicitly, so surfacing prepared actions on a second page has to
+    // be a deliberate edit here rather than a quiet copy-paste.
+    //
+    // Keyed on buildActionPlanViews, not on a component name. The dashboard
+    // redesign folded the standalone Ready Actions section into FocusCard, at
+    // which point a scan for "ReadyActionsSection" matched nothing and the test
+    // passed vacuously against an empty list. The builder is the load-bearing
+    // marker: a page cannot render prepared actions without calling it.
     const rendering: string[] = [];
     for (const root of ["app"]) {
       for (const file of sourceFiles(root)) {
-        if (readFileSync(file, "utf8").includes("ReadyActionsSection")) rendering.push(file);
+        if (readFileSync(file, "utf8").includes("buildActionPlanViews")) rendering.push(file);
       }
     }
     expect(rendering.map((f) => f.replace(/\\/g, "/"))).toEqual([

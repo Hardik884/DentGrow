@@ -17,6 +17,19 @@ to prevent.
 | Name | Schedule | Calls | Purpose |
 |---|---|---|---|
 | `dentgrow-metric-history` | `7 * * * *` (hourly) | `POST /api/cron/metric-history` | Records each enabled clinic's last completed day into `metric_history` |
+| `dentgrow-no-show-detection` | `22 * * * *` (hourly) | `POST /api/cron/no-show-detection` | Marks appointments `no_show` once their day has ended without a check-in |
+
+Both jobs read the **same two Vault secrets** (`app_base_url`, `cron_secret`) and
+the same `CRON_SECRET` in the application. Configuring one configures both.
+
+They differ in one important respect: metric-history is scoped to the Business
+Brain's clinic allow-list, because a clinic not running the Business Brain has no
+use for the history. **No-show detection deliberately sweeps every clinic in
+`clinic_settings`** — it is core clinic functionality, and gating it behind a
+development allow-list would silently stop marking no-shows in production.
+
+The minute offsets (`:07` and `:22`) keep the two jobs off each other and off the
+`:00` that every naive scheduler fires at.
 
 ### Why hourly rather than daily
 
@@ -75,13 +88,13 @@ select vault.create_secret('http://host.docker.internal:3000', 'app_base_url');
 ## Checking on it
 
 ```sql
--- Is the job registered and active?
+-- Are the jobs registered and active?
 select jobname, schedule, active from cron.job;
 
 -- Did the last few runs succeed? (pg_cron's own log)
 select job_pid, status, return_message, start_time
 from cron.job_run_details
-where jobname = 'dentgrow-metric-history'
+where jobname in ('dentgrow-metric-history', 'dentgrow-no-show-detection')
 order by start_time desc limit 10;
 
 -- What did the application actually reply?
@@ -92,8 +105,9 @@ select status_code, content, created
 from net._http_response
 order by id desc limit 10;
 
--- Fire it by hand, without waiting for the hour.
+-- Fire either by hand, without waiting for the hour.
 select public.run_metric_history_job();
+select public.run_no_show_detection_job();
 ```
 
 ### Common failures

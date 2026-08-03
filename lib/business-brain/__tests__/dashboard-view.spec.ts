@@ -134,7 +134,7 @@ describe("status", () => {
   it("reports steady when nothing fired", () => {
     const view = buildDashboardView(result());
     expect(view.status.status).toBe("steady");
-    expect(view.status.headline).toBe("Nothing needs attention today");
+    expect(view.status.headline).toBe("Everything looks good today");
   });
 
   it("escalates to the WORST severity present, not the most common", () => {
@@ -177,16 +177,19 @@ describe("status", () => {
         ],
       }),
     );
-    expect(view.status.headline).toBe("1 thing needs your attention");
-    expect(view.status.detail).toContain("1 area to look at");
+    expect(view.status.headline).toBe("One thing to look at today");
+    // The guard that matters: three signals collapsed into ONE problem, so
+    // neither line may quote the signal or diagnosis count back at the dentist.
+    expect(view.status.headline).not.toMatch(/(3|three)/i);
+    expect(view.status.detail).not.toMatch(/(3|three)/i);
   });
 
   it("says plainly when figures are unusual but tie to no cause", () => {
     // Real, and the page cannot say what they add up to. Claiming a problem
     // count here would imply an understanding the engine does not have.
     const view = buildDashboardView(result({ signals: [signal()] }));
-    expect(view.status.headline).toBe("Something looks unusual");
-    expect(view.status.detail).toContain("not yet tied to a single cause");
+    expect(view.status.headline).toBe("Something looks a bit off");
+    expect(view.status.detail).toContain("couldn't be tied to a specific problem");
   });
 
   it("never contains advisory language", () => {
@@ -238,7 +241,7 @@ describe("grouping", () => {
       }),
     );
     expect(view.metricGroups.map((g) => g.category)).toEqual(["revenue", "operational"]);
-    expect(view.metricGroups[0].label).toBe("Revenue");
+    expect(view.metricGroups[0].label).toBe("Money");
   });
 });
 
@@ -266,7 +269,7 @@ describe("unmeasured checks", () => {
     );
 
     expect(view.unmeasured).toHaveLength(1);
-    expect(view.unmeasured[0].label).toBe("Planned treatment with no next visit booked");
+    expect(view.unmeasured[0].label).toBe("Patients with planned treatment but no next visit");
     expect(view.unmeasured[0].reason).toBe(
       "missing metric treatment.accepted_pending_scheduling",
     );
@@ -277,14 +280,19 @@ describe("wording", () => {
   it("describes confidence as coverage, never as likelihood", () => {
     // Confidence is data completeness. Labelling it "likely" or "probable"
     // would claim something the engine never measured.
-    const labels = [1, 0.7, 0.5, 0.2].map(confidenceLabel).join(" ");
-    expect(labels).toMatch(/measured/);
-    expect(labels).not.toMatch(/likely|probable|certain|accurate/i);
+    //
+    // Asserted per label rather than over the joined string, so a single new
+    // band worded as "High confidence" cannot hide behind the others.
+    const labels = [1, 0.7, 0.5, 0.2].map(confidenceLabel);
+    for (const label of labels) {
+      expect(label, `"${label}" should describe data coverage`).toMatch(/data/i);
+      expect(label).not.toMatch(/likely|probable|certain|accurate|confidence/i);
+    }
     expect(confidenceLabel(undefined)).toBe("Not reported");
   });
 
   it("turns an engine identifier into a readable check name", () => {
-    expect(humaniseStep("scheduling.high_no_show_rate")).toBe("High no show rate");
+    expect(humaniseStep("scheduling.high_no_show_rate")).toBe("No-show rate");
     expect(humaniseStep("index-metrics")).toBe("Index-metrics");
   });
 });
@@ -328,7 +336,7 @@ describe("focus cards", () => {
 
   it("names the problem in words a clinic uses, not the engine's category", () => {
     const cards = buildFocusCards(result({ constraints: [constraint()] }));
-    expect(cards[0].title).toBe("Money owed for work already done");
+    expect(cards[0].title).toBe("Patients owe money for completed work");
   });
 
   it("shows how much is at stake, formatted the way it would be said aloud", () => {
@@ -344,7 +352,7 @@ describe("focus cards", () => {
       }),
     );
     expect(cards[0].atStake).toBe("₹42,000");
-    expect(cards[0].atStakeLabel).toBe("still unpaid");
+    expect(cards[0].atStakeLabel).toBe("unpaid");
   });
 
   it("renders chair time as hours and minutes rather than a raw number", () => {

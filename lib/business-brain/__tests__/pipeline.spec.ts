@@ -291,11 +291,15 @@ describe.skipIf(!LOCAL_UP)("Business Brain pipeline (integration)", () => {
     expect(result.execution.startedAt).toBe(AS_OF);
     expect(result.execution.version).toMatch(/^\d+\.\d+\.\d+$/);
     expect(result.execution.durationMs).toBeGreaterThanOrEqual(0);
+    // "actions" is the fifth and last stage — prepared actions are mechanical,
+    // advisory, and run after strategy. business-brain-service.spec.ts already
+    // listed it; this copy of the expectation was missed when it was added.
     expect(result.execution.stages.map((s) => s.stage)).toEqual([
       "metrics",
       "signals",
       "diagnosis",
       "strategy",
+      "actions",
     ]);
     for (const s of result.execution.stages) {
       expect(s.durationMs).toBeGreaterThanOrEqual(0);
