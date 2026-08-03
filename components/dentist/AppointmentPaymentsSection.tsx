@@ -1,7 +1,8 @@
-import { getPaymentsForAppointment } from "@/actions/payments";
+import { getPaymentsForAppointment, getOutstandingBalance } from "@/actions/payments";
 import { getTreatmentsForAppointment } from "@/actions/treatments";
 import { PaymentFormDialog } from "@/components/dentist/PaymentFormDialog";
 import { Badge, type BadgeVariant } from "@/components/ui/badge";
+import { treatmentTotalCharge } from "@/lib/billing/balance";
 import { formatCurrency, formatDate, PAYMENT_METHOD_LABELS } from "@/lib/utils";
 import { Plus } from "lucide-react";
 import type { Payment, PaymentMethod, Treatment } from "@/types";
@@ -41,13 +42,18 @@ export async function AppointmentPaymentsSection({
   patientId,
   patientName,
 }: AppointmentPaymentsSectionProps) {
-  const [treatmentsResult, paymentsResult] = await Promise.all([
+  const [treatmentsResult, paymentsResult, balanceResult] = await Promise.all([
     getTreatmentsForAppointment(appointmentId),
     getPaymentsForAppointment(appointmentId),
+    // Patient-level, not visit-level, on purpose. What the patient owes is not
+    // a property of the visit they happen to be sitting in — see the
+    // visit-level payment action below.
+    getOutstandingBalance(patientId),
   ]);
 
   const treatments = (treatmentsResult.data ?? []) as Treatment[];
   const payments = (paymentsResult.data ?? []) as Payment[];
+  const outstandingBalance = balanceResult.data ?? 0;
   const error = treatmentsResult.error || paymentsResult.error;
 
   // Partition payments: treatment-linked, and everything else on this visit.
@@ -71,11 +77,40 @@ export async function AppointmentPaymentsSection({
 
   return (
     <div className="bg-white border rounded-lg p-4 space-y-5">
-      <div>
-        <h3 className="font-semibold text-gray-900">Payments</h3>
-        <p className="text-xs text-gray-500 mt-0.5">
-          Payments are tracked per treatment recorded on this visit.
-        </p>
+      <div className="flex items-start justify-between gap-3 flex-wrap">
+        <div>
+          <h3 className="font-semibold text-gray-900">Payments</h3>
+          <p className="text-xs text-gray-500 mt-0.5">
+            Payments are tracked per treatment recorded on this visit.
+          </p>
+        </div>
+
+        {/* Visit-level payment action.
+            Deliberately OUTSIDE the treatments list. A patient returning to
+            continue work recorded at an earlier visit has an outstanding
+            balance but no new treatment today, and while this button lived
+            only inside the per-treatment loop such a visit offered no way to
+            take their money at all. What the patient owes is a property of the
+            patient, so the action follows the balance, not the visit. */}
+        {outstandingBalance > 0 && (
+          <div className="text-right">
+            <PaymentFormDialog
+              patientId={patientId}
+              patientName={patientName}
+              appointmentId={appointmentId}
+              defaultAmount={outstandingBalance}
+              title="Payment · Outstanding Balance"
+              triggerVariant="default"
+              triggerSize="sm"
+            >
+              <Plus className="h-3.5 w-3.5" aria-hidden />
+              Add Payment
+            </PaymentFormDialog>
+            <p className="text-[11px] text-[#DC2626] mt-1">
+              {formatCurrency(outstandingBalance)} outstanding
+            </p>
+          </div>
+        )}
       </div>
 
       {error && <p className="text-sm text-red-600">{error}</p>}
@@ -83,12 +118,18 @@ export async function AppointmentPaymentsSection({
       {/* ── Treatment-wise payments ─────────────────────────── */}
       {treatments.length === 0 ? (
         <p className="text-sm text-gray-500">
-          No treatments recorded yet. Add a treatment to start tracking payments.
+          No treatments recorded on this visit.
+          {outstandingBalance > 0
+            ? " Use Add Payment above to collect against the patient's outstanding balance."
+            : " Add a treatment to start tracking payments."}
         </p>
       ) : (
         <div className="space-y-3">
           {treatments.map((t) => {
-            const cost = Number(t.cost ?? 0);
+            // The full charge for this line item — treatment cost plus any OPD
+            // and X-ray fees recorded against it. Reading bare `cost` here left
+            // a card showing "Paid" while its radiograph was still owed.
+            const cost = treatmentTotalCharge(t);
             const linked = paymentsByTreatment.get(t.id) ?? [];
             const paid = linked.reduce((sum, p) => sum + Number(p.amount ?? 0), 0);
             const remaining = Math.max(0, cost - paid);

@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createServerClient } from "@/lib/supabase/server";
 import { resolveSession as resolveCachedSession } from "@/lib/auth/session";
 import { getTodayInTimezone } from "@/lib/utils";
-import { computeOutstandingBalance, isBillableTreatment } from "@/lib/billing/balance";
+import { computeOutstandingBalance, treatmentTotalCharge } from "@/lib/billing/balance";
 import {
   RecordPaymentSchema,
   type ActionResult,
@@ -311,7 +311,7 @@ export async function getOutstandingBalance(
 
     let treatmentQuery = db
       .from("treatments")
-      .select("cost, opd_charged, opd_fee, status")
+      .select("cost, opd_charged, opd_fee, xray_taken, xray_cost, status")
       .eq("patient_id", resolvedPatientId)
       .is("deleted_at", null);
 
@@ -372,7 +372,7 @@ export async function getPortalOutstandingBalance(): Promise<ActionResult<number
     const [{ data: treatmentRows }, { data: paymentRows }] = await Promise.all([
       db
         .from("treatments")
-        .select("cost, opd_charged, opd_fee, status")
+        .select("cost, opd_charged, opd_fee, xray_taken, xray_cost, status")
         .eq("patient_id", link.patient_id)
         .eq("clinic_id", clinicId)
         .is("deleted_at", null),
@@ -472,7 +472,7 @@ export async function getPatientsWithOutstandingBalance(): Promise<
           .is("deleted_at", null),
         db
           .from("treatments")
-          .select("patient_id, cost, opd_charged, opd_fee, status")
+          .select("patient_id, cost, opd_charged, opd_fee, xray_taken, xray_cost, status")
           .eq("clinic_id", cid)
           .is("deleted_at", null),
         db
@@ -488,9 +488,20 @@ export async function getPatientsWithOutstandingBalance(): Promise<
     const costMap = new Map<string, number>();
     const paidMap = new Map<string, number>();
 
-    for (const t of (treatmentTotals ?? []) as { patient_id: string; cost: number; status: string }[]) {
-      if (!isBillableTreatment(t.status)) continue;
-      costMap.set(t.patient_id, (costMap.get(t.patient_id) ?? 0) + Number(t.cost ?? 0));
+    // treatmentTotalCharge applies the billable-status rule AND adds the OPD and
+    // X-ray fees. This loop previously summed `cost` alone while selecting the
+    // OPD columns it never read, so a patient whose only dues were a
+    // consultation or a radiograph was absent from this list entirely.
+    for (const t of (treatmentTotals ?? []) as {
+      patient_id: string;
+      cost: number;
+      status: string;
+      opd_charged: boolean | null;
+      opd_fee: number | null;
+      xray_taken: boolean | null;
+      xray_cost: number | null;
+    }[]) {
+      costMap.set(t.patient_id, (costMap.get(t.patient_id) ?? 0) + treatmentTotalCharge(t));
     }
 
     for (const p of (paymentTotals ?? []) as { patient_id: string; amount: number }[]) {
@@ -632,7 +643,7 @@ export async function getAppointmentPaymentStatuses(
     const [{ data: treatmentRows }, { data: paymentRows }] = await Promise.all([
       db
         .from("treatments")
-        .select("appointment_id, cost, opd_charged, opd_fee, status")
+        .select("appointment_id, cost, opd_charged, opd_fee, xray_taken, xray_cost, status")
         .eq("clinic_id", profile.clinic_id)
         .in("appointment_id", ids)
         .is("deleted_at", null),
@@ -647,13 +658,20 @@ export async function getAppointmentPaymentStatuses(
     const costMap = new Map<string, number>();
     const paidMap = new Map<string, number>();
 
+    // Same correction as getPatientsWithOutstandingBalance above: the per-visit
+    // charge is cost + OPD + X-ray, not cost alone, or a visit shows "Paid"
+    // while a consultation or radiograph on it is still owed.
     for (const t of (treatmentRows ?? []) as {
       appointment_id: string | null;
       cost: number;
       status: string;
+      opd_charged: boolean | null;
+      opd_fee: number | null;
+      xray_taken: boolean | null;
+      xray_cost: number | null;
     }[]) {
-      if (!t.appointment_id || !isBillableTreatment(t.status)) continue;
-      costMap.set(t.appointment_id, (costMap.get(t.appointment_id) ?? 0) + Number(t.cost ?? 0));
+      if (!t.appointment_id) continue;
+      costMap.set(t.appointment_id, (costMap.get(t.appointment_id) ?? 0) + treatmentTotalCharge(t));
     }
 
     for (const p of (paymentRows ?? []) as {

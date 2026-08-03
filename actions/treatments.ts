@@ -491,10 +491,14 @@ export async function getTreatmentsForPatient(
       return { data: null, error: "Forbidden" };
     }
 
+    // The receptionist list excludes internal_notes but MUST carry the billing
+    // columns: they drive the payment totals on the patient profile, and
+    // omitting them made a receptionist's "Total Cost" disagree with the
+    // outstanding balance shown beside it.
     const selectFields =
       profile.role === "dentist"
         ? "*"
-        : "id, clinic_id, appointment_id, patient_id, treatment_type, patient_visible_notes, cost, status, performed_at, deleted_at, created_at, updated_at";
+        : "id, clinic_id, appointment_id, patient_id, treatment_type, patient_visible_notes, cost, opd_charged, opd_fee, xray_taken, xray_cost, status, performed_at, deleted_at, created_at, updated_at";
 
     const { data, error } = await db
       .from("treatments")

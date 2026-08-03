@@ -7,7 +7,7 @@ import { getTreatmentsForPatient } from "@/actions/treatments";
 import { PaymentFormDialog } from "@/components/dentist/PaymentFormDialog";
 import { ACTION_BUTTON } from "@/lib/ui/action-styles";
 import { formatCurrency, formatDate, PAYMENT_METHOD_LABELS } from "@/lib/utils";
-import { sumBillableTreatmentCost } from "@/lib/billing/balance";
+import { sumTreatmentCharges } from "@/lib/billing/balance";
 import { Plus } from "lucide-react";
 import type { Payment, PaymentMethod } from "@/types";
 
@@ -45,10 +45,13 @@ export async function PatientPaymentsTab({
   const balance = balanceResult.data ?? 0;
   const treatments = treatmentsResult.data ?? [];
 
-  // Total cost reflects billable treatments only (completed / in_progress),
-  // keeping the summary cards internally consistent:
+  // Every charge the patient has incurred: billable treatment cost plus the
+  // OPD and X-ray fees recorded against those treatments. This must be the SAME
+  // definition the outstanding balance uses, or the three cards stop adding up:
   //   Total Cost - Total Paid == Remaining (outstanding balance).
-  const totalCost = sumBillableTreatmentCost(
+  // Summing bare `cost` here is what made a ₹400 X-ray visible on the treatment
+  // but absent from the total the clinic reads off this panel.
+  const totalCost = sumTreatmentCharges(
     treatments as { cost: number | null; status?: string | null }[]
   );
   const totalPaid = payments.reduce((sum, p) => sum + Number(p.amount ?? 0), 0);

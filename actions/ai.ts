@@ -474,7 +474,7 @@ async function executePatientTool(
           .limit(10),
         db
           .from("treatments")
-          .select("cost, opd_charged, opd_fee, status")
+          .select("cost, opd_charged, opd_fee, xray_taken, xray_cost, status")
           .eq("patient_id", patientId)
           .is("deleted_at", null),
       ]);
@@ -573,7 +573,7 @@ export async function generatePatientSummary(
     const [txCostRes, paymentRes] = await Promise.all([
       db
         .from("treatments")
-        .select("cost, opd_charged, opd_fee, status")
+        .select("cost, opd_charged, opd_fee, xray_taken, xray_cost, status")
         .eq("patient_id", patientId)
         .is("deleted_at", null),
       db

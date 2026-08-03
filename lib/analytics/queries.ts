@@ -30,8 +30,9 @@ import type {
   PaymentMethod,
   AppointmentStatus,
 } from "@/types";
-import { sumBillableTreatmentCost, isBillableTreatment } from "@/lib/billing/balance";
-import { treatmentClinicShare, treatmentConsultantShare } from "@/lib/billing/revenue";
+import { sumTreatmentCharges } from "@/lib/billing/balance";
+import { treatmentClinicShare } from "@/lib/billing/revenue";
+import { sumEarnedConsultantPayouts } from "@/lib/billing/payout";
 
 export interface DateRangeFilter {
   clinicId: string;
@@ -131,11 +132,19 @@ interface PaymentRow {
   appointment_id: string | null;
 }
 interface TreatmentRow {
+  id: string;
   treatment_type: string;
   cost: number;
   clinic_share: number | null;
   consultant_share: number | null;
+  consultant_id: string | null;
   status: string;
+  // Ancillary charges — part of what the patient owes for this treatment, and
+  // settled ahead of treatment cost when crediting a consultant payout.
+  opd_charged: boolean | null;
+  opd_fee: number | null;
+  xray_taken: boolean | null;
+  xray_cost: number | null;
   performed_at: string | null;
   created_at: string;
   patient_id: string;
@@ -299,7 +308,7 @@ export async function getAnalyticsSummary(
   const [
     apptRes, apptTodayRes, patientsRes, newPatientsMonthRes,
     paymentsRes, treatmentsRes, followUpsRes, queueTodayRes,
-    consultancyRes,
+    consultancyRes, allPaymentsRes,
   ] = await Promise.all([
     supabase
       .from("appointments")
@@ -332,7 +341,13 @@ export async function getAnalyticsSummary(
 
     supabase
       .from("treatments")
-      .select("cost, clinic_share, consultant_share, patient_id, status, created_at")
+      // id / consultant_id / the ancillary-charge columns / performed_at are
+      // required by the payout allocator (lib/billing/payout.ts), which needs
+      // to know each treatment's full charge and when it happened.
+      .select(
+        "id, cost, clinic_share, consultant_share, consultant_id, patient_id, status, " +
+          "opd_charged, opd_fee, xray_taken, xray_cost, performed_at, created_at"
+      )
       .eq("clinic_id", clinicId).is("deleted_at", null),
 
     supabase
@@ -351,6 +366,16 @@ export async function getAnalyticsSummary(
       .select("amount, date")
       .eq("clinic_id", clinicId)
       .gte("date", dateFrom).lte("date", dateTo),
+
+    // Deliberately UNBOUNDED by date. Consultant payouts are earned from money
+    // collected, so working out what a treatment has been paid needs its whole
+    // payment history — a treatment billed last year and settled today is only
+    // visible if both ends are in scope. The date range is applied afterwards,
+    // by differencing two cumulative positions.
+    supabase
+      .from("payments")
+      .select("amount, treatment_id, payment_date")
+      .eq("clinic_id", clinicId).is("deleted_at", null),
   ]);
 
   const appointments = (apptRes.data ?? []) as ApptRow[];
@@ -359,7 +384,19 @@ export async function getAnalyticsSummary(
   const payments = (paymentsRes.data ?? []) as Pick<PaymentRow, "amount" | "patient_id" | "payment_date">[];
   const treatments = (treatmentsRes.data ?? []) as Pick<
     TreatmentRow,
-    "cost" | "clinic_share" | "consultant_share" | "patient_id" | "status" | "created_at"
+    | "id"
+    | "cost"
+    | "clinic_share"
+    | "consultant_share"
+    | "consultant_id"
+    | "patient_id"
+    | "status"
+    | "opd_charged"
+    | "opd_fee"
+    | "xray_taken"
+    | "xray_cost"
+    | "performed_at"
+    | "created_at"
   >[];
   const followUps = (followUpsRes.data ?? []) as Pick<FollowUpRow, "status" | "due_date">[];
   const queueToday = (queueTodayRes.data ?? []) as QueueRow[];
@@ -381,21 +418,40 @@ export async function getAnalyticsSummary(
     .filter((p) => p.payment_date >= monthStartDate)
     .reduce((sum, p) => sum + (p.amount ?? 0), 0);
 
-  const totalTreatmentCost = sumBillableTreatmentCost(treatments);
+  // Charges, not bare treatment cost — the clinic-wide outstanding figure has
+  // to be built from the same terms as a single patient's balance (cost + OPD
+  // + X-ray), or the dashboard total disagrees with the sum of the profiles it
+  // is meant to summarise.
+  const totalTreatmentCost = sumTreatmentCharges(treatments);
   const totalPaid = payments.reduce((sum, p) => sum + (p.amount ?? 0), 0);
   const outstandingBalances = Math.max(0, totalTreatmentCost - totalPaid);
 
   // ── Consultant payouts + net clinic revenue ──────────────────────────────
-  // Payouts are recognised for billable treatments created within the range.
-  // Net clinic revenue nets gross payments against those payouts (no double
-  // subtraction: patient billing/outstanding still uses the gross cost).
-  const rangeStartIso = startOf(dateFrom);
-  const rangeEndIso = endOf(dateTo);
-  const consultantPayouts = treatments.reduce((sum, t) => {
-    if (!isBillableTreatment(t.status)) return sum;
-    if (t.created_at < rangeStartIso || t.created_at > rangeEndIso) return sum;
-    return sum + treatmentConsultantShare(t);
-  }, 0);
+  // Payouts are EARNED FROM MONEY COLLECTED, not accrued against treatment
+  // value. Previously this summed `consultant_share` for treatments created in
+  // the range, which booked a ₹4,000 payout on a ₹10,000 treatment the moment
+  // it was recorded — before the patient had paid a rupee, and irreversibly if
+  // they never returned. See lib/billing/payout.ts.
+  //
+  // "Payout earned during this range" is the difference between two cumulative
+  // positions: what has been earned including payments up to the end of the
+  // range, less what had already been earned before it began. That differencing
+  // is what confines the figure to the range without ever splitting a single
+  // payment across two buckets, so consecutive ranges sum to the whole.
+  const allPayments = (allPaymentsRes.data ?? []) as {
+    amount: number;
+    treatment_id: string | null;
+    payment_date: string;
+  }[];
+
+  const paymentsThrough = (endDate: string) =>
+    allPayments.filter((p) => p.payment_date <= endDate);
+  const paymentsBefore = (startDate: string) =>
+    allPayments.filter((p) => p.payment_date < startDate);
+
+  const earnedThroughRangeEnd = sumEarnedConsultantPayouts(treatments, paymentsThrough(dateTo));
+  const earnedBeforeRange = sumEarnedConsultantPayouts(treatments, paymentsBefore(dateFrom));
+  const consultantPayouts = Math.max(0, earnedThroughRangeEnd - earnedBeforeRange);
 
   const netClinicRevenue = Math.max(0, totalRevenue - consultantPayouts);
   const consultancyIncome = consultancyRows.reduce((sum, c) => sum + Number(c.amount ?? 0), 0);
@@ -670,7 +726,7 @@ export async function getRevenueAnalytics(
 
     supabase
       .from("treatments")
-      .select("cost, patient_id, status")
+      .select("cost, patient_id, status, opd_charged, opd_fee, xray_taken, xray_cost")
       .eq("clinic_id", clinicId).is("deleted_at", null),
 
     supabase
@@ -715,7 +771,9 @@ export async function getRevenueAnalytics(
     amount,
   }));
 
-  const totalTreatmentCost = sumBillableTreatmentCost(treatments);
+  // Same reasoning as getAnalyticsSummary: outstanding is cost + OPD + X-ray
+  // less payments, so it must be built with sumTreatmentCharges.
+  const totalTreatmentCost = sumTreatmentCharges(treatments);
   const totalPaid = payments.reduce((s, p) => s + (p.amount ?? 0), 0);
   const outstandingTotal = Math.max(0, totalTreatmentCost - totalPaid);
 

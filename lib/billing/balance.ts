@@ -4,13 +4,25 @@
  * Single shared implementation of the outstanding-balance calculation.
  *
  * Business rule (pilot):
- *   Outstanding balance = SUM(billable treatment cost + OPD fee) - SUM(payments)
+ *   Outstanding balance =
+ *     SUM(billable treatment cost + OPD fee + X-ray cost) - SUM(payments)
  *
  *   The OPD term closes a real accounting hole. A consultation fee could be
  *   COLLECTED (payments.payment_type = 'opd') but never CHARGED, and since the
  *   payments side of this subtraction has never filtered by type, a ₹300
  *   consultation payment reduced the patient's TREATMENT dues by ₹300. Charging
  *   the fee makes the two sides meet.
+ *
+ *   The X-ray term closes the same hole for radiographs. Migration
+ *   20260724000000 introduced `xray_cost` on the assumption that the form would
+ *   fold it into `treatments.cost` ("the combined total is submitted as
+ *   treatments.cost ... and the billing formula is not changed"). The form never
+ *   did — it collects Cost and X-ray Cost as two independent inputs and submits
+ *   them as two independent columns. So an X-ray was recorded, shown on the
+ *   treatment, and billed to nobody. Charging it here is what the migration
+ *   intended; doing it as a separate term rather than by folding it into `cost`
+ *   keeps the radiograph a visible line item and, critically, avoids having to
+ *   guess whether any given historical `cost` already includes it (none do).
  *
  *   A treatment is BILLABLE only when its status is `completed` or
  *   `in_progress`. Treatments that are `planned` (future / not yet started)
@@ -50,6 +62,14 @@ type TreatmentLike = {
    */
   opd_charged?: boolean | null;
   opd_fee?: number | string | null;
+  /**
+   * Whether a radiograph was taken during this visit, and what it cost.
+   *
+   * Both absent is treated as "no X-ray", so every caller and every row written
+   * before X-ray billing existed keeps its current balance exactly.
+   */
+  xray_taken?: boolean | null;
+  xray_cost?: number | string | null;
 };
 type PaymentLike = { amount?: number | string | null };
 
@@ -81,6 +101,50 @@ export function sumOpdCharges(treatments: ReadonlyArray<TreatmentLike>): number 
   return treatments.reduce((sum, t) => sum + opdChargeFor(t), 0);
 }
 
+/**
+ * Radiograph fee owed for one treatment: the recorded cost when an X-ray was
+ * taken, nothing otherwise.
+ *
+ * Deliberately independent of the treatment's own status, for the same reason
+ * as `opdChargeFor`. `xray_taken` is the clinician's assertion that a
+ * radiograph was actually performed — film and machine time were consumed
+ * whether the treatment that followed was completed, cancelled, or is still
+ * only planned.
+ */
+export function xrayChargeFor(treatment: TreatmentLike): number {
+  if (!treatment.xray_taken) return 0;
+  return Math.max(0, Number(treatment.xray_cost ?? 0));
+}
+
+/** Total radiograph fees owed across a patient's treatments. */
+export function sumXrayCharges(treatments: ReadonlyArray<TreatmentLike>): number {
+  return treatments.reduce((sum, t) => sum + xrayChargeFor(t), 0);
+}
+
+/**
+ * Everything one treatment adds to the patient's dues: its own cost when
+ * billable, plus any consultation and radiograph fees recorded against it.
+ *
+ * This is the single definition of "what this line item is worth". Screens that
+ * show a per-treatment or total charge MUST use this rather than reading `cost`
+ * directly, or their figures stop reconciling with the outstanding balance —
+ * which is precisely how the X-ray charge went missing from the patient's total
+ * while still being displayed on the treatment.
+ */
+export function treatmentTotalCharge(treatment: TreatmentLike): number {
+  const treatmentCost = isBillableTreatment(treatment.status)
+    ? Number(treatment.cost ?? 0)
+    : 0;
+  return treatmentCost + opdChargeFor(treatment) + xrayChargeFor(treatment);
+}
+
+/** Total charges across a patient's treatments (cost + OPD + X-ray). */
+export function sumTreatmentCharges(
+  treatments: ReadonlyArray<TreatmentLike>
+): number {
+  return treatments.reduce((sum, t) => sum + treatmentTotalCharge(t), 0);
+}
+
 /** Sum of all (non-deleted) payment amounts. */
 export function sumPaymentAmounts(
   payments: ReadonlyArray<PaymentLike>
@@ -98,8 +162,6 @@ export function computeOutstandingBalance(
 ): number {
   return Math.max(
     0,
-    sumBillableTreatmentCost(treatments) +
-      sumOpdCharges(treatments) -
-      sumPaymentAmounts(payments)
+    sumTreatmentCharges(treatments) - sumPaymentAmounts(payments)
   );
 }
