@@ -1346,3 +1346,82 @@ export async function deleteAppointmentDocument(
     return { data: null, error: "Unexpected error" };
   }
 }
+
+// =============================================================================
+// getPatientsWithPlannedTreatmentNoVisit — recall/booking send list
+// =============================================================================
+
+/**
+ * Patients who have a `planned` treatment on record but no upcoming visit
+ * booked. Mirrors the definition behind the Morning Briefing's
+ * "treatment.accepted_pending_scheduling" metric (a patient counts as booked
+ * when they have any future appointment that is not cancelled or a no-show), so
+ * this list and that number never disagree.
+ *
+ * Returns one row per patient (their most recent planned treatment), with the
+ * name and phone the WhatsApp send list needs. Staff only; clinic-scoped.
+ */
+export async function getPatientsWithPlannedTreatmentNoVisit(): Promise<
+  ActionResult<Array<{ id: string; name: string; phone: string | null; treatment_type: string }>>
+> {
+  try {
+    const { db, profile } = await resolveSession();
+    if (!profile) return { data: null, error: "Unauthorized" };
+    if (profile.role === "patient") return { data: null, error: "Forbidden" };
+
+    const cid = profile.clinic_id;
+    const now = new Date().toISOString();
+
+    const [{ data: planned, error: plannedErr }, { data: futureAppts }] = await Promise.all([
+      db
+        .from("treatments")
+        .select("patient_id, treatment_type, created_at, patient:patients(id, name, phone)")
+        .eq("clinic_id", cid)
+        .eq("status", "planned")
+        .is("deleted_at", null)
+        .order("created_at", { ascending: false }),
+      db
+        .from("appointments")
+        .select("patient_id")
+        .eq("clinic_id", cid)
+        .is("deleted_at", null)
+        .gt("scheduled_at", now)
+        // "Has a next visit" excludes cancelled and no-shows — the same set the
+        // metric uses when it decides a planned treatment is unscheduled.
+        .in("status", ["scheduled", "checked_in", "in_progress", "completed"]),
+    ]);
+
+    if (plannedErr) {
+      console.error("[getPatientsWithPlannedTreatmentNoVisit]", plannedErr);
+      return { data: null, error: "Failed to load treatments." };
+    }
+
+    const hasFutureVisit = new Set(
+      ((futureAppts ?? []) as { patient_id: string }[]).map((a) => a.patient_id),
+    );
+
+    const seen = new Set<string>();
+    const result: Array<{ id: string; name: string; phone: string | null; treatment_type: string }> = [];
+
+    for (const t of (planned ?? []) as Array<{
+      patient_id: string;
+      treatment_type: string;
+      patient: { id: string; name: string; phone: string | null } | null;
+    }>) {
+      if (hasFutureVisit.has(t.patient_id) || seen.has(t.patient_id)) continue;
+      seen.add(t.patient_id);
+      if (!t.patient) continue;
+      result.push({
+        id: t.patient.id,
+        name: t.patient.name,
+        phone: t.patient.phone,
+        treatment_type: t.treatment_type,
+      });
+    }
+
+    return { data: result, error: null };
+  } catch (err) {
+    console.error("[getPatientsWithPlannedTreatmentNoVisit] unexpected:", err);
+    return { data: null, error: "Unexpected error" };
+  }
+}

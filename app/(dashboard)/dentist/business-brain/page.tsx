@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { AlertTriangle } from "lucide-react";
 import { resolveSession } from "@/lib/auth/session";
-import { isBusinessBrainEnabled } from "@/lib/feature-flags";
+import { isBusinessBrainEnabled, isWhatsAppEnabled } from "@/lib/feature-flags";
 import { runDashboardBrain } from "@/lib/business-brain/dashboard-data";
 import { computeClinicHealth } from "@/lib/business-brain/clinic-health";
 import { buildBriefing } from "@/lib/business-brain/briefing-view";
@@ -57,7 +57,12 @@ export default async function BusinessBrainPage() {
 
   return (
     <PageShell subtitle={formatDate(date)}>
-      <MorningBriefing health={health} problems={problems} actions={actions} />
+      <MorningBriefing
+        health={health}
+        problems={problems}
+        actions={actions}
+        whatsappEnabled={isWhatsAppEnabled(profile.clinic_id)}
+      />
     </PageShell>
   );
 }

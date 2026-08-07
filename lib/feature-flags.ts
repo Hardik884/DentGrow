@@ -53,6 +53,31 @@ export function isBusinessBrainEnabled(clinicId: string | null | undefined): boo
 }
 
 /**
+ * WHATSAPP_ENABLED_CLINIC_IDS
+ *
+ * Clinics allowed to prepare WhatsApp reminders from the Morning Briefing.
+ *
+ * An allow-list, for the same reason as the Business Brain above: WhatsApp is a
+ * documented MVP non-goal (CLAUDE.md §14) pending a compliance review, and there
+ * is no patient-consent field in the schema yet. Naming the clinics keeps it a
+ * deliberate, per-clinic pilot rather than a global switch someone can flip on
+ * for everyone. A clinic not listed never sees the "Prepare WhatsApp reminders"
+ * affordance.
+ *
+ * Note: the send path is wa.me click-to-send — DentGrow prepares the message and
+ * a staff member sends it by hand. It never messages a patient on its own.
+ */
+export const WHATSAPP_ENABLED_CLINIC_IDS: readonly string[] = [
+  // My Dental Clinic — development / demo
+  "00000000-0000-0000-0000-000000000001",
+];
+
+/** True when this clinic may prepare WhatsApp reminders. */
+export function isWhatsAppEnabled(clinicId: string | null | undefined): boolean {
+  return !!clinicId && WHATSAPP_ENABLED_CLINIC_IDS.includes(clinicId);
+}
+
+/**
  * Helper to check if patient booking is enabled
  */
 export function isPatientBookingEnabled(): boolean {

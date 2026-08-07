@@ -2,14 +2,17 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Check, ArrowRight } from "lucide-react";
+import { Check, ArrowRight, MessageCircle, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { ActionCardView } from "@/lib/business-brain/briefing-view";
+import { WhatsAppSendList } from "./WhatsAppSendList";
 
 interface ActionCardProps {
   action: ActionCardView;
   /** Called once every required checklist item is ticked. */
   onComplete: (action: ActionCardView) => void;
+  /** When true and the card has a messageKind, the WhatsApp send list is offered. */
+  whatsappEnabled?: boolean;
 }
 
 /**
@@ -21,11 +24,13 @@ interface ActionCardProps {
  * (recorded in DentGrow via the buttons) changes the underlying numbers — which
  * the page re-reads on the next load. A checkbox never fakes a result.
  */
-export function ActionCard({ action, onComplete }: ActionCardProps) {
+export function ActionCard({ action, onComplete, whatsappEnabled = false }: ActionCardProps) {
   const [checked, setChecked] = useState<Set<string>>(new Set());
   const [completing, setCompleting] = useState(false);
+  const [waOpen, setWaOpen] = useState(false);
 
   const hasList = action.checklist.length > 0;
+  const canMessage = whatsappEnabled && !!action.messageKind;
 
   function finish() {
     if (completing) return;
@@ -139,6 +144,33 @@ export function ActionCard({ action, onComplete }: ActionCardProps) {
             </button>
           )}
         </div>
+
+        {/* WhatsApp reminders — a per-patient send list DentGrow prepares and a
+            person sends. Lazy: the list is only fetched once opened. */}
+        {canMessage && (
+          <div className="mt-4 border-t border-[#F4F4F5] pt-3">
+            <button
+              type="button"
+              onClick={() => setWaOpen((v) => !v)}
+              aria-expanded={waOpen}
+              className="w-full flex items-center justify-between gap-3 text-left cursor-pointer group"
+            >
+              <span className="inline-flex items-center gap-2 text-sm font-medium text-[#15803D]">
+                <MessageCircle className="h-4 w-4" aria-hidden />
+                Prepare WhatsApp reminders
+              </span>
+              <ChevronDown
+                className={cn("h-4 w-4 text-[#A1A1AA] shrink-0 transition-transform", waOpen && "rotate-180")}
+                aria-hidden
+              />
+            </button>
+            {waOpen && action.messageKind && (
+              <div className="mt-3 animate-fade-in">
+                <WhatsAppSendList kind={action.messageKind} />
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </section>
   );

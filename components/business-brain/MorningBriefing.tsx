@@ -13,6 +13,8 @@ interface MorningBriefingProps {
   health: ClinicHealth;
   problems: readonly ProblemView[];
   actions: readonly ActionCardView[];
+  /** When true, action cards offer the "Prepare WhatsApp reminders" send list. */
+  whatsappEnabled?: boolean;
 }
 
 /**
@@ -23,7 +25,7 @@ interface MorningBriefingProps {
  * task genuinely moved the score. The score and the problem list themselves are
  * always the server's live truth; this never invents either.
  */
-export function MorningBriefing({ health, problems, actions }: MorningBriefingProps) {
+export function MorningBriefing({ health, problems, actions, whatsappEnabled = false }: MorningBriefingProps) {
   const router = useRouter();
   const [dismissed, setDismissed] = useState<Set<string>>(new Set());
   const [delta, setDelta] = useState<{ points: number; reason: string } | null>(null);
@@ -90,7 +92,7 @@ export function MorningBriefing({ health, problems, actions }: MorningBriefingPr
             </div>
             {visibleActions.length > 0 ? (
               visibleActions.map((a) => (
-                <ActionCard key={a.id} action={a} onComplete={handleComplete} />
+                <ActionCard key={a.id} action={a} onComplete={handleComplete} whatsappEnabled={whatsappEnabled} />
               ))
             ) : (
               <div className="bg-white border border-[#E4E4E7] rounded-xl px-5 py-8 text-center">

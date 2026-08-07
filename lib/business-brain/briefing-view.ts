@@ -14,7 +14,8 @@
  * already settled from the pipeline; this only renames and reshapes.
  */
 
-import type { BusinessBrainResult, Metric, Severity } from "@/business-brain";
+import type { ActionDraftKind, BusinessBrainResult, Metric, Severity } from "@/business-brain";
+import { BRIEFING_MESSAGE_KINDS } from "@/lib/messaging/templates";
 
 // ── Left column: one problem, in plain words ─────────────────────────────────
 
@@ -61,6 +62,12 @@ export interface ActionCardView {
   readonly timeframeLabel: string;
   /** Short past-tense phrase for the score-change toast, e.g. "Payment recorded". */
   readonly doneReason: string;
+  /**
+   * Set when this card's patients can be reached with a prepared WhatsApp
+   * message (recall, payment reminder, next-visit). Drives the "Prepare WhatsApp
+   * reminders" affordance; absent categories have no per-patient message.
+   */
+  readonly messageKind?: ActionDraftKind;
 }
 
 export interface BriefingView {
@@ -287,6 +294,7 @@ export function buildBriefing(
       ownerLabel: OWNER_HINT[constraint.category] ?? "Front desk",
       timeframeLabel: constraint.severity === "critical" || constraint.severity === "high" ? "Today" : "This week",
       doneReason: DONE_REASON[constraint.category] ?? "Handled",
+      messageKind: (BRIEFING_MESSAGE_KINDS as Record<string, ActionDraftKind>)[constraint.category],
     });
   }
 
