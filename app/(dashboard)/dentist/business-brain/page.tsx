@@ -4,37 +4,29 @@ import { AlertTriangle } from "lucide-react";
 import { resolveSession } from "@/lib/auth/session";
 import { isBusinessBrainEnabled } from "@/lib/feature-flags";
 import { runDashboardBrain } from "@/lib/business-brain/dashboard-data";
-import {
-  buildDashboardView,
-  buildFocusCards,
-  headlineMetrics,
-} from "@/lib/business-brain/dashboard-view";
-import { buildWorkflowGroups } from "@/lib/business-brain/workflow-view";
-import { buildActionPlanViews } from "@/lib/business-brain/action-view";
+import { computeClinicHealth } from "@/lib/business-brain/clinic-health";
+import { buildBriefing } from "@/lib/business-brain/briefing-view";
 import { formatDate } from "@/lib/utils";
 import { EmptyState } from "@/components/ui/empty-state";
-import { BrainStatusBanner } from "@/components/business-brain/BrainStatusBanner";
-import { FocusCard } from "@/components/business-brain/FocusCard";
-import { RunDetails } from "@/components/business-brain/RunDetails";
-import { AllNumbers } from "@/components/business-brain/AllNumbers";
+import { MorningBriefing } from "@/components/business-brain/MorningBriefing";
 
 export const metadata: Metadata = {
   title: "Morning Briefing",
 };
 
 /**
- * /dentist/business-brain
+ * /dentist/business-brain — the Morning Briefing.
  *
- * Redesigned for clarity: a busy dentist should understand the page in 30 seconds.
+ * One job: a busy dentist understands their clinic, and what to do about it,
+ * within a minute of opening this page. Three things, in order:
  *
- * Page structure answers four questions, in order:
- *   1. Is my clinic healthy today?   → Status banner with headline numbers
- *   2. What are my biggest problems? → Focus cards (worst first)
- *   3. What should I do first?       → Primary action on each card
- *   4. Can I act immediately?        → Action button on each card
+ *   1. Clinic Health   — one number, one word, and what's behind it.
+ *   2. Needs attention — the problems, worst first, in plain language.
+ *   3. What to do       — a checklist and the buttons to act on each one.
  *
- * Everything else (full metrics, workflows, audit trail) is available on demand
- * but never competes with the morning briefing.
+ * Everything the old page showed around this — metrics walls, coverage lines,
+ * confidence labels, the pipeline audit trail — is gone. None of it helped a
+ * dentist decide anything before their first patient.
  */
 export default async function BusinessBrainPage() {
   const { profile } = await resolveSession();
@@ -60,81 +52,12 @@ export default async function BusinessBrainPage() {
   }
 
   const { result, date } = run;
-  const view = buildDashboardView(result);
-  const focus = buildFocusCards(result);
-  const signalDescriptions = result.signals.map((s) => s.description);
-  const headline = headlineMetrics(result.metrics);
-
-  // Build workflow and action data to attach to focus cards
-  const workflowGroups = buildWorkflowGroups(result.workflows);
-  const actionPlans = buildActionPlanViews(result.actionPlans, "dentist");
-
-  // Signals not explained by any focus card — shown in Run Details, not on the main page.
-  const explainedSignalIds = new Set(
-    focus.flatMap((card) => card.diagnoses.flatMap((d) => d.signalIds)),
-  );
-  const looseEnds = result.signals.filter((s) => !explainedSignalIds.has(s.id));
-
-  if (!result.ok) {
-    return (
-      <PageShell subtitle={`${formatDate(date)}`}>
-        <div className="bg-white border border-[#E4E4E7] rounded-xl">
-          <EmptyState
-            icon={<AlertTriangle className="h-5 w-5" />}
-            title="Only got part of the picture today"
-            description="Some of your data couldn't be read, so the results below may be incomplete. Everything else in DentGrow still works."
-          />
-        </div>
-        <RunDetails execution={result.execution} unmeasured={view.unmeasured} looseSignals={looseEnds} />
-      </PageShell>
-    );
-  }
+  const health = computeClinicHealth(result.metrics);
+  const { problems, actions } = buildBriefing(result, result.metrics);
 
   return (
-    <PageShell subtitle={`${formatDate(date)}`}>
-      {/* Section 1: Am I okay today? + key numbers */}
-      <BrainStatusBanner
-        status={view.status}
-        measuredCount={view.measuredCount}
-        unmeasuredCount={view.unmeasured.length}
-        confidence={result.execution.stages.find((s) => s.stage === "signals")?.confidence}
-        headline={headline}
-      />
-
-      {/* Section 2: Problems, worst first. Each card contains the problem,
-          the strategy, and the action — everything a dentist needs to decide
-          and act, without scrolling to a separate section. */}
-      {focus.length > 0 && (
-        <div className="space-y-3">
-          {focus.map((card, i) => (
-            <FocusCard
-              key={card.id}
-              card={card}
-              signalDescriptions={signalDescriptions}
-              defaultOpen={i === 0}
-              // Attach the matching workflow and action plan to each card
-              workflows={workflowGroups.flatMap((g) => g.workflows).filter(
-                (w) => w.constraintId === card.id
-              )}
-              actionPlan={actionPlans.find((p) =>
-                workflowGroups.flatMap((g) => g.workflows)
-                  .filter((w) => w.constraintId === card.id)
-                  .some((w) => w.id === p.workflowId)
-              ) ?? null}
-            />
-          ))}
-        </div>
-      )}
-
-      {/* Section 3: Full metrics — available on demand */}
-      <AllNumbers
-        headline={headline}
-        groups={view.metricGroups}
-        measuredCount={view.measuredCount}
-      />
-
-      {/* Section 4: Audit trail — collapsed */}
-      <RunDetails execution={result.execution} unmeasured={view.unmeasured} looseSignals={looseEnds} />
+    <PageShell subtitle={formatDate(date)}>
+      <MorningBriefing health={health} problems={problems} actions={actions} />
     </PageShell>
   );
 }

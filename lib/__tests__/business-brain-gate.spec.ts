@@ -85,10 +85,10 @@ describe("the pilot clinic can never reach the Business Brain", () => {
           source.includes("runBusinessBrain") ||
           source.includes("persistMetricRange") ||
           source.includes("persistMetricDay") ||
-          // Prepared actions are Business Brain output too. A page that renders
-          // them has rendered the Brain, whether or not it ran the pipeline
-          // itself, so it needs the same gate.
-          source.includes("ReadyActionsSection") ||
+          // The briefing projection is Business Brain output too. A page that
+          // renders it has rendered the Brain, whether or not it ran the
+          // pipeline itself, so it needs the same gate.
+          source.includes("buildBriefing") ||
           source.includes("buildActionPlanViews");
         if (!reachesBrain) continue;
         if (
@@ -118,18 +118,18 @@ describe("the pilot clinic can never reach the Business Brain", () => {
   });
 
   it("renders prepared actions from exactly one gated page", () => {
-    // Named explicitly, so surfacing prepared actions on a second page has to
-    // be a deliberate edit here rather than a quiet copy-paste.
+    // Named explicitly, so surfacing the briefing on a second page has to be a
+    // deliberate edit here rather than a quiet copy-paste.
     //
-    // Keyed on buildActionPlanViews, not on a component name. The dashboard
-    // redesign folded the standalone Ready Actions section into FocusCard, at
-    // which point a scan for "ReadyActionsSection" matched nothing and the test
-    // passed vacuously against an empty list. The builder is the load-bearing
-    // marker: a page cannot render prepared actions without calling it.
+    // Keyed on buildBriefing, the projection the redesigned Morning Briefing is
+    // built from — the load-bearing marker that a page renders the Brain's
+    // problems and prepared actions. A component-name scan would pass vacuously
+    // the moment the component was renamed, which is how the previous version of
+    // this test went blind.
     const rendering: string[] = [];
     for (const root of ["app"]) {
       for (const file of sourceFiles(root)) {
-        if (readFileSync(file, "utf8").includes("buildActionPlanViews")) rendering.push(file);
+        if (readFileSync(file, "utf8").includes("buildBriefing")) rendering.push(file);
       }
     }
     expect(rendering.map((f) => f.replace(/\\/g, "/"))).toEqual([

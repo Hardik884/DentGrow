@@ -171,6 +171,30 @@ body {
   animation: fadeIn 0.2s ease forwards;
 }
 
+/* ── Business Brain: action completion + score change ──────────────────────── */
+/* A finished action briefly shows its "Done" state, then collapses away. */
+@keyframes completeOut {
+  0%   { opacity: 1; transform: scale(1); }
+  60%  { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(0.98); }
+}
+
+.animate-complete-out {
+  animation: completeOut 0.65s ease forwards;
+}
+
+/* The "+N Health" note floats up and fades as it appears. */
+@keyframes scorePop {
+  0%   { opacity: 0; transform: translateY(6px); }
+  15%  { opacity: 1; transform: translateY(0); }
+  80%  { opacity: 1; transform: translateY(0); }
+  100% { opacity: 0; transform: translateY(-4px); }
+}
+
+.animate-score-pop {
+  animation: scorePop 3.2s ease forwards;
+}
+
 /* ── Skeleton shimmer ──────────────────────────────────────────────────────── */
 @keyframes shimmer {
   0% { background-position: -200% 0; }
