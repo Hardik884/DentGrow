@@ -30,6 +30,7 @@ export function appointmentsQuickFilters(today: string): QuickFilterConfig {
       { label: "Pending", set: { status: "scheduled" } },
       { label: "Completed", set: { status: "completed" } },
       { label: "Cancelled", set: { status: "cancelled" } },
+      { label: "No-shows", set: { status: "no_show" } },
       { label: "This Week", set: { dateFrom: p.weekStart, dateTo: p.weekEnd } },
       { label: "This Month", set: { dateFrom: p.monthStart, dateTo: p.monthEnd } },
     ],

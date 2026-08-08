@@ -54,8 +54,6 @@ export function MorningBriefing({
     <div className="space-y-6">
       <HealthMeter health={health} />
 
-      {reminderSummariesShown.length > 0 && <WhatsAppReminders summaries={reminderSummariesShown} />}
-
       {allClear ? (
         <div className="bg-white border border-[#E4E4E7] rounded-xl px-6 py-10 text-center">
           <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-[#F0FDF4] mb-3">
@@ -91,6 +89,8 @@ export function MorningBriefing({
           </div>
         </div>
       )}
+
+      {reminderSummariesShown.length > 0 && <WhatsAppReminders summaries={reminderSummariesShown} />}
     </div>
   );
 }
