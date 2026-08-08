@@ -528,22 +528,22 @@ const CATALOG_ENTRIES: readonly ActionCapability[] = [
     id: Capability.DRAFT_RECALL_INVITATION,
     kind: ActionKind.PREPARE_DRAFT,
     category: ActionCategory.COMMUNICATION,
-    title: "Prepare a recall invitation",
+    title: "Prepare a follow-up message",
     description:
-      "Prepares invitation text for a lapsed patient. Draft only — DentGrow does not send it.",
+      "Prepares a check-in message for a patient whose follow-up is due. Draft only — DentGrow does not send it.",
     area: DentGrowArea.PATIENTS,
     effort: ActionEffort.ONE_CLICK,
     readiness: ActionReadiness.PREPARED,
     requires: [ActionDataRequirement.PATIENT_CONTACT],
     supportedChannels: MESSAGE_CHANNELS,
-    impact: "Removes the rewriting from every recall contact",
+    impact: "Removes the rewriting from every follow-up contact",
     valueType: ValueType.RETENTION_IMPROVED,
     draft: {
       kind: ActionDraftKind.RECALL_INVITATION,
-      subject: "Time for your check-up at {{clinic_name}}",
+      subject: "A quick follow-up from {{clinic_name}}",
       body:
-        "Hello {{patient_name}}, this is {{clinic_name}}. It has been a while since your last visit, and a check-up is due. " +
-        "We have space on {{suggested_date}} — would that suit you? Reply here or call {{clinic_phone}} and we will book it in.",
+        "Hi {{patient_name}}, this is {{clinic_name}}. You had a follow-up scheduled with us and we wanted to check in. " +
+        "If {{suggested_date}} works for you, we can continue your treatment then — reply here or call {{clinic_phone}} to let us know a convenient time.",
     },
   },
   {

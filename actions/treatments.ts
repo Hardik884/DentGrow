@@ -1353,13 +1353,18 @@ export async function deleteAppointmentDocument(
 
 /**
  * Patients who have a `planned` treatment on record but no upcoming visit
- * booked. Mirrors the definition behind the Morning Briefing's
- * "treatment.accepted_pending_scheduling" metric (a patient counts as booked
- * when they have any future appointment that is not cancelled or a no-show), so
- * this list and that number never disagree.
+ * booked. A patient counts as booked when they have any future appointment that
+ * is not cancelled or a no-show.
  *
- * Returns one row per patient (their most recent planned treatment), with the
- * name and phone the WhatsApp send list needs. Staff only; clinic-scoped.
+ * Returns one row per PATIENT (their most recent planned treatment), with the
+ * name and phone the WhatsApp send list needs. Note this is a distinct-patient
+ * count: the Business Brain's "treatment.accepted_pending_scheduling" metric
+ * counts planned-treatment ROWS, so a patient with several planned treatments
+ * adds several to that metric but one to this list. The briefing reconciles the
+ * two by showing distinct-patient counts (see getReminderSummaries in
+ * actions/messaging.ts), so what the dentist reads always matches this list.
+ *
+ * Staff only; clinic-scoped.
  */
 export async function getPatientsWithPlannedTreatmentNoVisit(): Promise<
   ActionResult<Array<{ id: string; name: string; phone: string | null; treatment_type: string }>>

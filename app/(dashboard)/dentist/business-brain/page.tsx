@@ -6,6 +6,9 @@ import { isBusinessBrainEnabled, isWhatsAppEnabled } from "@/lib/feature-flags";
 import { runDashboardBrain } from "@/lib/business-brain/dashboard-data";
 import { computeClinicHealth } from "@/lib/business-brain/clinic-health";
 import { buildBriefing } from "@/lib/business-brain/briefing-view";
+import { getReminderSummaries } from "@/actions/messaging";
+import type { ReminderSummary } from "@/lib/messaging/reminder-types";
+import { BRIEFING_MESSAGE_KINDS } from "@/lib/messaging/templates";
 import { formatDate } from "@/lib/utils";
 import { EmptyState } from "@/components/ui/empty-state";
 import { MorningBriefing } from "@/components/business-brain/MorningBriefing";
@@ -53,7 +56,27 @@ export default async function BusinessBrainPage() {
 
   const { result, date } = run;
   const health = computeClinicHealth(result.metrics);
-  const { problems, actions } = buildBriefing(result, result.metrics);
+  const whatsappEnabled = isWhatsAppEnabled(profile.clinic_id);
+
+  // The distinct-patient reminder populations. `total` (patients with the
+  // problem) aligns the plain problem counts on the left; `actionable` (patients
+  // we can message, not already reminded) drives the WhatsApp actions and equals
+  // each send list's length. Both come from one source so the numbers agree.
+  const reminderSummaries: ReminderSummary[] = whatsappEnabled
+    ? (await getReminderSummaries()).data ?? []
+    : [];
+
+  // Map kind → category so the projection can state distinct-patient counts.
+  const kindToCategory = Object.fromEntries(
+    Object.entries(BRIEFING_MESSAGE_KINDS).map(([category, kind]) => [kind, category]),
+  ) as Record<string, string>;
+  const patientCounts: Record<string, number> = {};
+  for (const s of reminderSummaries) {
+    const category = kindToCategory[s.kind];
+    if (category) patientCounts[category] = s.total;
+  }
+
+  const { problems, actions } = buildBriefing(result, result.metrics, patientCounts);
 
   return (
     <PageShell subtitle={formatDate(date)}>
@@ -61,7 +84,8 @@ export default async function BusinessBrainPage() {
         health={health}
         problems={problems}
         actions={actions}
-        whatsappEnabled={isWhatsAppEnabled(profile.clinic_id)}
+        whatsappEnabled={whatsappEnabled}
+        reminderSummaries={reminderSummaries}
       />
     </PageShell>
   );

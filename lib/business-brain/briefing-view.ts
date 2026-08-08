@@ -158,8 +158,21 @@ function metricValue(metrics: readonly Metric[], key: string): number | null {
 
 const rupees = (n: number) => `₹${Math.round(n).toLocaleString("en-IN")}`;
 
-/** A concrete, numbered summary line for a category, or the fallback. */
-function summaryFor(category: string, copy: CategoryCopy, metrics: readonly Metric[]): string {
+/**
+ * A concrete, numbered summary line for a category, or the fallback.
+ *
+ * `patientCount`, when given for a category, is the DISTINCT-patient count and
+ * wins over the raw metric. The metric behind treatment/retention counts rows
+ * (treatments, follow-ups), so a patient with several planned treatments would
+ * inflate it; the briefing states patients, so it must count patients. This is
+ * what keeps "14 patients have planned treatment" agreeing with the send list.
+ */
+function summaryFor(
+  category: string,
+  copy: CategoryCopy,
+  metrics: readonly Metric[],
+  patientCount?: number,
+): string {
   const count = (v: number | null, one: string, many: string) => {
     if (v === null || v <= 0) return null;
     const n = Math.round(v);
@@ -172,7 +185,7 @@ function summaryFor(category: string, copy: CategoryCopy, metrics: readonly Metr
   }
   if (category === "treatment_acceptance") {
     const s = count(
-      metricValue(metrics, "treatment.accepted_pending_scheduling"),
+      patientCount ?? metricValue(metrics, "treatment.accepted_pending_scheduling"),
       "1 patient has planned treatment but no next visit.",
       "{n} patients have planned treatment but no next visit.",
     );
@@ -180,9 +193,9 @@ function summaryFor(category: string, copy: CategoryCopy, metrics: readonly Metr
   }
   if (category === "retention") {
     const s = count(
-      metricValue(metrics, "followups.overdue"),
-      "1 patient is overdue for a check-up.",
-      "{n} patients are overdue for a check-up.",
+      patientCount ?? metricValue(metrics, "followups.overdue"),
+      "1 patient has a follow-up due.",
+      "{n} patients have a follow-up due.",
     );
     if (s) return s;
   }
@@ -253,6 +266,7 @@ const DONE_REASON: Record<string, string> = {
 export function buildBriefing(
   result: BusinessBrainResult,
   metrics: readonly Metric[],
+  patientCounts?: Readonly<Partial<Record<string, number>>>,
 ): BriefingView {
   const problems: ProblemView[] = [];
   const actions: ActionCardView[] = [];
@@ -262,12 +276,13 @@ export function buildBriefing(
     const values = result.valueAtStake.get(constraint.id);
     const value = values?.[0];
     const atStake = value ? formatAtStake(value.amount, value.unit) : null;
+    const patientCount = patientCounts?.[constraint.category];
 
     problems.push({
       id: constraint.id,
       title: copy?.title ?? constraint.name,
       severity: constraint.severity,
-      summary: copy ? summaryFor(constraint.category, copy, metrics) : constraint.description,
+      summary: copy ? summaryFor(constraint.category, copy, metrics, patientCount) : constraint.description,
       explanation: copy?.explanation ?? "",
       atStake,
       atStakeLabel: atStake ? (copy?.atStakeLabel ?? null) : null,
@@ -287,7 +302,7 @@ export function buildBriefing(
       problemId: constraint.id,
       category: constraint.category,
       title: copy?.title ?? constraint.name,
-      reason: copy ? summaryFor(constraint.category, copy, metrics) : constraint.description,
+      reason: copy ? summaryFor(constraint.category, copy, metrics, patientCount) : constraint.description,
       checklist,
       primary: PRIMARY_ROUTE[constraint.category] ?? null,
       secondary: SECONDARY_ROUTE[constraint.category] ?? null,

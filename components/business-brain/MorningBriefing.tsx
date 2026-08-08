@@ -4,8 +4,9 @@ import { CheckCircle2 } from "lucide-react";
 import type { ActionDraftKind } from "@/business-brain";
 import type { ClinicHealth } from "@/lib/business-brain/clinic-health";
 import type { ActionCardView, ProblemView } from "@/lib/business-brain/briefing-view";
+import type { ReminderSummary } from "@/lib/messaging/reminder-types";
 import { HealthMeter } from "./HealthMeter";
-import { WhatsAppReminders } from "./WhatsAppReminders";
+import { WhatsAppReminders, type ReminderAction } from "./WhatsAppReminders";
 import { ProblemCard } from "./ProblemCard";
 import { ActionCard } from "./ActionCard";
 
@@ -15,6 +16,8 @@ interface MorningBriefingProps {
   actions: readonly ActionCardView[];
   /** When true, the WhatsApp reminders section is shown for messageable problems. */
   whatsappEnabled?: boolean;
+  /** Per-kind reminder counts from the server; drives the "Today's actions" section. */
+  reminderSummaries?: readonly ReminderSummary[];
 }
 
 /**
@@ -26,22 +29,33 @@ interface MorningBriefingProps {
  * the underlying issue is genuinely resolved and the page re-reads fresh data.
  * Ticking a checklist or sending a reminder is progress, not proof.
  */
-export function MorningBriefing({ health, problems, actions, whatsappEnabled = false }: MorningBriefingProps) {
+export function MorningBriefing({
+  health,
+  problems,
+  actions,
+  whatsappEnabled = false,
+  reminderSummaries = [],
+}: MorningBriefingProps) {
   const allClear = problems.length === 0;
 
-  // The reminder types today's problems call for — distinct, in the order the
-  // action cards appear. Only shown for clinics with the flag on.
-  const messageKinds: ActionDraftKind[] = whatsappEnabled
+  // The reminder actions today's problems call for — distinct kinds, in the
+  // order the action cards appear, each carrying the count of patients we can
+  // actually message. Only kinds with someone to contact are shown, and only
+  // for clinics with the flag on.
+  const actionableByKind = new Map(reminderSummaries.map((s) => [s.kind, s.actionable]));
+  const reminderActions: ReminderAction[] = whatsappEnabled
     ? Array.from(
         new Set(actions.map((a) => a.messageKind).filter((k): k is ActionDraftKind => Boolean(k))),
       )
+        .map((kind) => ({ kind, count: actionableByKind.get(kind) ?? 0 }))
+        .filter((a) => a.count > 0)
     : [];
 
   return (
     <div className="space-y-6">
       <HealthMeter health={health} />
 
-      {messageKinds.length > 0 && <WhatsAppReminders kinds={messageKinds} />}
+      {reminderActions.length > 0 && <WhatsAppReminders actions={reminderActions} />}
 
       {allClear ? (
         <div className="bg-white border border-[#E4E4E7] rounded-xl px-6 py-10 text-center">

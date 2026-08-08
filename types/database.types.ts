@@ -988,6 +988,65 @@ export type Database = {
           },
         ]
       }
+      reminder_logs: {
+        Row: {
+          clinic_id: string
+          created_at: string
+          id: string
+          kind: string
+          patient_id: string
+          sent_at: string
+          sent_by: string | null
+        }
+        Insert: {
+          clinic_id: string
+          created_at?: string
+          id?: string
+          kind: string
+          patient_id: string
+          sent_at?: string
+          sent_by?: string | null
+        }
+        Update: {
+          clinic_id?: string
+          created_at?: string
+          id?: string
+          kind?: string
+          patient_id?: string
+          sent_at?: string
+          sent_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reminder_logs_clinic_id_fkey"
+            columns: ["clinic_id"]
+            isOneToOne: false
+            referencedRelation: "clinics"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reminder_logs_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "active_patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reminder_logs_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reminder_logs_sent_by_fkey"
+            columns: ["sent_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       treatment_documents: {
         Row: {
           appointment_id: string | null
@@ -1729,6 +1788,9 @@ export type Database = {
         Row: {
           appointment_id: string | null
           clinic_id: string | null
+          confirmation_status:
+            | Database["public"]["Enums"]["follow_up_confirmation_status"]
+            | null
           created_at: string | null
           created_by: string | null
           deleted_at: string | null
@@ -1740,36 +1802,6 @@ export type Database = {
           status: Database["public"]["Enums"]["follow_up_status"] | null
           treatment_id: string | null
           updated_at: string | null
-        }
-        Insert: {
-          appointment_id?: string | null
-          clinic_id?: string | null
-          created_at?: string | null
-          created_by?: string | null
-          deleted_at?: string | null
-          due_date?: string | null
-          follow_up_type?: string | null
-          id?: string | null
-          notes?: string | null
-          patient_id?: string | null
-          status?: Database["public"]["Enums"]["follow_up_status"] | null
-          treatment_id?: string | null
-          updated_at?: string | null
-        }
-        Update: {
-          appointment_id?: string | null
-          clinic_id?: string | null
-          created_at?: string | null
-          created_by?: string | null
-          deleted_at?: string | null
-          due_date?: string | null
-          follow_up_type?: string | null
-          id?: string | null
-          notes?: string | null
-          patient_id?: string | null
-          status?: Database["public"]["Enums"]["follow_up_status"] | null
-          treatment_id?: string | null
-          updated_at?: string | null
         }
         Relationships: [
           {
@@ -2014,6 +2046,7 @@ export type Database = {
         Returns: string
       }
       run_metric_history_job: { Args: never; Returns: undefined }
+      run_no_show_detection_job: { Args: never; Returns: undefined }
     }
     Enums: {
       appointment_history_action:
