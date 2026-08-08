@@ -41,11 +41,12 @@ const DENTIST_NAV: NavItem[] = [
 ];
 
 /**
- * Shown only for clinics on the Business Brain allow-list. Inserted before
- * Settings so the analysis surfaces sit together with Analytics.
+ * Shown only for clinics on the Business Brain allow-list. Inserted just above
+ * Analytics — the "what to do" surface sits right before the "how are we doing"
+ * one.
  */
 const BUSINESS_BRAIN_NAV_ITEM: NavItem = {
-  label: "Morning Briefing",
+  label: "Actions",
   href: "/dentist/business-brain",
   icon: BrainCircuit,
 };
@@ -87,11 +88,12 @@ export function DashboardSidebar({
     : BASE_RECEPTIONIST_NAV;
 
   const dentistNav = showBusinessBrain
-    ? [
-        ...DENTIST_NAV.slice(0, DENTIST_NAV.length - 1),
-        BUSINESS_BRAIN_NAV_ITEM,
-        DENTIST_NAV[DENTIST_NAV.length - 1],
-      ]
+    ? (() => {
+        // Insert "Actions" immediately above Analytics.
+        const analyticsIndex = DENTIST_NAV.findIndex((i) => i.href === "/dentist/analytics");
+        const at = analyticsIndex === -1 ? DENTIST_NAV.length - 1 : analyticsIndex;
+        return [...DENTIST_NAV.slice(0, at), BUSINESS_BRAIN_NAV_ITEM, ...DENTIST_NAV.slice(at)];
+      })()
     : DENTIST_NAV;
 
   const navItems = role === "dentist" ? dentistNav : receptionistNav;

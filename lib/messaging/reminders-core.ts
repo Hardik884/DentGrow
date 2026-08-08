@@ -7,8 +7,10 @@
  *
  * These are the exact transforms actions/messaging.ts applies after fetching:
  *   - dedupeByPatientId — one row per patient, never per treatment/follow-up.
- *   - buildActionable    — keep only patients we can actually message and have
- *                          not just messaged, and attach the filled text.
+ *   - buildReachable     — keep only patients we can actually message, attach the
+ *                          filled text, and mark whether each was already sent.
+ *   - nextUnsentIndex    — the "who's next to contact" cursor the focused
+ *                          one-patient-at-a-time workflow walks.
  *
  * Keeping them here means the "16 said, 7 shown" class of bug — two code paths
  * counting different things — cannot come back, because the count and the list
@@ -16,25 +18,19 @@
  */
 
 import { isSendableReminder } from "./eligibility";
+import type { WhatsAppRecipient } from "./reminder-types";
 
-/** One distinct patient behind a reminder, before reachability/cooldown filters. */
+/** One distinct patient behind a reminder, before reachability filters. */
 export interface Candidate {
   readonly patientId: string;
   readonly name: string;
   readonly phone: string | null;
-  /** Plain reason this patient is being contacted, e.g. "Planned: Root canal". */
+  /** The specific thing this is about, e.g. a treatment name or "Follow-up". */
+  readonly subject: string;
+  /** Plain reason this patient is being contacted, e.g. "No next visit booked". */
   readonly reason: string;
   /** Patient-specific template fields; clinic fields are merged in when filling. */
   readonly vars: Record<string, string>;
-}
-
-/** A patient ready to message: reachable, not recently reminded, text filled. */
-export interface ActionableRecipient {
-  readonly patientId: string;
-  readonly name: string;
-  readonly phone: string | null;
-  readonly reason: string;
-  readonly message: string;
 }
 
 /**
@@ -59,32 +55,63 @@ export function dedupeByPatientId<T>(
 }
 
 /**
- * Turn distinct-patient candidates into the recipients we can actually send:
- *   - skip anyone reminded for this kind inside the cooldown (`remindedRecently`),
+ * Turn distinct-patient candidates into the recipients we can actually reach:
  *   - fill each message,
- *   - skip anyone we cannot reach or whose message still has {{markers}}.
+ *   - drop anyone we cannot message or whose message still has {{markers}},
+ *   - mark whether they were already reminded for this kind inside the cooldown.
  *
- * The returned length is the actionable count. Because the briefing's number and
- * the send list are both derived from this one function over the same
- * candidates, they are always equal.
+ * Unlike a plain "who's left" filter, this keeps the already-sent patients in the
+ * list (flagged), so the focused workflow can show honest progress — "7 of 16
+ * contacted" — and let a user page back over the ones already done.
  */
-export function buildActionable(
+export function buildReachable(
   candidates: readonly Candidate[],
   remindedRecently: ReadonlySet<string>,
   fill: (vars: Record<string, string>) => string,
-): ActionableRecipient[] {
-  const out: ActionableRecipient[] = [];
+): WhatsAppRecipient[] {
+  const out: WhatsAppRecipient[] = [];
   for (const c of candidates) {
-    if (remindedRecently.has(c.patientId)) continue;
     const message = fill(c.vars);
     if (!isSendableReminder(c.phone, message)) continue;
     out.push({
       patientId: c.patientId,
       name: c.name,
       phone: c.phone,
+      subject: c.subject,
       reason: c.reason,
       message,
+      alreadySent: remindedRecently.has(c.patientId),
     });
   }
   return out;
+}
+
+/**
+ * The index of the next patient still to contact, searching forward from `from`
+ * and wrapping once, or null when everyone is done. `sent` is the set of patient
+ * ids already handled (persisted sends plus this session's). This is the cursor
+ * the workflow advances after a send or a skip.
+ */
+export function nextUnsentIndex(
+  recipients: readonly { patientId: string }[],
+  sent: ReadonlySet<string>,
+  from: number,
+): number | null {
+  const n = recipients.length;
+  for (let step = 1; step <= n; step++) {
+    const i = (from + step) % n;
+    if (!sent.has(recipients[i].patientId)) return i;
+  }
+  return null;
+}
+
+/** The first patient still to contact, or null when all are done. */
+export function firstUnsentIndex(
+  recipients: readonly { patientId: string }[],
+  sent: ReadonlySet<string>,
+): number | null {
+  for (let i = 0; i < recipients.length; i++) {
+    if (!sent.has(recipients[i].patientId)) return i;
+  }
+  return null;
 }

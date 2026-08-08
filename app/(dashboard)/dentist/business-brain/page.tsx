@@ -14,7 +14,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { MorningBriefing } from "@/components/business-brain/MorningBriefing";
 
 export const metadata: Metadata = {
-  title: "Morning Briefing",
+  title: "Actions",
 };
 
 /**
@@ -101,7 +101,7 @@ function PageShell({
   return (
     <div className="p-6 space-y-6 max-w-screen-xl">
       <div>
-        <h1 className="text-xl font-semibold text-[#09090B] tracking-tight">Morning Briefing</h1>
+        <h1 className="text-xl font-semibold text-[#09090B] tracking-tight">Actions</h1>
         <p className="text-sm text-[#71717A] mt-0.5">{subtitle}</p>
       </div>
       {children}

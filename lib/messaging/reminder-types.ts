@@ -14,26 +14,32 @@ export interface WhatsAppRecipient {
   readonly name: string;
   /** Raw stored number; the client sanitises it for the wa.me link. Always reachable here. */
   readonly phone: string | null;
-  /** Plain reason this patient is being contacted, e.g. "Planned: Root canal". */
+  /** The specific thing this is about, e.g. "Root Canal" or "Follow-up". */
+  readonly subject: string;
+  /** Plain reason this patient is being contacted, e.g. "No next visit booked". */
   readonly reason: string;
   /** The template filled with this patient's details, ready to review and send. */
   readonly message: string;
+  /** True when this patient was already reminded for this kind inside the cooldown. */
+  readonly alreadySent: boolean;
 }
 
 export interface WhatsAppSendList {
-  /** The page of recipients requested (all of them when no paging is asked for). */
+  /** The page of recipients requested (all reachable patients when no paging is asked for). */
   readonly recipients: readonly WhatsAppRecipient[];
-  /** Total actionable patients for this kind — the number to send, before paging. */
+  /** Total reachable patients for this kind — the workflow length, before paging. */
   readonly total: number;
 }
 
-/** Per-kind counts for the briefing: everyone with the problem, and how many we can message. */
+/** Per-kind counts for the briefing summary card and the focused workflow. */
 export interface ReminderSummary {
   readonly kind: ActionDraftKind;
-  /** Distinct patients with the underlying problem, reachable or not. */
+  /** Distinct patients with the underlying problem, reachable or not (left card). */
   readonly total: number;
-  /** Reachable patients not already reminded — the WhatsApp count and send-list length. */
-  readonly actionable: number;
+  /** Distinct patients we can message — the "N to contact" the workflow walks. */
+  readonly reachableTotal: number;
+  /** Of the reachable set, how many have already been contacted (X of N). */
+  readonly contacted: number;
 }
 
 /** The three message kinds the Morning Briefing prepares. */

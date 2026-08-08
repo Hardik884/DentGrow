@@ -6,7 +6,7 @@ import type { ClinicHealth } from "@/lib/business-brain/clinic-health";
 import type { ActionCardView, ProblemView } from "@/lib/business-brain/briefing-view";
 import type { ReminderSummary } from "@/lib/messaging/reminder-types";
 import { HealthMeter } from "./HealthMeter";
-import { WhatsAppReminders, type ReminderAction } from "./WhatsAppReminders";
+import { WhatsAppReminders } from "./WhatsAppReminders";
 import { ProblemCard } from "./ProblemCard";
 import { ActionCard } from "./ActionCard";
 
@@ -38,24 +38,23 @@ export function MorningBriefing({
 }: MorningBriefingProps) {
   const allClear = problems.length === 0;
 
-  // The reminder actions today's problems call for — distinct kinds, in the
-  // order the action cards appear, each carrying the count of patients we can
-  // actually message. Only kinds with someone to contact are shown, and only
-  // for clinics with the flag on.
-  const actionableByKind = new Map(reminderSummaries.map((s) => [s.kind, s.actionable]));
-  const reminderActions: ReminderAction[] = whatsappEnabled
+  // The reminder summaries today's problems call for — distinct kinds, in the
+  // order the action cards appear, each with a count of patients we can reach.
+  // Only kinds with someone to contact are shown, and only when the flag is on.
+  const summaryByKind = new Map(reminderSummaries.map((s) => [s.kind, s]));
+  const reminderSummariesShown: ReminderSummary[] = whatsappEnabled
     ? Array.from(
         new Set(actions.map((a) => a.messageKind).filter((k): k is ActionDraftKind => Boolean(k))),
       )
-        .map((kind) => ({ kind, count: actionableByKind.get(kind) ?? 0 }))
-        .filter((a) => a.count > 0)
+        .map((kind) => summaryByKind.get(kind))
+        .filter((s): s is ReminderSummary => Boolean(s) && s!.reachableTotal > 0)
     : [];
 
   return (
     <div className="space-y-6">
       <HealthMeter health={health} />
 
-      {reminderActions.length > 0 && <WhatsAppReminders actions={reminderActions} />}
+      {reminderSummariesShown.length > 0 && <WhatsAppReminders summaries={reminderSummariesShown} />}
 
       {allClear ? (
         <div className="bg-white border border-[#E4E4E7] rounded-xl px-6 py-10 text-center">

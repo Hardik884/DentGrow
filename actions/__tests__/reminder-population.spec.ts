@@ -20,7 +20,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { Database } from "@/types/database.types";
 import { getTodayInTimezone } from "@/lib/utils";
 import {
-  buildActionable,
+  buildReachable,
   dedupeByPatientId,
   type Candidate,
 } from "@/lib/messaging/reminders-core";
@@ -214,7 +214,8 @@ async function plannedNoVisitCandidates(clinicId: string): Promise<Candidate[]> 
     patientId: t.patient!.id,
     name: t.patient!.name,
     phone: t.patient!.phone,
-    reason: `Planned: ${t.treatment_type}`,
+    subject: t.treatment_type,
+    reason: "No next visit booked",
     vars: { patient_name: t.patient!.name },
   }));
 }
@@ -234,7 +235,8 @@ async function overdueCandidates(clinicId: string): Promise<Candidate[]> {
     patientId: f.patient!.id,
     name: f.patient!.name,
     phone: f.patient!.phone,
-    reason: "Follow-up due",
+    subject: "Follow-up",
+    reason: "Follow-up is overdue",
     vars: { patient_name: f.patient!.name },
   }));
 }
@@ -264,12 +266,13 @@ describe.skipIf(!LOCAL_UP)("WhatsApp reminder population (integration)", () => {
     expect(ids).toEqual([P_MULTI, P_NOPHONE].sort());
   });
 
-  it("actionable count equals the send list, dropping the no-phone patient", async () => {
+  it("reachable list drops the no-phone patient; count matches", async () => {
     const candidates = await plannedNoVisitCandidates(CLINIC_A);
-    const actionable = buildActionable(candidates, new Set(), fill);
-    // total distinct = 2 (P_MULTI, P_NOPHONE); actionable = 1 (P_NOPHONE dropped).
+    const reachable = buildReachable(candidates, new Set(), fill);
+    // total distinct = 2 (P_MULTI, P_NOPHONE); reachable = 1 (P_NOPHONE dropped).
     expect(candidates).toHaveLength(2);
-    expect(actionable.map((r) => r.patientId)).toEqual([P_MULTI]);
+    expect(reachable.map((r) => r.patientId)).toEqual([P_MULTI]);
+    expect(reachable[0].alreadySent).toBe(false);
   });
 
   it("never mixes clinics", async () => {
@@ -279,7 +282,7 @@ describe.skipIf(!LOCAL_UP)("WhatsApp reminder population (integration)", () => {
     expect(b.map((c) => c.patientId)).toEqual([PB]);
   });
 
-  it("suppresses a patient already reminded (no duplicate on refresh)", async () => {
+  it("flags an already-reminded patient sent (no duplicate on refresh)", async () => {
     // Record that P_MULTI was messaged for this kind.
     await insert("reminder_logs", {
       clinic_id: CLINIC_A,
@@ -289,10 +292,12 @@ describe.skipIf(!LOCAL_UP)("WhatsApp reminder population (integration)", () => {
     });
     const candidates = await plannedNoVisitCandidates(CLINIC_A);
     const reminded = await remindedRecently(CLINIC_A, "treatment_plan_follow_up");
-    const actionable = buildActionable(candidates, reminded, fill);
-    // P_MULTI now suppressed; P_NOPHONE still has no phone → nobody left.
-    expect(actionable).toHaveLength(0);
-    // …but the underlying problem is still counted (total unchanged).
+    const reachable = buildReachable(candidates, reminded, fill);
+    // P_MULTI stays in the list but flagged sent; P_NOPHONE has no phone.
+    expect(reachable.map((r) => r.patientId)).toEqual([P_MULTI]);
+    expect(reachable[0].alreadySent).toBe(true);
+    // Nobody still needs contacting, and the underlying problem is still counted.
+    expect(reachable.filter((r) => !r.alreadySent)).toHaveLength(0);
     expect(candidates).toHaveLength(2);
     // Clean up so re-runs start fresh.
     await raw.from("reminder_logs").delete().eq("clinic_id", CLINIC_A);
@@ -301,7 +306,8 @@ describe.skipIf(!LOCAL_UP)("WhatsApp reminder population (integration)", () => {
   it("overdue follow-ups: two for one patient collapse to a single reminder", async () => {
     const candidates = await overdueCandidates(CLINIC_A);
     expect(candidates.map((c) => c.patientId)).toEqual([P_OVERDUE]);
-    const actionable = buildActionable(candidates, new Set(), fill);
-    expect(actionable).toHaveLength(1);
+    const reachable = buildReachable(candidates, new Set(), fill);
+    expect(reachable).toHaveLength(1);
+    expect(reachable[0].alreadySent).toBe(false);
   });
 });

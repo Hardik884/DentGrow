@@ -7,7 +7,7 @@ import { resolveSession } from "@/lib/auth/session";
 import { isWhatsAppEnabled } from "@/lib/feature-flags";
 import { messageTemplateFor } from "@/lib/messaging/templates";
 import { fillTemplate } from "@/lib/messaging/whatsapp";
-import { buildActionable, dedupeByPatientId, type Candidate } from "@/lib/messaging/reminders-core";
+import { buildReachable, dedupeByPatientId, type Candidate } from "@/lib/messaging/reminders-core";
 import {
   ALLOWED_KINDS,
   REMINDER_COOLDOWN_DAYS,
@@ -52,7 +52,12 @@ function suggestedDate(): string {
   return formatDate(new Date(Date.now() + 2 * 24 * 60 * 60 * 1000));
 }
 
-/** The distinct-patient population for a kind — deduped, one row per patient. */
+/**
+ * The distinct-patient population for a kind — deduped, one row per patient. Each
+ * carries a plain `subject` (what it's about) and `reason` (why), shown in the
+ * focused workflow. These are display strings only; the population, eligibility
+ * and message templates are unchanged.
+ */
 async function candidatesFor(kind: ActionDraftKind): Promise<Candidate[]> {
   if (kind === "recall_invitation") {
     const list = (await getOverdueFollowUps()).data ?? [];
@@ -64,7 +69,8 @@ async function candidatesFor(kind: ActionDraftKind): Promise<Candidate[]> {
         patientId: f.patient!.id,
         name: f.patient!.name,
         phone: f.patient!.phone,
-        reason: `Follow-up due ${formatDate(new Date(f.due_date))}`,
+        subject: "Follow-up",
+        reason: "Follow-up is overdue",
         vars: { patient_name: f.patient!.name, suggested_date: suggestedDate() },
       }));
   }
@@ -75,6 +81,7 @@ async function candidatesFor(kind: ActionDraftKind): Promise<Candidate[]> {
       patientId: p.id,
       name: p.name,
       phone: p.phone,
+      subject: "Outstanding balance",
       reason: `${formatCurrency(p.balance)} outstanding`,
       vars: { patient_name: p.name, amount_outstanding: formatCurrency(p.balance) },
     }));
@@ -86,7 +93,8 @@ async function candidatesFor(kind: ActionDraftKind): Promise<Candidate[]> {
     patientId: p.id,
     name: p.name,
     phone: p.phone,
-    reason: `Planned: ${p.treatment_type}`,
+    subject: p.treatment_type,
+    reason: "No next visit booked",
     vars: {
       patient_name: p.name,
       treatment_name: p.treatment_type,
@@ -96,16 +104,16 @@ async function candidatesFor(kind: ActionDraftKind): Promise<Candidate[]> {
 }
 
 /**
- * The full computed picture for one kind: the total distinct-patient population,
- * and the actionable recipients (reachable, not recently reminded, message
- * filled and valid). Both public entry points read from here so a count and a
- * list are always the same population.
+ * The full computed picture for one kind: the total distinct-patient population
+ * (with the problem, reachable or not) and the reachable recipients — everyone we
+ * can message, each flagged with whether they were already contacted. Both public
+ * entry points read from here so a count and a list are always the same set.
  *
  * Returns null when the caller is not allowed to see WhatsApp data at all.
  */
 async function buildReminderData(
   kind: ActionDraftKind,
-): Promise<{ total: number; actionable: WhatsAppRecipient[] } | null> {
+): Promise<{ total: number; reachable: WhatsAppRecipient[] } | null> {
   const { db, profile } = await resolveSession();
   if (!profile || profile.role === "patient") return null;
   if (!isWhatsAppEnabled(profile.clinic_id)) return null;
@@ -115,10 +123,11 @@ async function buildReminderData(
 
   const candidates = await candidatesFor(kind);
   const total = candidates.length;
-  if (total === 0) return { total, actionable: [] };
+  if (total === 0) return { total, reachable: [] };
 
-  // Patients already reminded for this kind inside the cooldown — suppressed so a
-  // refresh does not re-offer a message the staff member has already sent.
+  // Patients already reminded for this kind inside the cooldown. They stay in the
+  // list (flagged alreadySent) so the workflow shows honest progress rather than
+  // re-offering a message the staff member has already sent.
   const since = new Date(Date.now() - REMINDER_COOLDOWN_DAYS * 24 * 60 * 60 * 1000).toISOString();
   const { data: logs } = await db
     .from("reminder_logs")
@@ -136,19 +145,20 @@ async function buildReminderData(
     clinic_phone: settings?.phone ?? "the clinic",
   };
 
-  // Reachable, not recently reminded, message filled and free of {{markers}} —
-  // never generate a broken action. The list length here is the actionable count.
-  const actionable = buildActionable(candidates, remindedRecently, (vars) =>
+  // Everyone reachable (valid phone, message filled and free of {{markers}} —
+  // never generate a broken action), flagged with whether they were already sent.
+  const reachable = buildReachable(candidates, remindedRecently, (vars) =>
     fillTemplate(template.body, { ...clinicVars, ...vars }),
   );
 
-  return { total, actionable };
+  return { total, reachable };
 }
 
 /**
- * The send list for one kind. `recipients` is the actionable population (paged if
- * asked), and `total` is its full length, so the UI can show "showing 20 of 63"
- * and load more without ever silently dropping a patient.
+ * The send list for one kind. `recipients` is every reachable patient (paged if
+ * asked), each carrying `alreadySent`, and `total` is the full reachable length —
+ * so the focused workflow can walk all of them, show progress, and never silently
+ * drop a patient.
  */
 export async function getWhatsAppSendList(
   kind: ActionDraftKind,
@@ -164,10 +174,10 @@ export async function getWhatsAppSendList(
     const offset = Math.max(0, paging?.offset ?? 0);
     const recipients =
       paging?.limit != null
-        ? data.actionable.slice(offset, offset + Math.max(0, paging.limit))
-        : data.actionable;
+        ? data.reachable.slice(offset, offset + Math.max(0, paging.limit))
+        : data.reachable;
 
-    return { data: { recipients, total: data.actionable.length }, error: null };
+    return { data: { recipients, total: data.reachable.length }, error: null };
   } catch (err) {
     console.error("[getWhatsAppSendList] unexpected:", err);
     return { data: null, error: "Unexpected error" };
@@ -176,9 +186,9 @@ export async function getWhatsAppSendList(
 
 /**
  * Counts for every messageable kind, for the briefing. `total` drives the plain
- * problem count on the left ("14 patients have planned treatment"); `actionable`
- * drives the WhatsApp action on the right ("Contact 12 patients") and equals the
- * length of that kind's send list.
+ * problem count on the left ("14 patients have planned treatment"); `reachableTotal`
+ * and `contacted` drive the compact summary card ("7 / 16 contacted") and the
+ * focused workflow.
  */
 export async function getReminderSummaries(): Promise<ActionResult<ReminderSummary[]>> {
   try {
@@ -190,7 +200,12 @@ export async function getReminderSummaries(): Promise<ActionResult<ReminderSumma
     for (const kind of ALLOWED_KINDS) {
       const data = await buildReminderData(kind);
       if (!data) continue;
-      summaries.push({ kind, total: data.total, actionable: data.actionable.length });
+      summaries.push({
+        kind,
+        total: data.total,
+        reachableTotal: data.reachable.length,
+        contacted: data.reachable.filter((r) => r.alreadySent).length,
+      });
     }
     return { data: summaries, error: null };
   } catch (err) {
