@@ -19,18 +19,20 @@ export interface QuickFilterConfig {
 }
 
 // ── Appointments ─────────────────────────────────────────────────────────────
+// "Upcoming" is the landing default (the page redirects an unfiltered visit to
+// it), so "All" carries an explicit `all=1` marker — otherwise clearing to an
+// empty URL would just fall back to Upcoming and "All" could never be selected.
 export function appointmentsQuickFilters(today: string): QuickFilterConfig {
   const p = getDateRangePresets(today);
   return {
-    trackKeys: ["status", "dateFrom", "dateTo", "timeFrom", "timeTo"],
+    trackKeys: ["status", "dateFrom", "dateTo", "timeFrom", "timeTo", "all"],
     chips: [
-      { label: "All", set: {} },
-      { label: "Today", set: { dateFrom: p.today, dateTo: p.today } },
+      { label: "All", set: { all: "1" } },
       { label: "Upcoming", set: { dateFrom: p.today } },
-      { label: "Pending", set: { status: "scheduled" } },
       { label: "Completed", set: { status: "completed" } },
       { label: "Cancelled", set: { status: "cancelled" } },
       { label: "No-shows", set: { status: "no_show" } },
+      { label: "Today", set: { dateFrom: p.today, dateTo: p.today } },
       { label: "This Week", set: { dateFrom: p.weekStart, dateTo: p.weekEnd } },
       { label: "This Month", set: { dateFrom: p.monthStart, dateTo: p.monthEnd } },
     ],

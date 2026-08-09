@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
+import { redirect } from "next/navigation";
 import { PageHeader } from "@/components/layouts/PageHeader";
 import { AppointmentFilters } from "@/components/dentist/AppointmentFilters";
 import { AppointmentsView } from "@/components/dentist/AppointmentsView";
@@ -24,6 +25,8 @@ interface Props {
     timeFrom?: string;
     timeTo?: string;
     page?: string;
+    /** Marker for the explicit "All" chip; skips the default-to-Upcoming redirect. */
+    all?: string;
   }>;
 }
 
@@ -43,6 +46,22 @@ export default async function DentistAppointmentsPage({ searchParams }: Props) {
 
   const clinicTimezone = await getClinicTimezone();
   const today = getTodayInTimezone(clinicTimezone);
+
+  // Default the tab to "Upcoming": an unfiltered visit (fresh navigation from the
+  // sidebar) redirects to today-onward. "All" carries an explicit `all=1` marker,
+  // so this only fires on a genuinely empty URL and never traps the All chip.
+  const hasAnyFilter =
+    Boolean(params.status) ||
+    Boolean(params.search) ||
+    Boolean(params.dateFrom) ||
+    Boolean(params.dateTo) ||
+    Boolean(params.timeFrom) ||
+    Boolean(params.timeTo) ||
+    params.all === "1";
+  if (!hasAnyFilter) {
+    redirect(`/dentist/appointments?dateFrom=${today}`);
+  }
+
   const quickFilters = appointmentsQuickFilters(today);
 
   return (
