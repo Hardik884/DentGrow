@@ -49,7 +49,7 @@ export async function PatientProfileHeader({ patientId, role, baseHref }: Patien
             <div className="flex items-center gap-1.5 mt-1">
               <AlertTriangle className="h-3.5 w-3.5 text-[#CA8A04]" aria-hidden />
               <span className="text-xs text-[#CA8A04] font-medium">
-                {patient.pendingFollowUps.length} pending follow-up{patient.pendingFollowUps.length !== 1 ? "s" : ""}
+                {patient.pendingFollowUps.length} follow-up{patient.pendingFollowUps.length !== 1 ? "s" : ""} to handle
               </span>
             </div>
           )}

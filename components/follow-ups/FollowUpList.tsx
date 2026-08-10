@@ -2,7 +2,6 @@ import Link from "next/link";
 import { getFollowUpsForPatient, getAllFollowUps, todayForClinic } from "@/actions/follow-ups";
 import { resolveSession } from "@/lib/auth/session";
 import { daysBetween } from "@/lib/utils";
-import { OverdueFollowUpBadge } from "./OverdueFollowUpBadge";
 import { ConfirmationStatusBadge } from "./ConfirmationStatusBadge";
 import { FollowUpFormDialog } from "./FollowUpFormDialog";
 import { StatusBadge } from "@/components/shared/StatusBadge";
@@ -10,7 +9,7 @@ import { ACTION_BUTTON } from "@/lib/ui/action-styles";
 import {
   formatDate,
   formatDateTime,
-  FOLLOW_UP_STATUS_LABELS,
+  followUpDisplayStatus,
   FOLLOW_UP_TYPE_LABELS,
 } from "@/lib/utils";
 import { Calendar, Stethoscope, Bell } from "lucide-react";
@@ -214,19 +213,10 @@ function FollowUpRow({
           {/* Right: badges */}
           <div className="flex items-center gap-2 shrink-0 mt-0.5">
             <ConfirmationStatusBadge status={followUp.confirmation_status} />
-            {isOverdue && <OverdueFollowUpBadge />}
-            <StatusBadge
-              label={FOLLOW_UP_STATUS_LABELS[followUp.status]}
-              variant={
-                followUp.status === "completed"
-                  ? "success"
-                  : followUp.status === "cancelled"
-                    ? "error"
-                    : isOverdue
-                      ? "error"
-                      : "default"
-              }
-            />
+            {(() => {
+              const d = followUpDisplayStatus(followUp.status, followUp.due_date, today);
+              return <StatusBadge label={d.label} variant={d.variant} />;
+            })()}
           </div>
         </div>
       </Link>

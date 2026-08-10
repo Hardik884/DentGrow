@@ -1,10 +1,20 @@
-import { getFollowUpsForAppointment } from "@/actions/follow-ups";
+import { getFollowUpsForAppointment, todayForClinic } from "@/actions/follow-ups";
+import { resolveSession } from "@/lib/auth/session";
 import { ConfirmationStatusBadge } from "@/components/follow-ups/ConfirmationStatusBadge";
 import { FollowUpFormDialog } from "@/components/follow-ups/FollowUpFormDialog";
-import { formatDate } from "@/lib/utils";
-import { FOLLOW_UP_TYPE_LABELS, FOLLOW_UP_STATUS_LABELS } from "@/lib/utils";
+import { formatDate, followUpDisplayStatus, type BadgeVariant } from "@/lib/utils";
+import { FOLLOW_UP_TYPE_LABELS } from "@/lib/utils";
 import { Plus } from "lucide-react";
 import type { FollowUpWithRelations } from "@/types";
+
+/** Inline badge colours for this section's older tailwind-token styling. */
+const BADGE_CLASSES: Record<BadgeVariant, string> = {
+  success: "bg-green-100 text-green-700",
+  error: "bg-red-100 text-red-700",
+  warning: "bg-amber-100 text-amber-700",
+  default: "bg-gray-100 text-gray-600",
+  info: "bg-blue-100 text-blue-700",
+};
 
 interface AppointmentFollowUpsSectionProps {
   appointmentId: string;
@@ -28,6 +38,11 @@ export async function AppointmentFollowUpsSection({
 }: AppointmentFollowUpsSectionProps) {
   const result = await getFollowUpsForAppointment(appointmentId);
   const followUps = (result.data ?? []) as FollowUpWithRelations[];
+
+  // Clinic-local today, so a pending follow-up resolves to Overdue / Due today /
+  // Upcoming rather than the internal word "Pending".
+  const { db, profile } = await resolveSession();
+  const today = profile ? await todayForClinic(db, profile.clinic_id) : "";
 
   return (
     <div className="bg-white border rounded-lg p-4 space-y-4">
@@ -84,17 +99,16 @@ export async function AppointmentFollowUpsSection({
                 </span>
                 <span className="flex items-center gap-2 shrink-0">
                   <ConfirmationStatusBadge status={fu.confirmation_status} />
-                  <span
-                    className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
-                      fu.status === "completed"
-                        ? "bg-green-100 text-green-700"
-                        : fu.status === "cancelled"
-                        ? "bg-red-100 text-red-700"
-                        : "bg-yellow-100 text-yellow-700"
-                    }`}
-                  >
-                    {FOLLOW_UP_STATUS_LABELS[fu.status] ?? fu.status}
-                  </span>
+                  {(() => {
+                    const d = followUpDisplayStatus(fu.status, fu.due_date, today);
+                    return (
+                      <span
+                        className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${BADGE_CLASSES[d.variant]}`}
+                      >
+                        {d.label}
+                      </span>
+                    );
+                  })()}
                 </span>
               </FollowUpFormDialog>
             </li>

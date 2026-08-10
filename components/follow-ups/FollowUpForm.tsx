@@ -20,7 +20,7 @@ import { PatientAvatar } from "@/components/shared/PatientAvatar";
 import { LoadingSpinner } from "@/components/shared/LoadingSpinner";
 import {
   cn,
-  FOLLOW_UP_STATUS_LABELS,
+  followUpDisplayStatus,
   formatDate,
   formatDateTime,
   formatTime,
@@ -431,14 +431,13 @@ export function FollowUpForm({
         {currentStatus && (
           <div className="px-6 py-4 border-b border-border flex items-center justify-between">
             <h2 className="text-sm font-semibold text-text-primary">Follow-up Appointment Details</h2>
-            <StatusBadge
-              label={FOLLOW_UP_STATUS_LABELS[currentStatus]}
-              variant={
-                currentStatus === "completed" ? "success"
-                  : currentStatus === "cancelled" ? "error"
-                  : "default"
-              }
-            />
+            {(() => {
+              // Clinic-local badge for a loaded follow-up: resolve `pending` to
+              // Overdue / Due today / Upcoming by its stored due date.
+              const todayStr = new Intl.DateTimeFormat("en-CA").format(new Date());
+              const d = followUpDisplayStatus(currentStatus, initialData?.due_date ?? dueDate, todayStr);
+              return <StatusBadge label={d.label} variant={d.variant} />;
+            })()}
           </div>
         )}
 
@@ -658,7 +657,7 @@ export function FollowUpForm({
               {/* Initial status — CREATE only. Exists for back-entered /
                   historical records: a clinic digitising a recall that already
                   happened (or was cancelled) can say so directly, rather than
-                  having every backdated entry forced through Pending and
+                  having every backdated entry forced through Upcoming and
                   immediately read as overdue. */}
               {!followUpId && (
                 <Field
@@ -667,7 +666,7 @@ export function FollowUpForm({
                   hint={
                     initialStatus !== "pending"
                       ? "For a historical record — this due date will not count as overdue."
-                      : "Leave as Pending for a normal, upcoming recall."
+                      : "Leave as Upcoming for a normal recall."
                   }
                 >
                   <div
@@ -675,7 +674,12 @@ export function FollowUpForm({
                     aria-label="Initial status"
                     className="inline-flex rounded-lg border border-border p-0.5 bg-[#FAFAFA]"
                   >
-                    {(["pending", "completed", "cancelled"] as const).map((opt) => (
+                    {/* Value stays the backend status; only the label changes. */}
+                    {([
+                      ["pending", "Upcoming"],
+                      ["completed", "Completed"],
+                      ["cancelled", "Cancelled"],
+                    ] as const).map(([opt, label]) => (
                       <button
                         key={opt}
                         type="button"
@@ -683,13 +687,13 @@ export function FollowUpForm({
                         aria-checked={initialStatus === opt}
                         onClick={() => setInitialStatus(opt)}
                         className={cn(
-                          "px-3 py-1.5 text-xs font-medium rounded-md transition-colors capitalize",
+                          "px-3 py-1.5 text-xs font-medium rounded-md transition-colors",
                           initialStatus === opt
                             ? "bg-white text-[#09090B] shadow-sm border border-border"
                             : "text-[#71717A] hover:text-[#09090B]"
                         )}
                       >
-                        {opt}
+                        {label}
                       </button>
                     ))}
                   </div>

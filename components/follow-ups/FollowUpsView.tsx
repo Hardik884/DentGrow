@@ -12,7 +12,6 @@ import Link from "next/link";
 import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import { getAllFollowUps } from "@/actions/follow-ups";
 import { queryKeys } from "@/lib/query/keys";
-import { OverdueFollowUpBadge } from "@/components/follow-ups/OverdueFollowUpBadge";
 import { ConfirmationStatusBadge } from "@/components/follow-ups/ConfirmationStatusBadge";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { ListTableSkeleton } from "@/components/shared/ListTableSkeleton";
@@ -20,7 +19,7 @@ import { ACTION_BUTTON } from "@/lib/ui/action-styles";
 import { Eye } from "lucide-react";
 import {
   formatDate,
-  FOLLOW_UP_STATUS_LABELS,
+  followUpDisplayFromFlags,
   FOLLOW_UP_TYPE_LABELS,
 } from "@/lib/utils";
 import type { FollowUpWithRelations } from "@/types";
@@ -257,19 +256,10 @@ function FollowUpRow({
       <td className="px-4 py-3">
         <div className="flex items-center gap-1.5 flex-wrap">
           <ConfirmationStatusBadge status={fu.confirmation_status} />
-          {isOverdue && <OverdueFollowUpBadge />}
-          <StatusBadge
-            label={FOLLOW_UP_STATUS_LABELS[fu.status]}
-            variant={
-              fu.status === "completed"
-                ? "success"
-                : fu.status === "cancelled"
-                  ? "error"
-                  : isOverdue
-                    ? "error"
-                    : "default"
-            }
-          />
+          {(() => {
+            const d = followUpDisplayFromFlags(fu.status, isOverdue, diffDays === 0);
+            return <StatusBadge label={d.label} variant={d.variant} />;
+          })()}
         </div>
       </td>
 

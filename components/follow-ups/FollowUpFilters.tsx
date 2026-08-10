@@ -13,7 +13,9 @@
  *
  * Filters:
  *   - Search (patient name or phone)
- *   - Status (pending / completed / overdue)
+ *   - Status (to handle / overdue / completed / cancelled). The "to handle"
+ *     option maps to the backend `pending` status; the label just avoids the
+ *     internal word.
  *   - Due Date From / Due Date To
  */
 
@@ -28,7 +30,8 @@ import { SlidersHorizontal, X, Search } from "lucide-react";
 
 const STATUS_OPTIONS = [
   { value: "", label: "All statuses" },
-  { value: "pending", label: "Pending" },
+  // value stays "pending" (backend); label avoids the internal word.
+  { value: "pending", label: "To handle" },
   { value: "overdue", label: "Overdue" },
   { value: "completed", label: "Completed" },
   { value: "cancelled", label: "Cancelled" },

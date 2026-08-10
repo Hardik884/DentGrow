@@ -1,11 +1,10 @@
 import Link from "next/link";
 import { getFollowUpStats, getAllFollowUps } from "@/actions/follow-ups";
-import { OverdueFollowUpBadge } from "./OverdueFollowUpBadge";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import {
   formatDate,
   formatDateTime,
-  FOLLOW_UP_STATUS_LABELS,
+  followUpDisplayFromFlags,
   FOLLOW_UP_TYPE_LABELS,
 } from "@/lib/utils";
 import { Calendar, Stethoscope } from "lucide-react";
@@ -17,7 +16,7 @@ import type { FollowUpWithRelations } from "@/types";
  * Server Component — clinic-wide follow-up overview for /dentist/follow-ups.
  *
  * Displays:
- * - KPI stat cards: pending, overdue, upcoming, completed
+ * - KPI stat cards: follow-ups to handle, overdue, completed
  * - Overdue list (highlighted, shown first)
  * - Upcoming follow-ups
  * - Recently completed follow-ups
@@ -54,9 +53,9 @@ export async function FollowUpDashboard() {
 
       {/* ── KPI Cards ── */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <StatCard label="Pending"   value={stats.pending}   description="Open follow-ups (incl. overdue)" variant="default" />
-        <StatCard label="Overdue"   value={stats.overdue}   description="Past due date"                  variant="error" />
-        <StatCard label="Completed" value={stats.completed} description="All time"                        variant="success" />
+        <StatCard label="Follow-ups to handle" value={stats.pending}   description="Open follow-ups (incl. overdue)" variant="default" />
+        <StatCard label="Overdue"              value={stats.overdue}   description="Past due date"                  variant="error" />
+        <StatCard label="Completed"            value={stats.completed} description="All time"                        variant="success" />
       </div>
 
       {/* ── Overdue Follow-Ups ── */}
@@ -66,9 +65,9 @@ export async function FollowUpDashboard() {
         </Section>
       )}
 
-      {/* ── Pending Follow-Ups (non-overdue) ── */}
+      {/* ── Upcoming Follow-Ups (non-overdue) ── */}
       {upcoming.length > 0 && (
-        <Section title="Pending" href="/dentist/follow-ups?status=pending" count={stats.upcoming}>
+        <Section title="Upcoming" href="/dentist/follow-ups?status=pending" count={stats.upcoming}>
           <FollowUpTable followUps={upcoming} today={today} />
         </Section>
       )}
@@ -76,7 +75,7 @@ export async function FollowUpDashboard() {
       {/* Empty state */}
       {overdue.length === 0 && upcoming.length === 0 && (
         <div className="bg-white border border-border rounded-xl px-6 py-12 text-center">
-          <p className="text-text-secondary text-sm">No pending follow-ups. All caught up!</p>
+          <p className="text-text-secondary text-sm">No follow-ups to handle. All caught up!</p>
         </div>
       )}
 
@@ -239,21 +238,12 @@ function FollowUpTable({
               )}
             </div>
 
-            {/* Right: badges */}
+            {/* Right: badge */}
             <div className="flex items-center gap-2 shrink-0 mt-0.5">
-              {isOverdue && <OverdueFollowUpBadge />}
-              <StatusBadge
-                label={FOLLOW_UP_STATUS_LABELS[f.status]}
-                variant={
-                  f.status === "completed"
-                    ? "success"
-                    : f.status === "cancelled"
-                      ? "error"
-                      : isOverdue
-                        ? "error"
-                        : "default"
-                }
-              />
+              {(() => {
+                const d = followUpDisplayFromFlags(f.status, isOverdue, diffDays === 0);
+                return <StatusBadge label={d.label} variant={d.variant} />;
+              })()}
             </div>
           </Link>
         );

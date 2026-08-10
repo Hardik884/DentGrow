@@ -394,6 +394,39 @@ export const PAYMENT_METHOD_LABELS = {
 
 export type BadgeVariant = "default" | "success" | "warning" | "error" | "info";
 
+/**
+ * The label a clinic user sees for a follow-up. The stored `pending` status is
+ * never shown as the word "Pending"; it is resolved by due date into "Overdue",
+ * "Due today" or "Upcoming". The backend status is unchanged — this is display
+ * only. `completed` / `cancelled` map straight through.
+ */
+export function followUpDisplayFromFlags(
+  status: FollowUpStatus,
+  isOverdue: boolean,
+  isDueToday: boolean,
+): { label: string; variant: BadgeVariant } {
+  if (status === "completed") return { label: "Completed", variant: "success" };
+  if (status === "cancelled") return { label: "Cancelled", variant: "default" };
+  if (isOverdue) return { label: "Overdue", variant: "error" };
+  if (isDueToday) return { label: "Due today", variant: "warning" };
+  return { label: "Upcoming", variant: "default" };
+}
+
+/**
+ * Convenience wrapper for callers that hold "YYYY-MM-DD" strings for the due date
+ * and clinic-local today. Derives the overdue / due-today flags then delegates to
+ * followUpDisplayFromFlags.
+ */
+export function followUpDisplayStatus(
+  status: FollowUpStatus,
+  dueDate: string,
+  today: string,
+): { label: string; variant: BadgeVariant } {
+  const isOverdue = status === "pending" && !!today && dueDate < today;
+  const isDueToday = status === "pending" && !!today && dueDate === today;
+  return followUpDisplayFromFlags(status, isOverdue, isDueToday);
+}
+
 export function getAppointmentStatusVariant(status: AppointmentStatus): BadgeVariant {
   switch (status) {
     case "completed":
