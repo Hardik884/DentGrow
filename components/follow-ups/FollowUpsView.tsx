@@ -33,6 +33,8 @@ interface FollowUpsViewProps {
   treatmentType?: string;
   dateFrom?: string;
   dateTo?: string;
+  /** Clinic-local today ("YYYY-MM-DD"), computed server-side, for overdue detection. */
+  clinicToday: string;
 }
 
 export function FollowUpsView({
@@ -44,6 +46,7 @@ export function FollowUpsView({
   treatmentType,
   dateFrom,
   dateTo,
+  clinicToday,
 }: FollowUpsViewProps) {
   const { data, isPending, isError, error, isPlaceholderData, isFetching } =
     useQuery({
@@ -82,9 +85,11 @@ export function FollowUpsView({
   const total = data?.total ?? 0;
   const totalPages = Math.ceil(total / limit);
 
-  // Compute today once for overdue detection
-  const todayStr = new Date().toISOString().split("T")[0];
-  const today = new Date(`${todayStr}T00:00:00`);
+  // Overdue detection uses the clinic-local today (passed from the server), not
+  // the browser/UTC date — otherwise between local midnight and UTC midnight a
+  // follow-up due today reads "Due in 1 day" and an overdue one isn't flagged
+  // (audit: FollowUpsView UTC "today").
+  const today = new Date(`${clinicToday}T00:00:00`);
 
   function pageHref(p: number) {
     const sp = new URLSearchParams();

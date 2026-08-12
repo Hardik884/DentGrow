@@ -21,7 +21,7 @@
  */
 
 import type { PrescriptionRecord } from "@/actions/prescriptions";
-import { formatDate } from "@/lib/utils";
+import { formatDateInTimezone } from "@/lib/utils";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import Image from "next/image";
@@ -31,12 +31,15 @@ interface PrescriptionDialogProps {
   prescription: PrescriptionRecord;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** Clinic IANA timezone, so the printed date shows the clinic-local day. */
+  clinicTimezone: string;
 }
 
 export function PrescriptionDialog({
   prescription,
   open,
   onOpenChange,
+  clinicTimezone,
 }: PrescriptionDialogProps) {
   if (!open) return null;
 
@@ -121,7 +124,7 @@ export function PrescriptionDialog({
               <div>
                 <p className="text-[#71717A] text-xs uppercase tracking-wide mb-1">Treatment Date</p>
                 <p className="text-[#09090B] font-medium">
-                  {formatDate(prescription.treatment_date)}
+                  {formatDateInTimezone(prescription.treatment_date, clinicTimezone)}
                 </p>
               </div>
               <div className="col-span-2">

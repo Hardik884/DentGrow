@@ -3,6 +3,7 @@ import { TreatmentList } from "@/components/dentist/TreatmentList";
 import { TreatmentFormDialog } from "@/components/dentist/TreatmentFormDialog";
 import { AppointmentPatientHistorySection } from "@/components/dentist/AppointmentPatientHistorySection";
 import { formatCurrency } from "@/lib/utils";
+import { sumTreatmentCharges } from "@/lib/billing/balance";
 import { Plus } from "lucide-react";
 import type { Treatment } from "@/types";
 
@@ -27,10 +28,9 @@ export async function AppointmentTreatmentsSection({
   const result = await getTreatmentsForAppointment(appointmentId);
   const treatments = (result.data ?? []) as Treatment[];
 
-  const totalCost = treatments.reduce(
-    (sum, t) => sum + Number(t.cost ?? 0),
-    0
-  );
+  // Canonical charge: billable cost + OPD + X-ray, matching the outstanding
+  // balance and the Payments section below it (audit A6).
+  const totalCost = sumTreatmentCharges(treatments);
 
   return (
     <div className="bg-white border rounded-lg p-4 space-y-5">

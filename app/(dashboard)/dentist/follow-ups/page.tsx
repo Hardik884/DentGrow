@@ -82,6 +82,7 @@ export default async function DentistFollowUpsPage({ searchParams }: Props) {
         treatmentType={params.treatmentType}
         dateFrom={params.dateFrom}
         dateTo={params.dateTo}
+        clinicToday={today}
       />
     </div>
   );

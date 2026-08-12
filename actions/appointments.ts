@@ -27,6 +27,8 @@ import { zonedDateToUTC, getTodayInTimezone, getUtcBoundariesForLocalDate } from
 import { createAdminClient } from "@/lib/supabase/admin";
 import { writeAppointmentHistory } from "@/lib/appointments/history";
 import { completeAppointmentCascade } from "@/lib/appointments/complete";
+import { PATIENT_APPOINTMENT_SELECT } from "@/lib/appointments/patient-safe-columns";
+import { DEFAULT_TIMEZONE } from "@/lib/clinic/constants";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type DbClient = any;
@@ -1177,7 +1179,7 @@ export async function getAppointment(
     const appointmentQuery = isPatient
       ? db
           .from("appointments")
-          .select("*, patient:patients(id, name, phone, date_of_birth, gender)")
+          .select(PATIENT_APPOINTMENT_SELECT)
           .eq("id", id)
           .is("deleted_at", null)
           .single()
@@ -1301,12 +1303,33 @@ export async function getAppointments(filters?: {
 
     if (filters?.status) query = query.eq("status", filters.status);
 
-    // Date + time filtering: combine date and time parts into a full datetime string.
-    // timeFrom/timeTo are "HH:MM" strings from the filter bar.
+    // Date + time filtering. `scheduled_at` is a timestamptz stored in UTC, so a
+    // naive `${date}T00:00:00` string is read as UTC and shifts the window by the
+    // clinic's offset — a west-of-UTC clinic's evening appointments land on the
+    // wrong day, and an Asia/Kolkata clinic drops its 00:00–05:30 local band
+    // (audit A14). Interpret the date+time bounds in the clinic's local calendar
+    // and convert to UTC with the shared helper, matching getAppointmentsToday.
+    const needsDateFilter = Boolean(filters?.dateFrom || filters?.dateTo);
+    let timezone = DEFAULT_TIMEZONE;
+    if (needsDateFilter && profile.role !== "patient") {
+      const { data: settings } = await db
+        .from("clinic_settings")
+        .select("timezone")
+        .eq("clinic_id", profile.clinic_id)
+        .maybeSingle();
+      timezone = (settings as { timezone?: string } | null)?.timezone ?? DEFAULT_TIMEZONE;
+    }
+    // timeFrom/timeTo are "HH:MM" strings from the filter bar (clinic-local).
     const fromTime = filters?.timeFrom || "00:00:00";
     const toTime = filters?.timeTo ? `${filters.timeTo}:59` : "23:59:59";
-    if (filters?.dateFrom) query = query.gte("scheduled_at", `${filters.dateFrom}T${fromTime}`);
-    if (filters?.dateTo) query = query.lte("scheduled_at", `${filters.dateTo}T${toTime}`);
+    if (filters?.dateFrom) {
+      const startUtc = zonedDateToUTC(`${filters.dateFrom}T${fromTime}`, timezone).toISOString();
+      query = query.gte("scheduled_at", startUtc);
+    }
+    if (filters?.dateTo) {
+      const endUtc = zonedDateToUTC(`${filters.dateTo}T${toTime}`, timezone).toISOString();
+      query = query.lte("scheduled_at", endUtc);
+    }
 
     if (filters?.patientId) query = query.eq("patient_id", filters.patientId);
 

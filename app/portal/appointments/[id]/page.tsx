@@ -85,15 +85,10 @@ export default async function PortalAppointmentDetailPage({ params }: Props) {
             <p className="font-semibold mt-0.5">{appt.duration_minutes} min</p>
           </div>
         </div>
-
-        {appt.notes && (
-          <div className="pt-4 border-t">
-            <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">
-              Notes
-            </p>
-            <p className="text-sm text-gray-700">{appt.notes}</p>
-          </div>
-        )}
+        {/* `appointments.notes` is a staff-internal field (clinical / back-office
+            free text, auto-filled with follow-up reasons) and is deliberately
+            NOT shown to patients — see audit A1. The patient branch of
+            getAppointment no longer returns it. */}
       </div>
 
       {/* ── Cancel ───────────────────────────────────────────── */}

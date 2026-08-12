@@ -275,8 +275,21 @@ export function buildBriefing(
     const copy = COPY[constraint.category];
     const values = result.valueAtStake.get(constraint.id);
     const value = values?.[0];
-    const atStake = value ? formatAtStake(value.amount, value.unit) : null;
     const patientCount = patientCounts?.[constraint.category];
+
+    // Retention's headline number must name the SAME population as its summary
+    // line and the "Open overdue recalls" action list — distinct patients with
+    // an overdue follow-up — not the reactivation-candidate figure the Value
+    // Engine uses to size and rank the constraint internally (audit A9). Sourcing
+    // it here, in the view, keeps the deterministic engine and its ranking
+    // untouched while making the card reconcile with the work it links to.
+    let atStake: string | null;
+    if (constraint.category === "retention") {
+      const overdue = patientCount ?? metricValue(metrics, "followups.overdue");
+      atStake = overdue !== null && overdue > 0 ? formatAtStake(overdue, "count") : null;
+    } else {
+      atStake = value ? formatAtStake(value.amount, value.unit) : null;
+    }
 
     problems.push({
       id: constraint.id,

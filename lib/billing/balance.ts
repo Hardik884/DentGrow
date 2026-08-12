@@ -165,3 +165,51 @@ export function computeOutstandingBalance(
     sumTreatmentCharges(treatments) - sumPaymentAmounts(payments)
   );
 }
+
+/**
+ * Clinic-wide outstanding balance: the sum of each patient's own
+ * `computeOutstandingBalance`.
+ *
+ * The per-patient clamp is essential. A single clinic-level
+ * `max(0, Σcharges − Σpaid)` lets one patient's overpayment or prepaid deposit
+ * silently cancel another patient's genuine debt, under-reporting the true total
+ * — the analytics "Remaining" bug (audit A5). Clamping inside each patient
+ * before summing keeps the clinic figure equal to the sum of the per-profile
+ * balances it is meant to summarise.
+ *
+ * Pass the clinic's full (non-deleted) treatments and payments, each carrying a
+ * `patient_id`. Rows with no `patient_id` fall into a single bucket — which
+ * reproduces the old clinic-level behaviour, so callers that cannot supply it
+ * are no worse off than before.
+ */
+export function computeClinicOutstandingBalance(
+  treatments: ReadonlyArray<TreatmentLike & { patient_id?: string | null }>,
+  payments: ReadonlyArray<PaymentLike & { patient_id?: string | null }>
+): number {
+  const treatmentsByPatient = new Map<string, TreatmentLike[]>();
+  const paymentsByPatient = new Map<string, PaymentLike[]>();
+
+  for (const t of treatments) {
+    const key = t.patient_id ?? "";
+    const list = treatmentsByPatient.get(key);
+    if (list) list.push(t);
+    else treatmentsByPatient.set(key, [t]);
+  }
+  for (const p of payments) {
+    const key = p.patient_id ?? "";
+    const list = paymentsByPatient.get(key);
+    if (list) list.push(p);
+    else paymentsByPatient.set(key, [p]);
+  }
+
+  // Only patients with charges can owe anything; a patient with payments but no
+  // treatments has a zero (clamped) balance and never reduces the total.
+  let total = 0;
+  for (const [key, patientTreatments] of treatmentsByPatient) {
+    total += computeOutstandingBalance(
+      patientTreatments,
+      paymentsByPatient.get(key) ?? []
+    );
+  }
+  return total;
+}

@@ -589,3 +589,91 @@ describe.skipIf(!LOCAL_UP)("SupabaseMetricsDataRepository (integration)", () => 
     });
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Audit A8 — a completed / in_progress treatment whose `performed_at` was never
+// recorded must stay billable, so BB `revenue.outstanding` matches the canonical
+// balance and the payment send-list. The bug rolled it back to `planned`,
+// dropping its cost. Isolated under its own clinic so it never perturbs the
+// finely-tuned fixtures above.
+// ─────────────────────────────────────────────────────────────────────────────
+const A8_CLINIC = "9f000000-0000-4000-8000-0000000000c1";
+const A8_DENTIST = "9f000000-0000-4000-8000-0000000000c2";
+const A8_PATIENT = "9f000000-0000-4000-8000-0000000000c3";
+const A8_TREATMENT = "9f000000-0000-4000-8000-0000000000c4";
+const A8_APPOINTMENT = "9f000000-0000-4000-8000-0000000000c5";
+
+async function a8Cleanup() {
+  await raw.from("clinics").delete().eq("id", A8_CLINIC);
+  await raw.auth.admin.deleteUser(A8_DENTIST).catch(() => undefined);
+}
+
+async function a8Seed() {
+  await a8Cleanup();
+  const { error } = await raw.auth.admin.createUser({
+    id: A8_DENTIST,
+    email: "bb-a8@test.local",
+    password: "password123",
+    email_confirm: true,
+  });
+  if (error && !/already/i.test(error.message)) throw new Error(`seed a8 user: ${error.message}`);
+
+  await insert("clinics", { id: A8_CLINIC, name: "A8 Clinic" });
+  await insert("clinic_settings", {
+    clinic_id: A8_CLINIC,
+    clinic_name: "A8 Clinic",
+    timezone: TZ,
+    average_appointment_duration: 30,
+  });
+  await insert("profiles", { id: A8_DENTIST, clinic_id: A8_CLINIC, full_name: "A8 Dentist", role: "dentist" });
+  await insert("patients", { id: A8_PATIENT, clinic_id: A8_CLINIC, name: "A8 Patient", created_at: "2026-03-01T10:00:00Z" });
+  await insert("appointments", {
+    id: A8_APPOINTMENT,
+    clinic_id: A8_CLINIC,
+    patient_id: A8_PATIENT,
+    dentist_id: A8_DENTIST,
+    scheduled_at: "2026-03-10T05:00:00Z",
+    source: "walk_in",
+    status: "completed",
+  });
+  // Completed, but performed_at deliberately NULL. Created before asOf so it
+  // existed at the snapshot moment.
+  await insert("treatments", {
+    id: A8_TREATMENT,
+    clinic_id: A8_CLINIC,
+    appointment_id: A8_APPOINTMENT,
+    patient_id: A8_PATIENT,
+    treatment_type: "Filling",
+    cost: 1500,
+    status: "completed",
+    performed_at: null,
+    created_at: "2026-03-10T05:00:00Z",
+  });
+}
+
+const a8Repo = new SupabaseMetricsDataRepository(db, { asOf: AS_OF });
+
+describe.skipIf(!LOCAL_UP)("performed_at NULL keeps a billable treatment billable (audit A8)", () => {
+  beforeAll(async () => {
+    await a8Seed();
+  });
+  afterAll(async () => {
+    await a8Cleanup();
+  });
+
+  it("preserves the real status instead of rolling it back to planned", async () => {
+    const s = await a8Repo.getClinicSnapshot(A8_CLINIC, DATE);
+    const t = s.treatments.find((x) => x.id === A8_TREATMENT);
+    expect(t?.status).toBe("completed"); // the bug reported "planned"
+    expect(t?.performedAt).toBeNull();
+  });
+
+  it("counts its cost in outstanding, matching the canonical balance", async () => {
+    const engine = new DentGrowMetricsEngine(a8Repo);
+    const metrics = await engine.calculateMetrics(A8_CLINIC, DATE);
+    const v = (key: string) => metrics.find((m) => m.id.startsWith(`${key}:`))?.value;
+    // 1500 billable, no payments → owed 1500. The bug read 0 (treated as planned).
+    expect(v(MetricKey.REVENUE_OUTSTANDING)).toBe(1500);
+    expect(v(MetricKey.REVENUE_PENDING_TREATMENT_VALUE)).toBe(0);
+  });
+});

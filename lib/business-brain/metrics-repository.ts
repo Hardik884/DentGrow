@@ -470,15 +470,24 @@ export class SupabaseMetricsDataRepository implements MetricsDataRepository {
     return rows<TreatmentRow>(data)
       .map((t) => {
         const performedAt = t.performed_at;
-        const performedByNow = performedAt !== null && performedAt <= asOf;
-        // Not yet performed at this moment. It counts as pipeline only if it
-        // had been raised by then; otherwise it did not exist at all.
-        if (!performedByNow && t.created_at > asOf) return null;
+        // Performed strictly AFTER the snapshot moment — on a historical snapshot
+        // this work had not been delivered yet, so it rolls back to pipeline.
+        const performedInFuture = performedAt !== null && performedAt > asOf;
+        // Existed by `asOf` if it was performed by then OR merely created by then.
+        const existedByAsOf =
+          (performedAt !== null && performedAt <= asOf) || t.created_at <= asOf;
+        // Neither performed nor even created by then — it did not exist at all.
+        if (!existedByAsOf) return null;
         return {
           id: t.id,
           cost: Number(t.cost ?? 0),
-          status: performedByNow ? t.status : "planned",
-          performedAt: performedByNow ? performedAt : null,
+          // Preserve the treatment's REAL status. A completed/in_progress
+          // treatment whose `performed_at` was simply never recorded must stay
+          // billable, or BB outstanding under-reports vs the canonical balance
+          // and the payment send-list (audit A8). Only a treatment genuinely
+          // performed after this snapshot is rolled back to `planned`.
+          status: performedInFuture ? "planned" : t.status,
+          performedAt: performedInFuture ? null : performedAt,
           patientId: t.patient_id,
           // OPD and X-ray charges are owed whenever the consultation / radiograph
           // happened, independent of the treatment's own status (see lib/billing).

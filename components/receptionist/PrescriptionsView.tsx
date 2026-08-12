@@ -13,7 +13,7 @@ import { getPrescriptions, type PrescriptionRecord } from "@/actions/prescriptio
 import { queryKeys } from "@/lib/query/keys";
 import { ListTableSkeleton } from "@/components/shared/ListTableSkeleton";
 import { ACTION_BUTTON } from "@/lib/ui/action-styles";
-import { formatDate } from "@/lib/utils";
+import { formatDateInTimezone } from "@/lib/utils";
 import { Eye, Printer } from "lucide-react";
 import { PrescriptionDialog } from "./PrescriptionDialog";
 
@@ -26,6 +26,8 @@ interface PrescriptionsViewProps {
   medicineName?: string;
   dateFrom?: string;
   dateTo?: string;
+  /** Clinic IANA timezone, so the prescription date shows the clinic-local day. */
+  clinicTimezone: string;
 }
 
 export function PrescriptionsView({
@@ -37,6 +39,7 @@ export function PrescriptionsView({
   medicineName,
   dateFrom,
   dateTo,
+  clinicTimezone,
 }: PrescriptionsViewProps) {
   const [selectedPrescription, setSelectedPrescription] = useState<PrescriptionRecord | null>(null);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
@@ -140,7 +143,7 @@ export function PrescriptionsView({
                   {prescriptions.map((rx) => (
                     <tr key={rx.id} className="hover:bg-[#FAFAFA] transition-colors">
                       <td className="px-4 py-3 text-[#52525B]">
-                        {formatDate(rx.treatment_date)}
+                        {formatDateInTimezone(rx.treatment_date, clinicTimezone)}
                       </td>
                       <td className="px-4 py-3 font-medium text-[#09090B]">
                         {rx.patient_name}
@@ -192,6 +195,7 @@ export function PrescriptionsView({
           prescription={selectedPrescription}
           open={viewDialogOpen}
           onOpenChange={setViewDialogOpen}
+          clinicTimezone={clinicTimezone}
         />
       )}
     </>

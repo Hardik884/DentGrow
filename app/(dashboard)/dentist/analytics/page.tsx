@@ -79,7 +79,9 @@ export default async function AnalyticsDashboardPage({
     month: "2-digit",
     day: "2-digit",
   }).format(new Date());
-  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+  // Anchor the default 30-day start on the clinic-local `today`, not UTC `now`,
+  // so the default range's start edge doesn't drift by a day for a non-UTC clinic.
+  const thirtyDaysAgo = new Date(Date.parse(`${today}T00:00:00Z`) - 30 * 24 * 60 * 60 * 1000)
     .toISOString().split("T")[0];
   const dateFrom = params.from ?? thirtyDaysAgo;
   const dateTo = params.to ?? today;

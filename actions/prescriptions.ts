@@ -1,6 +1,8 @@
 "use server";
 
 import { resolveSession as resolveCachedSession } from "@/lib/auth/session";
+import { getUtcBoundariesForLocalDate } from "@/lib/utils";
+import { DEFAULT_TIMEZONE } from "@/lib/clinic/constants";
 import type { ActionResult } from "@/types";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -100,42 +102,42 @@ export async function getPrescriptions(filters?: {
       }
     }
 
-    // Medicine name search: filter by medications JSONB array
-    // We need to fetch all matching treatments and filter in-memory due to JSONB array search limitations
-    // For better performance, we could add a GIN index on medications in the future
-
-    let query = db
-      .from("treatments")
-      .select(
-        "id, patient_id, treatment_type, performed_at, created_at, patient_visible_notes, medications, appointment_id",
-        { count: "exact" }
-      )
-      .eq("clinic_id", profile.clinic_id)
-      .eq("status", "completed")
-      .is("deleted_at", null)
-      .not("medications", "is", null);
-
-    if (filters?.treatmentType && filters.treatmentType.trim().length >= 1) {
-      query = query.ilike("treatment_type", `%${filters.treatmentType.trim()}%`);
+    // Resolve the dentist filter to appointment IDs FIRST, so it becomes a
+    // DATABASE filter applied before pagination — not a filter on an
+    // already-sliced page, which returned wrong counts and hid matching records
+    // on later pages (audit A10). Dentist identity lives on the appointment, not
+    // the treatment, so we look up the dentist's appointments up front.
+    let appointmentIdFilter: string[] | null = null;
+    if (filters?.dentistId) {
+      const { data: apptRows, error: apptErr } = await db
+        .from("appointments")
+        .select("id")
+        .eq("clinic_id", profile.clinic_id)
+        .eq("dentist_id", filters.dentistId);
+      if (apptErr) {
+        console.error("[getPrescriptions] dentist appointments:", apptErr);
+        return { data: null, error: "Failed to fetch prescriptions." };
+      }
+      appointmentIdFilter = ((apptRows ?? []) as { id: string }[]).map((a) => a.id);
+      if (appointmentIdFilter.length === 0) {
+        return { data: { prescriptions: [], total: 0 }, error: null };
+      }
     }
 
-    if (patientIdFilter !== null) {
-      query = query.in("patient_id", patientIdFilter);
+    // Resolve the clinic timezone so the date filter bounds a clinic-local day.
+    // `performed_at` is a timestamptz; a naive `${date}T00:00:00` string is read
+    // as UTC and shifts the window for a non-UTC clinic (audit A17).
+    let timezone = DEFAULT_TIMEZONE;
+    if (filters?.dateFrom || filters?.dateTo) {
+      const { data: tzSettings } = await db
+        .from("clinic_settings")
+        .select("timezone")
+        .eq("clinic_id", profile.clinic_id)
+        .maybeSingle();
+      timezone = (tzSettings as { timezone?: string } | null)?.timezone ?? DEFAULT_TIMEZONE;
     }
 
-    if (filters?.dateFrom) query = query.gte("performed_at", `${filters.dateFrom}T00:00:00`);
-    if (filters?.dateTo)   query = query.lte("performed_at", `${filters.dateTo}T23:59:59`);
-
-    const { data: treatmentRows, error: treatmentError, count: rawCount } = await query
-      .order("performed_at", { ascending: false, nullsFirst: false })
-      .order("created_at", { ascending: false });
-
-    if (treatmentError) {
-      console.error("[getPrescriptions] treatments:", treatmentError);
-      return { data: null, error: "Failed to fetch prescriptions." };
-    }
-
-    let treatments = (treatmentRows ?? []) as Array<{
+    type PrescriptionTreatmentRow = {
       id: string;
       patient_id: string;
       treatment_type: string;
@@ -150,14 +152,64 @@ export async function getPrescriptions(filters?: {
         instructions?: string;
       }> | null;
       appointment_id: string;
-    }>;
+    };
 
-    // Filter out treatments with empty medications arrays
-    treatments = treatments.filter(
+    // A "prescription" is a completed treatment whose `medications` array is
+    // non-empty — a JSONB test that runs in memory — and the medicine-name search
+    // is in-memory too. Because the final filter can't be expressed as one SQL
+    // WHERE, we read every matching row in DB-side chunks (defeating PostgREST's
+    // ~1000-row default cap that silently truncated large clinics — audit A11),
+    // then filter and paginate the COMPLETE set so the count and list are exact.
+    const buildQuery = () => {
+      let q = db
+        .from("treatments")
+        .select(
+          "id, patient_id, treatment_type, performed_at, created_at, patient_visible_notes, medications, appointment_id"
+        )
+        .eq("clinic_id", profile.clinic_id)
+        .eq("status", "completed")
+        .is("deleted_at", null);
+
+      if (filters?.treatmentType && filters.treatmentType.trim().length >= 1) {
+        q = q.ilike("treatment_type", `%${filters.treatmentType.trim()}%`);
+      }
+      if (patientIdFilter !== null) {
+        q = q.in("patient_id", patientIdFilter);
+      }
+      if (appointmentIdFilter !== null) {
+        q = q.in("appointment_id", appointmentIdFilter);
+      }
+      if (filters?.dateFrom)
+        q = q.gte("performed_at", getUtcBoundariesForLocalDate(filters.dateFrom, timezone).start);
+      if (filters?.dateTo)
+        q = q.lte("performed_at", getUtcBoundariesForLocalDate(filters.dateTo, timezone).end);
+
+      return q
+        .order("performed_at", { ascending: false, nullsFirst: false })
+        .order("created_at", { ascending: false });
+    };
+
+    const CHUNK = 1000;
+    let allRows: PrescriptionTreatmentRow[] = [];
+    for (let start = 0; ; start += CHUNK) {
+      const { data: batchData, error: batchErr } = await buildQuery().range(
+        start,
+        start + CHUNK - 1
+      );
+      if (batchErr) {
+        console.error("[getPrescriptions] treatments:", batchErr);
+        return { data: null, error: "Failed to fetch prescriptions." };
+      }
+      const batch = (batchData ?? []) as PrescriptionTreatmentRow[];
+      allRows = allRows.concat(batch);
+      if (batch.length < CHUNK) break;
+    }
+
+    // In-memory filters SQL can't express: non-empty medications, then the
+    // medicine-name content search.
+    let treatments = allRows.filter(
       (t) => Array.isArray(t.medications) && t.medications.length > 0
     );
-
-    // Medicine name filter (in-memory)
     if (filters?.medicineName && filters.medicineName.trim().length >= 1) {
       const medSearch = filters.medicineName.trim().toLowerCase();
       treatments = treatments.filter((t) =>
@@ -165,9 +217,9 @@ export async function getPrescriptions(filters?: {
       );
     }
 
+    // Exact total over the FULLY-filtered set (dentist filter already applied in
+    // the DB above), then paginate.
     const totalAfterFilters = treatments.length;
-
-    // Pagination
     const paginatedTreatments = treatments.slice(from, to + 1);
 
     if (paginatedTreatments.length === 0) {
@@ -214,18 +266,8 @@ export async function getPrescriptions(filters?: {
       )
     );
 
-    // Dentist filter
-    let filteredByDentist = paginatedTreatments;
-    if (filters?.dentistId) {
-      filteredByDentist = paginatedTreatments.filter((t) => {
-        const dentistId = dentistIdByAppt.get(t.appointment_id);
-        return dentistId === filters.dentistId;
-      });
-    }
-
-    if (filteredByDentist.length === 0) {
-      return { data: { prescriptions: [], total: 0 }, error: null };
-    }
+    // The dentist filter has already been applied at the database level (audit
+    // A10), so the paginated rows are the final set.
 
     const { data: dentistsData } = await db
       .from("profiles")
@@ -251,7 +293,7 @@ export async function getPrescriptions(filters?: {
       ?.registration_number ?? null;
 
     // Build prescription records
-    const prescriptions: PrescriptionRecord[] = filteredByDentist
+    const prescriptions: PrescriptionRecord[] = paginatedTreatments
       .map((t) => {
         const patient = patientById.get(t.patient_id);
         const dentistId = dentistIdByAppt.get(t.appointment_id);

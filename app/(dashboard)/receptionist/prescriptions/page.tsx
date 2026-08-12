@@ -4,6 +4,7 @@ import { PageHeader } from "@/components/layouts/PageHeader";
 import { PrescriptionFilters } from "@/components/receptionist/PrescriptionFilters";
 import { PrescriptionsView } from "@/components/receptionist/PrescriptionsView";
 import { getDentistList } from "@/actions/prescriptions";
+import { getClinicTimezone } from "@/lib/clinic/config";
 
 export const metadata: Metadata = {
   title: "Prescription History",
@@ -37,6 +38,9 @@ export default async function ReceptionistPrescriptionsPage({ searchParams }: Pr
   const dentistListResult = await getDentistList();
   const dentists = dentistListResult.data ?? [];
 
+  // Clinic timezone so displayed prescription dates show the clinic-local day.
+  const clinicTimezone = await getClinicTimezone();
+
   return (
     <div className="p-6 space-y-6">
       <PageHeader
@@ -67,6 +71,7 @@ export default async function ReceptionistPrescriptionsPage({ searchParams }: Pr
         medicineName={params.medicineName}
         dateFrom={params.dateFrom}
         dateTo={params.dateTo}
+        clinicTimezone={clinicTimezone}
       />
     </div>
   );

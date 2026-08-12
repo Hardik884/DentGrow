@@ -88,6 +88,34 @@ export function formatDateTimeInTimezone(
 }
 
 /**
+ * formatDateInTimezone
+ *
+ * Date only ("20 Jun 2026") rendered in the clinic's timezone. Use this instead
+ * of `formatDate` whenever the calendar date must be the clinic-local one — e.g.
+ * a printed prescription date must not shift by a day for a timestamp near
+ * midnight, or when the viewer's device is in a different timezone.
+ */
+export function formatDateInTimezone(
+  date: string | Date | null | undefined,
+  timezone: string
+): string {
+  if (!date) return "—";
+  try {
+    const d = typeof date === "string" ? new Date(date) : date;
+    if (isNaN(d.getTime())) return "—";
+
+    return new Intl.DateTimeFormat("en-IN", {
+      timeZone: timezone,
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    }).format(d);
+  } catch {
+    return formatDate(date);
+  }
+}
+
+/**
  * getTodayInTimezone
  *
  * Returns today's date as "YYYY-MM-DD" in the given IANA timezone.

@@ -30,9 +30,10 @@ import type {
   PaymentMethod,
   AppointmentStatus,
 } from "@/types";
-import { sumTreatmentCharges } from "@/lib/billing/balance";
+import { computeClinicOutstandingBalance } from "@/lib/billing/balance";
 import { treatmentClinicShare } from "@/lib/billing/revenue";
 import { sumEarnedConsultantPayouts } from "@/lib/billing/payout";
+import { getUtcBoundariesForLocalDate } from "@/lib/utils";
 
 export interface DateRangeFilter {
   clinicId: string;
@@ -42,67 +43,47 @@ export interface DateRangeFilter {
   timezone?: string;
 }
 
-function startOf(date: string): string {
-  return `${date}T00:00:00.000Z`;
+// Range boundaries for a clinic-local calendar date, as UTC instants for
+// `timestamptz` comparisons. The `timezone` is REQUIRED so no caller can slip
+// back to a naive UTC-midnight boundary that drops or misplaces rows near local
+// midnight for a non-UTC clinic (audit A16). Delegates to the same helper the
+// dashboard KPIs already use, so every range reads the day the same way.
+function startOf(date: string, timezone: string): string {
+  return utcBoundariesForLocalDate(date, timezone).start;
 }
-function endOf(date: string): string {
-  return `${date}T23:59:59.999Z`;
+function endOf(date: string, timezone: string): string {
+  return utcBoundariesForLocalDate(date, timezone).end;
+}
+
+/**
+ * The clinic-local calendar date ("YYYY-MM-DD") of a UTC timestamp. Use this to
+ * bucket rows by day so an appointment at 03:30 UTC (09:00 IST) counts on the
+ * clinic's day, matching the peak-hours buckets rather than the UTC date that
+ * `scheduled_at.split("T")[0]` returns (audit A16).
+ */
+function localDateInTz(iso: string, timezone: string): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: timezone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date(iso));
 }
 
 /**
  * utcBoundariesForLocalDate
  *
- * Returns the UTC ISO timestamps representing the start and end of the given
- * local-calendar date in the specified IANA timezone. Use this when filtering
- * a `timestamptz` column by a clinic's local "today" so queries don't miss
- * rows on either side of UTC midnight.
+ * Returns the UTC ISO timestamps for the start and end of a clinic-local date.
+ * Delegates to the canonical `getUtcBoundariesForLocalDate` in `lib/utils` so
+ * analytics shares ONE timezone implementation with the rest of the app — the
+ * previous local copy truncated seconds and folded the end-of-day `.999` ms into
+ * a `.998Z` value, overlapping consecutive days by ~1s.
  */
 function utcBoundariesForLocalDate(
   localDate: string,
   timezone: string
 ): { start: string; end: string } {
-  const startMs = zonedDatetimeToUtcMs(`${localDate}T00:00:00`, timezone);
-  const endMs = zonedDatetimeToUtcMs(`${localDate}T23:59:59.999`, timezone);
-  return {
-    start: new Date(startMs).toISOString(),
-    end: new Date(endMs).toISOString(),
-  };
-}
-
-/**
- * zonedDatetimeToUtcMs
- *
- * Converts a wall-clock datetime string interpreted in `timezone` to a UTC
- * epoch-ms value. Uses Intl.DateTimeFormat to determine the offset.
- */
-function zonedDatetimeToUtcMs(localDatetime: string, timezone: string): number {
-  // Step 1: parse the local string as if it were UTC, get a reference point.
-  const naiveUtcMs = Date.parse(`${localDatetime}Z`);
-
-  // Step 2: ask Intl what wall-clock time `naiveUtcMs` shows in `timezone`.
-  const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone: timezone,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-    hour12: false,
-  }).formatToParts(new Date(naiveUtcMs));
-  const get = (t: string) => parts.find((p) => p.type === t)?.value ?? "0";
-  const tzAsUtcMs = Date.UTC(
-    Number(get("year")),
-    Number(get("month")) - 1,
-    Number(get("day")),
-    Number(get("hour")) === 24 ? 0 : Number(get("hour")),
-    Number(get("minute")),
-    Number(get("second"))
-  );
-
-  // Step 3: the offset is naiveUtc - tzAsUtc. Apply it to get the real UTC.
-  const offsetMs = naiveUtcMs - tzAsUtcMs;
-  return naiveUtcMs + offsetMs;
+  return getUtcBoundariesForLocalDate(localDate, timezone);
 }
 
 // =============================================================================
@@ -314,7 +295,7 @@ export async function getAnalyticsSummary(
       .from("appointments")
       .select("status, source, scheduled_at, duration_minutes")
       .eq("clinic_id", clinicId).is("deleted_at", null)
-      .gte("scheduled_at", startOf(dateFrom)).lte("scheduled_at", endOf(dateTo)),
+      .gte("scheduled_at", startOf(dateFrom, timezone)).lte("scheduled_at", endOf(dateTo, timezone)),
 
     supabase
       .from("appointments")
@@ -374,7 +355,7 @@ export async function getAnalyticsSummary(
     // by differencing two cumulative positions.
     supabase
       .from("payments")
-      .select("amount, treatment_id, payment_date")
+      .select("amount, treatment_id, payment_date, patient_id")
       .eq("clinic_id", clinicId).is("deleted_at", null),
   ]);
 
@@ -418,13 +399,26 @@ export async function getAnalyticsSummary(
     .filter((p) => p.payment_date >= monthStartDate)
     .reduce((sum, p) => sum + (p.amount ?? 0), 0);
 
-  // Charges, not bare treatment cost — the clinic-wide outstanding figure has
-  // to be built from the same terms as a single patient's balance (cost + OPD
-  // + X-ray), or the dashboard total disagrees with the sum of the profiles it
-  // is meant to summarise.
-  const totalTreatmentCost = sumTreatmentCharges(treatments);
-  const totalPaid = payments.reduce((sum, p) => sum + (p.amount ?? 0), 0);
-  const outstandingBalances = Math.max(0, totalTreatmentCost - totalPaid);
+  // The clinic's ENTIRE payment history (unbounded by date), needed both for the
+  // point-in-time outstanding balance below and for the consultant-payout
+  // differencing further down.
+  const allPayments = (allPaymentsRes.data ?? []) as {
+    amount: number;
+    treatment_id: string | null;
+    payment_date: string;
+    patient_id: string | null;
+  }[];
+
+  // Outstanding = each patient's own max(0, their charges − their payments),
+  // summed (audit A5). Two things this MUST get right and the old code did not:
+  //  • use ALL payments, not just the ones in the selected date range — a
+  //    balance is a point-in-time total, so subtracting only 30 days of
+  //    collections from all-time charges over-stated it massively;
+  //  • clamp PER PATIENT — one patient's overpayment can't erase another's debt.
+  // `treatments` is already all-time. Both carry patient_id, so
+  // computeClinicOutstandingBalance reconciles this figure with the sum of the
+  // patient-profile balances it summarises.
+  const outstandingBalances = computeClinicOutstandingBalance(treatments, allPayments);
 
   // ── Consultant payouts + net clinic revenue ──────────────────────────────
   // Payouts are EARNED FROM MONEY COLLECTED, not accrued against treatment
@@ -438,12 +432,6 @@ export async function getAnalyticsSummary(
   // range, less what had already been earned before it began. That differencing
   // is what confines the figure to the range without ever splitting a single
   // payment across two buckets, so consecutive ranges sum to the whole.
-  const allPayments = (allPaymentsRes.data ?? []) as {
-    amount: number;
-    treatment_id: string | null;
-    payment_date: string;
-  }[];
-
   const paymentsThrough = (endDate: string) =>
     allPayments.filter((p) => p.payment_date <= endDate);
   const paymentsBefore = (startDate: string) =>
@@ -498,21 +486,22 @@ export async function getAppointmentAnalytics(
   filter: DateRangeFilter
 ): Promise<AppointmentAnalytics> {
   const { clinicId, dateFrom, dateTo } = filter;
+  const tz = filter.timezone ?? "Asia/Kolkata";
 
   const { data } = await supabase
     .from("appointments")
     .select("status, scheduled_at, source")
     .eq("clinic_id", clinicId)
     .is("deleted_at", null)
-    .gte("scheduled_at", startOf(dateFrom))
-    .lte("scheduled_at", endOf(dateTo));
+    .gte("scheduled_at", startOf(dateFrom, tz))
+    .lte("scheduled_at", endOf(dateTo, tz));
 
   const rows = (data ?? []) as ApptRow[];
 
   // Group by date + status
   const byStatusMap: Record<string, Record<string, number>> = {};
   for (const row of rows) {
-    const date = row.scheduled_at.split("T")[0];
+    const date = localDateInTz(row.scheduled_at, tz);
     if (!byStatusMap[date]) byStatusMap[date] = {};
     byStatusMap[date][row.status] = (byStatusMap[date][row.status] ?? 0) + 1;
   }
@@ -526,7 +515,7 @@ export async function getAppointmentAnalytics(
 
   const dailyTotals: Record<string, { total: number; cancelled: number; noShow: number }> = {};
   for (const row of rows) {
-    const date = row.scheduled_at.split("T")[0];
+    const date = localDateInTz(row.scheduled_at, tz);
     if (!dailyTotals[date]) dailyTotals[date] = { total: 0, cancelled: 0, noShow: 0 };
     dailyTotals[date].total += 1;
     if (row.status === "cancelled") dailyTotals[date].cancelled += 1;
@@ -552,8 +541,7 @@ export async function getAppointmentAnalytics(
   // Build peak hours using the clinic's local timezone so that a 9:00 AM
   // appointment stored as 03:30 UTC (Asia/Kolkata) is bucketed into hour 9,
   // not hour 3. getUTCHours() / getUTCDay() would produce wrong buckets for
-  // any timezone that is not UTC.
-  const tz = filter.timezone ?? "Asia/Kolkata";
+  // any timezone that is not UTC. (tz resolved at the top of this function.)
   const peakMap: Record<string, number> = {};
   for (const row of rows) {
     const dt = new Date(row.scheduled_at);
@@ -592,6 +580,7 @@ export async function getPatientAnalytics(
   filter: DateRangeFilter
 ): Promise<PatientAnalytics> {
   const { clinicId, dateFrom, dateTo } = filter;
+  const tz = filter.timezone ?? "Asia/Kolkata";
 
   const { data } = await supabase
     .from("patients")
@@ -602,11 +591,11 @@ export async function getPatientAnalytics(
   const rows = (data ?? []) as PatientRow[];
 
   const newInRange = rows.filter(
-    (p) => p.created_at >= startOf(dateFrom) && p.created_at <= endOf(dateTo)
+    (p) => p.created_at >= startOf(dateFrom, tz) && p.created_at <= endOf(dateTo, tz)
   );
   const newByDate: Record<string, number> = {};
   for (const p of newInRange) {
-    const date = p.created_at.split("T")[0];
+    const date = localDateInTz(p.created_at, tz);
     newByDate[date] = (newByDate[date] ?? 0) + 1;
   }
   const newPatientsOverTime = Object.entries(newByDate)
@@ -660,14 +649,15 @@ export async function getTreatmentAnalytics(
   filter: DateRangeFilter
 ): Promise<TreatmentAnalytics> {
   const { clinicId, dateFrom, dateTo } = filter;
+  const tz = filter.timezone ?? "Asia/Kolkata";
 
   const { data } = await supabase
     .from("treatments")
     .select("treatment_type, cost, clinic_share, consultant_share, status, performed_at")
     .eq("clinic_id", clinicId)
     .is("deleted_at", null)
-    .gte("created_at", startOf(dateFrom))
-    .lte("created_at", endOf(dateTo));
+    .gte("created_at", startOf(dateFrom, tz))
+    .lte("created_at", endOf(dateTo, tz));
 
   const rows = (data ?? []) as TreatmentRow[];
 
@@ -716,8 +706,9 @@ export async function getRevenueAnalytics(
   filter: DateRangeFilter
 ): Promise<RevenueAnalytics> {
   const { clinicId, dateFrom, dateTo } = filter;
+  const tz = filter.timezone ?? "Asia/Kolkata";
 
-  const [paymentsRes, treatmentsRes, appointmentsRes] = await Promise.all([
+  const [paymentsRes, treatmentsRes, appointmentsRes, allPaymentsRes] = await Promise.all([
     supabase
       .from("payments")
       .select("amount, method, payment_date, patient_id, appointment_id")
@@ -733,11 +724,19 @@ export async function getRevenueAnalytics(
       .from("appointments")
       .select("id, source, status")
       .eq("clinic_id", clinicId).is("deleted_at", null)
-      .gte("scheduled_at", startOf(dateFrom)).lte("scheduled_at", endOf(dateTo)),
+      .gte("scheduled_at", startOf(dateFrom, tz)).lte("scheduled_at", endOf(dateTo, tz)),
+
+    // Outstanding is a point-in-time balance, so it needs ALL payments, not just
+    // the ones in the selected range (audit A5).
+    supabase
+      .from("payments")
+      .select("amount, patient_id")
+      .eq("clinic_id", clinicId).is("deleted_at", null),
   ]);
 
   const payments = (paymentsRes.data ?? []) as PaymentRow[];
   const treatments = (treatmentsRes.data ?? []) as TreatmentRow[];
+  const allPayments = (allPaymentsRes.data ?? []) as { amount: number; patient_id: string | null }[];
   const appts = (appointmentsRes.data ?? []) as Array<{ id: string; source: AppointmentSource; status: AppointmentStatus }>;
 
   const overTimeMap: Record<string, number> = {};
@@ -771,18 +770,15 @@ export async function getRevenueAnalytics(
     amount,
   }));
 
-  // Same reasoning as getAnalyticsSummary: outstanding is cost + OPD + X-ray
-  // less payments, so it must be built with sumTreatmentCharges.
-  const totalTreatmentCost = sumTreatmentCharges(treatments);
-  const totalPaid = payments.reduce((s, p) => s + (p.amount ?? 0), 0);
-  const outstandingTotal = Math.max(0, totalTreatmentCost - totalPaid);
+  // Same reasoning as getAnalyticsSummary: outstanding is each patient's own
+  // max(0, cost + OPD + X-ray − ALL their payments), summed per patient (A5).
+  const outstandingTotal = computeClinicOutstandingBalance(treatments, allPayments);
 
   const completedAppts = appts.filter((a) => a.status === "completed").length;
   const totalInRange = payments.reduce((s, p) => s + (p.amount ?? 0), 0);
   const avgPerCompletedAppointment = completedAppts > 0 ? totalInRange / completedAppts : 0;
 
   const now = new Date();
-  const tz = filter.timezone ?? "Asia/Kolkata";
   const todayStr = new Intl.DateTimeFormat("en-CA", {
     timeZone: tz, year: "numeric", month: "2-digit", day: "2-digit",
   }).format(now);
@@ -816,14 +812,15 @@ export async function getSourceAnalytics(
   filter: DateRangeFilter
 ): Promise<SourceAnalytics> {
   const { clinicId, dateFrom, dateTo } = filter;
+  const tz = filter.timezone ?? "Asia/Kolkata";
 
   const { data } = await supabase
     .from("appointments")
     .select("source, status, scheduled_at")
     .eq("clinic_id", clinicId)
     .is("deleted_at", null)
-    .gte("scheduled_at", startOf(dateFrom))
-    .lte("scheduled_at", endOf(dateTo));
+    .gte("scheduled_at", startOf(dateFrom, tz))
+    .lte("scheduled_at", endOf(dateTo, tz));
 
   const rows = (data ?? []) as ApptRow[];
 
@@ -838,7 +835,7 @@ export async function getSourceAnalytics(
 
   const trendMap: Record<string, Record<string, number>> = {};
   for (const a of rows) {
-    const date = a.scheduled_at.split("T")[0];
+    const date = localDateInTz(a.scheduled_at, tz);
     if (!trendMap[date]) trendMap[date] = {};
     trendMap[date][a.source] = (trendMap[date][a.source] ?? 0) + 1;
   }
@@ -910,11 +907,11 @@ export async function getFollowUpAnalytics(
 
   const completedInRange = followUps.filter(
     (f) => f.status === "completed" &&
-      f.updated_at >= startOf(dateFrom) && f.updated_at <= endOf(dateTo)
+      f.updated_at >= startOf(dateFrom, tz) && f.updated_at <= endOf(dateTo, tz)
   );
   const completedByDate: Record<string, number> = {};
   for (const f of completedInRange) {
-    const date = f.updated_at.split("T")[0];
+    const date = localDateInTz(f.updated_at, tz);
     completedByDate[date] = (completedByDate[date] ?? 0) + 1;
   }
   const completedOverTime = Object.entries(completedByDate)
@@ -952,13 +949,14 @@ export async function getSourcePatientRevenueBreakdown(
   filter: DateRangeFilter
 ): Promise<SourceBreakdownItem[]> {
   const { clinicId, dateFrom, dateTo } = filter;
+  const tz = filter.timezone ?? "Asia/Kolkata";
 
   const [apptRes, paymentsRes] = await Promise.all([
     supabase
       .from("appointments")
       .select("id, source, patient_id")
       .eq("clinic_id", clinicId).is("deleted_at", null)
-      .gte("scheduled_at", startOf(dateFrom)).lte("scheduled_at", endOf(dateTo)),
+      .gte("scheduled_at", startOf(dateFrom, tz)).lte("scheduled_at", endOf(dateTo, tz)),
 
     supabase
       .from("payments")
@@ -1017,13 +1015,14 @@ export async function generateBasicInsights(
   filter: DateRangeFilter
 ): Promise<Insight[]> {
   const { clinicId, dateFrom, dateTo } = filter;
+  const tz = filter.timezone ?? "Asia/Kolkata";
 
   const [apptRes, treatmentsRes] = await Promise.all([
     supabase
       .from("appointments")
       .select("source, status, scheduled_at, duration_minutes")
       .eq("clinic_id", clinicId).is("deleted_at", null)
-      .gte("scheduled_at", startOf(dateFrom)).lte("scheduled_at", endOf(dateTo)),
+      .gte("scheduled_at", startOf(dateFrom, tz)).lte("scheduled_at", endOf(dateTo, tz)),
 
     supabase
       .from("treatments")

@@ -75,7 +75,7 @@ export async function runDashboardBrain(date?: string): Promise<DashboardRun> {
     // Entity-level rows, so the discriminators the matchers attach are actually
     // measured rather than left as a list of what would have settled them.
     // Read-only and still on the request's own session, so RLS applies.
-    contextPort: new SupabaseDiagnosisContext(supabase),
+    contextPort: new SupabaseDiagnosisContext(supabase, timezone),
   });
 
   const result = await brain.runBusinessBrain(clinicId, businessDate, {

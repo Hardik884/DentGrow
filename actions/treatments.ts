@@ -15,6 +15,8 @@ import {
   type TreatmentForPatientWithSignature,
   type TreatmentHistoryItem,
 } from "@/types";
+import { getUtcBoundariesForLocalDate } from "@/lib/utils";
+import { DEFAULT_TIMEZONE } from "@/lib/clinic/constants";
 import {
   DOCUMENT_BUCKET,
   ALLOWED_DOCUMENT_TYPES,
@@ -726,8 +728,21 @@ export async function getAllTreatments(filters?: {
       query = query.in("patient_id", patientIdFilter);
     }
 
-    if (filters?.dateFrom) query = query.gte("created_at", `${filters.dateFrom}T00:00:00`);
-    if (filters?.dateTo)   query = query.lte("created_at", `${filters.dateTo}T23:59:59`);
+    // created_at is a timestamptz; interpret the date filter in the clinic's
+    // local calendar so a treatment recorded just after local midnight isn't
+    // dropped from (or leaked into) the wrong day for a non-UTC clinic (audit A16-adjacent).
+    if (filters?.dateFrom || filters?.dateTo) {
+      const { data: tzSettings } = await db
+        .from("clinic_settings")
+        .select("timezone")
+        .eq("clinic_id", profile.clinic_id)
+        .maybeSingle();
+      const timezone = (tzSettings as { timezone?: string } | null)?.timezone ?? DEFAULT_TIMEZONE;
+      if (filters?.dateFrom)
+        query = query.gte("created_at", getUtcBoundariesForLocalDate(filters.dateFrom, timezone).start);
+      if (filters?.dateTo)
+        query = query.lte("created_at", getUtcBoundariesForLocalDate(filters.dateTo, timezone).end);
+    }
 
     const { data, error, count } = await query
       .order("created_at", { ascending: false })

@@ -44,6 +44,7 @@ import type {
 } from "@/business-brain";
 import { MetricUnit } from "@/business-brain";
 import type { Database } from "@/types/database.types";
+import { getUtcBoundariesForLocalDate } from "@/lib/utils";
 
 /** Narrow `unknown` PostgREST payloads to the row shape a query selected. */
 function rows<T>(data: unknown): T[] {
@@ -65,16 +66,34 @@ function currency(value: number): { value: number; unit: MetricUnit } {
   return { value, unit: MetricUnit.CURRENCY };
 }
 
-/** Inclusive UTC bounds for a window of business dates. */
-function bounds(window: EntityWindow): { start: string; end: string } {
-  return { start: `${window.from}T00:00:00.000Z`, end: `${window.to}T23:59:59.999Z` };
+/**
+ * Inclusive UTC bounds for a window of CLINIC-LOCAL business dates.
+ *
+ * `window.from`/`window.to` are clinic-local dates, so the day boundaries must be
+ * converted from the clinic's calendar, not UTC midnight — otherwise the window
+ * edges shift by the clinic's offset and rows within ~offset hours of the
+ * boundary are mis-included/excluded (audit: diagnosis-context UTC window). With
+ * `timezone === "UTC"` this reproduces the previous byte-for-byte behaviour.
+ */
+function bounds(window: EntityWindow, timezone: string): { start: string; end: string } {
+  return {
+    start: getUtcBoundariesForLocalDate(window.from, timezone).start,
+    end: getUtcBoundariesForLocalDate(window.to, timezone).end,
+  };
 }
 
 export class SupabaseDiagnosisContext implements DiagnosisContextPort {
   private readonly db: SupabaseClient<Database>;
+  private readonly timezone: string;
 
-  constructor(db: SupabaseClient<Database>) {
+  /**
+   * @param timezone Clinic IANA timezone for the business-date window bounds.
+   *   Defaults to "UTC" so callers/tests that don't supply it keep the old
+   *   UTC-midnight boundaries exactly; production passes the real clinic tz.
+   */
+  constructor(db: SupabaseClient<Database>, timezone: string = "UTC") {
     this.db = db;
+    this.timezone = timezone;
   }
 
   /**
@@ -96,7 +115,7 @@ export class SupabaseDiagnosisContext implements DiagnosisContextPort {
    * so `noticeHours` stays null for them rather than being reported as zero.
    */
   async listCancellationEvents(window: EntityWindow): Promise<readonly CancellationEvent[]> {
-    const { start, end } = bounds(window);
+    const { start, end } = bounds(window, this.timezone);
     const { data, error } = await this.db
       .from("appointments")
       .select("id, patient_id, dentist_id, scheduled_at, status")
@@ -209,7 +228,7 @@ export class SupabaseDiagnosisContext implements DiagnosisContextPort {
    * window's edge would make both look identical.
    */
   async listNoShowHistory(window: EntityWindow): Promise<readonly NoShowHistoryRow[]> {
-    const { start, end } = bounds(window);
+    const { start, end } = bounds(window, this.timezone);
     const { data, error } = await this.db
       .from("appointments")
       .select("id, patient_id, scheduled_at")
@@ -279,7 +298,7 @@ export class SupabaseDiagnosisContext implements DiagnosisContextPort {
    * to have an unrelated appointment.
    */
   async listPendingTreatments(window: EntityWindow): Promise<readonly PendingTreatmentRow[]> {
-    const endOfWindow = `${window.to}T23:59:59.999Z`;
+    const endOfWindow = getUtcBoundariesForLocalDate(window.to, this.timezone).end;
     const { data, error } = await this.db
       .from("treatments")
       .select("id, patient_id, treatment_type, cost, created_at")
@@ -343,7 +362,7 @@ export class SupabaseDiagnosisContext implements DiagnosisContextPort {
    * outstanding.
    */
   async listOutstandingBalances(window: EntityWindow): Promise<readonly OutstandingBalanceRow[]> {
-    const endOfWindow = `${window.to}T23:59:59.999Z`;
+    const endOfWindow = getUtcBoundariesForLocalDate(window.to, this.timezone).end;
     const { data, error } = await this.db
       .from("treatments")
       .select("id, patient_id, cost, performed_at, created_at")
@@ -411,7 +430,7 @@ export class SupabaseDiagnosisContext implements DiagnosisContextPort {
    * that ambiguity visible to the discriminator instead of resolving it wrongly.
    */
   async listAppointmentArrivals(window: EntityWindow): Promise<readonly AppointmentArrivalRow[]> {
-    const { start, end } = bounds(window);
+    const { start, end } = bounds(window, this.timezone);
     const { data, error } = await this.db
       .from("appointments")
       .select("id, scheduled_at, duration_minutes")
@@ -523,7 +542,7 @@ export class SupabaseDiagnosisContext implements DiagnosisContextPort {
    * would put made-up numbers into a money comparison.
    */
   async listCompletedTreatments(window: EntityWindow): Promise<readonly CompletedTreatmentRow[]> {
-    const { start, end } = bounds(window);
+    const { start, end } = bounds(window, this.timezone);
     const { data, error } = await this.db
       .from("treatments")
       .select("id, patient_id, treatment_type, cost, performed_at")

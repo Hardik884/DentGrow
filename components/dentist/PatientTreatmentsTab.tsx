@@ -3,6 +3,7 @@ import { TreatmentList } from "@/components/dentist/TreatmentList";
 import { TreatmentFormDialog } from "@/components/dentist/TreatmentFormDialog";
 import { ACTION_BUTTON } from "@/lib/ui/action-styles";
 import { formatCurrency } from "@/lib/utils";
+import { sumTreatmentCharges } from "@/lib/billing/balance";
 import { Stethoscope } from "lucide-react";
 import type { Treatment, TreatmentForReceptionist } from "@/types";
 
@@ -28,10 +29,10 @@ export async function PatientTreatmentsTab({
   const treatments = (result.data ?? []) as (Treatment | TreatmentForReceptionist)[];
   const isDentist = role === "dentist";
 
-  const totalCost = treatments.reduce(
-    (sum, t) => sum + Number(t.cost ?? 0),
-    0
-  );
+  // Canonical charge: billable cost + OPD + X-ray, matching the outstanding
+  // balance and the Payments tab on this same page (audit A6). A bare sum of
+  // `cost` over all statuses disagreed with both.
+  const totalCost = sumTreatmentCharges(treatments);
 
   return (
     <div className="space-y-4">
