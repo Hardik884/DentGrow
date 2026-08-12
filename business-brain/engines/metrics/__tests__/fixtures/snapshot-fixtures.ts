@@ -123,6 +123,9 @@ export function scheduleWindow(over: Partial<ScheduleWindow> = {}): ScheduleWind
  */
 export function measurableSnapshot(): ClinicDataSnapshot {
   return snapshot({
+    // An OPEN day, so chair utilization is a real measurement (0% here) rather
+    // than withheld the way a closed day now is.
+    capacity: { openMinutesToday: 480, chairCount: 1, typicalAppointmentMinutes: 30 },
     treatments: [treatment({ cost: 1000, status: "completed" })],
     payments: [payment({ amount: 500 })],
     patientRoster: [rosterEntry()],

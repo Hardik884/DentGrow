@@ -499,7 +499,10 @@ export const RecordPaymentSchema = z.object({
   amount: z.number({ invalid_type_error: "Amount is required" }).positive("Amount must be greater than 0"),
   method: z.enum(["cash", "upi", "card", "bank_transfer"]),
   payment_type: z.enum(["treatment", "opd"]).optional(),
-  payment_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Valid payment date is required"),
+  // Optional: when omitted, the server stamps the clinic's local "today" (not the
+  // server's UTC date), so a payment recorded near midnight lands on the right
+  // business day. An explicit value (e.g. a backdated entry) is respected.
+  payment_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Valid payment date is required").optional(),
   notes: z.string().max(500).optional(),
 });
 export type RecordPaymentInput = z.infer<typeof RecordPaymentSchema>;

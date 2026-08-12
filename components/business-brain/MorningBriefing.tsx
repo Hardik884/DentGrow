@@ -47,7 +47,10 @@ export function MorningBriefing({
         new Set(actions.map((a) => a.messageKind).filter((k): k is ActionDraftKind => Boolean(k))),
       )
         .map((kind) => summaryByKind.get(kind))
-        .filter((s): s is ReminderSummary => Boolean(s) && s!.reachableTotal > 0)
+        // Show a kind whenever patients were identified — even if none are
+        // reachable by phone — so the identified-vs-contactable gap is explained
+        // rather than silently dropped.
+        .filter((s): s is ReminderSummary => Boolean(s) && s!.total > 0)
     : [];
 
   return (

@@ -85,10 +85,22 @@ describe("chairUtilization", () => {
     expect(valueOf(chairUtilization, halfFull)).toBe(50);
   });
 
-  it("returns 0 rather than dividing by zero on a closed day", () => {
+  it("is WITHHELD (null) on a closed day rather than a misleading 0%", () => {
+    // No open minutes = no capacity to measure. Reporting "0% used" would imply
+    // unused available capacity on a day there was none, and cost the health
+    // score points for being shut.
     const s = snapshot({
       capacity: capacity({ open: 0 }),
       appointmentsToday: [appointment()],
+    });
+    expect(chairUtilization(s)).toBeNull();
+  });
+
+  it("reports a real 0% on an OPEN day that booked nothing", () => {
+    // Open but empty is genuine unused capacity — reported, not withheld.
+    const s = snapshot({
+      capacity: capacity({ open: 480 }),
+      appointmentsToday: [],
     });
     expect(valueOf(chairUtilization, s)).toBe(0);
   });

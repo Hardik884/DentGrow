@@ -36,15 +36,66 @@ export function revenueCollectedToday(s: ClinicDataSnapshot): Metric {
 export const BILLABLE_TREATMENT_STATUSES: readonly string[] = ["completed", "in_progress"];
 
 /**
- * Outstanding payments — total billable treatment charges minus total payments
- * collected, floored at zero.
+ * Everything one treatment adds to a patient's dues: its cost when billable, plus
+ * any consultation (OPD) and radiograph (X-ray) charge recorded against it. OPD
+ * and X-ray are owed whenever they happened, independent of the treatment's own
+ * status — the patient was seen / filmed either way.
+ *
+ * This mirrors `treatmentTotalCharge` in `lib/billing/balance.ts` exactly. It is
+ * replicated rather than imported to keep the Business Brain module free of app
+ * imports (the same reason `BILLABLE_TREATMENT_STATUSES` is duplicated above);
+ * `revenue.spec.ts` pins the two to the same numbers so they cannot drift.
+ */
+function treatmentTotalCharge(t: {
+  cost: number;
+  status: string;
+  opdCharged?: boolean;
+  opdFee?: number;
+  xrayTaken?: boolean;
+  xrayCost?: number;
+}): number {
+  const treatmentCost = BILLABLE_TREATMENT_STATUSES.includes(t.status) ? t.cost : 0;
+  const opd = t.opdCharged ? Math.max(0, t.opdFee ?? 0) : 0;
+  const xray = t.xrayTaken ? Math.max(0, t.xrayCost ?? 0) : 0;
+  return treatmentCost + opd + xray;
+}
+
+/**
+ * Outstanding payments — money the clinic is still owed for delivered work.
+ *
+ * Charge per treatment = billable cost + OPD fee + X-ray cost (see
+ * `treatmentTotalCharge`), matching the canonical `lib/billing/balance.ts` so the
+ * metric reconciles with every screen's balance.
+ *
+ * Clamped PER PATIENT: the clinic total is the sum of each patient's own
+ * `max(0, their charges − their payments)`. This fixes a real under-report — a
+ * single clinic-level `max(0, Σcharged − Σpaid)` let a deposit on one patient's
+ * PLANNED (non-billable) work, or one patient's overpayment, silently cancel
+ * another patient's genuine debt.
+ *
+ * Rows without a patientId (hand-built test snapshots) all fall into one bucket,
+ * which reproduces the old clinic-level behaviour — so the change is a no-op for
+ * single-patient fixtures and only differs once real per-patient data is present.
  */
 export function outstandingPayments(s: ClinicDataSnapshot): Metric {
-  const billed = s.treatments
-    .filter((t) => BILLABLE_TREATMENT_STATUSES.includes(t.status))
-    .reduce((sum, t) => sum + t.cost, 0);
-  const collected = s.payments.reduce((sum, p) => sum + p.amount, 0);
-  const value = Math.max(0, billed - collected);
+  const chargedByPatient = new Map<string, number>();
+  const paidByPatient = new Map<string, number>();
+
+  for (const t of s.treatments) {
+    const charge = treatmentTotalCharge(t);
+    if (charge === 0) continue;
+    const key = t.patientId ?? "";
+    chargedByPatient.set(key, (chargedByPatient.get(key) ?? 0) + charge);
+  }
+  for (const p of s.payments) {
+    const key = p.patientId ?? "";
+    paidByPatient.set(key, (paidByPatient.get(key) ?? 0) + p.amount);
+  }
+
+  let value = 0;
+  for (const [key, charged] of chargedByPatient) {
+    value += Math.max(0, charged - (paidByPatient.get(key) ?? 0));
+  }
   return buildMetric(MetricKey.REVENUE_OUTSTANDING, value, s.clinicId, s.date, s.asOf);
 }
 

@@ -55,7 +55,6 @@ export default async function BusinessBrainPage() {
   }
 
   const { result, date } = run;
-  const health = computeClinicHealth(result.metrics);
   const whatsappEnabled = isWhatsAppEnabled(profile.clinic_id);
 
   // The distinct-patient reminder populations. `total` (patients with the
@@ -75,6 +74,16 @@ export default async function BusinessBrainPage() {
     const category = kindToCategory[s.kind];
     if (category) patientCounts[category] = s.total;
   }
+
+  // The health breakdown shares the same distinct-patient counts, so its
+  // "N patients" lines match the problem cards and the action list rather than
+  // inflating to a treatment/follow-up row count.
+  const health = computeClinicHealth(result.metrics, {
+    patientCounts: {
+      noNextVisit: patientCounts["treatment_acceptance"] ?? null,
+      overdueFollowups: patientCounts["retention"] ?? null,
+    },
+  });
 
   const { problems, actions } = buildBriefing(result, result.metrics, patientCounts);
 

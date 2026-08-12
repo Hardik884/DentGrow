@@ -459,7 +459,16 @@ export class BusinessBrain {
     });
 
     const signalsStart = this.clock();
-    const signalResult = signalEngine.run({ metrics, date }, context);
+    // Immediately-prior day's metrics, if history covers it, so the trend
+    // evaluators (returning-volume-dropping, outstanding-increasing,
+    // queue-building-up) can run in production instead of skipping for "no prior
+    // period". Matched by exact date — `days` is gap-filtered, so a missing
+    // yesterday must stay undefined rather than silently shift to an older day.
+    const previousDay = history.find((d) => d.date === addDays(date, -1));
+    const signalResult = signalEngine.run(
+      { metrics, date, previousMetrics: previousDay?.metrics },
+      context,
+    );
     stages.push(
       stage(BusinessBrainStageName.SIGNALS, {
         ok: signalResult.ok,

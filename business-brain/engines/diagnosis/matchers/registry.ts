@@ -15,12 +15,15 @@
 
 import { collectionGapMatcher } from "./financial/collection-gap";
 import { revenueShortfallMatcher } from "./financial/revenue-shortfall";
+import { outstandingReceivablesMatcher } from "./financial/outstanding-receivables";
 import { pipelineConversionFailureMatcher } from "./clinical/pipeline-conversion-failure";
 import { capacityCeilingMatcher } from "./operational/capacity-ceiling";
 import { demandSupplyMismatchMatcher } from "./operational/demand-supply-mismatch";
 import { throughputCongestionMatcher } from "./operational/throughput-congestion";
 import { patientBaseErosionMatcher } from "./retention/patient-base-erosion";
 import { recallProcessFailureMatcher } from "./retention/recall-process-failure";
+import { recallBacklogMatcher } from "./retention/recall-backlog";
+import { acquisitionShortfallMatcher } from "./acquisition/acquisition-shortfall";
 import { scheduleAttritionMatcher } from "./scheduling/schedule-attrition";
 import type { PatternMatcher } from "./types";
 
@@ -35,9 +38,13 @@ export const MATCHERS: readonly PatternMatcher[] = [
   // Financial
   collectionGapMatcher,
   revenueShortfallMatcher,
+  outstandingReceivablesMatcher,
   // Clinical
   pipelineConversionFailureMatcher,
   // Retention
   patientBaseErosionMatcher,
   recallProcessFailureMatcher,
+  recallBacklogMatcher,
+  // Acquisition
+  acquisitionShortfallMatcher,
 ];

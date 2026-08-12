@@ -56,6 +56,11 @@ const CATEGORY_BY_PATTERN: Readonly<Record<string, ConstraintCategory>> = {
   [DiagnosisPattern.PIPELINE_CONVERSION_FAILURE]: ConstraintCategory.TREATMENT_ACCEPTANCE,
   [DiagnosisPattern.PATIENT_BASE_EROSION]: ConstraintCategory.RETENTION,
   [DiagnosisPattern.RECALL_PROCESS_FAILURE]: ConstraintCategory.RETENTION,
+  // Standalone single-signal readings (see diagnosis.ts): each names one real,
+  // actionable fact that would otherwise be dropped as an unclustered signal.
+  [DiagnosisPattern.OUTSTANDING_RECEIVABLES]: ConstraintCategory.REVENUE_LEAKAGE,
+  [DiagnosisPattern.RECALL_BACKLOG]: ConstraintCategory.RETENTION,
+  [DiagnosisPattern.ACQUISITION_SHORTFALL]: ConstraintCategory.ACQUISITION,
 };
 
 /** Human-readable name per bottleneck. Factual: names the limit, not a remedy. */

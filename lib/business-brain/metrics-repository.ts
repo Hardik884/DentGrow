@@ -109,6 +109,10 @@ interface TreatmentRow {
   performed_at: string | null;
   patient_id: string;
   created_at: string;
+  opd_charged: boolean | null;
+  opd_fee: number | string | null;
+  xray_taken: boolean | null;
+  xray_cost: number | string | null;
 }
 
 /**
@@ -125,6 +129,7 @@ interface PaymentRow {
   id: string;
   amount: number | string | null;
   payment_date: string;
+  patient_id: string;
 }
 interface QueueRow {
   id: string;
@@ -287,9 +292,12 @@ export class SupabaseMetricsDataRepository implements MetricsDataRepository {
       appointmentsToday,
       patientsRegisteredToday,
       patientsSeenToday,
-      treatments: treatments.map(({ patientId, ...t }) => ({
+      // Keep patientId on the snapshot so revenue.outstanding can clamp per
+      // patient (a deposit on one patient's planned work must not erase another
+      // patient's billable debt).
+      treatments: treatments.map((t) => ({
         ...t,
-        isScheduled: patientsWithFutureAppointment.has(patientId),
+        isScheduled: patientsWithFutureAppointment.has(t.patientId),
       })),
       payments,
       queueToday,
@@ -453,7 +461,7 @@ export class SupabaseMetricsDataRepository implements MetricsDataRepository {
   ): Promise<Array<Omit<TreatmentSnapshot, "isScheduled"> & { patientId: string }>> {
     const { data, error } = await this.db
       .from("treatments")
-      .select("id, cost, status, performed_at, patient_id, created_at")
+      .select("id, cost, status, performed_at, patient_id, created_at, opd_charged, opd_fee, xray_taken, xray_cost")
       .eq("clinic_id", clinicId)
       .is("deleted_at", null)
       .or(`performed_at.lte.${asOf},created_at.lte.${asOf}`);
@@ -472,6 +480,12 @@ export class SupabaseMetricsDataRepository implements MetricsDataRepository {
           status: performedByNow ? t.status : "planned",
           performedAt: performedByNow ? performedAt : null,
           patientId: t.patient_id,
+          // OPD and X-ray charges are owed whenever the consultation / radiograph
+          // happened, independent of the treatment's own status (see lib/billing).
+          opdCharged: t.opd_charged ?? false,
+          opdFee: Number(t.opd_fee ?? 0),
+          xrayTaken: t.xray_taken ?? false,
+          xrayCost: Number(t.xray_cost ?? 0),
         };
       })
       .filter((t): t is NonNullable<typeof t> => t !== null);
@@ -575,7 +589,7 @@ export class SupabaseMetricsDataRepository implements MetricsDataRepository {
   private async fetchPayments(clinicId: string, date: string): Promise<PaymentSnapshot[]> {
     const { data, error } = await this.db
       .from("payments")
-      .select("id, amount, payment_date")
+      .select("id, amount, payment_date, patient_id")
       .eq("clinic_id", clinicId)
       .is("deleted_at", null)
       .lte("payment_date", date);
@@ -585,6 +599,7 @@ export class SupabaseMetricsDataRepository implements MetricsDataRepository {
       id: p.id,
       amount: Number(p.amount ?? 0),
       paymentDate: p.payment_date,
+      patientId: p.patient_id,
     }));
   }
 

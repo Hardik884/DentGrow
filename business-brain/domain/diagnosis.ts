@@ -39,6 +39,12 @@ export const DiagnosisPattern = {
   RECALL_PROCESS_FAILURE: "recall_process_failure",
   REVENUE_SHORTFALL: "revenue_shortfall",
   CAPACITY_CEILING: "capacity_ceiling",
+  // Standalone single-signal readings: a high-value signal that is a real,
+  // actionable finding on its own. Each guards on an excluded signal so it never
+  // double-reports a story a richer multi-signal pattern already tells.
+  ACQUISITION_SHORTFALL: "acquisition_shortfall",
+  OUTSTANDING_RECEIVABLES: "outstanding_receivables",
+  RECALL_BACKLOG: "recall_backlog",
   UNCLUSTERED_SIGNAL: "unclustered_signal",
 } as const;
 

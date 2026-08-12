@@ -22,16 +22,23 @@ import {
 import { diagnoseRun, evidenceFor, pick } from "./fixtures/diagnose-harness";
 import { DATE, HEALTHY, ISOLATED_SIGNAL, metrics, run, shiftDate } from "./fixtures/run-fixtures";
 
-/** A day whose only signal is the follow-up backlog, at a chosen breach size. */
-function backlogDay(overdue: number, offset: number) {
+/**
+ * A day whose only signal is a large pending-treatment book, at a chosen breach
+ * size. Uses `large_pending_treatment_value` (a still-orphan single signal, so it
+ * carries forward as one unclustered diagnosis) rather than the follow-up
+ * backlog, which now has its own `recall_backlog` matcher. `size` maps to a value
+ * above the limit for firing days and below it for a measurably-quiet day, so the
+ * persistence tests keep their ascending/descending magnitude ordering.
+ */
+function backlogDay(size: number, offset: number) {
   return run(
-    { ...HEALTHY, [MetricKey.FOLLOWUPS_OVERDUE]: overdue },
+    { ...HEALTHY, [MetricKey.REVENUE_PENDING_TREATMENT_VALUE]: size * 5000 },
     { date: shiftDate(DATE, offset) },
   );
 }
 
-function backlogToday(overdue: number) {
-  return run({ ...HEALTHY, [MetricKey.FOLLOWUPS_OVERDUE]: overdue });
+function backlogToday(size: number) {
+  return run({ ...HEALTHY, [MetricKey.REVENUE_PENDING_TREATMENT_VALUE]: size * 5000 });
 }
 
 describe("dates", () => {
@@ -185,7 +192,8 @@ describe("persistence classification", () => {
 
 describe("history supplied as metrics only", () => {
   it("re-derives signals and reaches the same conclusion as supplied runs", () => {
-    const values = { ...HEALTHY, [MetricKey.FOLLOWUPS_OVERDUE]: 11 };
+    // Matches backlogToday(11) = 11 * 5000 so today and history share one signal.
+    const values = { ...HEALTHY, [MetricKey.REVENUE_PENDING_TREATMENT_VALUE]: 55_000 };
     const offsets = [-3, -2, -1];
     const historyMetricsOnly = offsets.map((offset) => ({
       date: shiftDate(DATE, offset),

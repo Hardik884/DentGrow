@@ -57,6 +57,23 @@ export interface ClinicHealth {
   readonly deductions: readonly HealthDeduction[];
 }
 
+/**
+ * Distinct-patient counts for the two factors that speak of "patients". The
+ * underlying metrics count treatment/follow-up ROWS, so a patient with several
+ * planned treatments or overdue recalls would be counted more than once. When the
+ * page can supply the deduped patient count (from the reminder summaries), the
+ * breakdown uses it, so "N patients" here means the same N the problem cards and
+ * the "Patients to contact" list show — never an inflated row count.
+ */
+export interface HealthContext {
+  readonly patientCounts?: {
+    /** Distinct patients with planned treatment and no next visit. */
+    readonly noNextVisit?: number | null;
+    /** Distinct patients with an overdue recall follow-up. */
+    readonly overdueFollowups?: number | null;
+  };
+}
+
 // ── Reading a metric value ────────────────────────────────────────────────────
 
 /**
@@ -82,7 +99,7 @@ function metricValue(metrics: readonly Metric[], key: string): number | null {
 interface HealthFactor {
   readonly id: string;
   /** Returns the deduction for this factor, or null if there is nothing to remove. */
-  readonly evaluate: (metrics: readonly Metric[]) => HealthDeduction | null;
+  readonly evaluate: (metrics: readonly Metric[], ctx: HealthContext) => HealthDeduction | null;
 }
 
 const rupees = (n: number) => `₹${Math.round(n).toLocaleString("en-IN")}`;
@@ -107,11 +124,15 @@ const FACTORS: readonly HealthFactor[] = [
   // as soon as a visit is booked for them.
   {
     id: "no_next_visit",
-    evaluate: (m) => {
-      const v = metricValue(m, "treatment.accepted_pending_scheduling");
+    evaluate: (m, ctx) => {
+      // Prefer the distinct-patient count when the page supplies it; the raw
+      // metric counts treatment rows, which would read as more "patients" than
+      // there are and disagree with the action list.
+      const override = ctx.patientCounts?.noNextVisit;
+      const v = override != null ? override : metricValue(m, "treatment.accepted_pending_scheduling");
       if (v === null || v <= 0) return null;
-      const points = Math.min(15, Math.round(v) * 3);
       const n = Math.round(v);
+      const points = Math.min(15, n * 3);
       return {
         factor: "No next visit booked",
         detail: `${n} patient${n === 1 ? "" : "s"} have planned treatment but no next appointment`,
@@ -125,11 +146,13 @@ const FACTORS: readonly HealthFactor[] = [
   // recall is completed or the patient is rebooked.
   {
     id: "overdue_followups",
-    evaluate: (m) => {
-      const v = metricValue(m, "followups.overdue");
+    evaluate: (m, ctx) => {
+      // Distinct patients when available; the metric counts follow-up rows.
+      const override = ctx.patientCounts?.overdueFollowups;
+      const v = override != null ? override : metricValue(m, "followups.overdue");
       if (v === null || v <= 0) return null;
-      const points = Math.min(15, Math.round(v) * 3);
       const n = Math.round(v);
+      const points = Math.min(15, n * 3);
       return {
         factor: "Overdue recalls",
         detail: `${n} patient${n === 1 ? "" : "s"} overdue for a check-up reminder`,
@@ -204,8 +227,11 @@ function bandFor(score: number): { band: HealthBand; label: string } {
  * Pure and deterministic: the same metrics always produce the same score and the
  * same itemised breakdown. No I/O, no clock, no writes.
  */
-export function computeClinicHealth(metrics: readonly Metric[]): ClinicHealth {
-  const deductions = FACTORS.map((f) => f.evaluate(metrics))
+export function computeClinicHealth(
+  metrics: readonly Metric[],
+  ctx: HealthContext = {},
+): ClinicHealth {
+  const deductions = FACTORS.map((f) => f.evaluate(metrics, ctx))
     .filter((d): d is HealthDeduction => d !== null)
     .sort((a, b) => b.points - a.points);
 

@@ -33,8 +33,8 @@ describe("diagnose — healthy and isolated runs", () => {
     expect(result.error).toBeUndefined();
     expect(result.confidenceBasis).toBe("matcher_decidability");
     // No prior period was supplied, so the three trend evaluators skipped and the
-    // two matchers that need them could not be ruled out: 7 of 9 decidable.
-    expect(result.confidence).toBe(0.78);
+    // two matchers that need them could not be ruled out: 10 of 12 decidable.
+    expect(result.confidence).toBe(0.83);
 
     // With a prior period every evaluator reaches a verdict, and a quiet day then
     // legitimately reports full decidability.
@@ -49,10 +49,10 @@ describe("diagnose — healthy and isolated runs", () => {
 
     const diagnosis = result.diagnoses[0];
     expect(diagnosis.id).toBe(
-      `diagnosis.unclustered_signal.${SignalType.RETENTION_FOLLOWUP_BACKLOG}:${CLINIC_ID}:${DATE}`,
+      `diagnosis.unclustered_signal.${SignalType.CLINICAL_LARGE_PENDING_TREATMENT_VALUE}:${CLINIC_ID}:${DATE}`,
     );
     expect(diagnosis.signalIds).toEqual([
-      `signal.${SignalType.RETENTION_FOLLOWUP_BACKLOG}:${CLINIC_ID}:${DATE}`,
+      `signal.${SignalType.CLINICAL_LARGE_PENDING_TREATMENT_VALUE}:${CLINIC_ID}:${DATE}`,
     ]);
     expect(diagnosis.hypotheses).toHaveLength(1);
     expect(diagnosis.hypotheses[0].status).toBe("undetermined");

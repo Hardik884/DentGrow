@@ -267,6 +267,26 @@ const CORRECTIVE_BY_HYPOTHESIS: Readonly<
     description:
       "No bookable chair time was published for this day, so an empty schedule reflects what was offered rather than what patients wanted. Publish availability and open slots patients can actually book into.",
   },
+
+  // ── Standalone single-signal readings ─────────────────────────────────────
+  // Acquisition: acquisition_shortfall
+  acquisition_shortfall: {
+    title: "Rebuild new-patient flow",
+    description:
+      "First-time registrations fell below the clinic's normal while returning patients held. Ask satisfied patients for referrals, keep the online listing and map profile current, and follow up enquiries that never turned into a booking.",
+  },
+  // Revenue leakage: balance_owed
+  balance_owed: {
+    title: "Chase the outstanding balances, oldest first",
+    description:
+      "Unpaid patient balances have built past the acceptable ceiling for money owed on delivered work. Send statements and call those patients to arrange payment or a plan, starting with the largest and oldest.",
+  },
+  // Retention: recall_backlog
+  recall_backlog: {
+    title: "Work the overdue recall backlog this week",
+    description:
+      "The overdue recall list is above its limit while returning volume held. Set aside time to call every overdue recall and book them in before those patients lapse.",
+  },
 };
 
 /**

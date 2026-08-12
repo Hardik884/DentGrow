@@ -80,6 +80,21 @@ export async function recordPayment(
       return { data: null, error: "Patient not found." };
     }
 
+    // Default the payment date to the clinic's local "today", not the server's
+    // UTC date, so a payment recorded near midnight in a clinic ahead of UTC is
+    // attributed to the correct business day. An explicit date (a backdated
+    // entry the receptionist picked) is respected as-is.
+    let paymentDate = parsed.data.payment_date;
+    if (!paymentDate) {
+      const { data: settings } = await db
+        .from("clinic_settings")
+        .select("timezone")
+        .eq("clinic_id", profile.clinic_id)
+        .maybeSingle();
+      const tz = (settings as { timezone?: string } | null)?.timezone ?? "Asia/Kolkata";
+      paymentDate = getTodayInTimezone(tz);
+    }
+
     const { data, error } = await db
       .from("payments")
       .insert({
@@ -90,7 +105,7 @@ export async function recordPayment(
         amount: parsed.data.amount,
         method: parsed.data.method,
         payment_type: parsed.data.payment_type ?? "treatment",
-        payment_date: parsed.data.payment_date,
+        payment_date: paymentDate,
         notes: parsed.data.notes ?? null,
         created_by: profile.id,
       })

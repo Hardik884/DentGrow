@@ -43,16 +43,37 @@ export interface PaymentSnapshot {
   readonly amount: number;
   /** Calendar date the payment was recorded, "YYYY-MM-DD". */
   readonly paymentDate: string;
+  /**
+   * The patient this payment belongs to. Enables per-patient balance clamping so
+   * a deposit on one patient's planned work cannot net against another patient's
+   * billable debt. Optional so hand-built test snapshots stay valid; when absent,
+   * all rows fall into one bucket (the old clinic-level behaviour).
+   */
+  readonly patientId?: string;
 }
 
 /** A treatment record, reduced to what metrics need. */
 export interface TreatmentSnapshot {
   readonly id: string;
+  /** The patient this treatment belongs to (see PaymentSnapshot.patientId). */
+  readonly patientId?: string;
   /**
    * GROSS treatment amount — what the patient owes. Patient billing never uses
    * the consultant split (see `lib/billing/revenue.ts`).
    */
   readonly cost: number;
+  /**
+   * Consultation (OPD) and radiograph (X-ray) charges recorded against this
+   * visit. Owed whenever the consultation / X-ray happened, independent of the
+   * treatment's status — so the outstanding metric reconciles with the canonical
+   * per-patient billing in `lib/billing/balance.ts`. Optional so hand-built test
+   * snapshots (and any repository written before these were added) stay valid;
+   * when absent, no OPD/X-ray charge is applied, matching the pre-OPD behaviour.
+   */
+  readonly opdCharged?: boolean;
+  readonly opdFee?: number;
+  readonly xrayTaken?: boolean;
+  readonly xrayCost?: number;
   /** DentGrow treatment_status: planned | in_progress | completed | cancelled. */
   readonly status: string;
   /** ISO-8601 time the treatment was performed, or null if not yet performed. */

@@ -52,7 +52,11 @@ export function PaymentForm({
   const patientRef = useRef<HTMLDivElement>(null);
   const amountRef  = useRef<HTMLDivElement>(null);
 
-  const today = new Date().toISOString().split("T")[0];
+  // The staff member's LOCAL "today" (en-CA → YYYY-MM-DD), not the UTC date, so a
+  // clinic ahead of UTC recording near midnight defaults to the correct business
+  // day and can still select it. The server re-derives the clinic-local date when
+  // this is omitted, so it stays authoritative for the stored value.
+  const today = new Intl.DateTimeFormat("en-CA").format(new Date());
   // Payments may be recorded for any historical date (paper-record migration).
   // Future payment dates remain blocked via max={today} on the picker below.
 

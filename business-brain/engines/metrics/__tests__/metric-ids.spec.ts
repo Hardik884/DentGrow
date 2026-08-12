@@ -53,6 +53,7 @@ describe("metric manifest", () => {
     expect(withheld).toEqual(
       [
         MetricKey.CAPACITY_BOOKED_NEXT_7D,
+        MetricKey.CAPACITY_CHAIR_UTILIZATION, // closed day: no open minutes to measure against
         MetricKey.CAPACITY_CHAIR_UTILIZATION_30D,
         MetricKey.PATIENTS_REACTIVATION_CANDIDATES,
         MetricKey.REVENUE_COLLECTION_RATE_30D,

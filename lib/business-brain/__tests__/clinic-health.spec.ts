@@ -165,4 +165,31 @@ describe("computeClinicHealth", () => {
     expect(health.score).toBe(82); // only 18 removed; caps prevent a runaway
     expect(health.score).toBeGreaterThanOrEqual(0);
   });
+
+  it("prefers the distinct-patient count over the row metric for patient-worded factors", () => {
+    // The metric counts treatment/follow-up ROWS (5 and 4 here); the page supplies
+    // the deduped patient counts (2 and 3). The breakdown must state the patient
+    // counts so it agrees with the problem cards and the action list.
+    const metrics = [
+      metric("treatment.accepted_pending_scheduling", 5),
+      metric("followups.overdue", 4),
+    ];
+    const health = computeClinicHealth(metrics, {
+      patientCounts: { noNextVisit: 2, overdueFollowups: 3 },
+    });
+    const noVisit = health.deductions.find((d) => d.factor === "No next visit booked");
+    const overdue = health.deductions.find((d) => d.factor === "Overdue recalls");
+    expect(noVisit?.detail).toBe("2 patients have planned treatment but no next appointment");
+    expect(noVisit?.points).toBe(6); // 2 patients × 3, not 5 rows × 3
+    expect(overdue?.detail).toBe("3 patients overdue for a check-up reminder");
+    expect(overdue?.points).toBe(9); // 3 patients × 3, not 4 rows × 3
+  });
+
+  it("falls back to the row metric when no patient count is supplied", () => {
+    // Backward-compatible: with no override the factor reads the metric as before.
+    const health = computeClinicHealth([metric("followups.overdue", 3)]);
+    const overdue = health.deductions.find((d) => d.factor === "Overdue recalls");
+    expect(overdue?.detail).toBe("3 patients overdue for a check-up reminder");
+    expect(overdue?.points).toBe(9);
+  });
 });

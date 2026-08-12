@@ -208,10 +208,30 @@ export const PRIOR: MetricValues = {
   [MetricKey.QUEUE_PATIENTS_WAITING]: 2,
 };
 
-/** A single isolated signal: an overdue recall list and nothing else. */
+/**
+ * A single isolated signal: a large pending-treatment book and nothing else.
+ *
+ * `large_pending_treatment_value` fires alone (pending above its limit) without
+ * the accepted-unscheduled partner or the thin-book condition that would cluster
+ * it into pipeline_conversion_failure, so it is carried forward as one
+ * unclustered diagnosis. (It used to be an overdue recall list, but that signal
+ * now has its own standalone `recall_backlog` matcher, so it is no longer orphan.)
+ */
 export const ISOLATED_SIGNAL: MetricValues = {
   ...HEALTHY,
+  [MetricKey.REVENUE_PENDING_TREATMENT_VALUE]: 60_000,
+};
+
+/** A standalone overdue-recall backlog, with returning volume steady. */
+export const RECALL_BACKLOG: MetricValues = {
+  ...HEALTHY,
   [MetricKey.FOLLOWUPS_OVERDUE]: 27,
+};
+
+/** A standalone outstanding-balance book above the clinic's limit. */
+export const HIGH_OUTSTANDING: MetricValues = {
+  ...HEALTHY,
+  [MetricKey.REVENUE_OUTSTANDING]: 40_000,
 };
 
 /**

@@ -32,7 +32,7 @@ export function WhatsAppReminders({ summaries }: { summaries: readonly ReminderS
   // a page reload (the send itself is already persisted server-side).
   const [sentByKind, setSentByKind] = useState<Record<string, Set<string>>>({});
 
-  const rows = summaries.filter((s) => s.reachableTotal > 0);
+  const rows = summaries.filter((s) => s.total > 0);
   if (rows.length === 0) return null;
 
   return (
@@ -50,12 +50,19 @@ export function WhatsAppReminders({ summaries }: { summaries: readonly ReminderS
           const contacted = Math.min(s.reachableTotal, s.contacted + extra);
           const done = contacted >= s.reachableTotal;
           const people = s.reachableTotal === 1 ? "patient" : "patients";
+          // Patients identified with the problem but with no usable phone. Shown
+          // explicitly so the "identified vs contactable" gap is never a silent drop.
+          const noPhone = Math.max(0, s.total - s.reachableTotal);
           return (
             <div key={s.kind} className="flex items-center justify-between gap-4 px-6 py-4">
               <div className="min-w-0">
                 <p className="text-sm font-medium text-[#09090B]">{titleFor(s.kind)}</p>
                 <p className="text-sm text-[#71717A] mt-0.5">
-                  {done ? (
+                  {s.reachableTotal === 0 ? (
+                    <>
+                      {s.total} {s.total === 1 ? "patient" : "patients"} identified — none have a phone number on file
+                    </>
+                  ) : done ? (
                     <span className="inline-flex items-center gap-1 text-[#15803D]">
                       <Check className="h-3.5 w-3.5" strokeWidth={2.5} aria-hidden />
                       All {s.reachableTotal} {people} contacted
@@ -69,15 +76,22 @@ export function WhatsAppReminders({ summaries }: { summaries: readonly ReminderS
                     </>
                   )}
                 </p>
+                {s.reachableTotal > 0 && noPhone > 0 && (
+                  <p className="text-xs text-[#A1A1AA] mt-0.5">
+                    {s.total} identified · {s.reachableTotal} ready · {noPhone} no phone on file
+                  </p>
+                )}
               </div>
-              <button
-                type="button"
-                onClick={() => setOpenKind(s.kind)}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-[#E4E4E7] text-[#18181B] px-3.5 py-2 text-sm font-medium hover:bg-[#FAFAFA] transition-colors cursor-pointer shrink-0"
-              >
-                {done ? "Review" : "Review patients"}
-                <ArrowRight className="h-3.5 w-3.5" aria-hidden />
-              </button>
+              {s.reachableTotal > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setOpenKind(s.kind)}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-[#E4E4E7] text-[#18181B] px-3.5 py-2 text-sm font-medium hover:bg-[#FAFAFA] transition-colors cursor-pointer shrink-0"
+                >
+                  {done ? "Review" : "Review patients"}
+                  <ArrowRight className="h-3.5 w-3.5" aria-hidden />
+                </button>
+              )}
             </div>
           );
         })}

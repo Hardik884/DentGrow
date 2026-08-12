@@ -57,19 +57,21 @@ function typicalMinutes(s: ClinicDataSnapshot): number {
 /**
  * Chair utilization (%) — booked chair-minutes as a share of open chair-minutes.
  *
- * Returns 0 on a closed day rather than dividing by zero. That is safe only
- * because every consumer pairs this with available capacity: a clinic that is
- * shut reads 0% utilization AND 0 room for more, and `low_chair_utilization`
- * requires free capacity before it fires. Utilization alone cannot distinguish
- * "empty" from "closed", and nothing is asked to.
+ * WITHHELD (null) on a closed day — a day the clinic offered no chair time at
+ * all. A utilization percentage against zero open minutes is undefined, and
+ * reporting it as "0%" is actively misleading: it implies unused available
+ * capacity on a day there was none, which then costs the clinic health-score
+ * points for being shut. An OPEN day that simply booked nothing genuinely IS 0%
+ * (real unused capacity) and is reported as 0, not withheld.
  *
  * Capped at 100%: double-booking is real, but "we are 130% booked" is a
  * scheduling error to fix, not a capacity reading, and letting it through would
  * let one mistake dominate the 30-day average.
  */
-export function chairUtilization(s: ClinicDataSnapshot): Metric {
+export function chairUtilization(s: ClinicDataSnapshot): Metric | null {
   const capacity = capacityMinutes(s);
-  const raw = capacity <= 0 ? 0 : (bookedMinutes(s.appointmentsToday) / capacity) * 100;
+  if (capacity <= 0) return null; // closed day: no capacity to measure against
+  const raw = (bookedMinutes(s.appointmentsToday) / capacity) * 100;
   const value = Math.round(Math.min(100, raw) * 10) / 10;
   return buildMetric(MetricKey.CAPACITY_CHAIR_UTILIZATION, value, s.clinicId, s.date, s.asOf);
 }

@@ -59,7 +59,8 @@ describe("DentGrowDiagnosisEngine", () => {
     const result = engine.run({ current: run(HEALTHY) }, context);
     expect(result.data).toEqual([]);
     // three trend evaluators had no prior period, so two matchers are undecidable
-    expect(result.confidence).toBe(0.78);
+    // (10 of 12 decidable)
+    expect(result.confidence).toBe(0.83);
     expect(
       (result.trace ?? []).find((t) => t.step === "summarise-run")?.reasoning,
     ).toContain("matcher decidability");

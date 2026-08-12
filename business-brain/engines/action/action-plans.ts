@@ -338,6 +338,30 @@ export const ACTION_PLANS: Readonly<Record<string, readonly ActionPlanStep[]>> =
     },
   ],
 
+  // ── Standalone single-signal readings ─────────────────────────────────────
+  acquisition_shortfall: [
+    { capability: OPEN_NEW_PATIENT_REPORT, primary: true },
+    {
+      capability: OPEN_RECENT_PATIENTS,
+      title: "Ask this week's satisfied patients for a referral",
+    },
+    { capability: OPEN_CLINIC_SETTINGS, title: "Check the listing and contact details are current" },
+  ],
+
+  balance_owed: [
+    { capability: OPEN_OUTSTANDING_BALANCES, primary: true },
+    { ...CALL_FROM_BALANCES, after: [OPEN_OUTSTANDING_BALANCES] },
+    { capability: DRAFT_PAYMENT_REMINDER },
+  ],
+
+  recall_backlog: [
+    { capability: OPEN_OVERDUE_FOLLOW_UPS, primary: true },
+    { capability: OPEN_OVERDUE_RECALL_PATIENTS },
+    { ...CALL_FROM_FOLLOW_UPS, after: [OPEN_OVERDUE_FOLLOW_UPS] },
+    { capability: DRAFT_RECALL_INVITATION },
+    { capability: OPEN_APPOINTMENT_SCHEDULER, title: "Book those who agree, on the call" },
+  ],
+
   // ── Investigative ─────────────────────────────────────────────────────────
   // Shorter plans, and deliberately so: the cause is not settled, so the actions
   // gather the measurement that would settle it rather than acting on a guess.

@@ -478,6 +478,53 @@ const CORRECTIVE_TEMPLATES: Readonly<Record<string, WorkflowTemplate>> = {
     ],
     outcome: { description: "Placed waiting treatment into newly opened chair time", valueType: ValueType.APPOINTMENTS_BOOKED },
   },
+
+  // ── Standalone single-signal readings ─────────────────────────────────────
+  acquisition_shortfall: {
+    title: "Rebuild new-patient flow",
+    reason: "First-time registrations fell below normal while returning patients held",
+    owner: WorkflowOwner.RECEPTIONIST,
+    effort: WorkflowEffort.MODERATE,
+    timeframe: WorkflowTimeframe.THIS_WEEK,
+    tasks: [
+      { order: 1, instruction: "Ask this week's satisfied patients for a referral" },
+      { order: 2, instruction: "Check the online listing and map profile are current (hours, phone, photos)" },
+      { order: 3, instruction: "Follow up recent enquiries that never became a booking" },
+      { order: 4, instruction: "Confirm every enquiry channel is being answered promptly" },
+    ],
+    outcome: { description: "Restored new-patient registrations toward the clinic's normal", valueType: ValueType.OTHER },
+  },
+
+  balance_owed: {
+    title: "Chase the outstanding balances, oldest first",
+    reason: "Money owed for delivered work has built past the clinic's limit",
+    owner: WorkflowOwner.RECEPTIONIST,
+    effort: WorkflowEffort.SUBSTANTIAL,
+    timeframe: WorkflowTimeframe.THIS_WEEK,
+    tasks: [
+      { order: 1, instruction: "Pull the outstanding balances, largest and oldest first", hint: "Payments → outstanding" },
+      { order: 2, instruction: "Send a statement or reminder to each patient who owes" },
+      { order: 3, instruction: "Call the largest balances and arrange payment or a plan" },
+      { order: 4, instruction: "Record the outcome and next follow-up date for each" },
+    ],
+    outcome: { description: "Recovered outstanding balances owed for delivered work", valueType: ValueType.REVENUE_RECOVERED },
+  },
+
+  recall_backlog: {
+    title: "Work the overdue recall backlog this week",
+    reason: "The overdue recall list is above its limit while returning volume held",
+    owner: WorkflowOwner.RECEPTIONIST,
+    effort: WorkflowEffort.SUBSTANTIAL,
+    timeframe: WorkflowTimeframe.THIS_WEEK,
+    tasks: [
+      { order: 1, instruction: "Pull the overdue follow-up and recall list, longest overdue first" },
+      { order: 2, instruction: "Set aside 30 minutes daily this week for recall calls" },
+      { order: 3, instruction: "Call each patient and offer a specific date" },
+      { order: 4, instruction: "Book immediately for those who agree" },
+      { order: 5, instruction: "Record outcome: booked, will call back, declined, unreachable" },
+    ],
+    outcome: { description: "Cleared the overdue recall backlog before those patients lapsed", valueType: ValueType.RETENTION_IMPROVED },
+  },
 };
 
 /**
