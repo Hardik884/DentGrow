@@ -677,3 +677,78 @@ describe.skipIf(!LOCAL_UP)("performed_at NULL keeps a billable treatment billabl
     expect(v(MetricKey.REVENUE_PENDING_TREATMENT_VALUE)).toBe(0);
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Business Brain data-consistency audit — a cancelled or no-show appointment
+// is not a visit, so its patient must not count as "seen"/"returning" today.
+// `patientsSeenToday` previously included every status; only the LIVE ones
+// (matching LIVE_APPOINTMENT_STATUSES, already used elsewhere in this file)
+// should count. Isolated under its own clinic.
+// ─────────────────────────────────────────────────────────────────────────────
+const PSA_CLINIC = "9f000000-0000-4000-8000-0000000000d1";
+const PSA_DENTIST = "9f000000-0000-4000-8000-0000000000d2";
+const P_PSA_CANCELLED = "9f000000-0000-4000-8000-0000000000d3";
+const P_PSA_COMPLETED = "9f000000-0000-4000-8000-0000000000d4";
+
+async function psaCleanup() {
+  await raw.from("clinics").delete().eq("id", PSA_CLINIC);
+  await raw.auth.admin.deleteUser(PSA_DENTIST).catch(() => undefined);
+}
+
+async function psaSeed() {
+  await psaCleanup();
+  const { error } = await raw.auth.admin.createUser({
+    id: PSA_DENTIST,
+    email: "bb-psa@test.local",
+    password: "password123",
+    email_confirm: true,
+  });
+  if (error && !/already/i.test(error.message)) throw new Error(`seed psa user: ${error.message}`);
+
+  await insert("clinics", { id: PSA_CLINIC, name: "PSA Clinic" });
+  await insert("clinic_settings", {
+    clinic_id: PSA_CLINIC,
+    clinic_name: "PSA Clinic",
+    timezone: TZ,
+    average_appointment_duration: 30,
+  });
+  await insert("profiles", { id: PSA_DENTIST, clinic_id: PSA_CLINIC, full_name: "PSA Dentist", role: "dentist" });
+  // Both registered well before the business date, so an inflated count would
+  // read as "returning", not "new" — isolating the bug this test targets.
+  await insert("patients", [
+    { id: P_PSA_CANCELLED, clinic_id: PSA_CLINIC, name: "Cancelled Today", created_at: "2026-01-01T10:00:00Z" },
+    { id: P_PSA_COMPLETED, clinic_id: PSA_CLINIC, name: "Completed Today", created_at: "2026-01-01T10:00:00Z" },
+  ]);
+  await insert("appointments", [
+    // Only appointment today is cancelled — this patient was NOT seen.
+    { id: "9f000000-0000-4000-8000-0000000000d5", clinic_id: PSA_CLINIC, patient_id: P_PSA_CANCELLED, dentist_id: PSA_DENTIST, scheduled_at: "2026-03-16T05:00:00Z", source: "walk_in", status: "cancelled" },
+    // Genuinely seen today.
+    { id: "9f000000-0000-4000-8000-0000000000d6", clinic_id: PSA_CLINIC, patient_id: P_PSA_COMPLETED, dentist_id: PSA_DENTIST, scheduled_at: "2026-03-16T06:00:00Z", source: "walk_in", status: "completed" },
+  ]);
+}
+
+const psaRepo = new SupabaseMetricsDataRepository(db, { asOf: AS_OF });
+
+describe.skipIf(!LOCAL_UP)("patientsSeenToday excludes cancelled/no-show appointments", () => {
+  beforeAll(async () => {
+    await psaSeed();
+  });
+  afterAll(async () => {
+    await psaCleanup();
+  });
+
+  it("does not count a patient whose only appointment today was cancelled", async () => {
+    const s = await psaRepo.getClinicSnapshot(PSA_CLINIC, DATE);
+    const seenIds = s.patientsSeenToday.map((p) => p.id);
+    expect(seenIds).not.toContain(P_PSA_CANCELLED); // the bug included this
+    expect(seenIds).toContain(P_PSA_COMPLETED);
+  });
+
+  it("does not count the cancelled-only patient as returning", async () => {
+    const engine = new DentGrowMetricsEngine(psaRepo);
+    const metrics = await engine.calculateMetrics(PSA_CLINIC, DATE);
+    const v = (key: string) => metrics.find((m) => m.id.startsWith(`${key}:`))?.value;
+    // Only P_PSA_COMPLETED. The bug counted both, reporting 2.
+    expect(v(MetricKey.PATIENTS_RETURNING_TODAY)).toBe(1);
+  });
+});

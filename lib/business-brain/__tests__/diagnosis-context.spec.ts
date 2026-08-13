@@ -23,6 +23,7 @@ import type { Database } from "@/types/database.types";
 import type { EntityWindow } from "@/business-brain";
 import { applyEntityResolution, DEFAULT_ENTITY_RESOLUTION } from "@/business-brain";
 import type { Diagnosis } from "@/business-brain";
+import { computeOutstandingBalance } from "@/lib/billing/balance";
 import { SupabaseDiagnosisContext } from "../diagnosis-context";
 
 const URL = process.env.SUPABASE_TEST_URL ?? "http://127.0.0.1:54321";
@@ -55,6 +56,11 @@ const D = "9fc00000-0000-4000-8000-000000000010";
 const P_REPEAT = "9fc00000-0000-4000-8000-000000000021";
 const P_FIRST = "9fc00000-0000-4000-8000-000000000022";
 const P_BOOKED = "9fc00000-0000-4000-8000-000000000023";
+// Audit: diagnosis-context financial consistency (OPD/X-ray + pooled payments).
+const P_OPD_XRAY = "9fc00000-0000-4000-8000-000000000024";
+const P_LUMPSUM = "9fc00000-0000-4000-8000-000000000025";
+// Audit: row-limit truncation ordering.
+const P_LIMIT = "9fc00000-0000-4000-8000-000000000026";
 
 /** Window under test: the first week of April 2026. */
 const FROM = "2026-04-01";
@@ -87,12 +93,24 @@ const A_REFILL = "9fc00000-0000-4000-8000-000000000106";
 const A_ATTENDED = "9fc00000-0000-4000-8000-000000000107"; // prior attendance
 const A_ARRIVED = "9fc00000-0000-4000-8000-000000000108";
 const A_NO_CHECKIN = "9fc00000-0000-4000-8000-000000000109";
+const A_OPD_XRAY = "9fc00000-0000-4000-8000-00000000010b";
+const A_LUMPSUM = "9fc00000-0000-4000-8000-00000000010c";
+const A_LIMIT = "9fc00000-0000-4000-8000-00000000010d";
 
 const T_PAID = "9fc00000-0000-4000-8000-000000000201";
 const T_PART_PAID = "9fc00000-0000-4000-8000-000000000202";
 const T_PENDING = "9fc00000-0000-4000-8000-000000000203";
 const T_PENDING_BOOKED = "9fc00000-0000-4000-8000-000000000204";
 const T_CANCELLED_SLOT = "9fc00000-0000-4000-8000-000000000205";
+// OPD/X-ray charge, no payment.
+const T_OPD_XRAY = "9fc00000-0000-4000-8000-000000000206";
+// Lump-sum pooling: A is older, B is newer; one payment linked to B overflows
+// into the pool and settles A too (oldest-first, matching lib/billing/payout.ts).
+const T_LUMPSUM_A = "9fc00000-0000-4000-8000-000000000207";
+const T_LUMPSUM_B = "9fc00000-0000-4000-8000-000000000208";
+// Row-limit ordering: OLD predates NEW; only NEW should survive a limit of 1.
+const T_LIMIT_OLD = "9fc00000-0000-4000-8000-000000000209";
+const T_LIMIT_NEW = "9fc00000-0000-4000-8000-00000000020a";
 
 async function seed() {
   await cleanup();
@@ -116,6 +134,9 @@ async function seed() {
     { id: P_REPEAT, clinic_id: C, name: "Repeat", created_at: "2026-01-01T00:00:00Z" },
     { id: P_FIRST, clinic_id: C, name: "First timer", created_at: "2026-01-01T00:00:00Z" },
     { id: P_BOOKED, clinic_id: C, name: "Has a booking", created_at: "2026-01-01T00:00:00Z" },
+    { id: P_OPD_XRAY, clinic_id: C, name: "OPD Xray", created_at: "2026-01-01T00:00:00Z" },
+    { id: P_LUMPSUM, clinic_id: C, name: "Lumpsum", created_at: "2026-01-01T00:00:00Z" },
+    { id: P_LIMIT, clinic_id: C, name: "Limit", created_at: "2026-01-01T00:00:00Z" },
   ]);
 
   const appt = (
@@ -145,6 +166,11 @@ async function seed() {
     appt(A_NO_SHOW_2, P_REPEAT, "2026-04-06T05:00:00Z", "no_show"),
     appt(A_ARRIVED, P_BOOKED, "2026-04-02T09:00:00Z", "completed"),
     appt(A_NO_CHECKIN, P_BOOKED, "2026-04-03T09:00:00Z", "completed"),
+    // Distinct scheduled_at from every other fixture appointment above — the
+    // unique index is (dentist_id, scheduled_at) for non-cancelled/no_show rows.
+    appt(A_OPD_XRAY, P_OPD_XRAY, "2026-04-02T10:00:00Z", "completed"),
+    appt(A_LUMPSUM, P_LUMPSUM, "2026-04-02T11:00:00Z", "completed"),
+    appt(A_LIMIT, P_LIMIT, "2026-04-01T10:00:00Z", "completed"),
   ]);
 
   // Cancellation moments live ONLY here — appointments has no cancelled_at.
@@ -179,6 +205,11 @@ async function seed() {
     completed_at: "2026-04-02T10:20:00Z",
   });
 
+  // NOTE: every row in this bulk insert must carry the SAME keys — PostgREST
+  // fills a missing key with NULL, not the column DEFAULT, which trips the
+  // NOT NULL constraints on opd_charged/opd_fee/xray_taken. Rows that don't
+  // exercise OPD/X-ray explicitly zero them out.
+  const noAncillary = { opd_charged: false, opd_fee: 0, xray_taken: false, xray_cost: 0 };
   await insert("treatments", [
     {
       id: T_PAID,
@@ -190,6 +221,7 @@ async function seed() {
       status: "completed",
       performed_at: "2026-04-02T09:30:00Z",
       created_at: "2026-04-02T09:30:00Z",
+      ...noAncillary,
     },
     {
       id: T_PART_PAID,
@@ -201,6 +233,7 @@ async function seed() {
       status: "completed",
       performed_at: "2026-04-03T09:30:00Z",
       created_at: "2026-04-03T09:30:00Z",
+      ...noAncillary,
     },
     {
       // Booked into the slot that was then cancelled. Status `cancelled` so it
@@ -214,6 +247,7 @@ async function seed() {
       cost: 3000,
       status: "cancelled",
       created_at: "2026-03-30T05:00:00Z",
+      ...noAncillary,
     },
     {
       id: T_PENDING,
@@ -224,6 +258,7 @@ async function seed() {
       cost: 15000,
       status: "planned",
       created_at: "2026-04-01T05:00:00Z",
+      ...noAncillary,
     },
     {
       id: T_PENDING_BOOKED,
@@ -234,6 +269,75 @@ async function seed() {
       cost: 50000,
       status: "planned",
       created_at: "2026-04-01T05:00:00Z",
+      ...noAncillary,
+    },
+    // OPD + X-ray charge, no payment. 1000 cost + 300 OPD + 200 X-ray = 1500 owed.
+    {
+      id: T_OPD_XRAY,
+      clinic_id: C,
+      appointment_id: A_OPD_XRAY,
+      patient_id: P_OPD_XRAY,
+      treatment_type: "Consultation",
+      cost: 1000,
+      opd_charged: true,
+      opd_fee: 300,
+      xray_taken: true,
+      xray_cost: 200,
+      status: "completed",
+      performed_at: "2026-04-02T09:30:00Z",
+      created_at: "2026-04-02T09:30:00Z",
+    },
+    // Lump-sum pooling: A is older (500), B is newer (500). One ₹1000 payment
+    // linked to B settles B (500) and overflows 500 into the pool, which
+    // settles A oldest-first — both should read fully paid.
+    {
+      id: T_LUMPSUM_A,
+      clinic_id: C,
+      appointment_id: A_LUMPSUM,
+      patient_id: P_LUMPSUM,
+      treatment_type: "Filling",
+      cost: 500,
+      status: "completed",
+      performed_at: "2026-04-02T09:00:00Z",
+      created_at: "2026-04-02T09:00:00Z",
+      ...noAncillary,
+    },
+    {
+      id: T_LUMPSUM_B,
+      clinic_id: C,
+      appointment_id: A_LUMPSUM,
+      patient_id: P_LUMPSUM,
+      treatment_type: "Cleaning",
+      cost: 500,
+      status: "completed",
+      ...noAncillary,
+      performed_at: "2026-04-05T09:00:00Z",
+      created_at: "2026-04-05T09:00:00Z",
+    },
+    // Row-limit ordering: both unpaid and outstanding; OLD predates NEW.
+    {
+      id: T_LIMIT_OLD,
+      clinic_id: C,
+      appointment_id: A_LIMIT,
+      patient_id: P_LIMIT,
+      treatment_type: "Cleaning",
+      cost: 100,
+      status: "completed",
+      performed_at: "2026-04-01T09:00:00Z",
+      created_at: "2026-04-01T09:00:00Z",
+      ...noAncillary,
+    },
+    {
+      id: T_LIMIT_NEW,
+      clinic_id: C,
+      appointment_id: A_LIMIT,
+      patient_id: P_LIMIT,
+      treatment_type: "Filling",
+      cost: 200,
+      status: "completed",
+      performed_at: "2026-04-06T09:00:00Z",
+      created_at: "2026-04-06T09:00:00Z",
+      ...noAncillary,
     },
   ]);
 
@@ -242,6 +346,9 @@ async function seed() {
     { id: "9fc00000-0000-4000-8000-000000000401", clinic_id: C, patient_id: P_BOOKED, treatment_id: T_PAID, amount: 2000, method: "cash", payment_date: "2026-04-02" },
     // T_PART_PAID half settled.
     { id: "9fc00000-0000-4000-8000-000000000402", clinic_id: C, patient_id: P_BOOKED, treatment_id: T_PART_PAID, amount: 8000, method: "upi", payment_date: "2026-04-03" },
+    // Linked to T_LUMPSUM_B (500 charge) but pays 1000 — the extra 500 must
+    // pool and settle T_LUMPSUM_A, not vanish or double-credit B.
+    { id: "9fc00000-0000-4000-8000-000000000403", clinic_id: C, patient_id: P_LUMPSUM, treatment_id: T_LUMPSUM_B, amount: 1000, method: "cash", payment_date: "2026-04-05" },
   ]);
 
   // P_BOOKED has a visit after the window, so their pending plan is not
@@ -366,6 +473,62 @@ describe.skipIf(!LOCAL_UP)("diagnosis context (integration)", () => {
       expect(row?.amountPaid.value).toBe(8000);
       expect(row?.ageDays).toBe(4); // 3 April -> 7 April
     });
+
+    it("includes OPD and X-ray charges, matching lib/billing/balance.ts", async () => {
+      // 1000 cost + 300 OPD + 200 X-ray, no payment = 1500 owed. The bug read
+      // 1000 (cost only).
+      const balances = await ctx.listOutstandingBalances(WINDOW);
+      const row = balances?.find((b) => b.invoiceId === T_OPD_XRAY);
+      expect(row?.amountOutstanding.value).toBe(1500);
+      expect(row?.amountPaid.value).toBe(0);
+    });
+
+    it("pools a payment linked to one treatment across the patient's ledger (oldest first)", async () => {
+      // T_LUMPSUM_B carries a ₹1000 payment against its own ₹500 charge; the
+      // extra ₹500 must settle the older T_LUMPSUM_A, not vanish or leave A
+      // reading as unpaid. The bug reported A still owing ₹500.
+      const balances = await ctx.listOutstandingBalances(WINDOW);
+      expect(balances?.map((b) => b.invoiceId)).not.toContain(T_LUMPSUM_A);
+      expect(balances?.map((b) => b.invoiceId)).not.toContain(T_LUMPSUM_B);
+    });
+
+    it("reconciles with the canonical computeOutstandingBalance for the same patient", async () => {
+      // The context's per-invoice figures, summed for one patient, must equal
+      // the same patient/payment data run through lib/billing/balance.ts directly.
+      const balances = await ctx.listOutstandingBalances(WINDOW);
+      const contextTotal = (balances ?? [])
+        .filter((b) => b.patientId === P_OPD_XRAY)
+        .reduce((sum, b) => sum + b.amountOutstanding.value, 0);
+      const canonical = computeOutstandingBalance(
+        [
+          {
+            cost: 1000,
+            status: "completed",
+            opd_charged: true,
+            opd_fee: 300,
+            xray_taken: true,
+            xray_cost: 200,
+          },
+        ],
+        [],
+      );
+      expect(contextTotal).toBe(canonical);
+      expect(canonical).toBe(1500);
+    });
+
+    it("keeps the newest candidates under the row-limit cap, not the oldest", async () => {
+      // Under limit:1, the DB fetch (ordered by created_at) returns exactly the
+      // single most-recently-created billable treatment across the whole
+      // clinic fixture — T_LIMIT_NEW (6 April), the newest of all seeded
+      // completed/in_progress treatments. The bug's ascending order would have
+      // kept the OLDEST instead (T_ATTENDED-adjacent fixtures from March/early
+      // April), silently dropping the genuinely recent, most-likely-still-owed
+      // work.
+      const capped = await ctx.listOutstandingBalances({ ...WINDOW, limit: 1 });
+      expect(capped).toHaveLength(1);
+      expect(capped?.[0]?.invoiceId).toBe(T_LIMIT_NEW);
+      expect(capped?.[0]?.invoiceId).not.toBe(T_LIMIT_OLD);
+    });
   });
 
   describe("appointment arrivals", () => {
@@ -420,6 +583,28 @@ describe.skipIf(!LOCAL_UP)("diagnosis context (integration)", () => {
       const clean = completed?.find((t) => t.treatmentId === T_PAID);
       expect(clean?.billedValue.value).toBe(2000);
       expect(clean?.collectedValue.value).toBe(2000);
+    });
+
+    it("bills OPD and X-ray charges, matching lib/billing/balance.ts", async () => {
+      // 1000 cost + 300 OPD + 200 X-ray = 1500 billed. The bug read 1000.
+      const completed = await ctx.listCompletedTreatments(WINDOW);
+      const row = completed?.find((t) => t.treatmentId === T_OPD_XRAY);
+      expect(row?.billedValue.value).toBe(1500);
+      expect(row?.collectedValue.value).toBe(0);
+    });
+
+    it("shows a lump-sum payment as collected against BOTH treatments it settled", async () => {
+      // T_LUMPSUM_B's own ₹1000 payment overflows into the pool and settles
+      // T_LUMPSUM_A too — a clinic that pays in one lump sum should not read as
+      // having collected nothing on the older line. The bug reported A's
+      // collectedValue as 0 (payments carrying only B's treatment_id).
+      const completed = await ctx.listCompletedTreatments(WINDOW);
+      const a = completed?.find((t) => t.treatmentId === T_LUMPSUM_A);
+      const b = completed?.find((t) => t.treatmentId === T_LUMPSUM_B);
+      expect(a?.collectedValue.value).toBe(500);
+      expect(a?.billedValue.value).toBe(500);
+      expect(b?.collectedValue.value).toBe(500);
+      expect(b?.billedValue.value).toBe(500);
     });
   });
 

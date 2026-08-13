@@ -280,9 +280,18 @@ export class SupabaseMetricsDataRepository implements MetricsDataRepository {
     ]);
 
     // Depends on today's appointments, so it cannot join the parallel batch.
+    //
+    // A cancelled or no-show appointment is not a visit — the patient was not
+    // seen, so they must not count as "seen"/"returning" today. Filtered to
+    // LIVE_APPOINTMENT_STATUSES for the same reason `isScheduled` and
+    // `bookedMinutes` already exclude them elsewhere in this file; leaving it
+    // unfiltered inflated `patients.returning_today` on days with cancellations
+    // (audit: patientsSeenToday row-status gap).
     const patientsSeenToday = await this.fetchPatientsSeen(
       clinicId,
-      appointmentsToday.map((a) => a.patientId),
+      appointmentsToday
+        .filter((a) => (LIVE_APPOINTMENT_STATUSES as readonly string[]).includes(a.status))
+        .map((a) => a.patientId),
     );
 
     return {

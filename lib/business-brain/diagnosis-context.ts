@@ -45,6 +45,12 @@ import type {
 import { MetricUnit } from "@/business-brain";
 import type { Database } from "@/types/database.types";
 import { getUtcBoundariesForLocalDate } from "@/lib/utils";
+import { treatmentTotalCharge } from "@/lib/billing/balance";
+import {
+  allocateCollectionsToTreatments,
+  type PayoutPaymentLike,
+  type PayoutTreatmentLike,
+} from "@/lib/billing/payout";
 
 /** Narrow `unknown` PostgREST payloads to the row shape a query selected. */
 function rows<T>(data: unknown): T[] {
@@ -94,6 +100,88 @@ export class SupabaseDiagnosisContext implements DiagnosisContextPort {
   constructor(db: SupabaseClient<Database>, timezone: string = "UTC") {
     this.db = db;
     this.timezone = timezone;
+  }
+
+  /**
+   * Money collected against each of a set of patients' billable treatments, as
+   * of `asOfDate` — via the SAME oldest-first pooled allocation
+   * `lib/billing/payout.ts` uses for consultant payouts, DentGrow's one
+   * canonical answer to "which payments cover which treatment" when a payment
+   * isn't linked to one.
+   *
+   * Reusing it here (instead of a `payments.treatment_id`-only join) is what
+   * makes this adapter's per-treatment figures reconcile with the patient-level
+   * `computeOutstandingBalance` (`lib/billing/balance.ts`) the rest of the app
+   * uses: a lump-sum or appointment-level payment now settles a patient's
+   * treatments the same way everywhere, instead of showing as collected in
+   * `revenue.outstanding` but "unpaid" in this diagnosis evidence (audit:
+   * diagnosis-context outstanding/collected mismatch).
+   *
+   * Loads EVERY billable treatment and payment the given patients have as of
+   * `asOfDate` — not just the ones inside the caller's page or window — because
+   * allocation is oldest-first across a patient's WHOLE ledger; allocating
+   * against a partial treatment set could credit the wrong treatment.
+   */
+  private async collectedByTreatment(
+    clinicId: string,
+    patientIds: readonly string[],
+    asOfDate: string,
+  ): Promise<Map<string, number>> {
+    const collected = new Map<string, number>();
+    if (patientIds.length === 0) return collected;
+
+    const endOfDay = getUtcBoundariesForLocalDate(asOfDate, this.timezone).end;
+    const [treatmentsRes, paymentsRes] = await Promise.all([
+      this.db
+        .from("treatments")
+        .select(
+          "id, patient_id, cost, status, opd_charged, opd_fee, xray_taken, xray_cost, performed_at, created_at",
+        )
+        .eq("clinic_id", clinicId)
+        .is("deleted_at", null)
+        .in("status", ["completed", "in_progress"])
+        .in("patient_id", patientIds as string[])
+        .lte("created_at", endOfDay),
+      this.db
+        .from("payments")
+        .select("patient_id, treatment_id, amount")
+        .eq("clinic_id", clinicId)
+        .is("deleted_at", null)
+        .in("patient_id", patientIds as string[])
+        .lte("payment_date", asOfDate),
+    ]);
+    if (treatmentsRes.error) {
+      throw new Error(`collections (treatments): ${treatmentsRes.error.message}`);
+    }
+    if (paymentsRes.error) {
+      throw new Error(`collections (payments): ${paymentsRes.error.message}`);
+    }
+
+    const treatmentsByPatient = new Map<string, (PayoutTreatmentLike & { patient_id: string })[]>();
+    for (const t of rows<
+      PayoutTreatmentLike & { patient_id: string }
+    >(treatmentsRes.data)) {
+      const list = treatmentsByPatient.get(t.patient_id) ?? [];
+      list.push(t);
+      treatmentsByPatient.set(t.patient_id, list);
+    }
+
+    const paymentsByPatient = new Map<string, PayoutPaymentLike[]>();
+    for (const p of rows<PayoutPaymentLike & { patient_id: string | null }>(paymentsRes.data)) {
+      if (!p.patient_id) continue;
+      const list = paymentsByPatient.get(p.patient_id) ?? [];
+      list.push(p);
+      paymentsByPatient.set(p.patient_id, list);
+    }
+
+    for (const [patientId, patientTreatments] of treatmentsByPatient) {
+      const patientPayments = paymentsByPatient.get(patientId) ?? [];
+      const allocation = allocateCollectionsToTreatments(patientTreatments, patientPayments);
+      for (const [treatmentId, amount] of allocation) {
+        collected.set(treatmentId, amount);
+      }
+    }
+    return collected;
   }
 
   /**
@@ -296,6 +384,12 @@ export class SupabaseDiagnosisContext implements DiagnosisContextPort {
    * and it errs the same way: it UNDER-reports. Everything returned is genuinely
    * unbooked; some genuinely unbooked work is missed because the patient happens
    * to have an unrelated appointment.
+   *
+   * Ordered NEWEST first: the `limit` cap should drop the OLDEST candidates, not
+   * the most recent — a plan sitting unaddressed for years is far more likely to
+   * have already been resolved, cancelled off-record, or forgotten than one from
+   * last week, so keeping the newest under the cap surfaces the genuinely acute
+   * backlog (audit: row-limit truncation bias).
    */
   async listPendingTreatments(window: EntityWindow): Promise<readonly PendingTreatmentRow[]> {
     const endOfWindow = getUtcBoundariesForLocalDate(window.to, this.timezone).end;
@@ -306,7 +400,7 @@ export class SupabaseDiagnosisContext implements DiagnosisContextPort {
       .is("deleted_at", null)
       .eq("status", "planned")
       .lte("created_at", endOfWindow)
-      .order("created_at", { ascending: true })
+      .order("created_at", { ascending: false })
       .limit(window.limit);
     if (error) throw new Error(`pending treatments: ${error.message}`);
 
@@ -349,14 +443,22 @@ export class SupabaseDiagnosisContext implements DiagnosisContextPort {
    * DentGrow has no invoices — billing and invoice generation are an explicit
    * MVP non-goal — so the TREATMENT is the billable unit and `invoiceId` is the
    * treatment's id. That is not a workaround: a treatment is what the patient
-   * owes for, `payments.treatment_id` links money to it directly, and inventing
-   * an invoice layer to satisfy a field name would add a concept the product
-   * does not have.
+   * owes for, and inventing an invoice layer to satisfy a field name would add
+   * a concept the product does not have.
    *
-   * Billable is `completed` or `in_progress`, matching `lib/billing/balance.ts`.
-   * Aligning with the app's own definition matters more than any local choice:
-   * two screens disagreeing about what a patient owes is worse than either
-   * definition being wrong.
+   * Billable is `completed` or `in_progress`, and the charge is cost + OPD +
+   * X-ray via the shared `treatmentTotalCharge`, matching `lib/billing/balance.ts`
+   * exactly (this file, unlike the pure metrics engine, is free to import it).
+   * Payments are pooled per patient via `collectedByTreatment`, not restricted
+   * to `payments.treatment_id`, so a lump-sum or appointment-level payment
+   * settles the same way it does everywhere else in the app. Aligning with the
+   * app's own definition matters more than any local choice: two screens
+   * disagreeing about what a patient owes is worse than either definition being
+   * wrong (audit: diagnosis-context outstanding formula).
+   *
+   * Ordered NEWEST first: the `limit` cap should drop the OLDEST candidates —
+   * the ones most likely already settled — not the most recent, which are the
+   * ones most likely still genuinely owed (audit: row-limit truncation bias).
    *
    * Fully-paid treatments are omitted — an outstanding balance of zero is not
    * outstanding.
@@ -365,45 +467,34 @@ export class SupabaseDiagnosisContext implements DiagnosisContextPort {
     const endOfWindow = getUtcBoundariesForLocalDate(window.to, this.timezone).end;
     const { data, error } = await this.db
       .from("treatments")
-      .select("id, patient_id, cost, performed_at, created_at")
+      .select(
+        "id, patient_id, cost, status, opd_charged, opd_fee, xray_taken, xray_cost, performed_at, created_at",
+      )
       .eq("clinic_id", window.clinicId)
       .is("deleted_at", null)
       .in("status", ["completed", "in_progress"])
       .lte("created_at", endOfWindow)
-      .order("created_at", { ascending: true })
+      .order("created_at", { ascending: false })
       .limit(window.limit);
     if (error) throw new Error(`outstanding balances: ${error.message}`);
 
-    const billable = rows<{
-      id: string;
-      patient_id: string;
-      cost: number | string | null;
-      performed_at: string | null;
-      created_at: string;
-    }>(data);
+    const billable = rows<
+      PayoutTreatmentLike & {
+        patient_id: string;
+        performed_at: string | null;
+        created_at: string;
+      }
+    >(data);
     if (billable.length === 0) return [];
 
-    const { data: paidData, error: paidError } = await this.db
-      .from("payments")
-      .select("treatment_id, amount")
-      .eq("clinic_id", window.clinicId)
-      .is("deleted_at", null)
-      .in("treatment_id", billable.map((t) => t.id))
-      .lte("payment_date", window.to);
-    if (paidError) throw new Error(`outstanding balances (payments): ${paidError.message}`);
-
-    const paid = new Map<string, number>();
-    for (const p of rows<{ treatment_id: string | null; amount: number | string | null }>(
-      paidData,
-    )) {
-      if (!p.treatment_id) continue;
-      paid.set(p.treatment_id, (paid.get(p.treatment_id) ?? 0) + Number(p.amount ?? 0));
-    }
+    const patientIds = [...new Set(billable.map((t) => t.patient_id))];
+    const collected = await this.collectedByTreatment(window.clinicId, patientIds, window.to);
 
     return billable
       .map((t) => {
-        const amountPaid = paid.get(t.id) ?? 0;
-        const outstanding = Number(t.cost ?? 0) - amountPaid;
+        const charge = treatmentTotalCharge(t);
+        const amountPaid = collected.get(t.id) ?? 0;
+        const outstanding = charge - amountPaid;
         // Dated from when the work was done, falling back to when the record was
         // raised for work still in progress.
         const raisedOn = datePart(t.performed_at ?? t.created_at);
@@ -535,17 +626,22 @@ export class SupabaseDiagnosisContext implements DiagnosisContextPort {
    * caused by work that was done and not paid for — two problems with opposite
    * responses that look identical in a daily revenue total.
    *
-   * Collected value is payments carrying this treatment's id. A clinic that
-   * records payments against the appointment rather than the treatment will show
-   * those as uncollected here; that is a recording gap rather than a
-   * misattribution, and inventing an allocation across a visit's treatments
-   * would put made-up numbers into a money comparison.
+   * Billed value is cost + OPD + X-ray via `treatmentTotalCharge`, matching
+   * `lib/billing/balance.ts`. Collected value comes from `collectedByTreatment`,
+   * which pools a patient's payments oldest-first the same way
+   * `lib/billing/payout.ts` already does for consultant payouts — a clinic that
+   * records a payment against the appointment rather than the treatment now
+   * shows it collected, instead of every such payment reading as uncollected
+   * here regardless of the clinic's real collection rate (audit:
+   * diagnosis-context outstanding/collected mismatch).
    */
   async listCompletedTreatments(window: EntityWindow): Promise<readonly CompletedTreatmentRow[]> {
     const { start, end } = bounds(window, this.timezone);
     const { data, error } = await this.db
       .from("treatments")
-      .select("id, patient_id, treatment_type, cost, performed_at")
+      .select(
+        "id, patient_id, treatment_type, cost, status, opd_charged, opd_fee, xray_taken, xray_cost, performed_at",
+      )
       .eq("clinic_id", window.clinicId)
       .is("deleted_at", null)
       .eq("status", "completed")
@@ -556,38 +652,25 @@ export class SupabaseDiagnosisContext implements DiagnosisContextPort {
       .limit(window.limit);
     if (error) throw new Error(`completed treatments: ${error.message}`);
 
-    const completed = rows<{
-      id: string;
-      patient_id: string;
-      treatment_type: string;
-      cost: number | string | null;
-      performed_at: string;
-    }>(data);
+    const completed = rows<
+      PayoutTreatmentLike & {
+        patient_id: string;
+        treatment_type: string;
+        performed_at: string;
+      }
+    >(data);
     if (completed.length === 0) return [];
 
-    const { data: paidData, error: paidError } = await this.db
-      .from("payments")
-      .select("treatment_id, amount")
-      .eq("clinic_id", window.clinicId)
-      .is("deleted_at", null)
-      .in("treatment_id", completed.map((t) => t.id));
-    if (paidError) throw new Error(`completed treatments (payments): ${paidError.message}`);
-
-    const paid = new Map<string, number>();
-    for (const p of rows<{ treatment_id: string | null; amount: number | string | null }>(
-      paidData,
-    )) {
-      if (!p.treatment_id) continue;
-      paid.set(p.treatment_id, (paid.get(p.treatment_id) ?? 0) + Number(p.amount ?? 0));
-    }
+    const patientIds = [...new Set(completed.map((t) => t.patient_id))];
+    const collected = await this.collectedByTreatment(window.clinicId, patientIds, window.to);
 
     return completed.map((t) => ({
       treatmentId: t.id,
       patientId: t.patient_id,
       date: datePart(t.performed_at),
       treatmentType: t.treatment_type,
-      billedValue: currency(Number(t.cost ?? 0)),
-      collectedValue: currency(paid.get(t.id) ?? 0),
+      billedValue: currency(treatmentTotalCharge(t)),
+      collectedValue: currency(collected.get(t.id) ?? 0),
     }));
   }
 }
