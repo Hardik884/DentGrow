@@ -21,6 +21,7 @@ import type { Database } from "@/types/database.types";
 import {
   getAnalyticsSummary,
   getAppointmentAnalytics,
+  getFollowUpAnalytics,
   getPatientAnalytics,
   getRevenueAnalytics,
   getTreatmentAnalytics,
@@ -170,10 +171,15 @@ async function seed() {
   ]);
 
   await insert("follow_ups", [
-    // Completed WITHIN the range — must count.
+    // Completed WITHIN the range — must count (both toward completedFollowUps
+    // and as a completed entry in the completion-rate denominator).
     { id: "9fd00000-0000-4000-8000-000000000401", clinic_id: CLINIC, patient_id: P1, due_date: "2026-05-01", status: "completed", updated_at: "2026-05-10T00:00:00Z" },
     // Completed BEFORE the range — must NOT count (audit B7).
     { id: "9fd00000-0000-4000-8000-000000000402", clinic_id: CLINIC, patient_id: P2, due_date: "2026-04-01", status: "completed", updated_at: "2026-04-15T00:00:00Z" },
+    // Due WITHIN the range but still pending — counts in the completion-rate
+    // denominator (it was due this period) but not the numerator, so the two
+    // in-range follow-ups (401 + 403) give a 50% rate, not 100%.
+    { id: "9fd00000-0000-4000-8000-000000000403", clinic_id: CLINIC, patient_id: P2, due_date: "2026-05-20", status: "pending", updated_at: "2026-05-01T00:00:00Z" },
   ]);
 
   // B6 fixture: clinic open Mondays only; one of May's four Mondays is closed.
@@ -237,6 +243,24 @@ describe.skipIf(!LOCAL_UP)("analytics metric definitions (audit B4/B5/B6/B7)", (
     const result = await getAnalyticsSummary(db, FILTER);
     // Only the follow-up completed (updated_at) within May counts.
     expect(result.completedFollowUps).toBe(1);
+  });
+
+  it("B7 — Follow-up Completion Rate is scoped to the selected range, not all-time", async () => {
+    const result = await getFollowUpAnalytics(db, FILTER);
+    // Two follow-ups are DUE within May (401 completed, 403 still pending);
+    // 402 is due in April and must not enter either side of the ratio.
+    // 1 of 2 completed = 50%, not 1 of 3 (33%) and not 1 of 1 (100%).
+    expect(result.completionRate).toBe(50);
+  });
+
+  it("B7 — a Last-30-Days-style narrower range changes the Completion Rate", async () => {
+    // Excluding the still-pending follow-up's due date (2026-05-20) from the
+    // window must raise the rate — proving the number actually MOVES with
+    // the selected range instead of silently staying an all-time constant.
+    const narrower = { ...FILTER, dateFrom: "2026-05-01", dateTo: "2026-05-15" };
+    const result = await getFollowUpAnalytics(db, narrower);
+    // Only follow-up 401 (due 2026-05-01, completed) falls in this window.
+    expect(result.completionRate).toBe(100);
   });
 
   it("B7 — getPatientAnalytics.returningVsNew is scoped to the range, not lifetime total_visits", async () => {

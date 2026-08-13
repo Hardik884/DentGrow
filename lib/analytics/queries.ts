@@ -1009,13 +1009,27 @@ export async function getFollowUpAnalytics(
     treatments: { treatment_type: string } | { treatment_type: string }[] | null;
   }>;
 
+  // Pending/Overdue are a CURRENT BACKLOG snapshot ("what's outstanding right
+  // now"), not activity that happened during the range — genuinely all-time
+  // by nature, left as-is (audit B7; the UI labels these "All-time").
   const pendingCount = followUps.filter((f) => f.status === "pending").length;
   const overdueCount = followUps.filter(
     (f) => f.status === "pending" && f.due_date < today
   ).length;
+
+  // Completion Rate now respects the selected range (audit B7): of the
+  // follow-ups DUE within [dateFrom, dateTo], what share are completed.
+  // Both numerator and denominator are scoped by the same field (due_date),
+  // so they describe one consistent population — unlike scoping the
+  // numerator by `updated_at` (when it was actually completed) against a
+  // due_date-scoped denominator, which would undercount anything finished
+  // early or late relative to its own due date.
+  const dueInRange = followUps.filter((f) => f.due_date >= dateFrom && f.due_date <= dateTo);
   const completionRate =
-    followUps.length > 0
-      ? Math.round((followUps.filter((f) => f.status === "completed").length / followUps.length) * 100)
+    dueInRange.length > 0
+      ? Math.round(
+          (dueInRange.filter((f) => f.status === "completed").length / dueInRange.length) * 100,
+        )
       : 0;
 
   const completedInRange = followUps.filter(

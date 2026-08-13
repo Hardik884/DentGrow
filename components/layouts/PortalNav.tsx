@@ -27,13 +27,20 @@ interface NavItem {
   icon: LucideIcon;
 }
 
-const NAV_ITEMS: NavItem[] = [
+// Order matters: the mobile bottom bar shows only NAV_ITEMS.slice(0, 5)
+// (see below), so the first five entries are the mobile tab set. Anything
+// added after index 4 reaches the full desktop/menu nav only — that is
+// deliberately where Prescriptions sits (audit B9: available through the
+// full portal navigation, never displacing an existing mobile tab).
+// Exported so navigation-composition specs can pin this without a React
+// rendering harness, which this project doesn't otherwise use.
+export const NAV_ITEMS: NavItem[] = [
   { label: "Home",         href: "/portal",              icon: LayoutDashboard },
   { label: "Appointments", href: "/portal/appointments", icon: CalendarDays },
   { label: "Queue",        href: "/portal/queue",        icon: ListOrdered },
   { label: "Treatments",   href: "/portal/treatments",   icon: Stethoscope },
-  { label: "Prescriptions", href: "/portal/prescriptions", icon: Pill },
   { label: "Payments",     href: "/portal/payments",     icon: CreditCard },
+  { label: "Prescriptions", href: "/portal/prescriptions", icon: Pill },
   { label: "Follow-Ups",   href: "/portal/follow-ups",   icon: Bell },
   { label: "Profile",      href: "/portal/profile",      icon: User },
 ];
