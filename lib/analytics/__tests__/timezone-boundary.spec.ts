@@ -10,9 +10,16 @@ import { describe, expect, it } from "vitest";
 
 import { getAppointmentAnalytics } from "@/lib/analytics/queries";
 
-/** Chainable, thenable mock over a fixed appointment row set. */
+/**
+ * Chainable, thenable mock over a fixed appointment row set. Table-aware:
+ * `getAppointmentAnalytics` also fetches `availability_rules`/
+ * `unavailable_dates` for its operating-day denominator (audit B6) — those
+ * must resolve to empty arrays here, not the appointment rows, or a real
+ * row's `start_time` (absent on an appointment) breaks the operating-day
+ * calculation this test never intends to exercise.
+ */
 function mockSupabase(rows: Array<Record<string, unknown>>, captured: { gte?: string; lte?: string }) {
-  function builder() {
+  function builder(table: string) {
     const api: Record<string, unknown> = {
       select: () => api,
       eq: () => api,
@@ -26,11 +33,11 @@ function mockSupabase(rows: Array<Record<string, unknown>>, captured: { gte?: st
         return api;
       },
       then: (onResolve: (v: unknown) => unknown) =>
-        Promise.resolve({ data: rows, error: null }).then(onResolve),
+        Promise.resolve({ data: table === "appointments" ? rows : [], error: null }).then(onResolve),
     };
     return api;
   }
-  return { from: () => builder() };
+  return { from: (table: string) => builder(table) };
 }
 
 describe("analytics timezone boundary (audit A16)", () => {

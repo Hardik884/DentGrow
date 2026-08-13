@@ -19,6 +19,8 @@ interface QueueMetrics {
   completedToday: number;
   inProgressNow: number;
   avgWaitMinutes: number;
+  /** Active chairs. Absent (older callers) defaults to 1 — unchanged behaviour. */
+  chairCount?: number;
 }
 
 interface QueueBoardProps {
@@ -36,6 +38,10 @@ export function QueueBoard({ initialQueue, clinicId = "", metrics }: QueueBoardP
   const waiting = queue.filter((e) => e.status === "waiting");
   const inProgress = queue.find((e) => e.status === "in_progress");
   const completed = queue.filter((e) => e.status === "completed");
+  // N active chairs treat N patients in parallel, so accumulated duration
+  // ahead is shared across chairs, not served one-at-a-time (audit B3) —
+  // matches the server-side estimate in actions/queue.ts's getQueueStatus.
+  const chairCount = Math.max(1, metrics?.chairCount ?? 1);
 
   function handleAdvance() {
     setAdvanceError(null);
@@ -137,9 +143,10 @@ export function QueueBoard({ initialQueue, clinicId = "", metrics }: QueueBoardP
         ) : (
           <div className="divide-y divide-[#F4F4F5]">
             {waiting.map((entry, idx) => {
-              const waitBefore = waiting
+              const durationAhead = waiting
                 .slice(0, idx)
                 .reduce((sum, e) => sum + (e.duration_minutes ?? 30), 0);
+              const waitBefore = Math.ceil(durationAhead / chairCount);
 
               return (
                 <div key={entry.id} className="px-5 py-3.5">

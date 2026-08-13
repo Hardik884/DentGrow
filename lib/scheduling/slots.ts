@@ -225,3 +225,63 @@ export function openMinutes(
   }
   return total;
 }
+
+/**
+ * Day-of-week for a "YYYY-MM-DD" date string, 0 (Sunday) – 6 (Saturday).
+ *
+ * Parsed at noon UTC rather than midnight so the result can never fall on the
+ * adjacent calendar day due to a DST transition — the same defensive
+ * convention `lib/business-brain/metrics-repository.ts` uses.
+ */
+function dayOfWeekFor(date: string): number {
+  return new Date(`${date}T12:00:00.000Z`).getUTCDay();
+}
+
+/**
+ * Every "YYYY-MM-DD" date from `from` to `to`, inclusive.
+ */
+function dateRangeInclusive(from: string, to: string): string[] {
+  const dates: string[] = [];
+  let cursor = new Date(`${from}T12:00:00.000Z`);
+  const end = new Date(`${to}T12:00:00.000Z`);
+  while (cursor.getTime() <= end.getTime()) {
+    dates.push(cursor.toISOString().slice(0, 10));
+    cursor = new Date(cursor.getTime() + 86_400_000);
+  }
+  return dates;
+}
+
+/**
+ * Whether a clinic is OPEN AT ALL on one calendar date — has at least one
+ * active availability rule for that weekday, and the date is not a whole-day
+ * closure. A day with an active rule but a consultancy block covering its
+ * entire window still counts as operating: the clinic intended to be open,
+ * which is what "operating day" means for a revenue/appointments-per-day
+ * average (audit B6) — it is not "did work actually happen".
+ */
+export function isOperatingDay(
+  date: string,
+  rulesByDayOfWeek: ReadonlyMap<number, AvailabilityRule[]>,
+  closedDates: ReadonlySet<string>,
+): boolean {
+  if (closedDates.has(date)) return false;
+  return (rulesByDayOfWeek.get(dayOfWeekFor(date)) ?? []).length > 0;
+}
+
+/**
+ * Count of OPERATING days in an inclusive date range — the correct
+ * denominator for a "per day" average (audit B6). A calendar-day count
+ * overstates it by including days the clinic is closed; counting only days
+ * that happened to have an appointment understates it by excluding open days
+ * that were simply quiet.
+ */
+export function countOperatingDays(
+  from: string,
+  to: string,
+  rulesByDayOfWeek: ReadonlyMap<number, AvailabilityRule[]>,
+  closedDates: ReadonlySet<string>,
+): number {
+  return dateRangeInclusive(from, to).filter((d) =>
+    isOperatingDay(d, rulesByDayOfWeek, closedDates),
+  ).length;
+}

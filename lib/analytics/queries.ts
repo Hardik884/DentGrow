@@ -30,10 +30,11 @@ import type {
   PaymentMethod,
   AppointmentStatus,
 } from "@/types";
-import { computeClinicOutstandingBalance } from "@/lib/billing/balance";
+import { computeClinicOutstandingBalance, isBillableTreatment } from "@/lib/billing/balance";
 import { treatmentClinicShare } from "@/lib/billing/revenue";
 import { sumEarnedConsultantPayouts } from "@/lib/billing/payout";
 import { getUtcBoundariesForLocalDate } from "@/lib/utils";
+import { countOperatingDays, type AvailabilityRule } from "@/lib/scheduling/slots";
 
 export interface DateRangeFilter {
   clinicId: string;
@@ -95,6 +96,7 @@ interface ApptRow {
   source: AppointmentSource;
   scheduled_at: string;
   duration_minutes: number;
+  patient_id?: string;
 }
 interface PatientRow {
   id: string;
@@ -293,7 +295,10 @@ export async function getAnalyticsSummary(
   ] = await Promise.all([
     supabase
       .from("appointments")
-      .select("status, source, scheduled_at, duration_minutes")
+      // patient_id is needed to scope "returning"/"active" patients to THIS
+      // range's completed visits, instead of the lifetime total_visits column
+      // (audit B7).
+      .select("status, source, scheduled_at, duration_minutes, patient_id")
       .eq("clinic_id", clinicId).is("deleted_at", null)
       .gte("scheduled_at", startOf(dateFrom, timezone)).lte("scheduled_at", endOf(dateTo, timezone)),
 
@@ -333,7 +338,10 @@ export async function getAnalyticsSummary(
 
     supabase
       .from("follow_ups")
-      .select("status, due_date")
+      // updated_at is needed to scope "completed follow-ups" to this range
+      // (audit B7) — status/due_date alone can't tell WHEN a follow-up was
+      // completed.
+      .select("status, due_date, updated_at")
       .eq("clinic_id", clinicId).is("deleted_at", null),
 
     supabase
@@ -379,7 +387,7 @@ export async function getAnalyticsSummary(
     | "performed_at"
     | "created_at"
   >[];
-  const followUps = (followUpsRes.data ?? []) as Pick<FollowUpRow, "status" | "due_date">[];
+  const followUps = (followUpsRes.data ?? []) as Pick<FollowUpRow, "status" | "due_date" | "updated_at">[];
   const queueToday = (queueTodayRes.data ?? []) as QueueRow[];
   const consultancyRows = (consultancyRes.data ?? []) as { amount: number; date: string }[];
 
@@ -391,8 +399,18 @@ export async function getAnalyticsSummary(
 
   const totalPatients = patients.length;
   const newPatientsThisMonth = newPatientsMonthRes.count ?? 0;
-  const returningPatients = patients.filter((p) => (p.total_visits ?? 0) > 1).length;
-  const activePatients = patients.filter((p) => p.last_visit !== null).length;
+
+  // "Returning"/"Active" are scoped to the SELECTED range (audit B7), not the
+  // lifetime total_visits/last_visit columns — a patient who visited twice
+  // three years ago and never since must not read as "active" for this range.
+  // Completed visits IN RANGE, grouped by patient.
+  const completedVisitsByPatient = new Map<string, number>();
+  for (const a of appointments) {
+    if (a.status !== "completed" || !a.patient_id) continue;
+    completedVisitsByPatient.set(a.patient_id, (completedVisitsByPatient.get(a.patient_id) ?? 0) + 1);
+  }
+  const returningPatients = [...completedVisitsByPatient.values()].filter((n) => n > 1).length;
+  const activePatients = completedVisitsByPatient.size;
 
   const totalRevenue = payments.reduce((sum, p) => sum + (p.amount ?? 0), 0);
   const revenueThisMonth = payments
@@ -448,10 +466,21 @@ export async function getAnalyticsSummary(
   const patientsWithPayments = new Set(payments.map((p) => p.patient_id)).size;
   const avgRevenuePerPatient = patientsWithPayments > 0 ? totalRevenue / patientsWithPayments : 0;
 
+  // Pending/overdue are a CURRENT BACKLOG snapshot ("what's outstanding right
+  // now"), not activity that happened during the range — legitimately all-time,
+  // left as-is (audit B7; the UI carries an explicit "all-time" label for these).
   const pendingFollowUps = followUps.filter((f) => f.status === "pending").length;
-  const completedFollowUps = followUps.filter((f) => f.status === "completed").length;
   const overdueFollowUps = followUps.filter(
     (f) => f.status === "pending" && f.due_date < today
+  ).length;
+  // "Completed" IS an activity metric ("how many were resolved"), so it must
+  // respect the selected range — mirrors getFollowUpAnalytics's completedInRange
+  // exactly (audit B7).
+  const completedFollowUps = followUps.filter(
+    (f) =>
+      f.status === "completed" &&
+      f.updated_at >= startOf(dateFrom, timezone) &&
+      f.updated_at <= endOf(dateTo, timezone),
   ).length;
 
   const completedQueueEntries = queueToday.filter((q) => q.status === "completed");
@@ -488,13 +517,29 @@ export async function getAppointmentAnalytics(
   const { clinicId, dateFrom, dateTo } = filter;
   const tz = filter.timezone ?? "Asia/Kolkata";
 
-  const { data } = await supabase
-    .from("appointments")
-    .select("status, scheduled_at, source")
-    .eq("clinic_id", clinicId)
-    .is("deleted_at", null)
-    .gte("scheduled_at", startOf(dateFrom, tz))
-    .lte("scheduled_at", endOf(dateTo, tz));
+  const [{ data }, rulesRes, unavailableRes] = await Promise.all([
+    supabase
+      .from("appointments")
+      .select("status, scheduled_at, source")
+      .eq("clinic_id", clinicId)
+      .is("deleted_at", null)
+      .gte("scheduled_at", startOf(dateFrom, tz))
+      .lte("scheduled_at", endOf(dateTo, tz)),
+
+    // Operating-day denominator for averagePerDay (audit B6) — same rule/
+    // closure shape lib/business-brain/metrics-repository.ts already fetches.
+    supabase
+      .from("availability_rules")
+      .select("day_of_week, start_time, end_time, slot_duration_minutes")
+      .eq("clinic_id", clinicId)
+      .eq("is_active", true),
+    supabase
+      .from("unavailable_dates")
+      .select("date")
+      .eq("clinic_id", clinicId)
+      .gte("date", dateFrom)
+      .lte("date", dateTo),
+  ]);
 
   const rows = (data ?? []) as ApptRow[];
 
@@ -535,8 +580,30 @@ export async function getAppointmentAnalytics(
     });
   }
 
-  const uniqueDays = Object.keys(dailyTotals).length;
-  const averagePerDay = uniqueDays > 0 ? Math.round(rows.length / uniqueDays) : 0;
+  // Operating days, not calendar days and not "days that happened to have an
+  // appointment" — a clinic open 26 days in a 30-day range with bookings on
+  // only 20 of them must divide by 26, not 20 (audit B6). A closed day is
+  // never counted as a zero-appointment operating day.
+  const rulesByDayOfWeek = new Map<number, AvailabilityRule[]>();
+  for (const r of (rulesRes.data ?? []) as {
+    day_of_week: number;
+    start_time: string;
+    end_time: string;
+    slot_duration_minutes: number;
+  }[]) {
+    const list = rulesByDayOfWeek.get(r.day_of_week) ?? [];
+    list.push({
+      startTime: r.start_time.slice(0, 5),
+      endTime: r.end_time.slice(0, 5),
+      slotDurationMinutes: r.slot_duration_minutes,
+    });
+    rulesByDayOfWeek.set(r.day_of_week, list);
+  }
+  const closedDates = new Set(
+    ((unavailableRes.data ?? []) as { date: string }[]).map((u) => u.date),
+  );
+  const operatingDays = countOperatingDays(dateFrom, dateTo, rulesByDayOfWeek, closedDates);
+  const averagePerDay = operatingDays > 0 ? Math.round(rows.length / operatingDays) : 0;
 
   // Build peak hours using the clinic's local timezone so that a 9:00 AM
   // appointment stored as 03:30 UTC (Asia/Kolkata) is bucketed into hour 9,
@@ -582,13 +649,29 @@ export async function getPatientAnalytics(
   const { clinicId, dateFrom, dateTo } = filter;
   const tz = filter.timezone ?? "Asia/Kolkata";
 
-  const { data } = await supabase
-    .from("patients")
-    .select("id, name, created_at, date_of_birth, gender, total_visits")
-    .eq("clinic_id", clinicId)
-    .is("deleted_at", null);
+  const [{ data }, apptRes] = await Promise.all([
+    supabase
+      .from("patients")
+      .select("id, name, created_at, date_of_birth, gender, total_visits")
+      .eq("clinic_id", clinicId)
+      .is("deleted_at", null),
+    // Completed visits IN RANGE, per patient — "returning"/"top" patients must
+    // reflect the selected period, not the lifetime total_visits column
+    // (audit B7).
+    supabase
+      .from("appointments")
+      .select("patient_id, status")
+      .eq("clinic_id", clinicId).is("deleted_at", null)
+      .eq("status", "completed")
+      .gte("scheduled_at", startOf(dateFrom, tz)).lte("scheduled_at", endOf(dateTo, tz)),
+  ]);
 
   const rows = (data ?? []) as PatientRow[];
+  const completedInRangeRows = (apptRes.data ?? []) as { patient_id: string; status: string }[];
+  const visitsInRangeByPatient = new Map<string, number>();
+  for (const a of completedInRangeRows) {
+    visitsInRangeByPatient.set(a.patient_id, (visitsInRangeByPatient.get(a.patient_id) ?? 0) + 1);
+  }
 
   const newInRange = rows.filter(
     (p) => p.created_at >= startOf(dateFrom, tz) && p.created_at <= endOf(dateTo, tz)
@@ -603,8 +686,13 @@ export async function getPatientAnalytics(
     .sort((a, b) => a.date.localeCompare(b.date));
 
   const returningVsNew = {
-    returning: rows.filter((p) => (p.total_visits ?? 0) > 1).length,
-    new: rows.filter((p) => (p.total_visits ?? 0) <= 1).length,
+    returning: [...visitsInRangeByPatient.values()].filter((n) => n > 1).length,
+    // "new" here means seen exactly once in this range OR not seen at all in
+    // it (a patient with zero completed visits in range is neither new nor
+    // returning within it, but the pre-existing shape is a two-way split, so
+    // anyone not counted as returning falls to "new" — unchanged from before,
+    // just now scoped to the range's own visits instead of lifetime ones).
+    new: rows.length - [...visitsInRangeByPatient.values()].filter((n) => n > 1).length,
   };
 
   const now = new Date();
@@ -632,10 +720,14 @@ export async function getPatientAnalytics(
   }
   const genderBreakdown = Object.entries(genderMap).map(([gender, count]) => ({ gender, count }));
 
+  // Ranked by visits WITHIN the range, not lifetime total_visits (audit B7) —
+  // a patient who visited heavily years ago but not at all in this range must
+  // not outrank one who is genuinely this period's most frequent visitor.
   const topPatients = [...rows]
-    .sort((a, b) => (b.total_visits ?? 0) - (a.total_visits ?? 0))
-    .slice(0, 10)
-    .map((p) => ({ patientId: p.id, name: p.name, visits: p.total_visits ?? 0 }));
+    .map((p) => ({ patientId: p.id, name: p.name, visits: visitsInRangeByPatient.get(p.id) ?? 0 }))
+    .filter((p) => p.visits > 0)
+    .sort((a, b) => b.visits - a.visits)
+    .slice(0, 10);
 
   return { newPatientsOverTime, returningVsNew, ageDistribution, genderBreakdown, topPatients };
 }
@@ -662,17 +754,28 @@ export async function getTreatmentAnalytics(
   const rows = (data ?? []) as TreatmentRow[];
 
   // totalCost = gross (average treatment price); totalRevenue = net clinic_share.
+  // Both are accumulated ONLY over billable (completed/in_progress) treatments
+  // (audit B5) — a cancelled or still-planned treatment isn't real delivered
+  // work, and letting it into "average cost" or "revenue by type" understated
+  // the true average and overstated revenue for types with a lot of no-shows.
+  // `count`/`byType` stay all-status: "most common treatment types" is legitimately
+  // about what gets BOOKED, not what gets billed.
   const typeMap: Record<
     string,
-    { count: number; totalCost: number; totalRevenue: number; completedCount: number }
+    { count: number; billableCount: number; totalCost: number; totalRevenue: number; completedCount: number }
   > = {};
   let completedCount = 0;
   for (const t of rows) {
     const tt = t.treatment_type ?? "Other";
-    if (!typeMap[tt]) typeMap[tt] = { count: 0, totalCost: 0, totalRevenue: 0, completedCount: 0 };
+    if (!typeMap[tt]) {
+      typeMap[tt] = { count: 0, billableCount: 0, totalCost: 0, totalRevenue: 0, completedCount: 0 };
+    }
     typeMap[tt].count += 1;
-    typeMap[tt].totalCost += Number(t.cost ?? 0);
-    typeMap[tt].totalRevenue += treatmentClinicShare(t);
+    if (isBillableTreatment(t.status)) {
+      typeMap[tt].billableCount += 1;
+      typeMap[tt].totalCost += Number(t.cost ?? 0);
+      typeMap[tt].totalRevenue += treatmentClinicShare(t);
+    }
     if (t.status === "completed") {
       typeMap[tt].completedCount += 1;
       completedCount++;
@@ -685,7 +788,7 @@ export async function getTreatmentAnalytics(
 
   const avgCostByType = Object.entries(typeMap).map(([treatmentType, v]) => ({
     treatmentType,
-    avgCost: v.count > 0 ? Math.round((v.totalCost / v.count) * 100) / 100 : 0,
+    avgCost: v.billableCount > 0 ? Math.round((v.totalCost / v.billableCount) * 100) / 100 : 0,
   }));
 
   const revenueByType = Object.entries(typeMap)
@@ -774,9 +877,19 @@ export async function getRevenueAnalytics(
   // max(0, cost + OPD + X-ray − ALL their payments), summed per patient (A5).
   const outstandingTotal = computeClinicOutstandingBalance(treatments, allPayments);
 
-  const completedAppts = appts.filter((a) => a.status === "completed").length;
-  const totalInRange = payments.reduce((s, p) => s + (p.amount ?? 0), 0);
-  const avgPerCompletedAppointment = completedAppts > 0 ? totalInRange / completedAppts : 0;
+  // Revenue attributable to completed appointments only (audit B4) — not every
+  // payment in range, which can include OPD-only payments, walk-ins with no
+  // appointment link, or payments tied to a cancelled/no-show/still-scheduled
+  // appointment. Numerator and denominator must describe the same population.
+  const completedApptIds = new Set(
+    appts.filter((a) => a.status === "completed").map((a) => a.id),
+  );
+  const completedAppts = completedApptIds.size;
+  const revenueFromCompletedAppts = payments
+    .filter((p) => p.appointment_id && completedApptIds.has(p.appointment_id))
+    .reduce((s, p) => s + (p.amount ?? 0), 0);
+  const avgPerCompletedAppointment =
+    completedAppts > 0 ? revenueFromCompletedAppts / completedAppts : 0;
 
   const now = new Date();
   const todayStr = new Intl.DateTimeFormat("en-CA", {

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { AppointmentList } from "@/components/patient/AppointmentList";
 import { isPatientBookingEnabled } from "@/lib/feature-flags";
+import { cn } from "@/lib/utils";
 
 export const metadata: Metadata = {
   title: "My Appointments",
@@ -9,13 +10,22 @@ export const metadata: Metadata = {
 
 /**
  * /portal/appointments
- * Upcoming appointments — patient view.
- * Shows only the authenticated patient's own appointments.
- * Cancel button available for future (non-terminal status) appointments.
+ *
+ * Upcoming AND past appointments — patient view (audit B10). Shows only the
+ * authenticated patient's own appointments, via a plain link-based tab (no
+ * new client-state pattern) so the choice survives a refresh/share like every
+ * other portal filter. Cancel button available for future (non-terminal
+ * status) appointments — unaffected, since that lives on the detail page.
  */
-export default async function PortalAppointmentsPage() {
+export default async function PortalAppointmentsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ tab?: string }>;
+}) {
+  const { tab } = await searchParams;
+  const scope = tab === "past" ? "past" : "upcoming";
   const bookingEnabled = isPatientBookingEnabled();
-  
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -30,8 +40,40 @@ export default async function PortalAppointmentsPage() {
         )}
       </div>
 
-      <AppointmentList />
+      <div className="flex gap-1 border-b border-[#E4E4E7]">
+        <TabLink href="/portal/appointments" active={scope === "upcoming"}>
+          Upcoming
+        </TabLink>
+        <TabLink href="/portal/appointments?tab=past" active={scope === "past"}>
+          Past
+        </TabLink>
+      </div>
+
+      <AppointmentList scope={scope} />
     </div>
   );
 }
 
+function TabLink({
+  href,
+  active,
+  children,
+}: {
+  href: string;
+  active: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <Link
+      href={href}
+      className={cn(
+        "px-3 py-2 text-sm font-medium border-b-2 -mb-px",
+        active
+          ? "border-[#09090B] text-[#09090B]"
+          : "border-transparent text-[#71717A] hover:text-[#09090B]",
+      )}
+    >
+      {children}
+    </Link>
+  );
+}

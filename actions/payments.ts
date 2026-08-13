@@ -6,6 +6,11 @@ import { resolveSession as resolveCachedSession } from "@/lib/auth/session";
 import { getTodayInTimezone } from "@/lib/utils";
 import { computeOutstandingBalance, treatmentTotalCharge } from "@/lib/billing/balance";
 import {
+  allocateCollectionsToTreatments,
+  type PayoutPaymentLike,
+  type PayoutTreatmentLike,
+} from "@/lib/billing/payout";
+import {
   RecordPaymentSchema,
   type ActionResult,
   type Payment,
@@ -355,6 +360,75 @@ export async function getOutstandingBalance(
     };
   } catch (err) {
     console.error("[getOutstandingBalance] unexpected:", err);
+    return { data: null, error: "Unexpected error" };
+  }
+}
+
+// =============================================================================
+// getPatientTreatmentCollections — per-treatment money actually collected
+// =============================================================================
+
+/**
+ * Money collected against each of a patient's billable treatments, via the
+ * same oldest-first pooled allocation `lib/billing/payout.ts` already uses
+ * for consultant payouts — DentGrow's one canonical answer to "which payments
+ * cover which treatment" when a payment isn't linked to one (audit B8).
+ *
+ * Staff-only. Loads the patient's ENTIRE billable-treatment and payment
+ * history (not just one visit's), because allocation is oldest-first across
+ * the whole ledger — a lump-sum payment recorded against one treatment can
+ * settle an older one too, and allocating against a partial set would credit
+ * the wrong treatment. Callers filter the returned map down to whichever
+ * treatments they're displaying (e.g. one appointment's).
+ *
+ * Never crosses patients: everything is scoped to the single `patientId`
+ * passed in, plus the caller's own clinic.
+ */
+export async function getPatientTreatmentCollections(
+  patientId: string
+): Promise<ActionResult<Record<string, number>>> {
+  try {
+    if (!patientId) return { data: {}, error: null };
+
+    const { db, profile } = await resolveSession();
+    if (!profile) return { data: null, error: "Unauthorized" };
+    if (profile.role === "patient") {
+      return { data: null, error: "Forbidden" };
+    }
+
+    const [{ data: treatmentRows, error: treatmentError }, { data: paymentRows, error: paymentError }] =
+      await Promise.all([
+        db
+          .from("treatments")
+          .select("id, cost, status, opd_charged, opd_fee, xray_taken, xray_cost, performed_at, created_at")
+          .eq("patient_id", patientId)
+          .eq("clinic_id", profile.clinic_id)
+          .is("deleted_at", null)
+          .in("status", ["completed", "in_progress"]),
+        db
+          .from("payments")
+          .select("amount, treatment_id")
+          .eq("patient_id", patientId)
+          .eq("clinic_id", profile.clinic_id)
+          .is("deleted_at", null),
+      ]);
+
+    if (treatmentError || paymentError) {
+      console.error("[getPatientTreatmentCollections]", treatmentError ?? paymentError);
+      return { data: null, error: "Failed to fetch payment allocation." };
+    }
+
+    const treatments = (treatmentRows ?? []) as PayoutTreatmentLike[];
+    const payments = (paymentRows ?? []) as PayoutPaymentLike[];
+    const allocation = allocateCollectionsToTreatments(treatments, payments);
+
+    const result: Record<string, number> = {};
+    for (const [treatmentId, amount] of allocation) {
+      result[treatmentId] = amount;
+    }
+    return { data: result, error: null };
+  } catch (err) {
+    console.error("[getPatientTreatmentCollections] unexpected:", err);
     return { data: null, error: "Unexpected error" };
   }
 }

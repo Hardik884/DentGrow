@@ -272,16 +272,21 @@ export default async function AnalyticsDashboardPage({
       <section>
         <h2 className="text-xs font-semibold text-[#71717A] uppercase tracking-wider mb-3">Follow-Ups</h2>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
-          <MetricCard label="Pending" value={summary.pendingFollowUps} accent="amber" />
+          {/* Pending/Overdue/Completion Rate are a current-backlog snapshot, not
+              activity within the selected range, so they carry an explicit
+              "all-time" label rather than silently mixing scopes (audit B7). */}
+          <MetricCard label="Pending" value={summary.pendingFollowUps} sub="All-time" accent="amber" />
           <MetricCard label="Completed" value={summary.completedFollowUps} accent="green" />
           <MetricCard
             label="Overdue"
             value={summary.overdueFollowUps}
+            sub="All-time"
             accent={summary.overdueFollowUps > 0 ? "red" : "default"}
           />
           <MetricCard
             label="Completion Rate"
             value={`${followUpAnalytics.completionRate}%`}
+            sub="All-time"
             accent="blue"
           />
         </div>

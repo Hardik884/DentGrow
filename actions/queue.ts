@@ -674,16 +674,29 @@ export async function getQueueStatus(patientId: string): Promise<
       }, 0);
     }
 
-    if (estimatedWaitMinutes === 0 && patientsAhead > 0) {
+    if (patientsAhead > 0) {
       const { data: settingsData } = await service
         .from("clinic_settings")
-        .select("average_appointment_duration")
+        .select("average_appointment_duration, chair_count")
         .eq("clinic_id", clinicId)
         .maybeSingle();
-      const avg =
-        (settingsData as { average_appointment_duration?: number } | null)
-          ?.average_appointment_duration ?? 30;
-      estimatedWaitMinutes = patientsAhead * avg;
+      const settings = settingsData as
+        | { average_appointment_duration?: number; chair_count?: number }
+        | null;
+
+      if (estimatedWaitMinutes === 0) {
+        estimatedWaitMinutes = patientsAhead * (settings?.average_appointment_duration ?? 30);
+      }
+
+      // A clinic with N active chairs treats N patients in parallel, so the
+      // work ahead is shared across chairs, not served serially on one
+      // (audit B3) — the same "N chairs ⇒ N× throughput" convention
+      // lib/business-brain/metrics-repository.ts already applies to capacity
+      // (openMinutes × chairCount). Math.ceil, not floor: a partial chair-share
+      // of remaining work still costs the full remaining time on whichever
+      // chair frees up last, so rounding down would under-promise accuracy.
+      const chairCount = Math.max(1, settings?.chair_count ?? 1);
+      estimatedWaitMinutes = Math.ceil(estimatedWaitMinutes / chairCount);
     }
 
     // Find current in_progress entry number
@@ -728,6 +741,10 @@ export async function getQueueMetrics(): Promise<
     completedToday: number;
     inProgressNow: number;
     avgWaitMinutes: number;
+    /** Active chairs — the staff queue board's per-row wait estimate divides
+     * accumulated duration by this (audit B3), matching the server's own
+     * getQueueStatus and the capacity convention in metrics-repository.ts. */
+    chairCount: number;
   }>
 > {
   try {
@@ -741,11 +758,15 @@ export async function getQueueMetrics(): Promise<
     const cid = profile.clinic_id;
     const qDate = await todayForClinic(db, cid);
 
-    const { data: entries } = await db
-      .from("queue_entries")
-      .select("status, checked_in_at, called_at, appointment:appointments(duration_minutes)")
-      .eq("clinic_id", cid)
-      .eq("queue_date", qDate);
+    const [{ data: entries }, { data: settingsData }] = await Promise.all([
+      db
+        .from("queue_entries")
+        .select("status, checked_in_at, called_at, appointment:appointments(duration_minutes)")
+        .eq("clinic_id", cid)
+        .eq("queue_date", qDate),
+      db.from("clinic_settings").select("chair_count").eq("clinic_id", cid).maybeSingle(),
+    ]);
+    const chairCount = Math.max(1, (settingsData as { chair_count?: number } | null)?.chair_count ?? 1);
 
     const rows = (entries ?? []) as {
       status: string;
@@ -783,6 +804,7 @@ export async function getQueueMetrics(): Promise<
         completedToday: completed.length,
         inProgressNow: inProgress.length,
         avgWaitMinutes,
+        chairCount,
       },
       error: null,
     };

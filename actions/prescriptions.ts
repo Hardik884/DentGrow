@@ -3,7 +3,8 @@
 import { resolveSession as resolveCachedSession } from "@/lib/auth/session";
 import { getUtcBoundariesForLocalDate } from "@/lib/utils";
 import { DEFAULT_TIMEZONE } from "@/lib/clinic/constants";
-import type { ActionResult } from "@/types";
+import { getPatientTreatments } from "@/actions/treatments";
+import type { ActionResult, TreatmentForPatientWithSignature } from "@/types";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type DbClient = any;
@@ -369,4 +370,36 @@ export async function getDentistList(): Promise<
     console.error("[getDentistList] unexpected:", err);
     return { data: null, error: "Unexpected error" };
   }
+}
+
+// =============================================================================
+// getPatientPrescriptions — patient portal, read-only (audit B9)
+// =============================================================================
+
+/**
+ * A patient's own prescriptions — treatments with a non-empty `medications`
+ * array — for the patient portal.
+ *
+ * Deliberately delegates to `getPatientTreatments` rather than querying
+ * `treatments` directly: that function already resolves the authenticated
+ * patient via `patient_portal_links.user_id = auth.uid()` (never from client
+ * input), selects only patient-safe columns (no `internal_notes`, no cost
+ * splits), and enriches with the prescribing dentist's signature and
+ * registration number — the exact same column-safety and authorization this
+ * function needs, so reusing it means there is no second, independently
+ * reviewed query path to keep in sync. This is read-only; nothing here can
+ * create, update, or delete a treatment.
+ */
+export async function getPatientPrescriptions(): Promise<
+  ActionResult<TreatmentForPatientWithSignature[]>
+> {
+  const result = await getPatientTreatments("");
+  if (result.error || !result.data) return result;
+
+  return {
+    data: result.data.filter(
+      (t) => Array.isArray(t.medications) && t.medications.length > 0,
+    ),
+    error: null,
+  };
 }

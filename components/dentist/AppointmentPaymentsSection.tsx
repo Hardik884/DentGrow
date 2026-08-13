@@ -1,4 +1,8 @@
-import { getPaymentsForAppointment, getOutstandingBalance } from "@/actions/payments";
+import {
+  getPaymentsForAppointment,
+  getOutstandingBalance,
+  getPatientTreatmentCollections,
+} from "@/actions/payments";
 import { getTreatmentsForAppointment } from "@/actions/treatments";
 import { PaymentFormDialog } from "@/components/dentist/PaymentFormDialog";
 import { Badge, type BadgeVariant } from "@/components/ui/badge";
@@ -42,38 +46,31 @@ export async function AppointmentPaymentsSection({
   patientId,
   patientName,
 }: AppointmentPaymentsSectionProps) {
-  const [treatmentsResult, paymentsResult, balanceResult] = await Promise.all([
+  const [treatmentsResult, paymentsResult, balanceResult, collectionsResult] = await Promise.all([
     getTreatmentsForAppointment(appointmentId),
     getPaymentsForAppointment(appointmentId),
     // Patient-level, not visit-level, on purpose. What the patient owes is not
     // a property of the visit they happen to be sitting in — see the
     // visit-level payment action below.
     getOutstandingBalance(patientId),
+    // Per-treatment "paid", pooled across the patient's WHOLE payment history
+    // (not just this visit's), oldest-treatment-first — audit B8. Without this
+    // a treatment could show "Pending" even though the patient had already
+    // paid, via a lump-sum or unlinked payment recorded elsewhere.
+    getPatientTreatmentCollections(patientId),
   ]);
 
   const treatments = (treatmentsResult.data ?? []) as Treatment[];
   const payments = (paymentsResult.data ?? []) as Payment[];
   const outstandingBalance = balanceResult.data ?? 0;
+  const collections = collectionsResult.data ?? {};
   const error = treatmentsResult.error || paymentsResult.error;
 
-  // Partition payments: treatment-linked, and everything else on this visit.
-  //
-  // OPD payments used to be dropped here entirely, which was defensible while
-  // the OPD toggle was hidden. Now that a consultation fee can be CHARGED, a
-  // hidden payment against it would leave the visit looking part-paid with no
-  // explanation, so consultation payments fall into the unassigned bucket and
-  // are shown alongside the rest.
-  const paymentsByTreatment = new Map<string, Payment[]>();
-  const unassignedPayments: Payment[] = [];
-  for (const p of payments) {
-    if (p.treatment_id) {
-      const list = paymentsByTreatment.get(p.treatment_id) ?? [];
-      list.push(p);
-      paymentsByTreatment.set(p.treatment_id, list);
-    } else {
-      unassignedPayments.push(p);
-    }
-  }
+  // "Other Payments" — payments recorded on THIS visit not linked to any of
+  // its treatments. Shown for visibility only; the per-treatment stats below
+  // use the pooled patient-wide allocation instead, so a payment sitting here
+  // may already be counted toward one of the treatment cards above (audit B8).
+  const unassignedPayments = payments.filter((p) => !p.treatment_id);
 
   return (
     <div className="bg-white border rounded-lg p-4 space-y-5">
@@ -130,10 +127,17 @@ export async function AppointmentPaymentsSection({
             // and X-ray fees recorded against it. Reading bare `cost` here left
             // a card showing "Paid" while its radiograph was still owed.
             const cost = treatmentTotalCharge(t);
-            const linked = paymentsByTreatment.get(t.id) ?? [];
-            const paid = linked.reduce((sum, p) => sum + Number(p.amount ?? 0), 0);
+            // "Paid" comes from the pooled, patient-wide allocation (audit B8),
+            // not just payments explicitly linked to this treatment — a
+            // lump-sum or unlinked payment can settle it too.
+            const paid = collections[t.id] ?? 0;
             const remaining = Math.max(0, cost - paid);
             const status = derivePaymentStatus(cost, paid);
+            // The payment rows shown below are still only the ones explicitly
+            // linked to this treatment — an honest "these specific payments
+            // are tagged here" list, which can be a smaller amount than "Paid"
+            // above when pooling settled this treatment from elsewhere.
+            const linked = payments.filter((p) => p.treatment_id === t.id);
             return (
               <TreatmentPaymentCard
                 key={t.id}

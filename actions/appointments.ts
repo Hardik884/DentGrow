@@ -1227,7 +1227,8 @@ export async function getAppointment(
 // =============================================================================
 
 export async function getAppointments(filters?: {
-  status?: AppointmentStatus;
+  /** A single status, or several (e.g. every terminal status for "past"). */
+  status?: AppointmentStatus | AppointmentStatus[];
   dateFrom?: string;
   dateTo?: string;
   /** Optional time-of-day lower bound, e.g. "08:00". Combined with dateFrom. */
@@ -1257,11 +1258,21 @@ export async function getAppointments(filters?: {
 
     const search = filters?.search?.trim();
 
-    let query = db
-      .from("appointments")
-      .select("*, patient:patients(id, name, phone, date_of_birth, gender)", { count: "exact" })
-      .is("deleted_at", null)
-      .order("scheduled_at", { ascending: false });
+    // The select shape differs by role (audit B10): a patient must only ever
+    // receive the patient-safe column allow-list — the same one `getAppointment`
+    // (singular) already uses — never the staff-only clinical columns
+    // (notes, chief_complaints, medical_history, oral_findings,
+    // provisional_diagnosis). Building the base select once and appending it
+    // with "*, patient:..." for every role, including patient, was the exact
+    // gap that allowed the portal appointments LIST (unlike the single-
+    // appointment page) to still fetch those columns.
+    let query =
+      profile.role === "patient"
+        ? db.from("appointments").select(PATIENT_APPOINTMENT_SELECT, { count: "exact" })
+        : db
+            .from("appointments")
+            .select("*, patient:patients(id, name, phone, date_of_birth, gender)", { count: "exact" });
+    query = query.is("deleted_at", null).order("scheduled_at", { ascending: false });
 
     // Staff: scope to clinic_id.
     // Patient: resolve patient_id from portal link and filter explicitly.
@@ -1301,7 +1312,11 @@ export async function getAppointments(filters?: {
       }
     }
 
-    if (filters?.status) query = query.eq("status", filters.status);
+    if (filters?.status) {
+      query = Array.isArray(filters.status)
+        ? query.in("status", filters.status)
+        : query.eq("status", filters.status);
+    }
 
     // Date + time filtering. `scheduled_at` is a timestamptz stored in UTC, so a
     // naive `${date}T00:00:00` string is read as UTC and shifts the window by the

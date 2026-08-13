@@ -61,7 +61,11 @@ export async function AppointmentCard({
               : ""}
           </p>
         </div>
-        {appointment.chief_complaints && (
+        {/* Staff-only clinical field — never shown to a patient (audit B10
+            defense-in-depth; getAppointments' patient branch no longer
+            fetches it at all, but this guard protects any future caller that
+            supplies data another way). */}
+        {!portalView && appointment.chief_complaints && (
           <p className="text-xs text-[#A1A1AA] truncate mt-0.5">{appointment.chief_complaints}</p>
         )}
       </div>

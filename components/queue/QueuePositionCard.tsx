@@ -18,6 +18,8 @@ interface QueuePositionCardProps {
   initialQueue?: QueueEntryWithPatient[];
   clinicId?: string;
   averageAppointmentDuration?: number;
+  /** Active chairs, for the brief pre-fetch fallback estimate below (audit B3). */
+  chairCount?: number;
   initialStatus?: QueueStatus;
 }
 
@@ -34,6 +36,7 @@ export function QueuePositionCard({
   initialQueue = [],
   clinicId = "",
   averageAppointmentDuration = 30,
+  chairCount = 1,
   initialStatus,
 }: QueuePositionCardProps) {
   const { queue } = useQueue({ clinicId, initialQueue });
@@ -108,9 +111,12 @@ export function QueuePositionCard({
       ? queue.filter((e) => e.status === "waiting" && e.position < myEntry.position)
       : [];
     patientsAhead = entriesAhead.length;
-    estimatedWait = entriesAhead.length > 0
-      ? entriesAhead.reduce((sum, e) => sum + (e.duration_minutes ?? averageAppointmentDuration), 0)
-      : 0;
+    const durationAhead = entriesAhead.reduce(
+      (sum, e) => sum + (e.duration_minutes ?? averageAppointmentDuration),
+      0,
+    );
+    // Divide across active chairs, matching the server estimate (audit B3).
+    estimatedWait = entriesAhead.length > 0 ? Math.ceil(durationAhead / Math.max(1, chairCount)) : 0;
   }
 
   if (isBeingSeen) {

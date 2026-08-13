@@ -51,16 +51,20 @@ export default async function PortalQueuePage() {
     ? link.patients[0]?.clinic_id ?? ""
     : link.patients?.clinic_id ?? "";
 
-  // Fetch clinic settings for fallback average duration
+  // Fetch clinic settings for fallback average duration + chair count
   const { data: settingsData } = await db
     .from("clinic_settings")
-    .select("average_appointment_duration")
+    .select("average_appointment_duration, chair_count")
     .eq("clinic_id", clinicId)
     .maybeSingle();
 
-  const averageAppointmentDuration =
-    (settingsData as { average_appointment_duration?: number } | null)
-      ?.average_appointment_duration ?? 30;
+  const settings = settingsData as
+    | { average_appointment_duration?: number; chair_count?: number }
+    | null;
+  const averageAppointmentDuration = settings?.average_appointment_duration ?? 30;
+  // Active chairs — the client's brief pre-fetch fallback estimate (before
+  // getQueueStatus's server value lands) must divide by this too (audit B3).
+  const chairCount = Math.max(1, settings?.chair_count ?? 1);
 
   // For portal users, getTodayQueue returns just the patient's own entry.
   // We pair it with getQueueStatus, which reports patientsAhead + estimated
@@ -89,6 +93,7 @@ export default async function PortalQueuePage() {
         initialQueue={initialQueue}
         clinicId={clinicId}
         averageAppointmentDuration={averageAppointmentDuration}
+        chairCount={chairCount}
         initialStatus={status}
       />
 

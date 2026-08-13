@@ -9,10 +9,18 @@ import { isPatientBookingEnabled } from "@/lib/feature-flags";
 
 interface AppointmentListProps {
   limit?: number;
+  /** "upcoming" (default) — still scheduled. "past" — every terminal status
+   * (audit B10). */
+  scope?: "upcoming" | "past";
 }
 
-export async function AppointmentList({ limit }: AppointmentListProps) {
-  const result = await getAppointments({ status: "scheduled", limit: limit ?? 10 });
+const PAST_STATUSES = ["completed", "cancelled", "no_show"] as const;
+
+export async function AppointmentList({ limit, scope = "upcoming" }: AppointmentListProps) {
+  const result = await getAppointments({
+    status: scope === "past" ? [...PAST_STATUSES] : "scheduled",
+    limit: limit ?? 10,
+  });
   const appointments = result.data?.appointments ?? [];
   const bookingEnabled = isPatientBookingEnabled();
 
@@ -51,14 +59,16 @@ export async function AppointmentList({ limit }: AppointmentListProps) {
         <div className="bg-white border border-[#E4E4E7] rounded-xl">
           <EmptyState
             icon={<CalendarDays className="h-5 w-5" aria-hidden />}
-            title="No upcoming appointments"
+            title={scope === "past" ? "No past appointments" : "No upcoming appointments"}
             description={
-              bookingEnabled
-                ? "You don't have any appointments scheduled."
-                : "You don't have any appointments scheduled. Please contact your clinic to book one."
+              scope === "past"
+                ? "Your completed and cancelled appointments will appear here."
+                : bookingEnabled
+                  ? "You don't have any appointments scheduled."
+                  : "You don't have any appointments scheduled. Please contact your clinic to book one."
             }
             action={
-              bookingEnabled ? (
+              scope === "upcoming" && bookingEnabled ? (
                 <Button asChild size="sm">
                   <Link href="/portal/appointments/new">Book Now</Link>
                 </Button>
