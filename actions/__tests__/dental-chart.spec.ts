@@ -28,6 +28,8 @@ import {
   upsertToothState,
   bulkUpdateTeeth,
   getToothHistory,
+  linkTreatmentToTooth,
+  unlinkTreatmentFromTooth,
 } from "@/actions/dental-chart";
 
 const CLINIC_A = "clinic-a";
@@ -405,5 +407,168 @@ describe("getToothHistory", () => {
     const result = await getToothHistory("pt-b");
     expect(result.data).toBeNull();
     expect(result.error).toBe("Tooth not found in this clinic.");
+  });
+});
+
+const TREATMENT_1 = "11111111-1111-4111-8111-111111111111";
+const TREATMENT_2 = "22222222-2222-4222-8222-222222222222";
+
+describe("linkTreatmentToTooth (past and current treatments)", () => {
+  it("links a completed PAST treatment (recorded long before this tooth existed on the chart) to a tooth", async () => {
+    const tables = baseTables();
+    tables.treatments.push({
+      id: TREATMENT_1,
+      clinic_id: CLINIC_A,
+      patient_id: PATIENT_A,
+      treatment_type: "Root Canal Treatment",
+      status: "completed",
+      cost: 8000,
+      tooth_number: null,
+      dentition_type: null,
+      deleted_at: null,
+    });
+    asDentist(tables);
+
+    const result = await linkTreatmentToTooth({
+      treatment_id: TREATMENT_1,
+      dentition_type: "adult",
+      tooth_number: 36,
+    });
+
+    expect(result.error).toBeNull();
+    expect(result.data?.tooth_number).toBe(36);
+    expect(result.data?.dentition_type).toBe("adult");
+    // The tooth's chart status mirrors the (already existing) treatment's
+    // status, exactly as if it had been linked at creation time.
+    expect(tables.patient_teeth).toHaveLength(1);
+    expect(tables.patient_teeth[0].status).toBe("completed");
+    expect(writeToothHistoryMock).toHaveBeenCalledWith(
+      expect.objectContaining({ action: "treatment_linked" })
+    );
+  });
+
+  it("re-links a CURRENT (in-progress) treatment from one tooth to another — a correction, not a duplicate", async () => {
+    const tables = baseTables();
+    tables.treatments.push({
+      id: TREATMENT_1,
+      clinic_id: CLINIC_A,
+      patient_id: PATIENT_A,
+      treatment_type: "Filling",
+      status: "in_progress",
+      cost: 1500,
+      tooth_number: 14, // charted against the wrong tooth originally
+      dentition_type: "adult",
+      deleted_at: null,
+    });
+    asDentist(tables);
+
+    const result = await linkTreatmentToTooth({
+      treatment_id: TREATMENT_1,
+      dentition_type: "adult",
+      tooth_number: 15,
+    });
+
+    expect(result.error).toBeNull();
+    expect(result.data?.tooth_number).toBe(15); // moved, not duplicated
+    expect(tables.treatments).toHaveLength(1); // still one treatment record
+  });
+
+  it("rejects an invalid tooth number for the dentition before touching the database", async () => {
+    const tables = baseTables();
+    tables.treatments.push({
+      id: TREATMENT_1,
+      clinic_id: CLINIC_A,
+      patient_id: PATIENT_A,
+      treatment_type: "Cleaning",
+      status: "completed",
+      cost: 500,
+      deleted_at: null,
+    });
+    asDentist(tables);
+
+    const result = await linkTreatmentToTooth({
+      treatment_id: TREATMENT_1,
+      dentition_type: "adult",
+      tooth_number: 99,
+    });
+
+    expect(result.data).toBeNull();
+    expect(result.error).toMatch(/not valid/i);
+    expect(tables.treatments[0].tooth_number).toBeUndefined();
+  });
+
+  it("is forbidden for the receptionist role", async () => {
+    const tables = baseTables();
+    tables.treatments.push({ id: TREATMENT_1, clinic_id: CLINIC_A, patient_id: PATIENT_A, status: "completed", deleted_at: null });
+    asRole(tables, "receptionist");
+    const result = await linkTreatmentToTooth({ treatment_id: TREATMENT_1, dentition_type: "adult", tooth_number: 36 });
+    expect(result.error).toMatch(/dentist/i);
+  });
+
+  it("clinic isolation: rejects a treatment that belongs to another clinic", async () => {
+    const tables = baseTables();
+    tables.treatments.push({ id: TREATMENT_2, clinic_id: CLINIC_B, patient_id: "patient-b", status: "completed", deleted_at: null });
+    asDentist(tables, CLINIC_A);
+    const result = await linkTreatmentToTooth({ treatment_id: TREATMENT_2, dentition_type: "adult", tooth_number: 36 });
+    expect(result.data).toBeNull();
+    expect(result.error).toBe("Treatment not found in this clinic.");
+  });
+});
+
+describe("unlinkTreatmentFromTooth", () => {
+  it("clears the treatment's tooth link and leaves the tooth's own chart status untouched", async () => {
+    const tables = baseTables();
+    tables.treatments.push({
+      id: TREATMENT_1,
+      clinic_id: CLINIC_A,
+      patient_id: PATIENT_A,
+      status: "completed",
+      tooth_number: 36,
+      dentition_type: "adult",
+      deleted_at: null,
+    });
+    tables.patient_teeth.push({
+      id: "pt-1",
+      clinic_id: CLINIC_A,
+      patient_id: PATIENT_A,
+      dentition_type: "adult",
+      tooth_number: 36,
+      status: "completed",
+      deleted_at: null,
+    });
+    asDentist(tables);
+    writeToothHistoryMock.mockClear();
+
+    const result = await unlinkTreatmentFromTooth(TREATMENT_1);
+
+    expect(result.error).toBeNull();
+    expect(result.data?.tooth_number ?? null).toBeNull();
+    expect(result.data?.dentition_type ?? null).toBeNull();
+    // Unlinking doesn't rewrite chart history — the tooth's own state stands.
+    expect(tables.patient_teeth[0].status).toBe("completed");
+    expect(writeToothHistoryMock).not.toHaveBeenCalled();
+  });
+
+  it("is forbidden for the receptionist role", async () => {
+    const tables = baseTables();
+    tables.treatments.push({ id: TREATMENT_1, clinic_id: CLINIC_A, patient_id: PATIENT_A, status: "completed", tooth_number: 36, dentition_type: "adult", deleted_at: null });
+    asRole(tables, "receptionist");
+    const result = await unlinkTreatmentFromTooth(TREATMENT_1);
+    expect(result.error).toMatch(/dentist/i);
+  });
+
+  it("clinic isolation: rejects a treatment that belongs to another clinic", async () => {
+    const tables = baseTables();
+    tables.treatments.push({ id: TREATMENT_2, clinic_id: CLINIC_B, patient_id: "patient-b", status: "completed", tooth_number: 36, dentition_type: "adult", deleted_at: null });
+    asDentist(tables, CLINIC_A);
+    const result = await unlinkTreatmentFromTooth(TREATMENT_2);
+    // No prior existence-check fetch here (matches updateTreatment's existing
+    // single-UPDATE convention) — a cross-clinic id hits the same "0 rows
+    // matched .single()" error path as any other DB failure. Still safely
+    // returns null data; the exact message just isn't the specific
+    // not-found string linkTreatmentToTooth gives (it DOES prefetch).
+    expect(result.data).toBeNull();
+    expect(result.error).toBe("Failed to unlink treatment.");
+    expect(tables.treatments[0].clinic_id).toBe(CLINIC_B); // untouched
   });
 });

@@ -8,6 +8,15 @@
  * (root down) — the standard two-row dental-chart convention, matching how
  * the teeth actually meet at the bite line between the two rows.
  *
+ * Tooth silhouettes are real anatomical illustrations, not hand-drawn
+ * approximations: the outline (and, where available, the specular highlight)
+ * for each tooth type is adapted from the "tooth-base" / "tooth-base-beauty"
+ * layers of React-Odontogram-Modul (github.com/ZoliQua/React-Odontogram-Modul),
+ * MIT-licensed, © 2026 Zoltán Dul — see THIRD_PARTY_NOTICES.md. The upstream
+ * SVGs are large multi-layer clinical charting assets (pathology/restoration
+ * overlays, gradients, toggle states); only the base healthy-tooth silhouette
+ * layer is used here, colored dynamically instead of the source's static fill.
+ *
  * Plain functional component computing geometry inline, no external SVG-icon
  * abstraction — mirrors components/business-brain/HealthMeter.tsx, the
  * codebase's existing precedent for a hand-drawn SVG shape.
@@ -38,54 +47,49 @@ const STATUS_STROKE: Record<ToothVisualState, string> = {
 };
 
 const STATUS_STROKE_WIDTH: Record<ToothVisualState, number> = {
-  normal: 1.5,
-  recommended: 1.5,
-  planned: 1.5,
-  in_progress: 2.25,
-  completed: 1.5,
-  missing: 1.5,
+  normal: 0.6,
+  recommended: 0.6,
+  planned: 0.6,
+  in_progress: 0.9,
+  completed: 0.6,
+  missing: 0.6,
 };
 
-/** Crown + root path data per anatomical type, viewBox 0 0 40 68, crown-down orientation. */
+/**
+ * Real anatomical tooth silhouettes, one per morphological type, each with
+ * its own (near-identical) viewBox — see file header for provenance. `outline`
+ * is the single crown+root path (the source intentionally leaves the root tip
+ * unclosed, suggesting it fades under the gum rather than having a hard cap).
+ * `highlight` is an optional small specular-gloss path near the incisal edge;
+ * omitted for premolar/molar in the source art.
+ */
 const TOOTH_SHAPES: Record<
   ToothType,
-  { crown: string; roots: string[] }
+  { viewBox: string; outline: string; highlight?: string }
 > = {
   incisor: {
-    crown:
-      "M12,26 C12,23.5 14.5,21.5 20,21.5 C25.5,21.5 28,23.5 28,26 L28,58 Q28,64 24,64 L16,64 Q12,64 12,58 Z",
-    roots: [
-      "M13,26.5 C13,20 14,14 16,8 C17,5 18.5,3 20,3 C21.5,3 23,5 24,8 C26,14 27,20 27,26.5 Z",
-    ],
+    viewBox: "0 0 39.7 70.8",
+    outline:
+      "M18.5,3.1c-2.4,4.5-3.3,9.5-3.6,14.5-.3,4.6-.9,9-1.3,13.6-.3,3.2-1.3,6.2-2.8,9-1.6,3.5-3.1,8.2-3.3,12.3-.3,6,2,11.1,8.1,11.1s16.5,1.1,16.5-4.3-.3-11.8-2.3-17-.3-.8-.5-1.2c-1.1-2.4-2.1-5.9-1.9-8.3.5-6.5-1.8-13.8-3-20.3-.4-3.6-1.2-7.1-4.2-9.4",
+    highlight:
+      "M15.7,59.5c2-.7,3.5-1,5.1-.6,2.5.3,4.1,1.5,5.5,3-1.5-.5-3.1-.6-4.9-.4-2.1.3-3.6.6-5.2,0-.6-.3-.9-1.2-.5-1.9h0Z",
   },
   canine: {
-    crown:
-      "M12,26 C12,23.5 14.5,21.5 20,21.5 C25.5,21.5 28,23.5 28,26 C27.3,37 25.5,48 22.5,57 L20.5,66 L19.5,66 L17.5,57 C14.5,48 12.7,37 12,26 Z",
-    roots: [
-      "M13,26.5 C13,18 14,10 16.5,5 C17.7,2.3 18.7,1 20,1 C21.3,1 22.3,2.3 23.5,5 C26,10 27,18 27,26.5 Z",
-    ],
+    viewBox: "0 0 40.3 71",
+    outline:
+      "M18.3,4.4c-.7,1.2-1.6,2.5-2.1,3.9-1.6,5-1.9,11-2.9,16-.7,6.7-3.6,11.9-4.6,18.3-.7,4.1.9,7.7,2.3,11.5,1.4,5.1,4.2,13.2,10.3,11,4.9-2.1,8.4-11.8,9.1-16.8.5-3.6.5-7.8-1.2-11.2s-3-4.9-3.3-8.1c-.8-4.7-1.3-13.3-2.3-17.9-.4-2.6-1.9-4.6-3.6-6.4",
+    highlight:
+      "M27.3,54.3c-.3,2.2-2.2,4.4-3.7,6.1-1,1.1-2,1.7-1.7.9v-.3c1.4-2.2,2.8-5.5,4.3-7.4.5-.4.9.2,1,.6h.1Z",
   },
   premolar: {
-    // Two shallow occlusal cusps (buccal + lingual) — a wider crown than the
-    // incisor/canine with a gentle concave notch at the bottom instead of a
-    // flat edge or a single point. Root is a single, noticeably SHORTER cone
-    // with a subtle bifid tip — premolars have the shortest roots of the four.
-    crown:
-      "M11,26 C11,23.5 14.5,21.5 20,21.5 C25.5,21.5 29,23.5 29,26 C29,35 28,44 27,49 C26.5,54 25,57.5 22.5,59 C21.3,59.7 20.6,57 20,55.5 C19.4,57 18.7,59.7 17.5,59 C15,57.5 13.5,54 13,49 C12,44 11,35 11,26 Z",
-    roots: [
-      "M12,26.5 C12,20.5 12.8,15.5 14.8,12 C15.7,10.4 16.9,10.9 17.2,12.7 C17.4,14 18,14.6 20,14.6 C22,14.6 22.6,14 22.8,12.7 C23.1,10.9 24.3,10.4 25.2,12 C27.2,15.5 28,20.5 28,26.5 Z",
-    ],
+    viewBox: "0 0 39.8 71.2",
+    outline:
+      "M17.1,22.4c.3,1.9.9,4.3,2.6,5.3,1.5.9,2.9-.4,3.4-1.8,1.7-4.8.3-10.7,2.2-15.5.8-1.7,2.6-1.5,3.4.2,1,1.9,1.1,4.3,1.4,6.5.3,3.8-.7,7.3-1.6,11-1,4-1.2,8.3,0,12.4,1.8,8,7.5,21.1-2,24.4-1.4.2-2.9-.5-4.5-.9-3-1-5.1,1-8,1.5-8.9,1.4-6.7-14.5-4.9-19.4.9-2.3,1.9-4.7,2.1-7.3.3-5.2-1.1-10.8-.8-15.9,0-3.3.5-6.8,1.2-10.1.2-1.7,2.2-5.9,3.9-3.2,1.4,3.9.9,8.8,1.6,12.6,0,0,0,.2,0,.2Z",
   },
   molar: {
-    // The widest crown, with a wavy 3-cusp occlusal edge. Root is drawn as
-    // ONE connected mass that forks into two stout, rounded prongs near the
-    // crown rather than two separate thin spikes, which reads as "molar
-    // roots" instead of insect antennae at small sizes.
-    crown:
-      "M7,27 C7,23.3 12,21 20,21 C28,21 33,23.3 33,27 C33,35.5 32,44 31,49 C30.4,53.5 28.8,56.5 26.3,58 C24.7,59 24,56.8 22.5,56.3 C21.3,55.9 21,57 20,57 C19,57 18.7,55.9 17.5,56.3 C16,56.8 15.3,59 13.7,58 C11.2,56.5 9.6,53.5 9,49 C8,44 7,35.5 7,27 Z",
-    roots: [
-      "M8.5,27.3 C8.5,20.5 9.6,14.8 12.3,11 C13.4,9.4 14.8,10.2 15.1,12.2 C15.4,14.2 16.1,15 17.6,15.2 L17.6,27.3 Z M31.5,27.3 C31.5,20.5 30.4,14.8 27.7,11 C26.6,9.4 25.2,10.2 24.9,12.2 C24.6,14.2 23.9,15 22.4,15.2 L22.4,27.3 Z",
-    ],
+    viewBox: "0 0 42.9 70.9",
+    outline:
+      "M21.3,27.7c1.9.9,3.6-.4,4.2-1.8,2.1-4.8.4-10.7,2.7-15.5,1-1.7,3.2-1.5,4.2.2,1.2,1.9,1.4,4.3,1.7,6.5.4,3.8-.9,7.3-2,11-1.2,4-1.5,8.3,0,12.4,2.2,8,9.3,21.1-2.6,24.4-1.7.2-3.6-.5-5.6-.9-3.7-1-6.4,1-10,1.5-11.1,1.4-8.4-14.5-6-19.4,1.1-2.3,2.4-4.7,2.6-7.3.4-5.2-1.4-10.8-1-15.9,0-3.3.6-6.8,1.5-10.1.2-1.7,2.7-5.9,4.9-3.2,1.7,3.9,1.1,8.8,2,12.6,0,0,1.3,4.5,3.4,5.5Z",
   },
 };
 
@@ -95,7 +99,6 @@ export type ToothProps = {
   status: ToothVisualState;
   size?: number;
   className?: string;
-  /** Renders a subtle "not present" cross-hatch instead of a normal fill. */
   ariaLabel?: string;
 };
 
@@ -106,43 +109,42 @@ export function Tooth({ toothType, arch, status, size = 40, className, ariaLabel
   const strokeWidth = STATUS_STROKE_WIDTH[status];
   const isMissing = status === "missing";
 
-  // Upper arch: crown-down (as authored). Lower arch: flip vertically so the
-  // crown points up toward the bite line, root hanging down — mirrors the
-  // reference chart's two-row presentation.
-  const flipTransform = arch === "lower" ? "matrix(1,0,0,-1,0,68)" : undefined;
+  const [, , vbWidthRaw, vbHeightRaw] = shape.viewBox.split(" ");
+  const vbWidth = Number(vbWidthRaw);
+  const vbHeight = Number(vbHeightRaw);
+
+  // Upper arch: crown-down (as authored — these source illustrations are
+  // drawn root-up/crown-down). Lower arch: flip vertically so the crown
+  // points up toward the bite line, root hanging down — the standard
+  // two-row dental-chart convention.
+  const flipTransform = arch === "lower" ? `matrix(1,0,0,-1,0,${vbHeight})` : undefined;
 
   return (
     <svg
-      viewBox="0 0 40 68"
+      viewBox={shape.viewBox}
       width={size}
-      height={(size * 68) / 40}
+      height={(size * vbHeight) / vbWidth}
       className={cn("overflow-visible", className)}
       role="img"
       aria-label={ariaLabel}
     >
-      <g transform={flipTransform} opacity={isMissing ? 0.55 : 1}>
-        {shape.roots.map((d, i) => (
-          <path
-            key={`root-${i}`}
-            d={d}
-            fill={isMissing ? "#F4F4F5" : "#FAFAFA"}
-            stroke={stroke}
-            strokeWidth={strokeWidth}
-            strokeDasharray={isMissing ? "3 2.5" : undefined}
-          />
-        ))}
+      <g transform={flipTransform} opacity={isMissing ? 0.5 : 1}>
         <path
-          d={shape.crown}
+          d={shape.outline}
           fill={fill}
           stroke={stroke}
           strokeWidth={strokeWidth}
-          strokeDasharray={isMissing ? "3 2.5" : undefined}
+          strokeLinejoin="round"
+          strokeDasharray={isMissing ? "2.5 2" : undefined}
         />
+        {shape.highlight && !isMissing && (
+          <path d={shape.highlight} fill="#FFFFFF" opacity={0.75} />
+        )}
         {isMissing && (
           <path
-            d="M13,26 L27,60 M27,26 L13,60"
+            d={`M${vbWidth * 0.28},${vbHeight * 0.15} L${vbWidth * 0.72},${vbHeight * 0.92} M${vbWidth * 0.72},${vbHeight * 0.15} L${vbWidth * 0.28},${vbHeight * 0.92}`}
             stroke="#A1A1AA"
-            strokeWidth={1.25}
+            strokeWidth={0.6}
             strokeLinecap="round"
           />
         )}

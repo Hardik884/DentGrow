@@ -181,3 +181,52 @@ export function toothStatusForTreatmentStatus(
       return null;
   }
 }
+
+/**
+ * Shared "keep a linked tooth's chart status in step with its treatment"
+ * sync, used by:
+ *   - actions/treatments.ts   → createTreatment / updateTreatment, whenever
+ *     the treatment being saved carries a tooth link (auxiliary side effect
+ *     of saving a treatment; failures are logged but never block the save).
+ *   - actions/dental-chart.ts → linkTreatmentToTooth, when the dentist
+ *     retroactively links an existing (past or current) treatment to a
+ *     tooth from the chart itself.
+ *
+ * `cancelled` treatments are a deliberate no-op — see
+ * toothStatusForTreatmentStatus above.
+ */
+export async function syncToothForTreatment(
+  db: DbClient,
+  params: {
+    clinicId: string;
+    performedBy: string;
+    treatmentId: string;
+    patientId: string;
+    toothNumber: number | null | undefined;
+    dentitionType: DentitionType | null | undefined;
+    treatmentStatus: "planned" | "in_progress" | "completed" | "cancelled";
+  }
+): Promise<void> {
+  if (params.toothNumber == null || !params.dentitionType) return;
+
+  const status = toothStatusForTreatmentStatus(params.treatmentStatus);
+  if (!status) return; // cancelled — leave the chart's own status untouched
+
+  try {
+    const result = await upsertToothRow(db, {
+      clinicId: params.clinicId,
+      patientId: params.patientId,
+      dentitionType: params.dentitionType,
+      toothNumber: params.toothNumber,
+      status,
+      performedBy: params.performedBy,
+      treatmentId: params.treatmentId,
+      preserveExistingConditionAndNotes: true,
+    });
+    if (!result.ok) {
+      console.error("[syncToothForTreatment]", result.error);
+    }
+  } catch (err) {
+    console.error("[syncToothForTreatment] unexpected:", err);
+  }
+}

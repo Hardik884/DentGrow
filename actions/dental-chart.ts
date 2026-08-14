@@ -2,11 +2,12 @@
 
 import { revalidatePath } from "next/cache";
 import { resolveSession as resolveCachedSession } from "@/lib/auth/session";
-import { upsertToothRow } from "@/lib/dental-chart/sync";
+import { upsertToothRow, syncToothForTreatment } from "@/lib/dental-chart/sync";
 import { FDI_TOOTH_NUMBERS, getToothIdentity } from "@/lib/dental-chart/teeth";
 import {
   UpsertToothSchema,
   BulkUpdateTeethSchema,
+  LinkTreatmentToToothSchema,
   type ActionResult,
   type PatientTooth,
   type ToothHistory,
@@ -14,6 +15,7 @@ import {
   type ToothLinkedTreatment,
   type PatientDentalChart,
   type DentitionType,
+  type Treatment,
 } from "@/types";
 
 /**
@@ -308,6 +310,133 @@ export async function getToothHistory(patientToothId: string): Promise<ActionRes
     return { data: (data ?? []) as ToothHistory[], error: null };
   } catch (err) {
     console.error("[getToothHistory] unexpected:", err);
+    return { data: null, error: "Unexpected error" };
+  }
+}
+
+// =============================================================================
+// linkTreatmentToTooth — dentist only. Retroactively link an EXISTING
+// treatment (any status, any age — past or current) to a tooth, instead of
+// only being able to link one at creation time.
+// =============================================================================
+
+export async function linkTreatmentToTooth(input: unknown): Promise<ActionResult<Treatment>> {
+  try {
+    const parsed = LinkTreatmentToToothSchema.safeParse(input);
+    if (!parsed.success) {
+      return { data: null, error: parsed.error.errors[0]?.message ?? "Invalid input" };
+    }
+
+    const { db, profile } = await resolveSession();
+    if (!profile) return { data: null, error: "Unauthorized" };
+    if (profile.role !== "dentist") {
+      return { data: null, error: "Forbidden: only dentists can link treatments to the dental chart." };
+    }
+
+    // patient_id is resolved from the treatment itself (scoped to the
+    // caller's clinic) rather than trusted from the client — the treatment
+    // is the sole source of truth for which patient it belongs to.
+    const { data: existing, error: fetchError } = await db
+      .from("treatments")
+      .select("*")
+      .eq("id", parsed.data.treatment_id)
+      .eq("clinic_id", profile.clinic_id)
+      .is("deleted_at", null)
+      .maybeSingle();
+
+    if (fetchError) {
+      console.error("[linkTreatmentToTooth] fetch failed", fetchError);
+      return { data: null, error: "Failed to load treatment." };
+    }
+    if (!existing) return { data: null, error: "Treatment not found in this clinic." };
+
+    const { data, error } = await db
+      .from("treatments")
+      .update({
+        tooth_number: parsed.data.tooth_number,
+        dentition_type: parsed.data.dentition_type,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", parsed.data.treatment_id)
+      .eq("clinic_id", profile.clinic_id)
+      .is("deleted_at", null)
+      .select()
+      .single();
+
+    if (error) {
+      console.error("[linkTreatmentToTooth]", error);
+      return { data: null, error: "Failed to link treatment to tooth." };
+    }
+
+    const treatment = data as Treatment;
+
+    // Reflect the (already-existing) treatment's status onto the tooth's
+    // chart entry, exactly as if it had been created with this tooth linked
+    // from the start — this is what makes "link a past treatment" behave
+    // consistently with "create a treatment already linked to a tooth".
+    await syncToothForTreatment(db, {
+      clinicId: profile.clinic_id,
+      performedBy: profile.id,
+      treatmentId: treatment.id,
+      patientId: treatment.patient_id,
+      toothNumber: treatment.tooth_number,
+      dentitionType: treatment.dentition_type,
+      treatmentStatus: treatment.status,
+    });
+
+    revalidatePath(`/dentist/patients/${treatment.patient_id}`);
+    if (treatment.appointment_id) revalidatePath(`/dentist/appointments/${treatment.appointment_id}`);
+
+    return { data: treatment, error: null };
+  } catch (err) {
+    console.error("[linkTreatmentToTooth] unexpected:", err);
+    return { data: null, error: "Unexpected error" };
+  }
+}
+
+// =============================================================================
+// unlinkTreatmentFromTooth — dentist only. Undo a tooth link (e.g. it was
+// linked to the wrong tooth). Leaves the tooth's own chart status as-is —
+// removing a link is not evidence the chart entry itself was wrong.
+// =============================================================================
+
+export async function unlinkTreatmentFromTooth(treatmentId: string): Promise<ActionResult<Treatment>> {
+  try {
+    if (!treatmentId) return { data: null, error: "Treatment ID is required." };
+
+    const { db, profile } = await resolveSession();
+    if (!profile) return { data: null, error: "Unauthorized" };
+    if (profile.role !== "dentist") {
+      return { data: null, error: "Forbidden: only dentists can edit the dental chart." };
+    }
+
+    const { data, error } = await db
+      .from("treatments")
+      .update({
+        tooth_number: null,
+        dentition_type: null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", treatmentId)
+      .eq("clinic_id", profile.clinic_id)
+      .is("deleted_at", null)
+      .select()
+      .single();
+
+    if (error) {
+      console.error("[unlinkTreatmentFromTooth]", error);
+      return { data: null, error: "Failed to unlink treatment." };
+    }
+    if (!data) return { data: null, error: "Treatment not found in this clinic." };
+
+    const treatment = data as Treatment;
+
+    revalidatePath(`/dentist/patients/${treatment.patient_id}`);
+    if (treatment.appointment_id) revalidatePath(`/dentist/appointments/${treatment.appointment_id}`);
+
+    return { data: treatment, error: null };
+  } catch (err) {
+    console.error("[unlinkTreatmentFromTooth] unexpected:", err);
     return { data: null, error: "Unexpected error" };
   }
 }

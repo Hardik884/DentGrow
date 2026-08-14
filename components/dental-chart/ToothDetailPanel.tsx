@@ -22,12 +22,13 @@ import { Field } from "@/components/ui/field";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { TreatmentDetailDialog } from "@/components/dentist/TreatmentDetailModal";
 import { TreatmentFormDialog } from "@/components/dentist/TreatmentFormDialog";
-import { upsertToothState } from "@/actions/dental-chart";
+import { upsertToothState, linkTreatmentToTooth, unlinkTreatmentFromTooth } from "@/actions/dental-chart";
+import { getTreatmentsForPatient } from "@/actions/treatments";
 import { TOOTH_STATUS_LABELS } from "@/lib/dental-chart/status";
 import { TOOTH_STATUS_ORDER } from "@/lib/dental-chart/teeth";
 import { TREATMENT_STATUS_LABELS, formatCurrency, formatDateTime } from "@/lib/utils";
-import { Stethoscope, History as HistoryIcon } from "lucide-react";
-import type { ToothChartEntry, ToothHistory, DentitionType, ToothStatus } from "@/types";
+import { Stethoscope, History as HistoryIcon, Link2, X } from "lucide-react";
+import type { ToothChartEntry, ToothHistory, DentitionType, ToothStatus, Treatment } from "@/types";
 
 export type ToothDetailPanelProps = {
   open: boolean;
@@ -58,12 +59,25 @@ export function ToothDetailPanel({
   const [error, setError] = useState<string | null>(null);
   const [viewingTreatmentId, setViewingTreatmentId] = useState<string | null>(null);
 
+  // ── Link an existing (past or current) treatment to this tooth ──────────
+  const [linkPickerOpen, setLinkPickerOpen] = useState(false);
+  const [patientTreatments, setPatientTreatments] = useState<Treatment[] | null>(null);
+  const [loadingTreatments, setLoadingTreatments] = useState(false);
+  const [selectedTreatmentId, setSelectedTreatmentId] = useState("");
+  const [linking, setLinking] = useState(false);
+  const [linkError, setLinkError] = useState<string | null>(null);
+  const [unlinkingId, setUnlinkingId] = useState<string | null>(null);
+
   useEffect(() => {
     if (!entry) return;
     setStatus(entry.tooth?.status ?? "normal");
     setCondition(entry.tooth?.condition ?? "");
     setNotes(entry.tooth?.notes ?? "");
     setError(null);
+    setLinkPickerOpen(false);
+    setPatientTreatments(null);
+    setSelectedTreatmentId("");
+    setLinkError(null);
   }, [entry]);
 
   if (!entry) return null;
@@ -87,6 +101,61 @@ export function ToothDetailPanel({
     }
     onSaved();
   }
+
+  async function handleOpenLinkPicker() {
+    setLinkPickerOpen((v) => !v);
+    setLinkError(null);
+    if (patientTreatments !== null) return; // already loaded
+    setLoadingTreatments(true);
+    const result = await getTreatmentsForPatient(patientId);
+    setLoadingTreatments(false);
+    if (result.error) {
+      setLinkError(result.error);
+      return;
+    }
+    setPatientTreatments((result.data as Treatment[] | null) ?? []);
+  }
+
+  async function handleLink() {
+    if (!entry || !selectedTreatmentId) return;
+    setLinking(true);
+    setLinkError(null);
+    const result = await linkTreatmentToTooth({
+      treatment_id: selectedTreatmentId,
+      dentition_type: dentitionType,
+      tooth_number: entry.toothNumber,
+    });
+    setLinking(false);
+    if (result.error) {
+      setLinkError(result.error);
+      return;
+    }
+    setLinkPickerOpen(false);
+    setSelectedTreatmentId("");
+    onSaved();
+  }
+
+  async function handleUnlink(treatmentId: string) {
+    setUnlinkingId(treatmentId);
+    setError(null);
+    const result = await unlinkTreatmentFromTooth(treatmentId);
+    setUnlinkingId(null);
+    if (result.error) {
+      setError(result.error);
+      return;
+    }
+    onSaved();
+  }
+
+  // Treatments eligible to link: not deleted (already excluded by the
+  // action), and not already linked to THIS tooth (those already appear in
+  // the Linked Treatments list above — offering them again would just be a
+  // confusing no-op). A treatment linked to a DIFFERENT tooth is still
+  // offered — selecting it moves the link here, which is a legitimate "I
+  // charted the wrong tooth" correction.
+  const linkableTreatments = (patientTreatments ?? []).filter(
+    (t) => !(t.tooth_number === entry?.toothNumber && t.dentition_type === dentitionType)
+  );
 
   return (
     <>
@@ -140,36 +209,86 @@ export function ToothDetailPanel({
           </div>
 
           <div className="border-t border-[#F4F4F5] pt-4 space-y-2">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-2">
               <h3 className="text-xs font-semibold text-[#09090B] uppercase tracking-wide flex items-center gap-1.5">
                 <Stethoscope className="h-3.5 w-3.5 text-[#71717A]" aria-hidden />
                 Linked Treatments
               </h3>
-              <TreatmentFormDialog
-                appointmentId={appointmentId}
-                patientId={patientId}
-                toothNumber={entry.toothNumber}
-                dentitionType={dentitionType}
-                title={`Add Treatment — Tooth ${entry.toothNumber}`}
-                triggerVariant="outline"
-                triggerSize="xs"
-                patientName={patientName}
-                onClose={onSaved}
-              >
-                Add Treatment
-              </TreatmentFormDialog>
+              <div className="flex items-center gap-1.5">
+                <Button variant="outline" size="xs" onClick={handleOpenLinkPicker}>
+                  <Link2 className="h-3 w-3" aria-hidden />
+                  Link Existing
+                </Button>
+                <TreatmentFormDialog
+                  appointmentId={appointmentId}
+                  patientId={patientId}
+                  toothNumber={entry.toothNumber}
+                  dentitionType={dentitionType}
+                  title={`Add Treatment — Tooth ${entry.toothNumber}`}
+                  triggerVariant="outline"
+                  triggerSize="xs"
+                  patientName={patientName}
+                  onClose={onSaved}
+                >
+                  Add Treatment
+                </TreatmentFormDialog>
+              </div>
             </div>
+
+            {linkPickerOpen && (
+              <div className="rounded-lg border border-[#E4E4E7] bg-[#FAFAFA] p-3 space-y-2">
+                {linkError && (
+                  <p className="text-xs text-[#DC2626]">{linkError}</p>
+                )}
+                {loadingTreatments ? (
+                  <p className="text-xs text-[#71717A]">Loading this patient's treatments…</p>
+                ) : linkableTreatments.length === 0 ? (
+                  <p className="text-xs text-[#A1A1AA]">
+                    No other treatments to link — every existing treatment for this patient is already linked here.
+                  </p>
+                ) : (
+                  <>
+                    <Select
+                      value={selectedTreatmentId}
+                      onChange={(e) => setSelectedTreatmentId(e.target.value)}
+                      aria-label="Select a treatment to link"
+                    >
+                      <option value="">Select a past or current treatment…</option>
+                      {linkableTreatments.map((t) => (
+                        <option key={t.id} value={t.id}>
+                          {t.treatment_type} · {t.performed_at ? formatDateTime(t.performed_at) : "not yet performed"} · {TREATMENT_STATUS_LABELS[t.status]}
+                          {t.tooth_number != null ? ` (currently Tooth ${t.tooth_number})` : ""}
+                        </option>
+                      ))}
+                    </Select>
+                    <div className="flex justify-end gap-2">
+                      <Button variant="ghost" size="xs" onClick={() => setLinkPickerOpen(false)}>
+                        Cancel
+                      </Button>
+                      <Button
+                        size="xs"
+                        onClick={handleLink}
+                        isLoading={linking}
+                        disabled={!selectedTreatmentId}
+                      >
+                        {linking ? "Linking…" : "Link"}
+                      </Button>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
 
             {entry.treatments.length === 0 ? (
               <p className="text-xs text-[#A1A1AA]">No treatments linked to this tooth yet.</p>
             ) : (
               <ul className="divide-y divide-[#F4F4F5] border border-[#E4E4E7] rounded-lg overflow-hidden">
                 {entry.treatments.map((t) => (
-                  <li key={t.id}>
+                  <li key={t.id} className="flex items-stretch">
                     <button
                       type="button"
                       onClick={() => setViewingTreatmentId(t.id)}
-                      className="w-full flex items-center justify-between gap-3 px-3 py-2 text-left hover:bg-[#FAFAFA] transition-colors"
+                      className="flex-1 min-w-0 flex items-center justify-between gap-3 px-3 py-2 text-left hover:bg-[#FAFAFA] transition-colors"
                     >
                       <span className="min-w-0">
                         <span className="block text-sm text-[#09090B] truncate">{t.treatment_type}</span>
@@ -185,6 +304,16 @@ export function ToothDetailPanel({
                           t.status === "completed" ? "success" : t.status === "in_progress" ? "info" : t.status === "cancelled" ? "error" : "default"
                         }
                       />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleUnlink(t.id)}
+                      disabled={unlinkingId === t.id}
+                      aria-label={`Unlink ${t.treatment_type} from this tooth`}
+                      title="Unlink from this tooth"
+                      className="px-2.5 flex items-center justify-center text-[#A1A1AA] hover:text-[#DC2626] hover:bg-[#FEF2F2] transition-colors border-l border-[#F4F4F5] disabled:opacity-40"
+                    >
+                      <X className="h-3.5 w-3.5" aria-hidden />
                     </button>
                   </li>
                 ))}

@@ -602,6 +602,25 @@ export const BulkUpdateTeethSchema = z.object({
 });
 export type BulkUpdateTeethInput = z.infer<typeof BulkUpdateTeethSchema>;
 
+/**
+ * Link an EXISTING treatment (past or current — any status, any age) to a
+ * tooth. patient_id is deliberately NOT part of this input: the server
+ * action resolves it from the treatment record itself (scoped to the
+ * caller's clinic), rather than trusting a client-supplied value that would
+ * have to be cross-checked against the treatment anyway.
+ */
+export const LinkTreatmentToToothSchema = z
+  .object({
+    treatment_id: z.string().uuid("Select a treatment to link"),
+    dentition_type: z.enum(["adult", "primary"]).default("adult"),
+    tooth_number: z.number().int(),
+  })
+  .refine((v) => isValidFdiToothNumber(v.dentition_type, v.tooth_number), {
+    message: "Tooth number is not valid for the selected dentition",
+    path: ["tooth_number"],
+  });
+export type LinkTreatmentToToothInput = z.infer<typeof LinkTreatmentToToothSchema>;
+
 /** Metadata recorded after a file is uploaded to storage */
 export const CreateTreatmentDocumentSchema = z.object({
   treatment_id: z.string().uuid(),

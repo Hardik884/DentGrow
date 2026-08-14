@@ -22,49 +22,7 @@ import {
   ALLOWED_DOCUMENT_TYPES,
 } from "@/lib/treatments/constants";
 import { computeConsultantSplit } from "@/lib/billing/revenue";
-import { upsertToothRow, toothStatusForTreatmentStatus } from "@/lib/dental-chart/sync";
-
-/**
- * Dental Chart sync — non-fatal. A treatment linked to a tooth (tooth_number +
- * dentition_type both set) keeps that tooth's chart entry in step with the
- * treatment's own status, and records a `treatment_linked` history event.
- * Mirrors lib/follow-ups/complete-linked.ts's posture: this is an auxiliary
- * side effect of saving a treatment, so a failure here is logged but never
- * blocks or rolls back the treatment save itself.
- */
-async function syncToothForTreatment(
-  db: DbClient,
-  clinicId: string,
-  performedBy: string,
-  treatmentId: string,
-  patientId: string,
-  toothNumber: number | null | undefined,
-  dentitionType: "adult" | "primary" | null | undefined,
-  treatmentStatus: "planned" | "in_progress" | "completed" | "cancelled"
-): Promise<void> {
-  if (toothNumber == null || !dentitionType) return;
-
-  const status = toothStatusForTreatmentStatus(treatmentStatus);
-  if (!status) return; // cancelled — leave the chart's own status untouched
-
-  try {
-    const result = await upsertToothRow(db, {
-      clinicId,
-      patientId,
-      dentitionType,
-      toothNumber,
-      status,
-      performedBy,
-      treatmentId,
-      preserveExistingConditionAndNotes: true,
-    });
-    if (!result.ok) {
-      console.error("[syncToothForTreatment]", result.error);
-    }
-  } catch (err) {
-    console.error("[syncToothForTreatment] unexpected:", err);
-  }
-}
+import { syncToothForTreatment } from "@/lib/dental-chart/sync";
 
 /**
  * Revenue-distribution columns to persist on a treatment.
@@ -292,16 +250,15 @@ export async function createTreatment(
 
     const treatment = data as Treatment;
 
-    await syncToothForTreatment(
-      db,
-      profile.clinic_id,
-      profile.id,
-      treatment.id,
-      treatment.patient_id,
-      treatment.tooth_number,
-      treatment.dentition_type,
-      treatment.status
-    );
+    await syncToothForTreatment(db, {
+      clinicId: profile.clinic_id,
+      performedBy: profile.id,
+      treatmentId: treatment.id,
+      patientId: treatment.patient_id,
+      toothNumber: treatment.tooth_number,
+      dentitionType: treatment.dentition_type,
+      treatmentStatus: treatment.status,
+    });
 
     revalidatePath("/dentist/treatments");
     revalidatePath(`/dentist/patients/${parsed.data.patient_id}`);
@@ -444,16 +401,15 @@ export async function updateTreatment(
     // Re-sync using the treatment's post-update (authoritative) tooth link and
     // status — covers both "the tooth link just changed" and "only the status
     // changed on an already tooth-linked treatment".
-    await syncToothForTreatment(
-      db,
-      profile.clinic_id,
-      profile.id,
-      treatment.id,
-      treatment.patient_id,
-      treatment.tooth_number,
-      treatment.dentition_type,
-      treatment.status
-    );
+    await syncToothForTreatment(db, {
+      clinicId: profile.clinic_id,
+      performedBy: profile.id,
+      treatmentId: treatment.id,
+      patientId: treatment.patient_id,
+      toothNumber: treatment.tooth_number,
+      dentitionType: treatment.dentition_type,
+      treatmentStatus: treatment.status,
+    });
 
     revalidatePath("/dentist/treatments");
     revalidatePath(`/dentist/treatments/${id}`);
