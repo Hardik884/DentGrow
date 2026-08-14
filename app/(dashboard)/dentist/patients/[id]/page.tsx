@@ -6,6 +6,7 @@ import { PatientSummaryCard } from "@/components/ai/PatientSummaryCard";
 import { PatientFollowUpsTab } from "@/components/follow-ups/PatientFollowUpsTab";
 import { PatientTreatmentsTab } from "@/components/dentist/PatientTreatmentsTab";
 import { PatientPaymentsTab } from "@/components/dentist/PatientPaymentsTab";
+import { PatientDentalChartSection } from "@/components/dental-chart/PatientDentalChartSection";
 import { getPatient } from "@/actions/patients";
 
 export const metadata: Metadata = {
@@ -17,13 +18,13 @@ interface Props {
   searchParams: Promise<{ tab?: string }>;
 }
 
-type Tab = "overview" | "treatments" | "payments" | "follow-ups";
+type Tab = "overview" | "dental-chart" | "treatments" | "payments" | "follow-ups";
 
 /**
  * /dentist/patients/[id]
  *
  * Full patient profile — dentist view.
- * Tabs: Overview (AI summary) | Follow-Ups | Treatments | Payments
+ * Tabs: Overview (AI summary) | Dental Chart | Follow-Ups | Treatments | Payments
  */
 export default async function DentistPatientProfilePage({ params, searchParams }: Props) {
   const [{ id }, { tab: rawTab }] = await Promise.all([params, searchParams]);
@@ -36,7 +37,7 @@ export default async function DentistPatientProfilePage({ params, searchParams }
   const patientName = patientResult.data?.name;
 
   const tab: Tab =
-    rawTab === "treatments" || rawTab === "payments" || rawTab === "follow-ups"
+    rawTab === "dental-chart" || rawTab === "treatments" || rawTab === "payments" || rawTab === "follow-ups"
       ? rawTab
       : "overview";
 
@@ -55,6 +56,9 @@ export default async function DentistPatientProfilePage({ params, searchParams }
       <div className="border-b flex gap-0">
         <TabLink href={`/dentist/patients/${id}`} active={tab === "overview"}>
           Overview
+        </TabLink>
+        <TabLink href={`/dentist/patients/${id}?tab=dental-chart`} active={tab === "dental-chart"}>
+          Dental Chart
         </TabLink>
         <TabLink href={`/dentist/patients/${id}?tab=follow-ups`} active={tab === "follow-ups"}>
           Follow-Ups
@@ -84,6 +88,10 @@ export default async function DentistPatientProfilePage({ params, searchParams }
             <PatientSummaryCard patientId={id} />
           </div>
         </div>
+      )}
+
+      {tab === "dental-chart" && (
+        <PatientDentalChartSection patientId={id} patientName={patientName} />
       )}
 
       {tab === "follow-ups" && (

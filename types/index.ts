@@ -40,6 +40,8 @@ export type Consultant      = Database["public"]["Tables"]["consultants"]["Row"]
 export type ConsultancyIncome = Database["public"]["Tables"]["consultancy_income"]["Row"];
 export type ConsultancySchedule = Database["public"]["Tables"]["consultancy_schedules"]["Row"];
 export type UnavailableDate = Database["public"]["Tables"]["unavailable_dates"]["Row"];
+export type PatientTooth    = Database["public"]["Tables"]["patient_teeth"]["Row"];
+export type ToothHistory    = Database["public"]["Tables"]["tooth_history"]["Row"];
 
 // Insert types
 export type PatientInsert     = Database["public"]["Tables"]["patients"]["Insert"];
@@ -47,6 +49,7 @@ export type AppointmentInsert = Database["public"]["Tables"]["appointments"]["In
 export type TreatmentInsert   = Database["public"]["Tables"]["treatments"]["Insert"];
 export type PaymentInsert     = Database["public"]["Tables"]["payments"]["Insert"];
 export type FollowUpInsert    = Database["public"]["Tables"]["follow_ups"]["Insert"];
+export type PatientToothInsert = Database["public"]["Tables"]["patient_teeth"]["Insert"];
 
 // Update types
 export type PatientUpdate     = Database["public"]["Tables"]["patients"]["Update"];
@@ -54,6 +57,7 @@ export type AppointmentUpdate = Database["public"]["Tables"]["appointments"]["Up
 export type TreatmentUpdate   = Database["public"]["Tables"]["treatments"]["Update"];
 export type FollowUpUpdate    = Database["public"]["Tables"]["follow_ups"]["Update"];
 export type ClinicSettingsUpdate = Database["public"]["Tables"]["clinic_settings"]["Update"];
+export type PatientToothUpdate = Database["public"]["Tables"]["patient_teeth"]["Update"];
 
 // =============================================================================
 // SECTION 2 — ENUM TYPES
@@ -139,6 +143,33 @@ export const GenderType = {
   OTHER:  "other",
 } as const;
 export type GenderType = (typeof GenderType)[keyof typeof GenderType];
+
+// ── Dental Chart ──────────────────────────────────────────────────────────────
+
+export const DentitionType = {
+  ADULT:   "adult",
+  PRIMARY: "primary",
+} as const;
+export type DentitionType = (typeof DentitionType)[keyof typeof DentitionType];
+
+export const ToothStatus = {
+  NORMAL:      "normal",
+  RECOMMENDED: "recommended",
+  PLANNED:     "planned",
+  IN_PROGRESS: "in_progress",
+  COMPLETED:   "completed",
+  MISSING:     "missing",
+} as const;
+export type ToothStatus = (typeof ToothStatus)[keyof typeof ToothStatus];
+
+export const TOOTH_STATUS_LABELS: Record<ToothStatus, string> = {
+  normal:      "Normal",
+  recommended: "Treatment Recommended",
+  planned:     "Treatment Planned",
+  in_progress: "Treatment In Progress",
+  completed:   "Treatment Completed",
+  missing:     "Missing / Extracted",
+};
 
 /**
  * Valid appointment status transition map.
@@ -250,6 +281,44 @@ export type TreatmentHistoryItem = Pick<
   | "appointment_id"
 > & {
   dentistName: string | null;
+};
+
+/**
+ * A treatment record small enough to show in a tooth's linked-treatment list,
+ * mirroring the fields TreatmentHistoryItem already exposes so both lists
+ * render with the same summary shape.
+ */
+export type ToothLinkedTreatment = Pick<
+  Treatment,
+  | "id"
+  | "treatment_type"
+  | "status"
+  | "cost"
+  | "performed_at"
+  | "created_at"
+  | "patient_visible_notes"
+  | "appointment_id"
+>;
+
+/**
+ * One tooth's full chart entry as rendered by the Dental Chart: current state
+ * (patient_teeth row, or null if the tooth has never been charted — it then
+ * defaults to "normal" in the UI), its append-only history, and any
+ * treatments linked to it via treatments.tooth_number.
+ */
+export type ToothChartEntry = {
+  toothNumber: number;
+  dentitionType: DentitionType;
+  tooth: PatientTooth | null;
+  history: ToothHistory[];
+  treatments: ToothLinkedTreatment[];
+};
+
+/** Full dental chart for a patient — every FDI tooth in the requested dentition. */
+export type PatientDentalChart = {
+  patientId: string;
+  dentitionType: DentitionType;
+  teeth: ToothChartEntry[];
 };
 
 // =============================================================================
@@ -471,11 +540,67 @@ export const CreateTreatmentSchema = z.object({
   consultant_id: z.string().uuid().optional().or(z.literal("")).transform(v => v || undefined),
   commission_type: z.enum(["percentage", "fixed"]).optional(),
   commission_value: z.number().nonnegative().optional(),
+  // ── Dental Chart link ─────────────────────────────────────────────────────
+  // Optional — most treatments are still whole-mouth (consultation, cleaning).
+  // When set, the treatment is linked to a specific FDI tooth and the chart's
+  // patient_teeth row for that tooth is upserted to match. tooth_number alone
+  // (without dentition_type) is invalid; the schema-level refine below and the
+  // server action both enforce that they travel together.
+  tooth_number: z.number().int().optional(),
+  dentition_type: z.enum(["adult", "primary"]).optional(),
 });
 export type CreateTreatmentInput = z.infer<typeof CreateTreatmentSchema>;
 
 export const UpdateTreatmentSchema = CreateTreatmentSchema.omit({ appointment_id: true, patient_id: true }).partial();
 export type UpdateTreatmentInput = z.infer<typeof UpdateTreatmentSchema>;
+
+// ── Dental Chart ──────────────────────────────────────────────────────────────
+
+/** FDI tooth number ranges, keyed by dentition type. Mirrors the DB CHECK constraints. */
+export const FDI_TOOTH_NUMBERS: Record<DentitionType, readonly number[]> = {
+  adult: [
+    11, 12, 13, 14, 15, 16, 17, 18,
+    21, 22, 23, 24, 25, 26, 27, 28,
+    31, 32, 33, 34, 35, 36, 37, 38,
+    41, 42, 43, 44, 45, 46, 47, 48,
+  ],
+  primary: [
+    51, 52, 53, 54, 55,
+    61, 62, 63, 64, 65,
+    71, 72, 73, 74, 75,
+    81, 82, 83, 84, 85,
+  ],
+};
+
+function isValidFdiToothNumber(dentitionType: DentitionType, toothNumber: number): boolean {
+  return (FDI_TOOTH_NUMBERS[dentitionType] as readonly number[]).includes(toothNumber);
+}
+
+export const UpsertToothSchema = z
+  .object({
+    patient_id: z.string().uuid("Patient is required"),
+    dentition_type: z.enum(["adult", "primary"]).default("adult"),
+    tooth_number: z.number().int(),
+    status: z.enum(["normal", "recommended", "planned", "in_progress", "completed", "missing"]),
+    condition: z.string().max(500).optional().or(z.literal("")).transform((v) => v || undefined),
+    notes: z.string().max(2000).optional().or(z.literal("")).transform((v) => v || undefined),
+  })
+  .refine((v) => isValidFdiToothNumber(v.dentition_type, v.tooth_number), {
+    message: "Tooth number is not valid for the selected dentition",
+    path: ["tooth_number"],
+  });
+export type UpsertToothInput = z.infer<typeof UpsertToothSchema>;
+
+/** Multi-select bulk update — same fields applied to every selected tooth. */
+export const BulkUpdateTeethSchema = z.object({
+  patient_id: z.string().uuid("Patient is required"),
+  dentition_type: z.enum(["adult", "primary"]).default("adult"),
+  tooth_numbers: z.array(z.number().int()).min(1, "Select at least one tooth").max(32),
+  status: z.enum(["normal", "recommended", "planned", "in_progress", "completed", "missing"]),
+  condition: z.string().max(500).optional().or(z.literal("")).transform((v) => v || undefined),
+  notes: z.string().max(2000).optional().or(z.literal("")).transform((v) => v || undefined),
+});
+export type BulkUpdateTeethInput = z.infer<typeof BulkUpdateTeethSchema>;
 
 /** Metadata recorded after a file is uploaded to storage */
 export const CreateTreatmentDocumentSchema = z.object({

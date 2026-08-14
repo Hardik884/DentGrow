@@ -12,6 +12,7 @@ import { AppointmentFollowUpsSection } from "@/components/dentist/AppointmentFol
 import { ClinicalTextCard } from "@/components/shared/ClinicalTextCard";
 import { MedicalHistoryCard } from "@/components/shared/MedicalHistoryCard";
 import { AppointmentRadiographsSection } from "@/components/shared/AppointmentRadiographsSection";
+import { PatientDentalChartSection } from "@/components/dental-chart/PatientDentalChartSection";
 import { getAppointment } from "@/actions/appointments";
 import { getOutstandingBalance } from "@/actions/payments";
 import { createServerClient } from "@/lib/supabase/server";
@@ -159,6 +160,13 @@ export default async function DentistAppointmentDetailPage({ params }: Props) {
         initialValue={appt.provisional_diagnosis}
         canEdit
         rows={3}
+      />
+
+      {/* ── Dental Chart: current tooth-by-tooth state for this patient ─── */}
+      <PatientDentalChartSection
+        patientId={appt.patient_id}
+        patientName={appt.patient.name}
+        appointmentId={appt.id}
       />
 
       {/* ── Treatments: Current Treatment + Past Treatment History ── */}

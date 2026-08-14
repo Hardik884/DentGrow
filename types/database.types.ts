@@ -678,6 +678,80 @@ export type Database = {
           },
         ]
       }
+      patient_teeth: {
+        Row: {
+          clinic_id: string
+          condition: string | null
+          created_at: string
+          deleted_at: string | null
+          dentition_type: Database["public"]["Enums"]["dentition_type"]
+          id: string
+          notes: string | null
+          patient_id: string
+          status: Database["public"]["Enums"]["tooth_status"]
+          tooth_number: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          clinic_id: string
+          condition?: string | null
+          created_at?: string
+          deleted_at?: string | null
+          dentition_type?: Database["public"]["Enums"]["dentition_type"]
+          id?: string
+          notes?: string | null
+          patient_id: string
+          status?: Database["public"]["Enums"]["tooth_status"]
+          tooth_number: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          clinic_id?: string
+          condition?: string | null
+          created_at?: string
+          deleted_at?: string | null
+          dentition_type?: Database["public"]["Enums"]["dentition_type"]
+          id?: string
+          notes?: string | null
+          patient_id?: string
+          status?: Database["public"]["Enums"]["tooth_status"]
+          tooth_number?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "patient_teeth_clinic_id_fkey"
+            columns: ["clinic_id"]
+            isOneToOne: false
+            referencedRelation: "clinics"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "patient_teeth_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "active_patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "patient_teeth_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "patient_teeth_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       patients: {
         Row: {
           address: string | null
@@ -1047,6 +1121,89 @@ export type Database = {
           },
         ]
       }
+      tooth_history: {
+        Row: {
+          action: Database["public"]["Enums"]["tooth_history_action"]
+          id: string
+          new_value: Json | null
+          old_value: Json | null
+          patient_tooth_id: string
+          performed_by: string | null
+          timestamp: string
+          treatment_id: string | null
+        }
+        Insert: {
+          action: Database["public"]["Enums"]["tooth_history_action"]
+          id?: string
+          new_value?: Json | null
+          old_value?: Json | null
+          patient_tooth_id: string
+          performed_by?: string | null
+          timestamp?: string
+          treatment_id?: string | null
+        }
+        Update: {
+          action?: Database["public"]["Enums"]["tooth_history_action"]
+          id?: string
+          new_value?: Json | null
+          old_value?: Json | null
+          patient_tooth_id?: string
+          performed_by?: string | null
+          timestamp?: string
+          treatment_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tooth_history_patient_tooth_id_fkey"
+            columns: ["patient_tooth_id"]
+            isOneToOne: false
+            referencedRelation: "patient_dental_chart"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tooth_history_patient_tooth_id_fkey"
+            columns: ["patient_tooth_id"]
+            isOneToOne: false
+            referencedRelation: "patient_teeth"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tooth_history_performed_by_fkey"
+            columns: ["performed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tooth_history_treatment_id_fkey"
+            columns: ["treatment_id"]
+            isOneToOne: false
+            referencedRelation: "active_treatments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tooth_history_treatment_id_fkey"
+            columns: ["treatment_id"]
+            isOneToOne: false
+            referencedRelation: "patient_treatments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tooth_history_treatment_id_fkey"
+            columns: ["treatment_id"]
+            isOneToOne: false
+            referencedRelation: "receptionist_treatments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tooth_history_treatment_id_fkey"
+            columns: ["treatment_id"]
+            isOneToOne: false
+            referencedRelation: "treatments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       treatment_documents: {
         Row: {
           appointment_id: string | null
@@ -1176,6 +1333,7 @@ export type Database = {
           created_at: string
           created_by: string | null
           deleted_at: string | null
+          dentition_type: Database["public"]["Enums"]["dentition_type"] | null
           id: string
           internal_notes: string | null
           medications: Json
@@ -1185,6 +1343,7 @@ export type Database = {
           patient_visible_notes: string | null
           performed_at: string | null
           status: Database["public"]["Enums"]["treatment_status"]
+          tooth_number: number | null
           treatment_type: string
           updated_at: string
           xray_cost: number | null
@@ -1202,6 +1361,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           deleted_at?: string | null
+          dentition_type?: Database["public"]["Enums"]["dentition_type"] | null
           id?: string
           internal_notes?: string | null
           medications?: Json
@@ -1211,6 +1371,7 @@ export type Database = {
           patient_visible_notes?: string | null
           performed_at?: string | null
           status?: Database["public"]["Enums"]["treatment_status"]
+          tooth_number?: number | null
           treatment_type: string
           updated_at?: string
           xray_cost?: number | null
@@ -1228,6 +1389,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           deleted_at?: string | null
+          dentition_type?: Database["public"]["Enums"]["dentition_type"] | null
           id?: string
           internal_notes?: string | null
           medications?: Json
@@ -1237,6 +1399,7 @@ export type Database = {
           patient_visible_notes?: string | null
           performed_at?: string | null
           status?: Database["public"]["Enums"]["treatment_status"]
+          tooth_number?: number | null
           treatment_type?: string
           updated_at?: string
           xray_cost?: number | null
@@ -1876,6 +2039,51 @@ export type Database = {
           },
         ]
       }
+      patient_dental_chart: {
+        Row: {
+          condition: string | null
+          dentition_type: Database["public"]["Enums"]["dentition_type"] | null
+          id: string | null
+          patient_id: string | null
+          status: Database["public"]["Enums"]["tooth_status"] | null
+          tooth_number: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          condition?: string | null
+          dentition_type?: Database["public"]["Enums"]["dentition_type"] | null
+          id?: string | null
+          patient_id?: string | null
+          status?: Database["public"]["Enums"]["tooth_status"] | null
+          tooth_number?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          condition?: string | null
+          dentition_type?: Database["public"]["Enums"]["dentition_type"] | null
+          id?: string | null
+          patient_id?: string | null
+          status?: Database["public"]["Enums"]["tooth_status"] | null
+          tooth_number?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "patient_teeth_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "active_patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "patient_teeth_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       patient_treatments: {
         Row: {
           appointment_id: string | null
@@ -2067,11 +2275,24 @@ export type Database = {
         | "completed"
         | "cancelled"
         | "no_show"
+      dentition_type: "adult" | "primary"
       follow_up_confirmation_status: "tentative" | "confirmed"
       follow_up_status: "pending" | "completed" | "cancelled"
       gender_type: "male" | "female" | "other"
       payment_method: "cash" | "upi" | "card" | "bank_transfer"
       queue_status: "waiting" | "in_progress" | "completed"
+      tooth_history_action:
+        | "status_changed"
+        | "condition_updated"
+        | "note_added"
+        | "treatment_linked"
+      tooth_status:
+        | "normal"
+        | "recommended"
+        | "planned"
+        | "in_progress"
+        | "completed"
+        | "missing"
       treatment_status: "planned" | "in_progress" | "completed" | "cancelled"
       user_role: "dentist" | "receptionist" | "patient"
     }
@@ -2225,11 +2446,26 @@ export const Constants = {
         "cancelled",
         "no_show",
       ],
+      dentition_type: ["adult", "primary"],
       follow_up_confirmation_status: ["tentative", "confirmed"],
       follow_up_status: ["pending", "completed", "cancelled"],
       gender_type: ["male", "female", "other"],
       payment_method: ["cash", "upi", "card", "bank_transfer"],
       queue_status: ["waiting", "in_progress", "completed"],
+      tooth_history_action: [
+        "status_changed",
+        "condition_updated",
+        "note_added",
+        "treatment_linked",
+      ],
+      tooth_status: [
+        "normal",
+        "recommended",
+        "planned",
+        "in_progress",
+        "completed",
+        "missing",
+      ],
       treatment_status: ["planned", "in_progress", "completed", "cancelled"],
       user_role: ["dentist", "receptionist", "patient"],
     },

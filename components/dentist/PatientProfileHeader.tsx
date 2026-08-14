@@ -3,9 +3,10 @@ import { getPatient } from "@/actions/patients";
 import { PatientAvatar } from "@/components/shared/PatientAvatar";
 import { DeletePatientButton } from "@/components/dentist/DeletePatientButton";
 import { PatientEditDialog } from "@/components/dentist/PatientEditDialog";
+import { Button } from "@/components/ui/button";
 import { formatDate, formatCurrency, calculateAge } from "@/lib/utils";
 import { Separator } from "@/components/ui/separator";
-import { Phone, MapPin, AlertTriangle, CalendarDays, Clock } from "lucide-react";
+import { Phone, MapPin, AlertTriangle, CalendarDays, Clock, LayoutGrid } from "lucide-react";
 
 interface PatientProfileHeaderProps {
   patientId: string;
@@ -57,6 +58,14 @@ export async function PatientProfileHeader({ patientId, role, baseHref }: Patien
 
         {/* Actions */}
         <div className="flex items-center gap-2 shrink-0">
+          {isDentist && (
+            <Button asChild variant="outline" size="sm">
+              <a href={`${baseHref}/patients/${patientId}?tab=dental-chart`}>
+                <LayoutGrid className="h-3.5 w-3.5" aria-hidden />
+                Dental Chart
+              </a>
+            </Button>
+          )}
           <PatientEditDialog patient={patient} />
           {isDentist && (
             <DeletePatientButton patientId={patientId} patientName={patient.name} />

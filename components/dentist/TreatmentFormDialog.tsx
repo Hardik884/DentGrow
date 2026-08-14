@@ -30,6 +30,11 @@ interface TreatmentFormDialogProps {
    * follow-up for that visit was either booked long ago or deliberately not.
    */
   promptFollowUp?: boolean;
+  /** Dental Chart linkage — forwarded to TreatmentForm. See TreatmentForm for details. */
+  toothNumber?: number;
+  dentitionType?: "adult" | "primary";
+  /** Called after the dialog closes (success or cancel) — lets a chart panel refresh its own data. */
+  onClose?: () => void;
   /** Trigger button content. */
   children: ReactNode;
 }
@@ -58,6 +63,9 @@ export function TreatmentFormDialog({
   triggerSize = "sm",
   patientName,
   promptFollowUp = false,
+  toothNumber,
+  dentitionType,
+  onClose,
   children,
 }: TreatmentFormDialogProps) {
   const router = useRouter();
@@ -92,18 +100,32 @@ export function TreatmentFormDialog({
         </button>
       )}
 
-      <Dialog open={open} onClose={() => setOpen(false)} title={title} size="xl">
+      <Dialog
+        open={open}
+        onClose={() => {
+          setOpen(false);
+          onClose?.();
+        }}
+        title={title}
+        size="xl"
+      >
         <div className="p-4">
           <TreatmentForm
             appointmentId={appointmentId}
             patientId={patientId}
             treatmentId={treatmentId}
-            onCancel={() => setOpen(false)}
+            toothNumber={toothNumber}
+            dentitionType={dentitionType}
+            onCancel={() => {
+              setOpen(false);
+              onClose?.();
+            }}
             onSuccess={() => {
               setOpen(false);
               // Refresh regardless, so the saved treatment is on screen behind
               // the prompt rather than appearing only after it is dismissed.
               router.refresh();
+              onClose?.();
               if (shouldPrompt) setPromptOpen(true);
             }}
           />

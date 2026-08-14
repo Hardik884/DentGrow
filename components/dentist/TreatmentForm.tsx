@@ -51,6 +51,17 @@ interface TreatmentFormProps {
   onSuccess?: (treatment: Treatment) => void;
   /** When provided, renders a Cancel button that calls this instead of router.back() (modal use). */
   onCancel?: () => void;
+  /**
+   * Dental Chart linkage — set when this form was launched from a tooth's
+   * "Add Treatment" action (Dental Chart tab/section). Prefills the hidden
+   * tooth_number/dentition_type fields so the saved treatment is linked to
+   * that tooth automatically; shown to the dentist as a small read-only
+   * badge rather than an editable field, since the tooth was already chosen
+   * by clicking it on the chart. Not shown/used for ordinary treatment
+   * creation, which continues to work exactly as before (no tooth link).
+   */
+  toothNumber?: number;
+  dentitionType?: "adult" | "primary";
 }
 
 /** Split an ISO datetime string into its "YYYY-MM-DD" and "HH:mm" parts. */
@@ -60,7 +71,15 @@ function splitDatetime(iso: string | null | undefined): { date: string; time: st
   return { date: datePart ?? "", time: timePart.slice(0, 5) };
 }
 
-export function TreatmentForm({ treatmentId, appointmentId, patientId, onSuccess, onCancel }: TreatmentFormProps) {
+export function TreatmentForm({
+  treatmentId,
+  appointmentId,
+  patientId,
+  onSuccess,
+  onCancel,
+  toothNumber,
+  dentitionType,
+}: TreatmentFormProps) {
   const router = useRouter();
   const queryClient = useQueryClient();
   const [isPending, startTransition] = useTransition();
@@ -118,6 +137,8 @@ export function TreatmentForm({ treatmentId, appointmentId, patientId, onSuccess
       consultant_id: "",
       commission_type: undefined,
       commission_value: undefined,
+      tooth_number: toothNumber,
+      dentition_type: dentitionType,
     },
   });
 
@@ -240,6 +261,11 @@ export function TreatmentForm({ treatmentId, appointmentId, patientId, onSuccess
             result.data.commission_value != null
               ? Number(result.data.commission_value)
               : undefined,
+          tooth_number: result.data.tooth_number ?? undefined,
+          dentition_type:
+            result.data.dentition_type === "adult" || result.data.dentition_type === "primary"
+              ? result.data.dentition_type
+              : undefined,
         });
       }
       setLoading(false);
@@ -306,6 +332,11 @@ export function TreatmentForm({ treatmentId, appointmentId, patientId, onSuccess
 
       <div className="bg-white border border-[#E4E4E7] rounded-xl overflow-hidden divide-y divide-[#F4F4F5]">
         <div className="px-6 py-5 space-y-4">
+          {toothNumber != null && (
+            <div className="inline-flex items-center gap-1.5 rounded-full bg-[#EFF6FF] border border-[#BFDBFE] px-3 py-1 text-xs font-medium text-[#2563EB]">
+              Linked to Tooth {toothNumber}
+            </div>
+          )}
           {!isEdit && (
             <>
               {needsAppointmentPicker ? (
