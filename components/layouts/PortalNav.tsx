@@ -39,7 +39,7 @@ export const NAV_ITEMS: NavItem[] = [
   { label: "Appointments", href: "/portal/appointments", icon: CalendarDays },
   { label: "Queue",        href: "/portal/queue",        icon: ListOrdered },
   { label: "Treatments",   href: "/portal/treatments",   icon: Stethoscope },
-  { label: "Payments",     href: "/portal/payments",     icon: CreditCard },
+  { label: "Billing",      href: "/portal/billing",      icon: CreditCard },
   { label: "Prescriptions", href: "/portal/prescriptions", icon: Pill },
   { label: "Follow-Ups",   href: "/portal/follow-ups",   icon: Bell },
   { label: "Profile",      href: "/portal/profile",      icon: User },

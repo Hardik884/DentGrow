@@ -263,3 +263,52 @@ body {
     box-shadow: none !important;
   }
 }
+
+/* ── Print Styles for Bill / Invoice ─────────────────────────────────────── */
+@media print {
+  /* Hide everything by default */
+  body * {
+    visibility: hidden;
+  }
+
+  /* Show only the invoice content */
+  .print-invoice,
+  .print-invoice * {
+    visibility: visible;
+  }
+
+  /* Position invoice at top of page */
+  .print-invoice {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    max-width: 100%;
+    padding: 0 !important;
+  }
+
+  /* Hide UI chrome — sidebar, page header, action buttons, tab toggle */
+  nav,
+  aside,
+  header,
+  footer,
+  .no-print,
+  button {
+    display: none !important;
+  }
+
+  /* A4 page, natural margins; long bills flow across multiple pages */
+  @page {
+    size: A4;
+    margin: 1.5cm;
+  }
+
+  body {
+    background: white;
+  }
+
+  .print-invoice {
+    border: none !important;
+    box-shadow: none !important;
+  }
+}

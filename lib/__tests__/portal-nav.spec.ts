@@ -28,15 +28,16 @@ describe("PortalNav (audit B9)", () => {
     expect(mobileItems.map((i) => i.label)).not.toContain("Prescriptions");
   });
 
-  it("keeps the original five mobile tabs unchanged and in order", () => {
+  it("keeps the original five mobile tabs unchanged and in order (Payments renamed to Billing, same position)", () => {
     const mobileItems = NAV_ITEMS.slice(0, MOBILE_TAB_COUNT);
     expect(mobileItems.map((i) => i.label)).toEqual([
       "Home",
       "Appointments",
       "Queue",
       "Treatments",
-      "Payments",
+      "Billing",
     ]);
+    expect(NAV_ITEMS.find((i) => i.label === "Billing")?.href).toBe("/portal/billing");
   });
 
   it("does not remove or reorder any pre-existing item, and adds exactly one new item", () => {
@@ -46,7 +47,7 @@ describe("PortalNav (audit B9)", () => {
       "Appointments",
       "Queue",
       "Treatments",
-      "Payments",
+      "Billing",
       "Prescriptions",
       "Follow-Ups",
       "Profile",

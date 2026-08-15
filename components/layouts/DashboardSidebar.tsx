@@ -32,7 +32,7 @@ const DENTIST_NAV: NavItem[] = [
   { label: "Patients",          href: "/dentist/patients",     icon: Users },
   { label: "Appointments",      href: "/dentist/appointments", icon: CalendarDays },
   { label: "Queue",             href: "/dentist/queue",        icon: ListOrdered },
-  { label: "Payments",          href: "/dentist/payments",     icon: CreditCard },
+  { label: "Billing & Payments", href: "/dentist/payments",    icon: CreditCard },
   { label: "External Consultations", href: "/dentist/external-consultations", icon: Briefcase },
   { label: "Treatments",        href: "/dentist/treatments",   icon: Stethoscope },
   { label: "Follow-up Appointments", href: "/dentist/follow-ups", icon: Bell },
@@ -61,7 +61,7 @@ const BASE_RECEPTIONIST_NAV: NavItem[] = [
 
 // Conditional payment nav item (shown only when allowed)
 const PAYMENTS_NAV_ITEM: NavItem = {
-  label: "Payments",
+  label: "Billing & Payments",
   href: "/receptionist/payments",
   icon: CreditCard,
 };

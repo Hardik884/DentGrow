@@ -5,7 +5,7 @@ import { PatientProfileHeader } from "@/components/dentist/PatientProfileHeader"
 import { PatientSummaryCard } from "@/components/ai/PatientSummaryCard";
 import { PatientFollowUpsTab } from "@/components/follow-ups/PatientFollowUpsTab";
 import { PatientTreatmentsTab } from "@/components/dentist/PatientTreatmentsTab";
-import { PatientPaymentsTab } from "@/components/dentist/PatientPaymentsTab";
+import { BillingPaymentsTab } from "@/components/billing/BillingPaymentsTab";
 import { PatientDentalChartSection } from "@/components/dental-chart/PatientDentalChartSection";
 import { getPatient } from "@/actions/patients";
 
@@ -24,7 +24,11 @@ type Tab = "overview" | "dental-chart" | "treatments" | "payments" | "follow-ups
  * /dentist/patients/[id]
  *
  * Full patient profile — dentist view.
- * Tabs: Overview (AI summary) | Dental Chart | Follow-Ups | Treatments | Payments
+ * Tabs: Overview (AI summary) | Dental Chart | Follow-Ups | Treatments | Billing & Payments
+ *
+ * The "payments" tab (query value unchanged for link stability) now renders
+ * <BillingPaymentsTab>, a [Payments]/[Bill] toggle (Payments default). Its Payments panel is the
+ * pre-existing <PatientPaymentsTab>, reused unmodified.
  */
 export default async function DentistPatientProfilePage({ params, searchParams }: Props) {
   const [{ id }, { tab: rawTab }] = await Promise.all([params, searchParams]);
@@ -67,7 +71,7 @@ export default async function DentistPatientProfilePage({ params, searchParams }
           Treatments
         </TabLink>
         <TabLink href={`/dentist/patients/${id}?tab=payments`} active={tab === "payments"}>
-          Payments
+          Billing &amp; Payments
         </TabLink>
       </div>
 
@@ -112,7 +116,7 @@ export default async function DentistPatientProfilePage({ params, searchParams }
       )}
 
       {tab === "payments" && (
-        <PatientPaymentsTab
+        <BillingPaymentsTab
           patientId={id}
           patientName={patientName}
           role="dentist"

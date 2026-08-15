@@ -5,7 +5,7 @@ import { PatientProfileHeader } from "@/components/dentist/PatientProfileHeader"
 import { OutstandingBalanceBadge } from "@/components/shared/OutstandingBalanceBadge";
 import { PatientFollowUpsTab } from "@/components/follow-ups/PatientFollowUpsTab";
 import { PatientTreatmentsTab } from "@/components/dentist/PatientTreatmentsTab";
-import { PatientPaymentsTab } from "@/components/dentist/PatientPaymentsTab";
+import { BillingPaymentsTab } from "@/components/billing/BillingPaymentsTab";
 
 export const metadata: Metadata = {
   title: "Patient",
@@ -22,7 +22,7 @@ type Tab = "overview" | "treatments" | "payments" | "follow-ups";
  * /receptionist/patients/[id]
  *
  * Patient profile — receptionist / operational view.
- * Tabs: Overview | Follow-Ups | Treatments (no internal_notes) | Payments
+ * Tabs: Overview | Follow-Ups | Treatments (no internal_notes) | Billing & Payments
  *
  * PatientProfileHeader receives role="receptionist" which suppresses
  * the delete button and notes field.
@@ -61,7 +61,7 @@ export default async function ReceptionistPatientProfilePage({ params, searchPar
           Treatments
         </TabLink>
         <TabLink href={`/receptionist/patients/${id}?tab=payments`} active={tab === "payments"}>
-          Payments
+          Billing &amp; Payments
         </TabLink>
       </div>
 
@@ -97,7 +97,7 @@ export default async function ReceptionistPatientProfilePage({ params, searchPar
       )}
 
       {tab === "payments" && (
-        <PatientPaymentsTab
+        <BillingPaymentsTab
           patientId={id}
           role="receptionist"
           baseHref="/receptionist"

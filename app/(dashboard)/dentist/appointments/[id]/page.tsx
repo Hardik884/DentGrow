@@ -6,7 +6,7 @@ import { AppointmentCompleteControl } from "@/components/dentist/AppointmentComp
 import { AppointmentHistoryTimeline } from "@/components/shared/AppointmentHistoryTimeline";
 import { AppointmentStatusBadge } from "@/components/shared/AppointmentStatusBadge";
 import { AppointmentTreatmentsSection } from "@/components/dentist/AppointmentTreatmentsSection";
-import { AppointmentPaymentsSection } from "@/components/dentist/AppointmentPaymentsSection";
+import { VisitBillingSection } from "@/components/billing/VisitBillingSection";
 import { PatientFinancialTimeline } from "@/components/dentist/PatientFinancialTimeline";
 import { AppointmentFollowUpsSection } from "@/components/dentist/AppointmentFollowUpsSection";
 import { ClinicalTextCard } from "@/components/shared/ClinicalTextCard";
@@ -187,11 +187,14 @@ export default async function DentistAppointmentDetailPage({ params }: Props) {
         followUpId={appt.follow_up_id}
       />
 
-      {/* ── Payments for this appointment (OPD + Treatment) ─── */}
-      <AppointmentPaymentsSection
+      {/* ── Billing & Payments for this appointment: [Bill] [Payments] ─
+           Payments panel is the existing AppointmentPaymentsSection,
+           reused unmodified. ── */}
+      <VisitBillingSection
         appointmentId={appt.id}
         patientId={appt.patient_id}
         patientName={appt.patient.name}
+        baseHref="/dentist"
       />
 
       {/* ── Follow-up appointments linked to this visit ─────── */}
