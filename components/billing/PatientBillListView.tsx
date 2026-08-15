@@ -21,7 +21,7 @@ export async function PatientBillListView({ patientId, baseHref }: PatientBillLi
       error={result.error}
       hrefFor={(bill) =>
         bill.appointmentId
-          ? `${baseHref}/appointments/${bill.appointmentId}/bill?treatment=${bill.treatmentId}`
+          ? `${baseHref}/appointments/${bill.appointmentId}/bill?treatment=${bill.treatmentId}&from=patient`
           : null
       }
     />

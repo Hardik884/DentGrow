@@ -3,7 +3,6 @@
 import { createServerClient } from "@/lib/supabase/server";
 import { resolveSession as resolveCachedSession } from "@/lib/auth/session";
 import { getTodayInTimezone } from "@/lib/utils";
-import { isBillableTreatment } from "@/lib/billing/balance";
 import {
   allocateCollectionsToTreatments,
   type PayoutPaymentLike,
@@ -14,6 +13,8 @@ import {
   buildBill,
   buildBillSummaries,
   buildInvoiceNumber,
+  sumPaidForAppointment,
+  type AttributablePayment,
   type Bill,
   type BillStatus,
   type BillSummary,
@@ -174,6 +175,26 @@ async function fetchPatientCollections(
   return result;
 }
 
+/**
+ * A patient's non-deleted payments carrying just the fields the bill layer
+ * needs to attribute each one to an appointment. Used to compute a bill's
+ * "Paid" via `sumPaidForAppointment` — the single source of truth shared with
+ * the clinic-wide Billing list.
+ */
+async function fetchPatientAttributablePayments(
+  db: DbClient,
+  clinicId: string,
+  patientId: string
+): Promise<AttributablePayment[]> {
+  const { data } = await db
+    .from("payments")
+    .select("amount, appointment_id, treatment_id")
+    .eq("patient_id", patientId)
+    .eq("clinic_id", clinicId)
+    .is("deleted_at", null);
+  return (data ?? []) as AttributablePayment[];
+}
+
 // =============================================================================
 // getStaffBill — dentist + receptionist, clinic-scoped
 //
@@ -227,24 +248,48 @@ export async function getStaffBill(
       return { data: null, error: "Failed to load the visit's treatments." };
     }
 
-    let treatments = (apptTreatmentRows ?? []) as BillableTreatmentLike[];
+    const allApptTreatments = (apptTreatmentRows ?? []) as BillableTreatmentLike[];
+    // The full appointment's treatment ids — used to attribute payments to the
+    // visit even when the bill is later filtered to a single treatment.
+    const allApptTreatmentIds = new Set(allApptTreatments.map((t) => t.id));
 
+    let treatments = allApptTreatments;
     if (treatmentId) {
-      treatments = treatments.filter((t) => t.id === treatmentId);
+      treatments = allApptTreatments.filter((t) => t.id === treatmentId);
       if (treatments.length === 0) {
         return { data: null, error: "Treatment not found on this visit." };
       }
     }
 
-    const [collectedByTreatment, { info: clinic, timezone }, dentist] =
-      await Promise.all([
-        fetchPatientCollections(db, profile.clinic_id, appt.patient_id),
-        fetchClinicInfo(db, profile.clinic_id),
-        fetchDentistInfo(db, appt.dentist_id),
-      ]);
+    const { info: clinic, timezone } = await fetchClinicInfo(db, profile.clinic_id);
+    const dentist = await fetchDentistInfo(db, appt.dentist_id);
+
+    // "Paid" derivation, scoped to what the bill covers:
+    //  - Whole-visit bill: the canonical per-appointment sum shared with the
+    //    Billing list (sumPaidForAppointment) — counts every attributed
+    //    payment exactly once and surfaces overpayment.
+    //  - Single-treatment bill (?treatment=): the pooled per-treatment
+    //    collected figure, so a treatment bill matches the per-treatment lists
+    //    (PatientBillListView / portal) that use the same pooled allocation.
+    let paid: number;
+    if (treatmentId) {
+      const collectedByTreatment = await fetchPatientCollections(
+        db,
+        profile.clinic_id,
+        appt.patient_id
+      );
+      paid = collectedByTreatment[treatmentId] ?? 0;
+    } else {
+      const payments = await fetchPatientAttributablePayments(
+        db,
+        profile.clinic_id,
+        appt.patient_id
+      );
+      paid = sumPaidForAppointment(payments, appointmentId, allApptTreatmentIds);
+    }
 
     const invoiceIdSource = treatmentId ?? appointmentId;
-    const bill = buildBill(treatments, collectedByTreatment, {
+    const bill = buildBill(treatments, paid, {
       invoiceNumber: buildInvoiceNumber("INV", invoiceIdSource),
       invoiceDate: getTodayInTimezone(timezone),
     });
@@ -340,6 +385,7 @@ export interface ClinicBillListItem {
   total: number;
   paid: number;
   balanceDue: number;
+  overpayment: number;
   status: BillStatus;
 }
 
@@ -396,55 +442,23 @@ export async function getClinicBillsList(params?: {
     const treatments = (treatmentRows ?? []) as TreatmentRow[];
     const payments = (paymentRows ?? []) as PaymentRow[];
 
-    // Pooled allocation runs per patient (pooling is never cross-patient) —
-    // grouped here, then the SAME canonical allocator every other billing
-    // screen uses is called once per patient and merged into one lookup.
-    const treatmentsByPatient = new Map<string, TreatmentRow[]>();
-    for (const t of treatments) {
-      if (!isBillableTreatment(t.status)) continue;
-      const list = treatmentsByPatient.get(t.patient_id);
-      if (list) list.push(t);
-      else treatmentsByPatient.set(t.patient_id, [t]);
-    }
-    const paymentsByPatient = new Map<string, PaymentRow[]>();
-    for (const p of payments) {
-      const list = paymentsByPatient.get(p.patient_id);
-      if (list) list.push(p);
-      else paymentsByPatient.set(p.patient_id, [p]);
-    }
-    const collectedByTreatment: Record<string, number> = {};
-    for (const [patientId, patientTreatments] of treatmentsByPatient) {
-      const allocation = allocateCollectionsToTreatments(
-        patientTreatments,
-        paymentsByPatient.get(patientId) ?? []
-      );
-      for (const [id, amount] of allocation) collectedByTreatment[id] = amount;
-    }
-
-    // Payments recorded on an appointment but not linked to any treatment —
-    // the same figure AppointmentPaymentsSection already shows as
-    // "Other Payments", needed so a visit paid entirely via an unlinked
-    // payment (no treatment row) still shows as paid.
-    const unassignedPaidByAppointment = new Map<string, number>();
-    for (const p of payments) {
-      if (p.treatment_id || !p.appointment_id) continue;
-      unassignedPaidByAppointment.set(
-        p.appointment_id,
-        (unassignedPaidByAppointment.get(p.appointment_id) ?? 0) + Number(p.amount ?? 0)
-      );
-    }
-
     // Group every (any-status) treatment by appointment — a planned
     // treatment contributes nothing to `total` itself, but an OPD/X-ray
     // charge recorded against it still does (treatmentTotalCharge), so it
-    // must stay in the group for the aggregation to be complete.
+    // must stay in the group for the aggregation to be complete. Also collect
+    // each appointment's treatment ids, so a payment linked to a treatment can
+    // be attributed to the right visit.
     const treatmentsByAppointment = new Map<string, TreatmentRow[]>();
+    const treatmentIdsByAppointment = new Map<string, Set<string>>();
     const patientIdByAppointment = new Map<string, string>();
     for (const t of treatments) {
       if (!t.appointment_id) continue;
       const list = treatmentsByAppointment.get(t.appointment_id);
       if (list) list.push(t);
       else treatmentsByAppointment.set(t.appointment_id, [t]);
+      const idSet = treatmentIdsByAppointment.get(t.appointment_id);
+      if (idSet) idSet.add(t.id);
+      else treatmentIdsByAppointment.set(t.appointment_id, new Set([t.id]));
       patientIdByAppointment.set(t.appointment_id, t.patient_id);
     }
     for (const p of payments) {
@@ -499,10 +513,18 @@ export async function getClinicBillsList(params?: {
       const patient = patientById.get(appt.patient_id);
       if (!patient) continue;
 
+      // Paid via the SAME canonical per-appointment sum the individual bill
+      // detail (getStaffBill → buildBill) uses, so a row here and its opened
+      // invoice are guaranteed identical. Each payment counted exactly once.
+      const paid = sumPaidForAppointment(
+        payments,
+        appointmentId,
+        treatmentIdsByAppointment.get(appointmentId) ?? new Set<string>()
+      );
+
       const summary = buildAppointmentBillSummary(
         treatmentsByAppointment.get(appointmentId) ?? [],
-        collectedByTreatment,
-        unassignedPaidByAppointment.get(appointmentId) ?? 0
+        paid
       );
 
       // Nothing billable actually happened on this visit — exclude it.
@@ -518,6 +540,7 @@ export async function getClinicBillsList(params?: {
         total: summary.total,
         paid: summary.paid,
         balanceDue: summary.balanceDue,
+        overpayment: summary.overpayment,
         status: summary.status,
       });
     }
@@ -693,7 +716,11 @@ export async function getPortalTreatmentBill(
         fetchDentistInfo(db, appt.dentist_id),
       ]);
 
-    const bill = buildBill([treatment], collectedByTreatment, {
+    // A single-treatment (portal) bill reflects the pooled per-treatment
+    // collected amount, so it matches the per-treatment "My Bills" list that
+    // uses the same pooled allocation.
+    const paid = collectedByTreatment[treatmentId] ?? 0;
+    const bill = buildBill([treatment], paid, {
       invoiceNumber: buildInvoiceNumber("INV", treatmentId),
       invoiceDate: getTodayInTimezone(timezone),
     });

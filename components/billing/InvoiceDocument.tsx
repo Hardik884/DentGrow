@@ -152,7 +152,14 @@ export function InvoiceDocument({
           <SummaryRow label="Discount" value={-bill.discount} />
           <div className="border-t border-[#E4E4E7] my-1.5" />
           <SummaryRow label="Total" value={bill.total} bold />
-          <SummaryRow label="Paid" value={bill.paid} valueClassName="text-[#16A34A]" />
+          <SummaryRow label="Amount Paid" value={bill.paid} valueClassName="text-[#16A34A]" />
+          {bill.overpayment > 0 && (
+            <SummaryRow
+              label="Credit (Overpaid)"
+              value={bill.overpayment}
+              valueClassName="text-[#16A34A]"
+            />
+          )}
           <div className="border-t-2 border-[#18181B] my-1.5" />
           <div className="flex items-baseline justify-between">
             <span className="text-sm font-bold text-[#09090B]">Balance Due</span>

@@ -87,12 +87,12 @@ export async function ClinicBillingList({ baseHref, search, page = 1 }: ClinicBi
             <Stat label="Total" value={formatCurrency(bill.total)} />
             <Stat label="Paid" value={formatCurrency(bill.paid)} valueClass="text-[#16A34A]" />
             <Stat
-              label="Balance"
-              value={formatCurrency(bill.balanceDue)}
+              label={bill.overpayment > 0 ? "Credit" : "Balance"}
+              value={formatCurrency(bill.overpayment > 0 ? bill.overpayment : bill.balanceDue)}
               valueClass={bill.balanceDue > 0 ? "text-[#DC2626]" : "text-[#16A34A]"}
             />
             <Link
-              href={`${baseHref}/appointments/${bill.appointmentId}/bill`}
+              href={`${baseHref}/appointments/${bill.appointmentId}/bill?from=billing`}
               className="text-xs font-medium px-3 py-1.5 rounded-md border border-[#E4E4E7] text-[#09090B] hover:bg-[#F4F4F5] transition-colors shrink-0"
             >
               View Bill

@@ -35,8 +35,12 @@ const SUPABASE_SERVICE_ROLE_KEY =
 
 export default defineConfig({
   testDir: "./e2e",
-  timeout: 30_000,
-  expect: { timeout: 10_000 },
+  // Generous timeouts: the dev server compiles each App Router route lazily on
+  // its first hit, so the first test to open a given page (e.g. the bill route)
+  // can wait ~20s for cold compilation. These cover that without masking real
+  // failures.
+  timeout: 60_000,
+  expect: { timeout: 20_000 },
   fullyParallel: false,
   retries: 0,
   reporter: [["list"]],

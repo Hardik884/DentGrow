@@ -31,6 +31,20 @@ const ASHA_MENON = "b0000000-0000-4000-8000-000000000001";
 const EXTRA_APPT_ID = "c1000000-0000-4000-8000-0000000000e2";
 const EXTRA_TREATMENT_ID = "c2000000-0000-4000-8000-0000000000e2";
 
+// The exact reported-bug reproduction: an ₹8,000 visit paid ₹6,200 against the
+// treatment + ₹1,500 against the appointment = ₹7,700 truly paid (balance
+// ₹300). The old code showed ₹9,200 / balance ₹0 in the list but ₹7,700 /
+// ₹300 in the detail. And an overpaid ₹8,000 visit (₹9,200 paid → ₹0 balance,
+// ₹1,200 credit).
+const REPRO_APPT_ID = "c1000000-0000-4000-8000-0000000000e3";
+const REPRO_TREATMENT_ID = "c2000000-0000-4000-8000-0000000000e3";
+const REPRO_PAY_LINKED = "c3000000-0000-4000-8000-0000000000e3";
+const REPRO_PAY_APPT = "c3000000-0000-4000-8000-0000000000e4";
+const OVERPAY_APPT_ID = "c1000000-0000-4000-8000-0000000000e5";
+const OVERPAY_TREATMENT_ID = "c2000000-0000-4000-8000-0000000000e5";
+const OVERPAY_PAY_LINKED = "c3000000-0000-4000-8000-0000000000e5";
+const OVERPAY_PAY_APPT = "c3000000-0000-4000-8000-0000000000e6";
+
 async function supaFetch(path: string, init?: RequestInit) {
   return fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
     ...init,
@@ -98,17 +112,122 @@ async function removeExtraBillableAppointment() {
   await supaFetch(`appointments?id=eq.${EXTRA_APPT_ID}`, { method: "DELETE" });
 }
 
+/** Seed one appointment + treatment + two payments (linked + appointment-scoped). */
+async function seedBillCase(opts: {
+  apptId: string;
+  treatmentId: string;
+  linkedPayId: string;
+  apptPayId: string;
+  cost: number;
+  linkedAmount: number;
+  apptAmount: number;
+  scheduledAt: string;
+}) {
+  await supaFetch("appointments", {
+    method: "POST",
+    body: JSON.stringify({
+      id: opts.apptId,
+      clinic_id: DEMO_CLINIC,
+      patient_id: ASHA_MENON,
+      dentist_id: DEMO_DENTIST,
+      scheduled_at: opts.scheduledAt,
+      duration_minutes: 30,
+      source: "walk_in",
+      status: "completed",
+    }),
+  });
+  await supaFetch("treatments", {
+    method: "POST",
+    body: JSON.stringify({
+      id: opts.treatmentId,
+      clinic_id: DEMO_CLINIC,
+      appointment_id: opts.apptId,
+      patient_id: ASHA_MENON,
+      treatment_type: "Root Canal",
+      cost: opts.cost,
+      status: "completed",
+    }),
+  });
+  await supaFetch("payments", {
+    method: "POST",
+    body: JSON.stringify([
+      {
+        id: opts.linkedPayId,
+        clinic_id: DEMO_CLINIC,
+        patient_id: ASHA_MENON,
+        appointment_id: opts.apptId,
+        treatment_id: opts.treatmentId,
+        amount: opts.linkedAmount,
+        method: "cash",
+        payment_type: "treatment",
+        payment_date: "2026-08-14",
+      },
+      {
+        id: opts.apptPayId,
+        clinic_id: DEMO_CLINIC,
+        patient_id: ASHA_MENON,
+        appointment_id: opts.apptId,
+        treatment_id: null,
+        amount: opts.apptAmount,
+        method: "cash",
+        payment_type: "treatment",
+        payment_date: "2026-08-14",
+      },
+    ]),
+  });
+}
+
+async function removeBillCase(opts: {
+  apptId: string;
+  treatmentId: string;
+  linkedPayId: string;
+  apptPayId: string;
+}) {
+  await supaFetch(`payments?id=in.(${opts.linkedPayId},${opts.apptPayId})`, { method: "DELETE" });
+  await supaFetch(`treatments?id=eq.${opts.treatmentId}`, { method: "DELETE" });
+  await supaFetch(`appointments?id=eq.${opts.apptId}`, { method: "DELETE" });
+}
+
+const REPRO_CASE = {
+  apptId: REPRO_APPT_ID,
+  treatmentId: REPRO_TREATMENT_ID,
+  linkedPayId: REPRO_PAY_LINKED,
+  apptPayId: REPRO_PAY_APPT,
+  cost: 8000,
+  linkedAmount: 6200,
+  apptAmount: 1500, // total paid 7700 → balance 300
+  scheduledAt: "2026-08-15T14:00:00+00:00",
+};
+const OVERPAY_CASE = {
+  apptId: OVERPAY_APPT_ID,
+  treatmentId: OVERPAY_TREATMENT_ID,
+  linkedPayId: OVERPAY_PAY_LINKED,
+  apptPayId: OVERPAY_PAY_APPT,
+  cost: 8000,
+  linkedAmount: 7700,
+  apptAmount: 1500, // total paid 9200 → balance 0, credit 1200
+  scheduledAt: "2026-08-15T15:00:00+00:00",
+};
+
 test.beforeAll(async () => {
   const reachable = await localSupabaseReachable();
   test.skip(
     !reachable,
     `Local Supabase not reachable at ${SUPABASE_URL} — start it with: npm run db:start && npm run db:reset`
   );
-  if (reachable) await seedExtraBillableAppointment();
+  if (reachable) {
+    await seedExtraBillableAppointment();
+    await seedBillCase(REPRO_CASE);
+    await seedBillCase(OVERPAY_CASE);
+  }
 });
 
 test.afterAll(async () => {
-  if (await localSupabaseReachable()) await removeExtraBillableAppointment();
+  if (await localSupabaseReachable()) {
+    await removeExtraBillableAppointment();
+    await removeBillCase(REPRO_CASE);
+    await removeBillCase(OVERPAY_CASE);
+  }
 });
 
 async function loginAsDemoClinic(page: Page) {
@@ -190,6 +309,77 @@ test.describe("Dentist Billing & Payments — /dentist/payments", () => {
     await expect(invoice.getByText(/signature not configured/i)).toHaveCount(0);
     // The bill still ends with the professional closing line.
     await expect(invoice.getByText(/system-generated bill from/i)).toBeVisible();
+  });
+});
+
+test.describe("Billing consistency (the ₹9,200-vs-₹7,700 bug) + Back button", () => {
+  test.beforeEach(async ({ page }) => {
+    await loginAsDemoClinic(page);
+  });
+
+  /** Open the Billing view and return the row locator for one seeded appointment. */
+  async function openBillingRow(page: Page, appointmentId: string) {
+    await page.goto("/dentist/payments");
+    await page.getByRole("tab", { name: "Billing" }).click();
+    // The row's "View Bill" link carries the appointment id in its href.
+    return page.locator(`a[href*="/appointments/${appointmentId}/bill"]`).first();
+  }
+
+  test("REGRESSION: list row and opened bill agree — partial ₹7,700 / balance ₹300 (not ₹9,200/₹0)", async ({
+    page,
+  }) => {
+    const viewLink = await openBillingRow(page, REPRO_APPT_ID);
+    await expect(viewLink).toBeVisible();
+
+    // The Billing LIST row: the appointment card that contains this View Bill link.
+    const row = page.locator("div", { has: viewLink }).last();
+    // Paid must be the true ₹7,700, never the double-counted ₹9,200.
+    await expect(row).toContainText("₹7,700");
+    await expect(row).not.toContainText("₹9,200");
+
+    // The opened bill DETAIL must show the SAME figures. (toContainText avoids
+    // strict-mode issues — ₹8,000.00 legitimately repeats as rate/amount/
+    // subtotal/total on the invoice.)
+    await viewLink.click();
+    const invoice = page.locator("#invoice-document");
+    await expect(invoice).toContainText("₹8,000.00"); // total
+    await expect(invoice).toContainText("₹7,700.00"); // amount paid
+    await expect(invoice).toContainText("₹300.00"); // balance due
+    await expect(invoice).toContainText("Partially Paid");
+    await expect(invoice).not.toContainText("₹9,200"); // never the doubled figure
+  });
+
+  test("REGRESSION: overpaid ₹9,200 on ₹8,000 → balance ₹0 with a visible ₹1,200 credit", async ({
+    page,
+  }) => {
+    const viewLink = await openBillingRow(page, OVERPAY_APPT_ID);
+    await viewLink.click();
+
+    const invoice = page.locator("#invoice-document");
+    await expect(invoice.getByText("₹9,200.00")).toBeVisible(); // amount paid, uncapped
+    await expect(invoice.getByText(/Credit \(Overpaid\)/i)).toBeVisible();
+    await expect(invoice.getByText("₹1,200.00")).toBeVisible(); // the credit
+    await expect(invoice.getByText("Paid", { exact: true })).toBeVisible(); // status badge
+  });
+
+  test("Back button from a Billing-list bill returns to /dentist/payments with Billing active", async ({
+    page,
+  }) => {
+    const viewLink = await openBillingRow(page, REPRO_APPT_ID);
+    await viewLink.click();
+    await expect(page).toHaveURL(/\/appointments\/.*\/bill\?.*from=billing/);
+
+    // Click Back.
+    await page.getByRole("link", { name: "Back" }).click();
+
+    // Lands on the main Billing & Payments page, Billing view active — NOT the
+    // appointment detail page.
+    await expect(page).toHaveURL(/\/dentist\/payments\?.*view=billing/);
+    await expect(page).not.toHaveURL(/\/appointments\//);
+    await expect(page.getByRole("tab", { name: "Billing" })).toHaveAttribute(
+      "aria-selected",
+      "true"
+    );
   });
 });
 

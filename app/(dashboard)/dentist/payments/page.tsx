@@ -27,6 +27,9 @@ interface Props {
     dateFrom?: string;
     dateTo?: string;
     page?: string;
+    /** "billing" opens on the Billing view (e.g. when returning from a bill's
+     * Back button). Absent → Payments, which remains the default. */
+    view?: string;
   }>;
 }
 
@@ -68,7 +71,7 @@ export default async function DentistPaymentsPage({ searchParams }: Props) {
           { key: "payments", label: "Payments" },
           { key: "billing", label: "Billing" },
         ]}
-        defaultKey="payments"
+        defaultKey={params.view === "billing" ? "billing" : "payments"}
         panels={{
           payments: (
             <div className="space-y-6">

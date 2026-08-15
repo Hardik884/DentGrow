@@ -118,7 +118,9 @@ describe("getStaffBill", () => {
             performed_at: "2026-08-10T00:00:00Z", created_at: "2026-08-10T00:00:00Z",
           },
         ],
-        payments: [{ amount: 5000, treatment_id: null, patient_id: "p1", clinic_id: CLINIC_A }],
+        // A ₹5,000 payment recorded against this visit (appointment_id set),
+        // as recordPayment does when paying an appointment's balance.
+        payments: [{ amount: 5000, appointment_id: "appt-1", treatment_id: null, patient_id: "p1", clinic_id: CLINIC_A }],
         clinic_settings: [
           { clinic_id: CLINIC_A, clinic_name: "Dr. Liying's Dental Care", address: "12 MG Road", phone: "0123456789", email: "clinic@example.com", registration_number: "REG-1", timezone: "Asia/Kolkata" },
         ],
@@ -425,15 +427,19 @@ describe("getClinicBillsList", () => {
     expect(result.data?.bills).toEqual([]);
   });
 
-  it("pools a patient's payment across their treatments the same way every other billing screen does", async () => {
+  it("attributes each payment to its OWN appointment — a bill reflects the money paid on that visit, no cross-appointment pooling", async () => {
     (resolveSession as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({
       db: makeGenericDb({
         treatments: [
           { id: "A", patient_id: "p1", appointment_id: "appt-A", clinic_id: CLINIC_A, treatment_type: "Root Canal", cost: 10000, status: "completed", performed_at: "2026-08-01T00:00:00Z", created_at: "2026-08-01T00:00:00Z" },
           { id: "B", patient_id: "p1", appointment_id: "appt-B", clinic_id: CLINIC_A, treatment_type: "Crown", cost: 5000, status: "completed", performed_at: "2026-08-05T00:00:00Z", created_at: "2026-08-05T00:00:00Z" },
         ],
-        // One pooled, unlinked payment — must settle A (older) fully, then B partially.
-        payments: [{ amount: 12000, treatment_id: null, appointment_id: null, patient_id: "p1", clinic_id: CLINIC_A }],
+        // Money paid ON each visit: fully against appt-A, partially against appt-B.
+        // These are the real appointment_id/treatment_id links recordPayment writes.
+        payments: [
+          { amount: 10000, treatment_id: "A", appointment_id: "appt-A", patient_id: "p1", clinic_id: CLINIC_A },
+          { amount: 2000, treatment_id: "B", appointment_id: "appt-B", patient_id: "p1", clinic_id: CLINIC_A },
+        ],
         appointments: [
           { id: "appt-A", patient_id: "p1", scheduled_at: "2026-08-01T09:00:00Z", clinic_id: CLINIC_A },
           { id: "appt-B", patient_id: "p1", scheduled_at: "2026-08-05T09:00:00Z", clinic_id: CLINIC_A },
@@ -448,6 +454,62 @@ describe("getClinicBillsList", () => {
     const billB = result.data?.bills.find((b) => b.appointmentId === "appt-B");
     expect(billA).toMatchObject({ total: 10000, paid: 10000, balanceDue: 0 });
     expect(billB).toMatchObject({ total: 5000, paid: 2000, balanceDue: 3000 });
+  });
+
+  it("REGRESSION: an appointment-scoped payment is counted ONCE (list Paid matches the true amount, not the doubled ₹9,200)", async () => {
+    // The exact reported case: ₹8,000 visit, ₹6,200 treatment payment +
+    // ₹1,500 appointment-scoped payment = ₹7,700 truly paid. The old list
+    // double-counted the ₹1,500 (pool + unassigned) → ₹9,200 / balance ₹0.
+    (resolveSession as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({
+      db: makeGenericDb({
+        treatments: [
+          { id: "t1", patient_id: "p1", appointment_id: "appt-1", clinic_id: CLINIC_A, treatment_type: "Root Canal", cost: 8000, status: "completed", performed_at: "2026-08-14T00:00:00Z", created_at: "2026-08-14T00:00:00Z" },
+        ],
+        payments: [
+          { amount: 6200, treatment_id: "t1", appointment_id: "appt-1", patient_id: "p1", clinic_id: CLINIC_A },
+          { amount: 1500, treatment_id: null, appointment_id: "appt-1", patient_id: "p1", clinic_id: CLINIC_A },
+        ],
+        appointments: [
+          { id: "appt-1", patient_id: "p1", scheduled_at: "2026-08-14T09:00:00Z", clinic_id: CLINIC_A },
+        ],
+        patients: [{ id: "p1", name: "Hardik", phone: "9990000001", clinic_id: CLINIC_A }],
+      }),
+      profile: { id: "staff-1", clinic_id: CLINIC_A, role: "dentist" },
+    });
+
+    const list = await getClinicBillsList();
+    const listRow = list.data?.bills.find((b) => b.appointmentId === "appt-1");
+    expect(listRow).toMatchObject({ total: 8000, paid: 7700, balanceDue: 300, overpayment: 0 });
+
+    // And the individual bill detail for the same appointment MUST agree.
+    const detail = await getStaffBill("appt-1");
+    expect(detail.data?.bill).toMatchObject({ total: 8000, paid: 7700, balanceDue: 300 });
+  });
+
+  it("REGRESSION: genuine overpayment (paid ₹9,200 on ₹8,000) shows balance ₹0 and credit ₹1,200 — list and detail agree", async () => {
+    (resolveSession as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({
+      db: makeGenericDb({
+        treatments: [
+          { id: "t1", patient_id: "p1", appointment_id: "appt-1", clinic_id: CLINIC_A, treatment_type: "Root Canal", cost: 8000, status: "completed", performed_at: "2026-08-14T00:00:00Z", created_at: "2026-08-14T00:00:00Z" },
+        ],
+        payments: [
+          { amount: 7700, treatment_id: "t1", appointment_id: "appt-1", patient_id: "p1", clinic_id: CLINIC_A },
+          { amount: 1500, treatment_id: null, appointment_id: "appt-1", patient_id: "p1", clinic_id: CLINIC_A },
+        ],
+        appointments: [
+          { id: "appt-1", patient_id: "p1", scheduled_at: "2026-08-14T09:00:00Z", clinic_id: CLINIC_A },
+        ],
+        patients: [{ id: "p1", name: "Hardik", phone: "9990000001", clinic_id: CLINIC_A }],
+      }),
+      profile: { id: "staff-1", clinic_id: CLINIC_A, role: "dentist" },
+    });
+
+    const list = await getClinicBillsList();
+    const listRow = list.data?.bills.find((b) => b.appointmentId === "appt-1");
+    expect(listRow).toMatchObject({ total: 8000, paid: 9200, balanceDue: 0, overpayment: 1200 });
+
+    const detail = await getStaffBill("appt-1");
+    expect(detail.data?.bill).toMatchObject({ total: 8000, paid: 9200, balanceDue: 0, overpayment: 1200 });
   });
 
   it("search filters by patient name/phone", async () => {

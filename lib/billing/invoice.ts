@@ -160,12 +160,66 @@ export function sumLineItems(items: ReadonlyArray<BillLineItem>): number {
 }
 
 /**
+ * A payment as seen by the bill layer — only the three fields that decide
+ * which bill (appointment) a payment belongs to, plus its amount.
+ */
+export interface AttributablePayment {
+  amount?: number | string | null;
+  appointment_id?: string | null;
+  treatment_id?: string | null;
+}
+
+/**
+ * THE single source of truth for "how much has been paid on one appointment's
+ * bill". A payment belongs to appointment A when it was recorded directly
+ * against A (`appointment_id === A`) or, failing that, against one of A's
+ * treatments (`treatment_id` ∈ A's treatments). Each payment row is counted
+ * AT MOST ONCE.
+ *
+ * This is what both the clinic-wide Billing list and the individual bill
+ * detail now use, so they can never disagree again. It deliberately does NOT
+ * go through the per-treatment pooled allocator (`allocateCollectionsTo
+ * Treatments`): pooling spreads unlinked money oldest-treatment-first across
+ * the WHOLE patient ledger for consultant-payout purposes, which is the wrong
+ * question for "what has been paid on THIS visit" and was the source of the
+ * ₹9,200-vs-₹7,700 bug — the list added an appointment-scoped payment twice
+ * (once via the pool, once as "unassigned"), the detail dropped it entirely.
+ * Summing the actual payment rows attributed to the appointment counts every
+ * rupee exactly once and needs no cross-appointment ordering.
+ *
+ * The pooled allocator is untouched and still drives per-treatment "collected"
+ * and consultant payouts — a different question this does not replace.
+ *
+ * The `appointment_id`-first rule keeps the total unambiguous: a payment is
+ * assigned to exactly one appointment, so summing per appointment can never
+ * exceed the money actually taken.
+ */
+export function sumPaidForAppointment(
+  payments: ReadonlyArray<AttributablePayment>,
+  appointmentId: string,
+  appointmentTreatmentIds: ReadonlySet<string>
+): number {
+  return payments.reduce((sum, p) => {
+    const belongs =
+      p.appointment_id === appointmentId ||
+      (!p.appointment_id &&
+        p.treatment_id != null &&
+        appointmentTreatmentIds.has(p.treatment_id));
+    return belongs ? sum + Math.max(0, Number(p.amount ?? 0)) : sum;
+  }, 0);
+}
+
+/**
  * The full computed bill: line items plus subtotal/discount/total/paid/balance.
  *
  * `subtotal` and `total` are always equal — DentGrow has no discount concept
  * in its schema, so `discount` is always 0. The field still exists (rather
  * than being omitted) so a discount can be introduced later, additively,
  * without changing this shape.
+ *
+ * `overpayment` is `max(0, paid - total)` — surfaced rather than hidden so a
+ * patient who paid more than the bill sees the credit instead of a silently
+ * clamped balance.
  */
 export interface Bill {
   invoiceNumber: string;
@@ -176,21 +230,26 @@ export interface Bill {
   total: number;
   paid: number;
   balanceDue: number;
+  overpayment: number;
   status: BillStatus;
 }
 
 /**
- * Assemble a `Bill` from a set of treatments and the amount already collected
- * against each (from `allocateCollectionsToTreatments` / the
- * `getPatientTreatmentCollections` / `getPortalTreatmentCollections` actions).
+ * Assemble a `Bill` from a set of treatments and an ALREADY-COMPUTED `paid`
+ * figure.
  *
- * `collectedByTreatment` MUST be computed via the canonical pooled allocator —
- * never re-derived here — so a bill's "Paid" always matches the figure shown
- * on the appointment/patient payments panel for the same treatments.
+ * `paid` is the single number both the Billing list and this detail derive
+ * the same way — via `sumPaidForAppointment` for an appointment bill, or the
+ * pooled per-treatment collected amount for a single-treatment bill. buildBill
+ * does not itself decide which payments count; it only turns charges + paid
+ * into totals, so the list and the detail are guaranteed to agree.
+ *
+ * `paid` is NOT capped to `total`: an overpayment shows as a positive
+ * `overpayment` and a zero `balanceDue`, never a hidden clamp.
  */
 export function buildBill(
   treatments: ReadonlyArray<BillableTreatmentLike>,
-  collectedByTreatment: Readonly<Record<string, number>>,
+  paid: number,
   opts: { invoiceNumber: string; invoiceDate: string }
 ): Bill {
   const lineItems = buildBillLineItems(treatments);
@@ -198,19 +257,9 @@ export function buildBill(
   const discount = 0;
   const total = subtotal - discount;
 
-  const treatmentIds = new Set(treatments.map((t) => t.id));
-  let paid = 0;
-  for (const id of treatmentIds) {
-    paid += Math.min(collectedByTreatment[id] ?? 0, treatmentTotalCharge(
-      treatments.find((t) => t.id === id)!
-    ));
-  }
-  // Paid can't exceed what was actually charged on THIS bill's line items —
-  // allocation is capped per-treatment by the canonical allocator already, so
-  // this clamp is a no-op in practice, kept only as a defensive invariant.
-  paid = Math.min(paid, total);
-
-  const balanceDue = Math.max(0, total - paid);
+  const paidAmount = Math.max(0, paid);
+  const balanceDue = Math.max(0, total - paidAmount);
+  const overpayment = Math.max(0, paidAmount - total);
 
   return {
     invoiceNumber: opts.invoiceNumber,
@@ -219,9 +268,10 @@ export function buildBill(
     subtotal,
     discount,
     total,
-    paid,
+    paid: paidAmount,
     balanceDue,
-    status: deriveBillStatus(total, paid),
+    overpayment,
+    status: deriveBillStatus(total, paidAmount),
   };
 }
 
@@ -231,6 +281,7 @@ export interface AppointmentBillSummary {
   total: number;
   paid: number;
   balanceDue: number;
+  overpayment: number;
   status: BillStatus;
 }
 
@@ -243,40 +294,31 @@ function describeTreatments(treatments: ReadonlyArray<{ treatment_type: string }
 
 /**
  * Aggregate one appointment's treatments into a single bill row — one row
- * per VISIT rather than one per treatment, for the clinic-wide Billing list.
+ * per VISIT — for the clinic-wide Billing list.
  *
- * `paid` combines two already-canonical numbers, nothing new is computed:
- *   1. the same per-treatment pooled `collectedByTreatment` map every other
- *      billing screen reads (from `allocateCollectionsToTreatments`), summed
- *      for this appointment's treatments — exactly what
- *      `AppointmentPaymentsSection` already does per treatment card, just
- *      totalled to one visit figure.
- *   2. `unassignedPaidOnAppointment` — payments recorded against this
- *      appointment with no `treatment_id`, the same figure
- *      `AppointmentPaymentsSection` already surfaces as "Other Payments".
- * Without (2) a visit paid for entirely via an unlinked/OPD-only payment
- * (no treatment row at all) would show as unpaid even though money was
- * actually collected on it.
+ * `paid` is the SAME `sumPaidForAppointment` figure the individual bill detail
+ * (`buildBill`) uses, so a visit's row here and its opened invoice always show
+ * identical Total / Paid / Balance. It replaces the previous
+ * `collectedByTreatment + unassignedPaidOnAppointment` formula, which
+ * double-counted appointment-scoped payments (once via the pool, once as
+ * "unassigned") and could not agree with the detail view.
  */
 export function buildAppointmentBillSummary(
   treatments: ReadonlyArray<BillableTreatmentLike>,
-  collectedByTreatment: Readonly<Record<string, number>>,
-  unassignedPaidOnAppointment = 0
+  paid: number
 ): AppointmentBillSummary {
   const total = treatments.reduce((sum, t) => sum + treatmentTotalCharge(t), 0);
-  const paidFromTreatments = treatments.reduce(
-    (sum, t) => sum + Math.min(collectedByTreatment[t.id] ?? 0, treatmentTotalCharge(t)),
-    0
-  );
-  const paid = paidFromTreatments + Math.max(0, unassignedPaidOnAppointment);
-  const balanceDue = Math.max(0, total - paid);
+  const paidAmount = Math.max(0, paid);
+  const balanceDue = Math.max(0, total - paidAmount);
+  const overpayment = Math.max(0, paidAmount - total);
 
   return {
     treatmentDescription: describeTreatments(treatments),
     total,
-    paid,
+    paid: paidAmount,
     balanceDue,
-    status: deriveBillStatus(total, paid),
+    overpayment,
+    status: deriveBillStatus(total, paidAmount),
   };
 }
 
