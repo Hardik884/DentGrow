@@ -48,24 +48,46 @@ export interface BriefingButton {
   readonly href: string;
 }
 
+/**
+ * Which inline action a button performs. The button itself (which dialog it
+ * opens) is rendered by ActionCard — this is just the discriminator.
+ */
+export type PrimaryActionKind = "contact_patients" | "book_appointment" | "create_follow_up";
+
+export interface PrimaryAction {
+  readonly kind: PrimaryActionKind;
+  readonly label: string;
+}
+
 export interface ActionCardView {
   readonly id: string;
   /** The problem this action resolves — pairs it with the left column. */
   readonly problemId: string;
   readonly category: string;
+  /** Action-oriented heading — what to DO, never a restatement of the problem. */
   readonly title: string;
   readonly reason: string;
   readonly checklist: readonly ChecklistItem[];
-  readonly primary: BriefingButton | null;
-  readonly secondary: BriefingButton | null;
+  /**
+   * Every directly-executable inline action for this diagnosis, in priority
+   * order — a card can offer more than one when more than one genuinely
+   * applies (e.g. a planned-treatment patient can be contacted OR booked
+   * directly). Empty when nothing is directly executable; ActionCard renders
+   * the first entry as the visually primary button and any further entries
+   * as secondary buttons alongside it, never competing for top billing.
+   */
+  readonly primaryActions: readonly PrimaryAction[];
+  /** Secondary "see the full list" link, shown inside the Steps dropdown. */
+  readonly moreInfoLink: BriefingButton | null;
   readonly ownerLabel: string;
   readonly timeframeLabel: string;
   /** Short past-tense phrase for the score-change toast, e.g. "Payment recorded". */
   readonly doneReason: string;
   /**
    * Set when this card's patients can be reached with a prepared WhatsApp
-   * message (recall, payment reminder, next-visit). Drives the "Prepare WhatsApp
-   * reminders" affordance; absent categories have no per-patient message.
+   * message (recall, payment reminder, next-visit). Drives the inline
+   * "Contact Patients" action when `primaryActions` includes it; absent
+   * categories have no per-patient message.
    */
   readonly messageKind?: ActionDraftKind;
 }
@@ -149,6 +171,22 @@ const COPY: Record<string, CategoryCopy> = {
   },
 };
 
+/**
+ * Action-card headings, keyed the same as COPY but answering a different
+ * question. COPY.title says what's WRONG ("Patients owe money for completed
+ * work"); this says what to DO about it ("Follow up on outstanding
+ * payments") — the two must never be the same string, or the right column
+ * just echoes the left one instead of telling the dentist what to click.
+ */
+const ACTION_TITLE: Record<string, string> = {
+  revenue_leakage: "Follow up on outstanding payments",
+  treatment_acceptance: "Bring planned treatments back onto the schedule",
+  capacity: "Fill your open chair time",
+  scheduling: "Recover today's lost appointments",
+  retention: "Reach out to patients who are overdue",
+  acquisition: "Give new enquiries a closer look",
+};
+
 // ── Live counts for concrete summaries ───────────────────────────────────────
 
 function metricValue(metrics: readonly Metric[], key: string): number | null {
@@ -214,26 +252,43 @@ function formatAtStake(amount: number, unit: string): string {
   return `${Math.round(amount)}`;
 }
 
-// ── Right-column button routing ──────────────────────────────────────────────
+// ── Right-column actions ──────────────────────────────────────────────────────
 //
-// Every button is a deep-link into the real DentGrow screen where the work
-// actually happens — the same "prepare, never perform" behaviour the whole
-// system is built on. Doing the work there changes the underlying data, which is
-// what makes the problem and the score move on the next load.
+// Each category gets every directly-executable action that genuinely applies
+// to it — opened inline (as a dialog) by ActionCard, never a navigation. A
+// category can list more than one (a planned-treatment patient can be
+// contacted about booking, or booked directly); "acquisition" has none,
+// because there is no inline action that fixes "fewer new patients than
+// usual" today. Order matters: the FIRST entry is the one ActionCard renders
+// as the visually primary button; any further entries render as secondary
+// buttons beside it, never competing for top billing.
+//
+// `moreInfoLink` is a secondary, lower-emphasis deep-link into the full list
+// view for whoever wants to work through every record by hand — shown inside
+// the "Steps" dropdown, never as a competing primary button.
 
-const PRIMARY_ROUTE: Record<string, BriefingButton> = {
+const PRIMARY_ACTIONS: Partial<Record<string, readonly PrimaryActionKind[]>> = {
+  revenue_leakage: ["contact_patients"],
+  treatment_acceptance: ["contact_patients", "book_appointment"],
+  retention: ["contact_patients", "create_follow_up"],
+  capacity: ["book_appointment"],
+  scheduling: ["book_appointment"],
+  // acquisition: no directly-executable action exists today.
+};
+
+const PRIMARY_ACTION_LABEL: Record<PrimaryActionKind, string> = {
+  contact_patients: "Contact Patients",
+  book_appointment: "Book Appointment",
+  create_follow_up: "Create Follow-up",
+};
+
+const MORE_INFO_LINK: Record<string, BriefingButton> = {
   revenue_leakage: { label: "Open unpaid balances", href: "/dentist/payments" },
   treatment_acceptance: { label: "Open planned treatments", href: "/dentist/treatments?status=planned" },
   capacity: { label: "Open the schedule", href: "/dentist/appointments" },
   scheduling: { label: "Open appointments", href: "/dentist/appointments" },
   retention: { label: "Open overdue recalls", href: "/dentist/follow-ups?status=pending" },
   acquisition: { label: "Open patients", href: "/dentist/patients" },
-};
-
-const SECONDARY_ROUTE: Record<string, BriefingButton> = {
-  revenue_leakage: { label: "Record a payment", href: "/dentist/payments/new" },
-  treatment_acceptance: { label: "Book an appointment", href: "/dentist/appointments/new" },
-  retention: { label: "Create a follow-up", href: "/dentist/follow-ups/new" },
 };
 
 // ── Build ────────────────────────────────────────────────────────────────────
@@ -310,15 +365,20 @@ export function buildBriefing(
       label: t.instruction,
     }));
 
+    const primaryActions: PrimaryAction[] = (PRIMARY_ACTIONS[constraint.category] ?? []).map((kind) => ({
+      kind,
+      label: PRIMARY_ACTION_LABEL[kind],
+    }));
+
     actions.push({
       id: `action-${constraint.id}`,
       problemId: constraint.id,
       category: constraint.category,
-      title: copy?.title ?? constraint.name,
+      title: ACTION_TITLE[constraint.category] ?? copy?.title ?? constraint.name,
       reason: copy ? summaryFor(constraint.category, copy, metrics, patientCount) : constraint.description,
       checklist,
-      primary: PRIMARY_ROUTE[constraint.category] ?? null,
-      secondary: SECONDARY_ROUTE[constraint.category] ?? null,
+      primaryActions,
+      moreInfoLink: MORE_INFO_LINK[constraint.category] ?? null,
       ownerLabel: OWNER_HINT[constraint.category] ?? "Front desk",
       timeframeLabel: constraint.severity === "critical" || constraint.severity === "high" ? "Today" : "This week",
       doneReason: DONE_REASON[constraint.category] ?? "Handled",
