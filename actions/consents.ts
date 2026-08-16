@@ -16,10 +16,8 @@ import { isConsentEditable, canSignConsent, canCancelConsent } from "@/lib/conse
 import { isConsentFormsEnabled, CONSENT_FORMS_DISABLED_MESSAGE } from "@/lib/consents/flag";
 import {
   CONSENT_BUCKET,
-  ALLOWED_CONSENT_UPLOAD_TYPES,
-  MAX_CONSENT_UPLOAD_SIZE,
   consentObjectPath,
-  type AllowedConsentUploadType,
+  validateConsentUpload,
 } from "@/lib/consents/constants";
 import { ensureConsentTemplates } from "@/actions/consent-templates";
 import {
@@ -473,11 +471,11 @@ export async function uploadSignedConsent(formData: FormData): Promise<ActionRes
     if (!(file instanceof File)) {
       return { data: null, error: "No file provided." };
     }
-    if (!ALLOWED_CONSENT_UPLOAD_TYPES.includes(file.type as AllowedConsentUploadType)) {
-      return { data: null, error: "Unsupported file type. Allowed: PDF, JPG, PNG." };
-    }
-    if (file.size > MAX_CONSENT_UPLOAD_SIZE) {
-      return { data: null, error: "File too large (max 15 MB)." };
+    // Same rules the dialog applies, re-checked here — the client is never
+    // trusted. Sharing one validator keeps the two from drifting apart.
+    const invalid = validateConsentUpload(file);
+    if (invalid) {
+      return { data: null, error: invalid };
     }
 
     const { db, profile } = await resolveSession();
@@ -516,8 +514,15 @@ export async function uploadSignedConsent(formData: FormData): Promise<ActionRes
       .from(CONSENT_BUCKET)
       .upload(path, file, { contentType: file.type, upsert: false });
     if (uploadErr) {
-      console.error("[uploadSignedConsent] upload:", uploadErr);
-      return { data: null, error: "Failed to upload the file." };
+      // Storage rejected the object (bucket missing, storage RLS, quota…).
+      // Log the real fault; show the user something they can act on.
+      console.error("[uploadSignedConsent] storage upload failed:", {
+        bucket: CONSENT_BUCKET,
+        path,
+        clinicId: profile.clinic_id,
+        error: uploadErr,
+      });
+      return { data: null, error: "Couldn't upload the consent form. Please try again." };
     }
 
     const snapshot: ConsentSnapshot = buildConsentSnapshot({
@@ -565,10 +570,23 @@ export async function uploadSignedConsent(formData: FormData): Promise<ActionRes
       .single();
 
     if (error || !row) {
-      console.error("[uploadSignedConsent] insert:", error);
-      // Best-effort cleanup of the orphaned upload.
-      await db.storage.from(CONSENT_BUCKET).remove([path]);
-      return { data: null, error: "Failed to save the uploaded consent." };
+      // Distinct from the storage failure above: the FILE landed, but the
+      // consent record did not. Roll the object back so a stored file never
+      // outlives the record that gives it meaning.
+      console.error("[uploadSignedConsent] consent record insert failed (file was uploaded):", {
+        path,
+        clinicId: profile.clinic_id,
+        patientId: patient.id,
+        error,
+      });
+      const { error: cleanupErr } = await db.storage.from(CONSENT_BUCKET).remove([path]);
+      if (cleanupErr) {
+        console.error("[uploadSignedConsent] orphaned file cleanup failed:", { path, error: cleanupErr });
+      }
+      return {
+        data: null,
+        error: "The file uploaded, but saving the consent record failed. Please try again.",
+      };
     }
 
     await writeConsentAudit({

@@ -9,7 +9,15 @@ import { Field } from "@/components/ui/field";
 import { Select } from "@/components/ui/select";
 import { uploadSignedConsent } from "@/actions/consents";
 import { selectTemplateKeyForTreatmentType } from "@/lib/consents/templates";
-import { ALLOWED_CONSENT_UPLOAD_TYPES, isImageMime } from "@/lib/consents/constants";
+import {
+  ALLOWED_CONSENT_UPLOAD_TYPES,
+  MAX_CONSENT_UPLOAD_SIZE_LABEL,
+  isImageMime,
+  validateConsentUpload,
+} from "@/lib/consents/constants";
+
+/** Shown for any failure that isn't a specific, actionable message. */
+const UPLOAD_FAILED_MESSAGE = "Couldn't upload the consent form. Please try again.";
 
 interface UploadConsentDialogProps {
   open: boolean;
@@ -63,11 +71,39 @@ export function UploadConsentDialog({
     if (fileRef.current) fileRef.current.value = "";
   }
 
+  /**
+   * Validate at pick time so an unusable file is rejected instantly, before any
+   * upload is attempted. The `accept` attribute only filters the file picker's
+   * default view — it does not stop a file chosen via "All files".
+   */
+  function onFileChange(picked: File | null) {
+    if (!picked) {
+      setFile(null);
+      return;
+    }
+    const problem = validateConsentUpload(picked);
+    if (problem) {
+      toast.error(problem);
+      setFile(null);
+      if (fileRef.current) fileRef.current.value = "";
+      return;
+    }
+    setFile(picked);
+  }
+
   function submit() {
     if (!file) {
       toast.error("Please choose a file to upload.");
       return;
     }
+    // Re-check on submit: the same validation the server will apply, in case a
+    // file was set before this ran (or the limits changed under a stale tab).
+    const problem = validateConsentUpload(file);
+    if (problem) {
+      toast.error(problem);
+      return;
+    }
+
     const fd = new FormData();
     fd.set("file", file);
     fd.set("patient_id", patientId);
@@ -76,14 +112,26 @@ export function UploadConsentDialog({
     if (selectedTreatment?.appointment_id) fd.set("appointment_id", selectedTreatment.appointment_id);
 
     startTransition(async () => {
-      const res = await uploadSignedConsent(fd);
-      if (res.error) {
-        toast.error(res.error);
-        return;
+      // A Server Action call can fail as a REJECTED PROMISE rather than an
+      // { error } result — the request can be refused while its body is parsed
+      // (size cap), the function can fail, or the network can drop. Unhandled,
+      // that rejection escapes the transition and tears down the React tree
+      // into a blank "client-side exception" screen. Catch it here so an upload
+      // failure stays an upload failure.
+      try {
+        const res = await uploadSignedConsent(fd);
+        if (res.error) {
+          toast.error(res.error);
+          return;
+        }
+        toast.success("Signed consent uploaded.");
+        reset();
+        onUploaded();
+      } catch (err) {
+        // Keep the real fault in the console for debugging; show plain language.
+        console.error("[UploadConsentDialog] uploadSignedConsent failed:", err);
+        toast.error(UPLOAD_FAILED_MESSAGE);
       }
-      toast.success("Signed consent uploaded.");
-      reset();
-      onUploaded();
     });
   }
 
@@ -114,13 +162,13 @@ export function UploadConsentDialog({
         </Field>
 
         <Field label="Signed document" htmlFor="upload-file" required
-          hint="PDF, JPG or PNG. The original is stored unchanged.">
+          hint={`PDF, JPG or PNG, up to ${MAX_CONSENT_UPLOAD_SIZE_LABEL}. The original is stored unchanged.`}>
           <input
             ref={fileRef}
             id="upload-file"
             type="file"
             accept={ALLOWED_CONSENT_UPLOAD_TYPES.join(",")}
-            onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+            onChange={(e) => onFileChange(e.target.files?.[0] ?? null)}
             className="block w-full text-sm text-[#52525B] file:mr-3 file:rounded-md file:border-0 file:bg-[#F4F4F5] file:px-3 file:py-1.5 file:text-sm file:font-medium hover:file:bg-[#E4E4E7]"
           />
         </Field>
