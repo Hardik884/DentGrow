@@ -58,6 +58,23 @@ export default async function ClinicSettingsPage() {
         initialUnavailableDates={unavailableDates ?? []}
       />
       <SignatureSettings initialUrl={signature?.url ?? null} />
+
+      {/* Patient Consent Forms is a per-clinic pilot rollout — hidden entirely
+          for a clinic that doesn't have consent_forms_enabled set. */}
+      {settings?.consent_forms_enabled === true && (
+        <a
+          href="/dentist/settings/consent-templates"
+          className="flex items-center justify-between rounded-xl border border-[#E4E4E7] bg-white px-5 py-4 hover:border-[#D4D4D8] transition-colors"
+        >
+          <div>
+            <p className="text-sm font-semibold text-[#09090B]">Consent Templates</p>
+            <p className="text-xs text-[#71717A] mt-0.5">
+              Review and edit your clinic&apos;s informed-consent templates (versioned).
+            </p>
+          </div>
+          <span className="text-sm text-[#2563EB] font-medium">Manage →</span>
+        </a>
+      )}
     </div>
   );
 }

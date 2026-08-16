@@ -972,3 +972,105 @@ export type PortalUser = {
 
 /** Portal link status returned by checkPortalLinkStatus() */
 export type PortalLinkStatus = "linked" | "unlinked" | "no_match";
+
+// =============================================================================
+// SECTION 9 — PATIENT CONSENT FORMS
+// =============================================================================
+
+// Row types
+export type ConsentTemplate        = Database["public"]["Tables"]["consent_templates"]["Row"];
+export type ConsentTemplateVersion = Database["public"]["Tables"]["consent_template_versions"]["Row"];
+export type Consent                = Database["public"]["Tables"]["consents"]["Row"];
+export type ConsentAudit           = Database["public"]["Tables"]["consent_audit"]["Row"];
+/** Portal-safe consent projection (own signed consents only). */
+export type PatientConsentView     = Database["public"]["Views"]["patient_consents"]["Row"];
+
+/** Consent status — mirrors the consent_status DB enum. */
+export const ConsentStatusEnum = {
+  DRAFT: "draft",
+  READY_TO_SIGN: "ready_to_sign",
+  SIGNED: "signed",
+  CANCELLED: "cancelled",
+} as const;
+export type ConsentStatusValue = (typeof ConsentStatusEnum)[keyof typeof ConsentStatusEnum];
+
+/** Consent source — mirrors the consent_source DB enum. */
+export const ConsentSourceEnum = {
+  DIGITAL: "digital",
+  UPLOADED: "uploaded",
+} as const;
+export type ConsentSourceValue = (typeof ConsentSourceEnum)[keyof typeof ConsentSourceEnum];
+
+// ── Zod validation schemas ──────────────────────────────────────────────────
+
+/** A single per-consent section edit (only editablePerConsent sections). */
+export const ConsentSectionEditSchema = z.object({
+  key: z.string().min(1).max(60),
+  body: z.string().max(6000),
+});
+export type ConsentSectionEditInput = z.infer<typeof ConsentSectionEditSchema>;
+
+/** Create a digital consent from a treatment. Content is built server-side from
+ *  the selected template version; section_edits carries any patient-specific
+ *  tailoring of the editable sections. */
+export const CreateConsentSchema = z.object({
+  patient_id: z.string().uuid(),
+  treatment_id: z.string().uuid().optional().or(z.literal("")).transform((v) => v || undefined),
+  appointment_id: z.string().uuid().optional().or(z.literal("")).transform((v) => v || undefined),
+  template_key: z.string().min(1).max(60),
+  section_edits: z.array(ConsentSectionEditSchema).max(40).optional(),
+});
+export type CreateConsentInput = z.infer<typeof CreateConsentSchema>;
+
+/** Edit a draft consent's content and/or move it between draft/ready_to_sign. */
+export const UpdateConsentSchema = z.object({
+  section_edits: z.array(ConsentSectionEditSchema).max(40).optional(),
+  status: z.enum(["draft", "ready_to_sign"]).optional(),
+});
+export type UpdateConsentInput = z.infer<typeof UpdateConsentSchema>;
+
+/** Sign a digital consent — patient's typed name + drawn signature (PNG data URL). */
+export const SignConsentSchema = z.object({
+  patient_signed_name: z.string().min(2, "Please enter the patient's name").max(120),
+  patient_signature: z
+    .string()
+    .min(1, "A signature is required")
+    .refine((v) => v.startsWith("data:image/"), "Signature must be an image"),
+});
+export type SignConsentInput = z.infer<typeof SignConsentSchema>;
+
+/** Metadata for uploading an externally-signed consent (the file travels as
+ *  FormData; these fields identify what it is linked to). */
+export const UploadConsentMetaSchema = z.object({
+  patient_id: z.string().uuid(),
+  treatment_id: z.string().uuid().optional().or(z.literal("")).transform((v) => v || undefined),
+  appointment_id: z.string().uuid().optional().or(z.literal("")).transform((v) => v || undefined),
+  template_key: z.string().min(1).max(60),
+});
+export type UploadConsentMetaInput = z.infer<typeof UploadConsentMetaSchema>;
+
+/** Save an edit to a clinic's master consent template (creates a new version). */
+export const UpdateConsentTemplateSchema = z.object({
+  template_id: z.string().uuid(),
+  name: z.string().min(1).max(160).optional(),
+  consent_required: z.boolean().optional(),
+  consent_recommended: z.boolean().optional(),
+  is_active: z.boolean().optional(),
+  // Full replacement content for a new version. Sections + disclaimer.
+  content: z
+    .object({
+      disclaimer: z.string().max(4000),
+      sections: z
+        .array(
+          z.object({
+            key: z.string().min(1).max(60),
+            title: z.string().min(1).max(160),
+            body: z.string().max(6000),
+            editablePerConsent: z.boolean(),
+          })
+        )
+        .max(40),
+    })
+    .optional(),
+});
+export type UpdateConsentTemplateInput = z.infer<typeof UpdateConsentTemplateSchema>;

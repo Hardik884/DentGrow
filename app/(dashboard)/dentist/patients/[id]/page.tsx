@@ -7,7 +7,9 @@ import { PatientFollowUpsTab } from "@/components/follow-ups/PatientFollowUpsTab
 import { PatientTreatmentsTab } from "@/components/dentist/PatientTreatmentsTab";
 import { BillingPaymentsTab } from "@/components/billing/BillingPaymentsTab";
 import { PatientDentalChartSection } from "@/components/dental-chart/PatientDentalChartSection";
+import { PatientConsentFormsTab } from "@/components/consent/PatientConsentFormsTab";
 import { getPatient } from "@/actions/patients";
+import { getClinicSettings } from "@/actions/clinic-settings";
 
 export const metadata: Metadata = {
   title: "Patient Profile",
@@ -18,7 +20,7 @@ interface Props {
   searchParams: Promise<{ tab?: string }>;
 }
 
-type Tab = "overview" | "dental-chart" | "treatments" | "payments" | "follow-ups";
+type Tab = "overview" | "dental-chart" | "treatments" | "payments" | "follow-ups" | "consent-forms";
 
 /**
  * /dentist/patients/[id]
@@ -37,13 +39,23 @@ export default async function DentistPatientProfilePage({ params, searchParams }
 
   // Fetch patient name for use in "New Follow-Up" links so the form can
   // pre-populate the selected-patient chip without a client round-trip.
-  const patientResult = await getPatient(id);
+  const [patientResult, clinicSettingsResult] = await Promise.all([
+    getPatient(id),
+    getClinicSettings(),
+  ]);
   const patientName = patientResult.data?.name;
 
-  const tab: Tab =
-    rawTab === "dental-chart" || rawTab === "treatments" || rawTab === "payments" || rawTab === "follow-ups"
-      ? rawTab
-      : "overview";
+  // Patient Consent Forms is a per-clinic pilot rollout — the tab is hidden
+  // entirely (not just empty) for a clinic that doesn't have it enabled yet.
+  const consentFormsEnabled = clinicSettingsResult.data?.consent_forms_enabled === true;
+
+  const rawTabIsValid =
+    rawTab === "dental-chart" ||
+    rawTab === "treatments" ||
+    rawTab === "payments" ||
+    rawTab === "follow-ups" ||
+    (rawTab === "consent-forms" && consentFormsEnabled);
+  const tab: Tab = rawTabIsValid ? (rawTab as Tab) : "overview";
 
   return (
     <div className="p-6 space-y-6">
@@ -73,6 +85,11 @@ export default async function DentistPatientProfilePage({ params, searchParams }
         <TabLink href={`/dentist/patients/${id}?tab=payments`} active={tab === "payments"}>
           Billing &amp; Payments
         </TabLink>
+        {consentFormsEnabled && (
+          <TabLink href={`/dentist/patients/${id}?tab=consent-forms`} active={tab === "consent-forms"}>
+            Consent Forms
+          </TabLink>
+        )}
       </div>
 
       {/* Tab content */}
@@ -122,6 +139,10 @@ export default async function DentistPatientProfilePage({ params, searchParams }
           role="dentist"
           baseHref="/dentist"
         />
+      )}
+
+      {tab === "consent-forms" && (
+        <PatientConsentFormsTab patientId={id} role="dentist" baseHref="/dentist" />
       )}
     </div>
   );

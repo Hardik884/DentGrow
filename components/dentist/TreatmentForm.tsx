@@ -43,6 +43,8 @@ import { Field } from "@/components/ui/field";
 import { SkeletonCard } from "@/components/ui/skeleton";
 import { CalendarPicker } from "@/components/ui/calendar-picker";
 import { Eye, Plus, Trash2, Minus, Pill, Briefcase, ScanLine } from "lucide-react";
+import { TreatmentConsentSection, type ConsentConfig } from "@/components/consent/TreatmentConsentSection";
+import { createConsent } from "@/actions/consents";
 
 interface TreatmentFormProps {
   treatmentId?: string;
@@ -96,6 +98,10 @@ export function TreatmentForm({
   // Whether the clinic has X-ray charges enabled (defaults true while loading).
   const [xrayEnabled, setXrayEnabled] = useState(true);
   const [opdFee, setOpdFee] = useState<number | null>(null);
+  // Patient Consent Forms is a per-clinic pilot rollout (clinic_settings.
+  // consent_forms_enabled). Defaults false while loading so the section never
+  // flashes on for a clinic where it's off.
+  const [consentFormsEnabled, setConsentFormsEnabled] = useState(false);
 
   const isEdit = !!treatmentId;
 
@@ -186,6 +192,14 @@ export function TreatmentForm({
     isStandardType ? "" : (treatmentTypeValue ?? "")
   );
 
+  // Inline consent config reported by the TreatmentConsentSection. In create
+  // mode a required consent draft is auto-created once the treatment is saved.
+  const [consentCfg, setConsentCfg] = useState<ConsentConfig | null>(null);
+
+  // The treatment type actually in effect (preset select value or the free-text
+  // "Other" value), used to auto-select the consent template.
+  const effectiveTreatmentType = showCustomType ? customTypeValue : (treatmentTypeValue ?? "");
+
   useEffect(() => {
     let active = true;
     getConsultants().then((res) => {
@@ -204,6 +218,9 @@ export function TreatmentForm({
         setOpdFee(
           res.data?.default_opd_fee != null ? Number(res.data.default_opd_fee) : null,
         );
+        // Pilot rollout flag — the Consent Form section only renders for a
+        // clinic that has it explicitly enabled.
+        setConsentFormsEnabled(res.data?.consent_forms_enabled === true);
       }
     });
     if (needsAppointmentPicker && patientId) {
@@ -298,6 +315,26 @@ export function TreatmentForm({
       }
 
       if (result.data) {
+        // If the dentist marked consent required on a NEW treatment, create the
+        // consent draft now (linked to the just-created treatment). Non-fatal:
+        // a consent failure never blocks treatment creation.
+        if (!isEdit && consentCfg?.required) {
+          try {
+            const consentRes = await createConsent({
+              patient_id: result.data.patient_id,
+              treatment_id: result.data.id,
+              appointment_id: result.data.appointment_id ?? "",
+              template_key: consentCfg.templateKey,
+              section_edits: consentCfg.sectionEdits,
+            });
+            if (consentRes.error) {
+              console.error("[TreatmentForm] consent draft:", consentRes.error);
+            }
+          } catch (err) {
+            console.error("[TreatmentForm] consent draft failed:", err);
+          }
+        }
+
         // Invalidate only the treatments cache.
         queryClient.invalidateQueries({ queryKey: queryKeys.treatments.all });
 
@@ -819,6 +856,19 @@ export function TreatmentForm({
             </div>
           </Field>
         </div>
+
+        {/* ── Consent Form (pilot rollout — hidden entirely for a clinic that
+             doesn't have it enabled) ──────────────────────────── */}
+        {consentFormsEnabled && (
+          <TreatmentConsentSection
+            treatmentType={effectiveTreatmentType}
+            patientId={patientId}
+            appointmentId={appointmentId}
+            treatmentId={treatmentId}
+            mode={isEdit ? "edit" : "create"}
+            onChange={setConsentCfg}
+          />
+        )}
 
         <div className="px-6 py-4 bg-[#FAFAFA] flex items-center justify-end gap-3">
           <Button variant="outline" size="sm" type="button" onClick={() => (onCancel ? onCancel() : router.back())}>

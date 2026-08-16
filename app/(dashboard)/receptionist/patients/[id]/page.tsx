@@ -6,6 +6,8 @@ import { OutstandingBalanceBadge } from "@/components/shared/OutstandingBalanceB
 import { PatientFollowUpsTab } from "@/components/follow-ups/PatientFollowUpsTab";
 import { PatientTreatmentsTab } from "@/components/dentist/PatientTreatmentsTab";
 import { BillingPaymentsTab } from "@/components/billing/BillingPaymentsTab";
+import { PatientConsentFormsTab } from "@/components/consent/PatientConsentFormsTab";
+import { getClinicSettings } from "@/actions/clinic-settings";
 
 export const metadata: Metadata = {
   title: "Patient",
@@ -16,7 +18,7 @@ interface Props {
   searchParams: Promise<{ tab?: string }>;
 }
 
-type Tab = "overview" | "treatments" | "payments" | "follow-ups";
+type Tab = "overview" | "treatments" | "payments" | "follow-ups" | "consent-forms";
 
 /**
  * /receptionist/patients/[id]
@@ -33,10 +35,17 @@ export default async function ReceptionistPatientProfilePage({ params, searchPar
 
   if (!id) notFound();
 
-  const tab: Tab =
-    rawTab === "treatments" || rawTab === "payments" || rawTab === "follow-ups"
-      ? rawTab
-      : "overview";
+  const clinicSettingsResult = await getClinicSettings();
+  // Patient Consent Forms is a per-clinic pilot rollout — the tab is hidden
+  // entirely (not just empty) for a clinic that doesn't have it enabled yet.
+  const consentFormsEnabled = clinicSettingsResult.data?.consent_forms_enabled === true;
+
+  const rawTabIsValid =
+    rawTab === "treatments" ||
+    rawTab === "payments" ||
+    rawTab === "follow-ups" ||
+    (rawTab === "consent-forms" && consentFormsEnabled);
+  const tab: Tab = rawTabIsValid ? (rawTab as Tab) : "overview";
 
   return (
     <div className="p-6 space-y-6">
@@ -63,6 +72,11 @@ export default async function ReceptionistPatientProfilePage({ params, searchPar
         <TabLink href={`/receptionist/patients/${id}?tab=payments`} active={tab === "payments"}>
           Billing &amp; Payments
         </TabLink>
+        {consentFormsEnabled && (
+          <TabLink href={`/receptionist/patients/${id}?tab=consent-forms`} active={tab === "consent-forms"}>
+            Consent Forms
+          </TabLink>
+        )}
       </div>
 
       {tab === "overview" && (
@@ -102,6 +116,10 @@ export default async function ReceptionistPatientProfilePage({ params, searchPar
           role="receptionist"
           baseHref="/receptionist"
         />
+      )}
+
+      {tab === "consent-forms" && (
+        <PatientConsentFormsTab patientId={id} role="receptionist" baseHref="/receptionist" />
       )}
     </div>
   );

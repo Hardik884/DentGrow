@@ -131,10 +131,16 @@ on conflict (id) do nothing;
 
 -- Two chairs, so the demo clinic exercises the chair multiplier in capacity
 -- metrics rather than the default single-chair path.
+--
+-- consent_forms_enabled = true: the pilot flag (see migration
+-- 20260816010000) is on for the REAL pilot clinic ('22222222-...') on every
+-- environment; it is also enabled here for the local demo clinic so local
+-- development and the e2e suite (which logs in as this clinic) can exercise
+-- Patient Consent Forms without a manual toggle.
 insert into clinic_settings (
-  clinic_id, clinic_name, timezone, average_appointment_duration, chair_count
+  clinic_id, clinic_name, timezone, average_appointment_duration, chair_count, consent_forms_enabled
 )
-values ('00000000-0000-0000-0000-000000000001', 'My Dental Clinic', 'Asia/Kolkata', 30, 2)
+values ('00000000-0000-0000-0000-000000000001', 'My Dental Clinic', 'Asia/Kolkata', 30, 2, true)
 on conflict (clinic_id) do nothing;
 
 insert into auth.users (

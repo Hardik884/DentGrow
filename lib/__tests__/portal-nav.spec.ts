@@ -40,7 +40,7 @@ describe("PortalNav (audit B9)", () => {
     expect(NAV_ITEMS.find((i) => i.label === "Billing")?.href).toBe("/portal/billing");
   });
 
-  it("does not remove or reorder any pre-existing item, and adds exactly one new item", () => {
+  it("does not remove or reorder any pre-existing item (Consents added after Follow-Ups, outside the mobile 5)", () => {
     const labels = NAV_ITEMS.map((i) => i.label);
     expect(labels).toEqual([
       "Home",
@@ -50,7 +50,10 @@ describe("PortalNav (audit B9)", () => {
       "Billing",
       "Prescriptions",
       "Follow-Ups",
+      "Consents",
       "Profile",
     ]);
+    // The Consents portal page is read-only patient consent history.
+    expect(NAV_ITEMS.find((i) => i.label === "Consents")?.href).toBe("/portal/consents");
   });
 });

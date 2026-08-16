@@ -259,6 +259,7 @@ export type Database = {
           clinic_hours: Json | null
           clinic_id: string
           clinic_name: string
+          consent_forms_enabled: boolean
           created_at: string
           default_opd_fee: number | null
           email: string | null
@@ -277,6 +278,7 @@ export type Database = {
           clinic_hours?: Json | null
           clinic_id: string
           clinic_name: string
+          consent_forms_enabled?: boolean
           created_at?: string
           default_opd_fee?: number | null
           email?: string | null
@@ -295,6 +297,7 @@ export type Database = {
           clinic_hours?: Json | null
           clinic_id?: string
           clinic_name?: string
+          consent_forms_enabled?: boolean
           created_at?: string
           default_opd_fee?: number | null
           email?: string | null
@@ -341,6 +344,372 @@ export type Database = {
           phone?: string | null
         }
         Relationships: []
+      }
+      consent_audit: {
+        Row: {
+          action: Database["public"]["Enums"]["consent_audit_action"]
+          clinic_id: string
+          consent_id: string
+          id: string
+          new_value: Json | null
+          old_value: Json | null
+          performed_by: string | null
+          timestamp: string
+        }
+        Insert: {
+          action: Database["public"]["Enums"]["consent_audit_action"]
+          clinic_id: string
+          consent_id: string
+          id?: string
+          new_value?: Json | null
+          old_value?: Json | null
+          performed_by?: string | null
+          timestamp?: string
+        }
+        Update: {
+          action?: Database["public"]["Enums"]["consent_audit_action"]
+          clinic_id?: string
+          consent_id?: string
+          id?: string
+          new_value?: Json | null
+          old_value?: Json | null
+          performed_by?: string | null
+          timestamp?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "consent_audit_clinic_id_fkey"
+            columns: ["clinic_id"]
+            isOneToOne: false
+            referencedRelation: "clinics"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "consent_audit_consent_id_fkey"
+            columns: ["consent_id"]
+            isOneToOne: false
+            referencedRelation: "consents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "consent_audit_consent_id_fkey"
+            columns: ["consent_id"]
+            isOneToOne: false
+            referencedRelation: "patient_consents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "consent_audit_performed_by_fkey"
+            columns: ["performed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      consent_template_versions: {
+        Row: {
+          clinic_id: string
+          content: Json
+          created_at: string
+          created_by: string | null
+          id: string
+          template_id: string
+          version: number
+        }
+        Insert: {
+          clinic_id: string
+          content: Json
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          template_id: string
+          version: number
+        }
+        Update: {
+          clinic_id?: string
+          content?: Json
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          template_id?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "consent_template_versions_clinic_id_fkey"
+            columns: ["clinic_id"]
+            isOneToOne: false
+            referencedRelation: "clinics"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "consent_template_versions_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "consent_template_versions_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "consent_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      consent_templates: {
+        Row: {
+          clinic_id: string
+          consent_recommended: boolean
+          consent_required: boolean
+          created_at: string
+          created_by: string | null
+          current_version: number
+          id: string
+          is_active: boolean
+          name: string
+          template_key: string
+          treatment_keywords: string[]
+          updated_at: string
+        }
+        Insert: {
+          clinic_id: string
+          consent_recommended?: boolean
+          consent_required?: boolean
+          created_at?: string
+          created_by?: string | null
+          current_version?: number
+          id?: string
+          is_active?: boolean
+          name: string
+          template_key: string
+          treatment_keywords?: string[]
+          updated_at?: string
+        }
+        Update: {
+          clinic_id?: string
+          consent_recommended?: boolean
+          consent_required?: boolean
+          created_at?: string
+          created_by?: string | null
+          current_version?: number
+          id?: string
+          is_active?: boolean
+          name?: string
+          template_key?: string
+          treatment_keywords?: string[]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "consent_templates_clinic_id_fkey"
+            columns: ["clinic_id"]
+            isOneToOne: false
+            referencedRelation: "clinics"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "consent_templates_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      consents: {
+        Row: {
+          appointment_id: string | null
+          clinic_id: string
+          content_snapshot: Json
+          created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          dentist_id: string | null
+          dentist_signature_url: string | null
+          file_name: string | null
+          file_path: string | null
+          file_size: number | null
+          file_type: string | null
+          id: string
+          patient_id: string
+          patient_signature: string | null
+          patient_signed_name: string | null
+          signed_at: string | null
+          source: Database["public"]["Enums"]["consent_source"]
+          status: Database["public"]["Enums"]["consent_status"]
+          template_id: string | null
+          template_key: string
+          template_name: string
+          template_version: number
+          template_version_id: string | null
+          treatment_id: string | null
+          updated_at: string
+          uploaded_at: string | null
+          uploaded_by: string | null
+        }
+        Insert: {
+          appointment_id?: string | null
+          clinic_id: string
+          content_snapshot: Json
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          dentist_id?: string | null
+          dentist_signature_url?: string | null
+          file_name?: string | null
+          file_path?: string | null
+          file_size?: number | null
+          file_type?: string | null
+          id?: string
+          patient_id: string
+          patient_signature?: string | null
+          patient_signed_name?: string | null
+          signed_at?: string | null
+          source?: Database["public"]["Enums"]["consent_source"]
+          status?: Database["public"]["Enums"]["consent_status"]
+          template_id?: string | null
+          template_key: string
+          template_name: string
+          template_version?: number
+          template_version_id?: string | null
+          treatment_id?: string | null
+          updated_at?: string
+          uploaded_at?: string | null
+          uploaded_by?: string | null
+        }
+        Update: {
+          appointment_id?: string | null
+          clinic_id?: string
+          content_snapshot?: Json
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          dentist_id?: string | null
+          dentist_signature_url?: string | null
+          file_name?: string | null
+          file_path?: string | null
+          file_size?: number | null
+          file_type?: string | null
+          id?: string
+          patient_id?: string
+          patient_signature?: string | null
+          patient_signed_name?: string | null
+          signed_at?: string | null
+          source?: Database["public"]["Enums"]["consent_source"]
+          status?: Database["public"]["Enums"]["consent_status"]
+          template_id?: string | null
+          template_key?: string
+          template_name?: string
+          template_version?: number
+          template_version_id?: string | null
+          treatment_id?: string | null
+          updated_at?: string
+          uploaded_at?: string | null
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "consents_appointment_id_fkey"
+            columns: ["appointment_id"]
+            isOneToOne: false
+            referencedRelation: "active_appointments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "consents_appointment_id_fkey"
+            columns: ["appointment_id"]
+            isOneToOne: false
+            referencedRelation: "appointments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "consents_clinic_id_fkey"
+            columns: ["clinic_id"]
+            isOneToOne: false
+            referencedRelation: "clinics"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "consents_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "consents_dentist_id_fkey"
+            columns: ["dentist_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "consents_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "active_patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "consents_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "consents_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "consent_templates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "consents_template_version_id_fkey"
+            columns: ["template_version_id"]
+            isOneToOne: false
+            referencedRelation: "consent_template_versions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "consents_treatment_id_fkey"
+            columns: ["treatment_id"]
+            isOneToOne: false
+            referencedRelation: "active_treatments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "consents_treatment_id_fkey"
+            columns: ["treatment_id"]
+            isOneToOne: false
+            referencedRelation: "patient_treatments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "consents_treatment_id_fkey"
+            columns: ["treatment_id"]
+            isOneToOne: false
+            referencedRelation: "receptionist_treatments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "consents_treatment_id_fkey"
+            columns: ["treatment_id"]
+            isOneToOne: false
+            referencedRelation: "treatments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "consents_uploaded_by_fkey"
+            columns: ["uploaded_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       consultancy_income: {
         Row: {
@@ -2039,6 +2408,120 @@ export type Database = {
           },
         ]
       }
+      patient_consents: {
+        Row: {
+          appointment_id: string | null
+          content_snapshot: Json | null
+          created_at: string | null
+          file_name: string | null
+          file_type: string | null
+          id: string | null
+          patient_id: string | null
+          patient_signature: string | null
+          patient_signed_name: string | null
+          signed_at: string | null
+          source: Database["public"]["Enums"]["consent_source"] | null
+          status: Database["public"]["Enums"]["consent_status"] | null
+          template_key: string | null
+          template_name: string | null
+          template_version: number | null
+          treatment_id: string | null
+        }
+        Insert: {
+          appointment_id?: string | null
+          content_snapshot?: Json | null
+          created_at?: string | null
+          file_name?: string | null
+          file_type?: string | null
+          id?: string | null
+          patient_id?: string | null
+          patient_signature?: string | null
+          patient_signed_name?: string | null
+          signed_at?: string | null
+          source?: Database["public"]["Enums"]["consent_source"] | null
+          status?: Database["public"]["Enums"]["consent_status"] | null
+          template_key?: string | null
+          template_name?: string | null
+          template_version?: number | null
+          treatment_id?: string | null
+        }
+        Update: {
+          appointment_id?: string | null
+          content_snapshot?: Json | null
+          created_at?: string | null
+          file_name?: string | null
+          file_type?: string | null
+          id?: string | null
+          patient_id?: string | null
+          patient_signature?: string | null
+          patient_signed_name?: string | null
+          signed_at?: string | null
+          source?: Database["public"]["Enums"]["consent_source"] | null
+          status?: Database["public"]["Enums"]["consent_status"] | null
+          template_key?: string | null
+          template_name?: string | null
+          template_version?: number | null
+          treatment_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "consents_appointment_id_fkey"
+            columns: ["appointment_id"]
+            isOneToOne: false
+            referencedRelation: "active_appointments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "consents_appointment_id_fkey"
+            columns: ["appointment_id"]
+            isOneToOne: false
+            referencedRelation: "appointments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "consents_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "active_patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "consents_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "consents_treatment_id_fkey"
+            columns: ["treatment_id"]
+            isOneToOne: false
+            referencedRelation: "active_treatments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "consents_treatment_id_fkey"
+            columns: ["treatment_id"]
+            isOneToOne: false
+            referencedRelation: "patient_treatments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "consents_treatment_id_fkey"
+            columns: ["treatment_id"]
+            isOneToOne: false
+            referencedRelation: "receptionist_treatments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "consents_treatment_id_fkey"
+            columns: ["treatment_id"]
+            isOneToOne: false
+            referencedRelation: "treatments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       patient_dental_chart: {
         Row: {
           condition: string | null
@@ -2275,6 +2758,15 @@ export type Database = {
         | "completed"
         | "cancelled"
         | "no_show"
+      consent_audit_action:
+        | "created"
+        | "updated"
+        | "status_changed"
+        | "signed"
+        | "cancelled"
+        | "uploaded"
+      consent_source: "digital" | "uploaded"
+      consent_status: "draft" | "ready_to_sign" | "signed" | "cancelled"
       dentition_type: "adult" | "primary"
       follow_up_confirmation_status: "tentative" | "confirmed"
       follow_up_status: "pending" | "completed" | "cancelled"
@@ -2446,6 +2938,16 @@ export const Constants = {
         "cancelled",
         "no_show",
       ],
+      consent_audit_action: [
+        "created",
+        "updated",
+        "status_changed",
+        "signed",
+        "cancelled",
+        "uploaded",
+      ],
+      consent_source: ["digital", "uploaded"],
+      consent_status: ["draft", "ready_to_sign", "signed", "cancelled"],
       dentition_type: ["adult", "primary"],
       follow_up_confirmation_status: ["tentative", "confirmed"],
       follow_up_status: ["pending", "completed", "cancelled"],

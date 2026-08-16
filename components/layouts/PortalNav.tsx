@@ -14,11 +14,17 @@ import {
   CreditCard,
   Bell,
   User,
+  FileSignature,
   type LucideIcon,
 } from "lucide-react";
 
 interface PortalNavProps {
   patientId: string | null;
+  /** Patient Consent Forms is a per-clinic pilot rollout — when false, the
+   *  "Consents" item is omitted from the rendered nav entirely (it sits past
+   *  the mobile bottom bar's first-5 window regardless, so this only affects
+   *  desktop). Defaults false so an omitted prop never accidentally reveals it. */
+  consentFormsEnabled?: boolean;
 }
 
 interface NavItem {
@@ -42,13 +48,20 @@ export const NAV_ITEMS: NavItem[] = [
   { label: "Billing",      href: "/portal/billing",      icon: CreditCard },
   { label: "Prescriptions", href: "/portal/prescriptions", icon: Pill },
   { label: "Follow-Ups",   href: "/portal/follow-ups",   icon: Bell },
+  { label: "Consents",     href: "/portal/consents",     icon: FileSignature },
   { label: "Profile",      href: "/portal/profile",      icon: User },
 ];
 
-export function PortalNav({ patientId }: PortalNavProps) {
+export function PortalNav({ patientId, consentFormsEnabled = false }: PortalNavProps) {
   const pathname = usePathname();
 
   if (!patientId) return null;
+
+  // Filtered per-render, never mutating the exported NAV_ITEMS constant (kept
+  // stable for the nav-composition regression spec).
+  const visibleNavItems = consentFormsEnabled
+    ? NAV_ITEMS
+    : NAV_ITEMS.filter((item) => item.label !== "Consents");
 
   return (
     <header className="bg-white border-b border-[#E4E4E7] sticky top-0 z-10">
@@ -59,7 +72,7 @@ export function PortalNav({ patientId }: PortalNavProps) {
 
           {/* Desktop nav */}
           <nav className="hidden sm:flex items-center gap-1" aria-label="Portal navigation">
-            {NAV_ITEMS.map((item) => {
+            {visibleNavItems.map((item) => {
               const isActive =
                 item.href === "/portal"
                   ? pathname === item.href

@@ -1,0 +1,291 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
+import { Eye, PenLine, ShieldCheck, ExternalLink } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Select } from "@/components/ui/select";
+import { Field } from "@/components/ui/field";
+import { Textarea } from "@/components/ui/textarea";
+import { cn } from "@/lib/utils";
+import { getConsentTemplateContent } from "@/actions/consent-templates";
+import { createConsent } from "@/actions/consents";
+import type { ConsentContent } from "@/lib/consents/content";
+import {
+  DEFAULT_CONSENT_TEMPLATES,
+  selectTemplateKeyForTreatmentType,
+} from "@/lib/consents/templates";
+
+export interface ConsentConfig {
+  required: boolean;
+  templateKey: string;
+  sectionEdits: { key: string; body: string }[];
+}
+
+interface TreatmentConsentSectionProps {
+  treatmentType: string;
+  patientId?: string;
+  appointmentId?: string;
+  /** Present in edit mode — enables the inline "Create Consent" button. */
+  treatmentId?: string;
+  mode: "create" | "edit";
+  /** Reports the current consent config up to the treatment form (create mode
+   *  uses it to auto-create the consent draft when the treatment is saved). */
+  onChange?: (cfg: ConsentConfig) => void;
+}
+
+const TEMPLATE_OPTIONS = DEFAULT_CONSENT_TEMPLATES.map((t) => ({ key: t.key, name: t.name }));
+
+/**
+ * TreatmentConsentSection — the inline "Consent Form Required?" block rendered
+ * at the end of the treatment form. Auto-selects the consent template from the
+ * treatment type, previews/edits it inline (no redirect), and reports the
+ * config to the parent form. In edit mode it can create the consent draft
+ * directly.
+ */
+export function TreatmentConsentSection({
+  treatmentType,
+  patientId,
+  appointmentId,
+  treatmentId,
+  mode,
+  onChange,
+}: TreatmentConsentSectionProps) {
+  const autoKey = selectTemplateKeyForTreatmentType(treatmentType);
+  const [required, setRequired] = useState<boolean | null>(null); // null until template loads
+  const [templateKey, setTemplateKey] = useState<string>(autoKey);
+  const [content, setContent] = useState<ConsentContent | null>(null);
+  const [edits, setEdits] = useState<Record<string, string>>({});
+  const [view, setView] = useState<"none" | "preview" | "edit">("none");
+  const [loading, setLoading] = useState(false);
+  const [created, setCreated] = useState<string | null>(null);
+  const [creating, setCreating] = useState(false);
+
+  // Load the selected template's content (and, on first load, the sensible
+  // default for the Required toggle from the template metadata).
+  useEffect(() => {
+    let active = true;
+    setLoading(true);
+    getConsentTemplateContent({ templateKey })
+      .then((res) => {
+        if (!active) return;
+        if (res.data) {
+          setContent(res.data.content);
+          setRequired((prev) => (prev === null ? res.data!.consent_required : prev));
+          setEdits({});
+        }
+      })
+      .finally(() => active && setLoading(false));
+    return () => {
+      active = false;
+    };
+  }, [templateKey]);
+
+  // Re-auto-select the template when the treatment type changes (until the
+  // dentist overrides it manually — tracked by `overridden`).
+  const [overridden, setOverridden] = useState(false);
+  useEffect(() => {
+    if (!overridden) setTemplateKey(selectTemplateKeyForTreatmentType(treatmentType));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [treatmentType]);
+
+  // Report config upward.
+  useEffect(() => {
+    onChange?.({
+      required: required ?? false,
+      templateKey,
+      sectionEdits: Object.entries(edits).map(([key, body]) => ({ key, body })),
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [required, templateKey, edits]);
+
+  const templateName = TEMPLATE_OPTIONS.find((t) => t.key === templateKey)?.name ?? "Consent";
+
+  function beginEdit() {
+    if (!content) return;
+    const seed: Record<string, string> = {};
+    for (const s of content.sections) if (s.editablePerConsent) seed[s.key] = s.body;
+    setEdits(seed);
+    setView("edit");
+  }
+
+  async function createNow() {
+    if (!patientId || !treatmentId) return;
+    setCreating(true);
+    const res = await createConsent({
+      patient_id: patientId,
+      treatment_id: treatmentId,
+      appointment_id: appointmentId ?? "",
+      template_key: templateKey,
+      section_edits: Object.entries(edits).map(([key, body]) => ({ key, body })),
+    });
+    setCreating(false);
+    if (res.error) {
+      toast.error(res.error);
+      return;
+    }
+    if (res.data) {
+      toast.success("Consent draft created.");
+      setCreated(res.data.id);
+    }
+  }
+
+  const displayContent: ConsentContent | null = content
+    ? {
+        disclaimer: content.disclaimer,
+        sections: content.sections.map((s) =>
+          s.editablePerConsent && edits[s.key] !== undefined ? { ...s, body: edits[s.key] } : s
+        ),
+      }
+    : null;
+
+  return (
+    <div className="px-6 py-5 space-y-4">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <ShieldCheck className="h-4 w-4 text-[#71717A]" aria-hidden />
+          <span className="text-sm font-medium text-[#09090B]">Consent Form Required?</span>
+        </div>
+        <div className="inline-flex rounded-lg border border-[#E4E4E7] p-0.5">
+          <button
+            type="button"
+            onClick={() => setRequired(true)}
+            className={cn(
+              "px-4 py-1 text-sm rounded-md transition-colors",
+              required ? "bg-[#18181B] text-white" : "text-[#71717A] hover:text-[#09090B]"
+            )}
+          >
+            Yes
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setRequired(false);
+              setView("none");
+            }}
+            className={cn(
+              "px-4 py-1 text-sm rounded-md transition-colors",
+              required === false ? "bg-[#18181B] text-white" : "text-[#71717A] hover:text-[#09090B]"
+            )}
+          >
+            No
+          </button>
+        </div>
+      </div>
+
+      {required && (
+        <div className="rounded-lg border border-[#E4E4E7] bg-[#FAFAFA] p-4 space-y-3">
+          <Field label="Consent Template" htmlFor="consent-template"
+            hint="Auto-selected from the treatment type. You can change it.">
+            <Select
+              id="consent-template"
+              value={templateKey}
+              onChange={(e) => {
+                setOverridden(true);
+                setTemplateKey(e.target.value);
+              }}
+            >
+              {TEMPLATE_OPTIONS.map((t) => (
+                <option key={t.key} value={t.key}>
+                  {t.name}
+                </option>
+              ))}
+            </Select>
+          </Field>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs text-[#71717A]">{templateName}</span>
+            <div className="flex-1" />
+            <Button
+              type="button"
+              variant="outline"
+              size="xs"
+              onClick={() => setView(view === "preview" ? "none" : "preview")}
+              disabled={loading || !content}
+            >
+              <Eye className="h-3 w-3" aria-hidden /> Preview
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="xs"
+              onClick={() => (view === "edit" ? setView("none") : beginEdit())}
+              disabled={loading || !content}
+            >
+              <PenLine className="h-3 w-3" aria-hidden /> Edit
+            </Button>
+          </div>
+
+          {view === "edit" && displayContent && (
+            <div className="space-y-3 border-t border-[#E4E4E7] pt-3">
+              <p className="text-[11px] text-[#71717A]">
+                Edits here affect <strong>this consent document only</strong>, not the master
+                template.
+              </p>
+              {displayContent.sections
+                .filter((s) => s.editablePerConsent)
+                .map((s) => (
+                  <Field key={s.key} label={s.title} htmlFor={`csec-${s.key}`}>
+                    <Textarea
+                      id={`csec-${s.key}`}
+                      rows={2}
+                      value={edits[s.key] ?? s.body}
+                      onChange={(e) => setEdits((p) => ({ ...p, [s.key]: e.target.value }))}
+                    />
+                  </Field>
+                ))}
+            </div>
+          )}
+
+          {view === "preview" && displayContent && (
+            <div className="space-y-2 border-t border-[#E4E4E7] pt-3 max-h-72 overflow-y-auto">
+              {displayContent.sections
+                .filter((s) => s.body.trim().length > 0)
+                .map((s) => (
+                  <div key={s.key}>
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-[#3F3F46]">
+                      {s.title}
+                    </p>
+                    <p className="text-xs text-[#52525B] whitespace-pre-wrap">{s.body}</p>
+                  </div>
+                ))}
+              <div className="rounded border border-[#E4E4E7] bg-white px-3 py-2">
+                <p className="text-[10px] text-[#71717A]">{displayContent.disclaimer}</p>
+              </div>
+            </div>
+          )}
+
+          {mode === "create" ? (
+            <p className="text-[11px] text-[#71717A]">
+              A consent draft will be created for this treatment when you save. You can preview,
+              edit, and capture the patient signature from the Consent Forms tab.
+            </p>
+          ) : created ? (
+            <div className="flex items-center gap-2 rounded-md border border-[#BBF7D0] bg-[#F0FDF4] px-3 py-2">
+              <span className="text-xs font-medium text-[#16A34A]">Consent draft created.</span>
+              {patientId && (
+                <a
+                  href={`/dentist/patients/${patientId}?tab=consent-forms`}
+                  className="inline-flex items-center gap-1 text-xs font-medium text-[#2563EB] underline"
+                >
+                  Open Consent Forms <ExternalLink className="h-3 w-3" aria-hidden />
+                </a>
+              )}
+            </div>
+          ) : (
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={createNow}
+              isLoading={creating}
+              disabled={!treatmentId || !patientId}
+            >
+              Create Consent
+            </Button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
