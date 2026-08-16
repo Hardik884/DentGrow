@@ -21,6 +21,7 @@ const SERVICE =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImV4cCI6MTk4MzgxMjk5Nn0.EGIM96RAZx35lJzdJsyH-qQwv8Hdp7fsn3W0YpN81IU";
 
 const CLINIC_B = "22222222-2222-2222-2222-222222222222"; // pilot clinic — enabled
+const MY_DENTAL_CLINIC = "00000000-0000-0000-0000-000000000001"; // pilot clinic — enabled
 const LIYING_CLINIC = "11111111-1111-1111-1111-111111111111"; // not yet enabled
 
 async function reachable(): Promise<boolean> {
@@ -42,8 +43,9 @@ const LOCAL_UP = await reachable();
 const db = createClient(URL, SERVICE, { auth: { persistSession: false } }) as any;
 
 describe.skipIf(!LOCAL_UP)("isConsentFormsEnabled (pilot rollout flag)", () => {
-  it("is enabled for the pilot clinic (Clinic B)", async () => {
+  it("is enabled for the pilot clinics (Clinic B and My Dental Clinic)", async () => {
     expect(await isConsentFormsEnabled(db, CLINIC_B)).toBe(true);
+    expect(await isConsentFormsEnabled(db, MY_DENTAL_CLINIC)).toBe(true);
   });
 
   it("is NOT enabled for Dr. Liying's Dental Care", async () => {
