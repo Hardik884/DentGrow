@@ -215,115 +215,38 @@ body {
   }
 }
 
-/* ── Print Styles for Prescription ───────────────────────────────────────── */
+/* ── Unified Print Styles ─────────────────────────────────────────────────
+ * One consolidated block for all printable content: prescriptions, invoices,
+ * and consent forms. Each uses a CSS class (.print-prescription,
+ * .print-invoice, .print-consent) to mark the element that should appear.
+ *
+ * IMPORTANT: Only ONE print-target class should be present in the DOM at
+ * print time. The visibility trick (hide everything, then show only the
+ * target) works because only one is rendered on the page at once.
+ *
+ * Previously three separate @media print blocks competed — the prescription
+ * block's `[role="dialog"]:not(.print-prescription) { display: none }` hid
+ * the consent dialog, causing a blank page when printing consents.
+ * ─────────────────────────────────────────────────────────────────────────── */
 @media print {
   /* Hide everything by default */
   body * {
     visibility: hidden;
   }
 
-  /* Show only the prescription content */
+  /* Show whichever print target is on the page */
   .print-prescription,
-  .print-prescription * {
-    visibility: visible;
-  }
-
-  /* Position prescription at top of page */
-  .print-prescription {
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 100%;
-  }
-
-  /* Hide UI elements */
-  nav,
-  aside,
-  header,
-  footer,
-  .no-print,
-  button,
-  [role="dialog"]:not(.print-prescription) {
-    display: none !important;
-  }
-
-  /* Reset page margins */
-  @page {
-    margin: 1cm;
-  }
-
-  /* Clean background */
-  body {
-    background: white;
-  }
-
-  /* Remove borders and shadows for print */
-  .print-prescription {
-    border: none !important;
-    box-shadow: none !important;
-  }
-}
-
-/* ── Print Styles for Bill / Invoice ─────────────────────────────────────── */
-@media print {
-  /* Hide everything by default */
-  body * {
-    visibility: hidden;
-  }
-
-  /* Show only the invoice content */
+  .print-prescription *,
   .print-invoice,
-  .print-invoice * {
-    visibility: visible;
-  }
-
-  /* Position invoice at top of page */
-  .print-invoice {
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 100%;
-    max-width: 100%;
-    padding: 0 !important;
-  }
-
-  /* Hide UI chrome — sidebar, page header, action buttons, tab toggle */
-  nav,
-  aside,
-  header,
-  footer,
-  .no-print,
-  button {
-    display: none !important;
-  }
-
-  /* A4 page, natural margins; long bills flow across multiple pages */
-  @page {
-    size: A4;
-    margin: 1.5cm;
-  }
-
-  body {
-    background: white;
-  }
-
-  .print-invoice {
-    border: none !important;
-    box-shadow: none !important;
-  }
-}
-
-/* ── Print Styles for Consent Form ───────────────────────────────────────── */
-@media print {
-  body * {
-    visibility: hidden;
-  }
-
+  .print-invoice *,
   .print-consent,
   .print-consent * {
     visibility: visible;
   }
 
+  /* Position the target at the top of the page */
+  .print-prescription,
+  .print-invoice,
   .print-consent {
     position: absolute;
     left: 0;
@@ -335,6 +258,7 @@ body {
     box-shadow: none !important;
   }
 
+  /* Hide all UI chrome — sidebar, nav, buttons, action bars */
   nav,
   aside,
   header,
@@ -344,6 +268,7 @@ body {
     display: none !important;
   }
 
+  /* A4 page with natural margins */
   @page {
     size: A4;
     margin: 1.5cm;

@@ -1,23 +1,32 @@
 "use client";
 
 import { useState } from "react";
-import { FileText, ImageIcon, FileSignature } from "lucide-react";
+import { FileText, ImageIcon, FileSignature, Download, Printer } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { formatDate } from "@/lib/utils";
 import { ConsentDocument } from "@/components/consent/ConsentDocument";
 import { ConsentActions } from "@/components/consent/ConsentActions";
-import { consentStatusLabel } from "@/lib/consents/status";
+import { consentStatusLabel, type ConsentStatus, type ConsentSource } from "@/lib/consents/status";
 import type { ConsentSnapshot } from "@/lib/consents/content";
 import type { ConsentListItem } from "@/actions/consents";
 import { getPortalConsentDetail, getPortalConsentFileUrl } from "@/actions/consents";
 
+const STATUS_VARIANT: Record<ConsentStatus, "default" | "info" | "success" | "error"> = {
+  draft: "default",
+  ready_to_sign: "info",
+  signed: "success",
+  cancelled: "error",
+};
+
 /**
- * PortalConsentList — read-only consent history for the authenticated patient.
- * Patients can view and download their own signed consents. They can never
- * edit content or signatures; the patient is resolved server-side from the
- * session, never from the browser.
+ * PortalConsentList — consent history for the authenticated patient.
+ *
+ * Shows ALL non-cancelled consents (draft, ready_to_sign, signed, uploaded).
+ * Patients can view, download, and print ANY consent regardless of signing
+ * status — digital signing is optional. A valid workflow is: view the draft,
+ * download/print it, sign physically, and have the clinic upload the copy.
  */
 export function PortalConsentList({ consents }: { consents: ConsentListItem[] }) {
   const [openId, setOpenId] = useState<string | null>(null);
@@ -26,7 +35,7 @@ export function PortalConsentList({ consents }: { consents: ConsentListItem[] })
     return (
       <div className="rounded-lg border border-dashed border-[#E4E4E7] px-4 py-12 text-center">
         <FileSignature className="mx-auto h-6 w-6 text-[#A1A1AA]" aria-hidden />
-        <p className="mt-2 text-sm text-[#71717A]">You have no signed consent forms yet.</p>
+        <p className="mt-2 text-sm text-[#71717A]">You have no consent forms yet.</p>
       </div>
     );
   }
@@ -34,31 +43,38 @@ export function PortalConsentList({ consents }: { consents: ConsentListItem[] })
   return (
     <>
       <ul className="divide-y divide-[#F4F4F5] rounded-lg border border-[#E4E4E7] bg-white">
-        {consents.map((c) => (
-          <li key={c.id} className="flex items-center justify-between gap-3 px-4 py-3">
-            <div className="min-w-0">
-              <div className="flex items-center gap-2">
-                <p className="text-sm font-medium text-[#09090B] truncate">
-                  {c.treatment_type || c.template_name}
+        {consents.map((c) => {
+          const source = c.source as ConsentSource;
+          const status = c.status as ConsentStatus;
+          return (
+            <li key={c.id} className="flex items-center justify-between gap-3 px-4 py-3">
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <p className="text-sm font-medium text-[#09090B] truncate">
+                    {c.treatment_type || c.template_name}
+                  </p>
+                  {source === "uploaded" ? (
+                    <ImageIcon className="h-3 w-3 text-[#A1A1AA]" aria-hidden />
+                  ) : (
+                    <FileText className="h-3 w-3 text-[#A1A1AA]" aria-hidden />
+                  )}
+                </div>
+                <p className="text-xs text-[#71717A] mt-0.5">
+                  {c.signed_at ? `Signed ${formatDate(c.signed_at)}` : formatDate(c.created_at)}
                 </p>
-                {c.source === "uploaded" ? (
-                  <ImageIcon className="h-3 w-3 text-[#A1A1AA]" aria-hidden />
-                ) : (
-                  <FileText className="h-3 w-3 text-[#A1A1AA]" aria-hidden />
-                )}
               </div>
-              <p className="text-xs text-[#71717A] mt-0.5">
-                {c.signed_at ? `Signed ${formatDate(c.signed_at)}` : formatDate(c.created_at)}
-              </p>
-            </div>
-            <div className="flex items-center gap-3 shrink-0">
-              <StatusBadge label={consentStatusLabel(c.status, c.source)} variant="success" />
-              <Button variant="outline" size="xs" onClick={() => setOpenId(c.id)}>
-                View
-              </Button>
-            </div>
-          </li>
-        ))}
+              <div className="flex items-center gap-3 shrink-0">
+                <StatusBadge
+                  label={consentStatusLabel(status, source)}
+                  variant={STATUS_VARIANT[status]}
+                />
+                <Button variant="outline" size="xs" onClick={() => setOpenId(c.id)}>
+                  View
+                </Button>
+              </div>
+            </li>
+          );
+        })}
       </ul>
 
       {openId && <PortalConsentDetail consentId={openId} onClose={() => setOpenId(null)} />}
@@ -70,6 +86,7 @@ function PortalConsentDetail({ consentId, onClose }: { consentId: string; onClos
   const [snapshot, setSnapshot] = useState<ConsentSnapshot | null>(null);
   const [meta, setMeta] = useState<{
     source: string;
+    status: string;
     signed_at: string | null;
     patient_signed_name: string | null;
     patient_signature: string | null;
@@ -89,6 +106,7 @@ function PortalConsentDetail({ consentId, onClose }: { consentId: string; onClos
       setSnapshot(res.data.snapshot);
       setMeta({
         source: res.data.source,
+        status: res.data.status,
         signed_at: res.data.signed_at,
         patient_signed_name: res.data.patient_signed_name,
         patient_signature: res.data.patient_signature,
@@ -103,6 +121,7 @@ function PortalConsentDetail({ consentId, onClose }: { consentId: string; onClos
 
   const clinicName = snapshot?.clinic.name ?? "the clinic";
   const isUploaded = meta?.source === "uploaded";
+  const status = (meta?.status as ConsentStatus | undefined) ?? "draft";
 
   return (
     <Dialog open onClose={onClose} size="xl" title="Consent Form" description={snapshot?.templateName}>
@@ -149,6 +168,7 @@ function PortalConsentDetail({ consentId, onClose }: { consentId: string; onClos
 
         {snapshot && !isUploaded && (
           <>
+            {/* Download / Print always available, regardless of signing status */}
             <ConsentActions
               targetId="consent-document"
               fileName={`Consent-${snapshot.patient.name.replace(/\s+/g, "_")}.pdf`}
@@ -157,10 +177,22 @@ function PortalConsentDetail({ consentId, onClose }: { consentId: string; onClos
               patientPhone={null}
               showWhatsApp={false}
             />
+
+            {/* Hint for unsigned consents */}
+            {status !== "signed" && (
+              <div className="rounded-md border border-[#BFDBFE] bg-[#EFF6FF] px-3 py-2">
+                <p className="text-xs text-[#1E40AF]">
+                  This consent has not been signed yet. You can download or print it, sign it
+                  physically, and return the signed copy to the clinic.
+                </p>
+              </div>
+            )}
+
+            {/* The document itself (also the PDF/print capture target) */}
             <div className="rounded-md border border-[#E4E4E7] overflow-hidden">
               <ConsentDocument
                 snapshot={snapshot}
-                status="signed"
+                status={status}
                 patientSignature={meta?.patient_signature}
                 patientSignedName={meta?.patient_signed_name}
                 signedAt={meta?.signed_at}

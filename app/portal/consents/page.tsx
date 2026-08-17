@@ -24,7 +24,7 @@ export default async function PortalConsentsPage() {
       <div>
         <h1 className="text-lg font-semibold text-[#09090B]">My Consent Forms</h1>
         <p className="text-sm text-[#71717A] mt-0.5">
-          Consent forms you have signed. You can view and download them here.
+          Your consent forms. You can view, download, and print them here.
         </p>
       </div>
 

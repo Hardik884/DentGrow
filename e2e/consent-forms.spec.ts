@@ -5,10 +5,13 @@ import { test, expect, type Page } from "@playwright/test";
  *
  * Playwright coverage for Patient Consent Forms:
  *   1. Consent Forms tab lists the patient's consents, labelled by source.
- *   2. Viewing a digital consent renders the A4 consent document.
+ *   2. Viewing a digital consent renders the A4 consent document WITHOUT
+ *      "Template v1" and shows the "Send" (WhatsApp) button.
  *   3. The treatment form shows the inline "Consent Form Required?" toggle and
  *      auto-selects a template on "Yes".
  *   4. The Upload Signed Consent dialog opens with a template picker.
+ *   5–6. Disabled-clinic guards.
+ *   7. Scrolling over a number input does not change its value.
  *
  * Runs against a LOCAL Supabase (npm run db:reset), "My Dental Clinic" demo
  * account. Seeds consents directly via the service role, fixed namespaced ids,
@@ -68,9 +71,6 @@ function snapshot(templateName: string) {
 }
 
 async function seed() {
-  // Seed as two SEPARATE inserts: a PostgREST batch insert requires every row
-  // to share the same column set, but the digital row (patient_signature) and
-  // the uploaded row (file_*) intentionally differ.
   await supaFetch("consents", {
     method: "POST",
     body: JSON.stringify({
@@ -141,25 +141,18 @@ test.describe("Patient Consent Forms", () => {
   });
 
   test("1. Consent Forms tab lists the patient's consents with distinct source labels", async ({ page }) => {
-    // First hit to this route compiles it and lazily provisions the clinic's
-    // consent templates, so allow extra time on a cold dev server.
     test.slow();
-    // First hit compiles the route and provisions the clinic's templates
-    // (blocking the tab's Promise.all); a warm reload then renders the list
-    // deterministically without racing the cold-compile stream.
     await page.goto(`/dentist/patients/${ASHA_MENON}?tab=consent-forms`);
     await page.getByRole("heading", { name: "Consent Forms" }).waitFor({ timeout: 60_000 });
     await page.reload();
 
     await expect(page.getByRole("heading", { name: "Consent Forms" })).toBeVisible({ timeout: 30_000 });
-    // Digital vs uploaded are labelled distinctly (at least one of each).
     await expect(page.getByText("Digitally Signed").first()).toBeVisible({ timeout: 30_000 });
     await expect(page.getByText("Patient Signed — Uploaded").first()).toBeVisible({ timeout: 30_000 });
-    // Upload entry point present.
     await expect(page.getByRole("button", { name: "Upload Signed Consent" })).toBeVisible();
   });
 
-  test("2. Viewing a digital consent renders the A4 consent document", async ({ page }) => {
+  test("2. Viewing a digital consent renders the document without version text and has Send button", async ({ page }) => {
     await page.goto(`/dentist/patients/${ASHA_MENON}?tab=consent-forms`);
 
     const digitalRow = page.getByRole("listitem").filter({ hasText: "Digitally Signed" });
@@ -171,9 +164,13 @@ test.describe("Patient Consent Forms", () => {
     await expect(doc).toContainText("My Dental Clinic");
     await expect(doc).toContainText("Asha Menon");
     await expect(doc).toContainText("Voluntary Consent");
-    // Download / Print / WhatsApp actions are available for staff.
+    // "Template v1" must NOT be visible on the document.
+    await expect(doc).not.toContainText("Template v");
+    // Download / Print / Send (formerly "Send via WhatsApp") actions available.
     await expect(page.getByRole("button", { name: "Download PDF" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Send via WhatsApp" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Send" })).toBeVisible();
+    // The old label must not be present.
+    await expect(page.getByRole("button", { name: "Send via WhatsApp" })).not.toBeVisible();
   });
 
   test("3. Treatment form shows the inline Consent toggle and auto-selects a template", async ({ page }) => {
@@ -181,7 +178,6 @@ test.describe("Patient Consent Forms", () => {
     await page.getByRole("button", { name: "Add Treatment" }).first().click();
 
     await expect(page.getByText("Consent Form Required?")).toBeVisible({ timeout: 15_000 });
-    // Turning it on reveals the auto-selected template picker.
     await page.getByRole("button", { name: "Yes", exact: true }).click();
     await expect(page.getByText("Consent Template")).toBeVisible();
     await expect(page.getByRole("button", { name: "Preview" })).toBeVisible();
@@ -194,14 +190,31 @@ test.describe("Patient Consent Forms", () => {
     await expect(page.getByText("Consent Type / Template")).toBeVisible();
     await expect(page.getByRole("button", { name: "Upload & Save" })).toBeVisible();
   });
+
+  test("7. Scrolling over the cost input does not change the value", async ({ page }) => {
+    await page.goto(`/dentist/patients/${ASHA_MENON}?tab=treatments`);
+    await page.getByRole("button", { name: "Add Treatment" }).first().click();
+
+    const costInput = page.locator("#cost");
+    await costInput.waitFor({ state: "visible", timeout: 15_000 });
+    await costInput.fill("500");
+    await costInput.click(); // focus it
+
+    // Scroll wheel over the focused cost input.
+    await costInput.dispatchEvent("wheel", { deltaY: 120 });
+    // Brief pause for any handler to fire.
+    await page.waitForTimeout(200);
+
+    // The value must not have changed from 500.
+    await expect(costInput).toHaveValue("500");
+  });
 });
 
 /**
  * Patient Consent Forms is a per-clinic pilot rollout (migration
  * 20260816010000_consent_forms_clinic_flag.sql). It is enabled for the pilot
  * clinic ("My Dental Clinic" locally / Clinic B in production) but NOT for
- * Dr. Liying's Dental Care — this proves the feature is genuinely absent
- * there, not just unlinked.
+ * Dr. Liying's Dental Care.
  */
 test.describe("Patient Consent Forms — disabled for a non-pilot clinic", () => {
   test.beforeEach(async ({ page }) => {

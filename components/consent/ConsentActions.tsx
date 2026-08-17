@@ -175,7 +175,7 @@ export function ConsentActions({
         {showWhatsApp && (
           <Button variant="secondary" size="sm" onClick={handleWhatsApp} isLoading={busy === "whatsapp"}>
             <MessageCircle className="h-3.5 w-3.5" aria-hidden />
-            Send via WhatsApp
+            Send
           </Button>
         )}
       </div>

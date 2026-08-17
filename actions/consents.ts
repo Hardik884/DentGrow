@@ -810,7 +810,7 @@ export async function getPortalConsents(): Promise<ActionResult<ConsentListItem[
 
 export async function getPortalConsentDetail(
   id: string
-): Promise<ActionResult<{ snapshot: ConsentSnapshot; source: string; signed_at: string | null; patient_signature: string | null; patient_signed_name: string | null; file_name: string | null }>> {
+): Promise<ActionResult<{ snapshot: ConsentSnapshot; source: string; status: string; signed_at: string | null; patient_signature: string | null; patient_signed_name: string | null; file_name: string | null }>> {
   try {
     const { db, profile } = await resolveSession();
     if (!profile) return { data: null, error: "Unauthorized" };
@@ -836,6 +836,7 @@ export async function getPortalConsentDetail(
       data: {
         snapshot: data.content_snapshot as ConsentSnapshot,
         source: data.source as string,
+        status: data.status as string,
         signed_at: (data.signed_at as string | null) ?? null,
         // The patient's own signature — appropriate to show them on their own consent.
         patient_signature: (data.patient_signature as string | null) ?? null,

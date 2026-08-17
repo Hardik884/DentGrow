@@ -475,6 +475,7 @@ export function TreatmentForm({
                 min={0}
                 step="0.01"
                 {...register("cost", { valueAsNumber: true })}
+                onWheel={(e) => (e.target as HTMLElement).blur()}
                 className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                 hasError={!!(errors as Record<string, unknown>).cost}
               />
@@ -624,6 +625,7 @@ export function TreatmentForm({
                       min={0}
                       step="0.01"
                       {...register("xray_cost", { valueAsNumber: true, setValueAs: (v) => (v === "" || v === null || v === undefined || isNaN(v) ? null : Number(v)) })}
+                      onWheel={(e) => (e.target as HTMLElement).blur()}
                       className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                       hasError={!!(errors as Record<string, unknown>).xray_cost}
                     />
@@ -706,6 +708,7 @@ export function TreatmentForm({
                     step="0.01"
                     className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                     {...register("commission_value", { valueAsNumber: true })}
+                    onWheel={(e) => (e.target as HTMLElement).blur()}
                   />
                 </Field>
               </div>
@@ -935,6 +938,7 @@ function DaysCounter({
         max={365}
         value={value}
         onChange={(e) => commit(parseInt(e.target.value, 10) || 1)}
+        onWheel={(e) => (e.target as HTMLElement).blur()}
         className="h-9 w-12 text-center text-sm border-y border-[#E4E4E7] outline-none focus:ring-1 focus:ring-[#18181B] text-[#09090B] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
         aria-label="Days"
       />
