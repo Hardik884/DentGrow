@@ -101,8 +101,48 @@ export function ConsentActions({
     }
   }
 
+  /**
+   * Print the consent document.
+   *
+   * The document lives inside a modal (a fixed, centred, overflow-capped
+   * container), so `window.print()` on the page as-is prints blank or pushes
+   * the document to the middle of the page. Instead we CLONE the document node
+   * into a body-level `#print-portal` and flag <html> with `is-printing-portal`
+   * — the print stylesheet then shows only the portal, free of the modal.
+   * The clone (and flag) are removed as soon as printing finishes.
+   */
   function handlePrint() {
+    const node = window.document.getElementById(targetId);
+    if (!node) {
+      window.print();
+      return;
+    }
+
+    const html = window.document.documentElement;
+    window.document.getElementById("print-portal")?.remove();
+
+    const portal = window.document.createElement("div");
+    portal.id = "print-portal";
+    const clone = node.cloneNode(true) as HTMLElement;
+    clone.removeAttribute("id"); // never duplicate an id in the live DOM
+    portal.appendChild(clone);
+    window.document.body.appendChild(portal);
+    html.classList.add("is-printing-portal");
+
+    let cleaned = false;
+    const cleanup = () => {
+      if (cleaned) return;
+      cleaned = true;
+      html.classList.remove("is-printing-portal");
+      portal.remove();
+      window.removeEventListener("afterprint", cleanup);
+    };
+
+    window.addEventListener("afterprint", cleanup);
     window.print();
+    // Safety net for browsers that never fire afterprint. The portal is
+    // display:none on screen, so a late cleanup is harmless either way.
+    window.setTimeout(cleanup, 60_000);
   }
 
   async function handleWhatsApp() {

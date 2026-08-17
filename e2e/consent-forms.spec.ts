@@ -173,7 +173,28 @@ test.describe("Patient Consent Forms", () => {
     await expect(page.getByRole("button", { name: "Send via WhatsApp" })).not.toBeVisible();
   });
 
-  test("3. Treatment form shows the inline Consent toggle and auto-selects a template", async ({ page }) => {
+  test("2b. Print builds a body-level #print-portal with the document (blank-page fix)", async ({ page }) => {
+    await page.goto(`/dentist/patients/${ASHA_MENON}?tab=consent-forms`);
+    const digitalRow = page.getByRole("listitem").filter({ hasText: "Digitally Signed" });
+    await digitalRow.getByRole("button", { name: "View" }).click();
+    await expect(page.locator("#consent-document")).toBeVisible({ timeout: 15_000 });
+
+    // Stub window.print so no dialog blocks; the portal + <html> flag then persist.
+    await page.evaluate(() => {
+      window.print = () => {};
+    });
+    await page.getByRole("button", { name: "Print" }).click();
+
+    // The document was cloned to a body-level portal, outside the modal — this
+    // is the fix for the blank / mis-positioned print output.
+    const portal = page.locator("#print-portal");
+    await expect(portal).toHaveCount(1);
+    await expect(portal).toContainText("CONSENT FORM");
+    await expect(portal).toContainText("Asha Menon");
+    await expect(page.locator("html.is-printing-portal")).toHaveCount(1);
+  });
+
+  test("3. Treatment form shows the inline Consent toggle, template, and Create Consent Now", async ({ page }) => {
     await page.goto(`/dentist/patients/${ASHA_MENON}?tab=treatments`);
     await page.getByRole("button", { name: "Add Treatment" }).first().click();
 
@@ -181,6 +202,9 @@ test.describe("Patient Consent Forms", () => {
     await page.getByRole("button", { name: "Yes", exact: true }).click();
     await expect(page.getByText("Consent Template")).toBeVisible();
     await expect(page.getByRole("button", { name: "Preview" })).toBeVisible();
+    // Inline "Create Consent Now" lets the dentist sign/download/print without
+    // leaving the treatment form (patient is known from the profile route).
+    await expect(page.getByRole("button", { name: "Create Consent Now" })).toBeVisible();
   });
 
   test("4. Upload Signed Consent dialog opens with a template picker", async ({ page }) => {

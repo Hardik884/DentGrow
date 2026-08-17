@@ -196,6 +196,11 @@ export function TreatmentForm({
   // mode a required consent draft is auto-created once the treatment is saved.
   const [consentCfg, setConsentCfg] = useState<ConsentConfig | null>(null);
 
+  // In edit mode the patient isn't a prop — capture it from the loaded
+  // treatment so the inline consent section can create/sign/print for it.
+  const [loadedPatientId, setLoadedPatientId] = useState<string | undefined>(undefined);
+  const effectivePatientId = patientId ?? loadedPatientId;
+
   // The treatment type actually in effect (preset select value or the free-text
   // "Other" value), used to auto-select the consent template.
   const effectiveTreatmentType = showCustomType ? customTypeValue : (treatmentTypeValue ?? "");
@@ -243,6 +248,7 @@ export function TreatmentForm({
     if (!treatmentId) return;
     getTreatment(treatmentId).then((result) => {
       if (result.data) {
+        setLoadedPatientId(result.data.patient_id);
         const { date, time } = splitDatetime(result.data.performed_at);
         setPerformedDate(date);
         setPerformedTime(time);
@@ -316,9 +322,10 @@ export function TreatmentForm({
 
       if (result.data) {
         // If the dentist marked consent required on a NEW treatment, create the
-        // consent draft now (linked to the just-created treatment). Non-fatal:
-        // a consent failure never blocks treatment creation.
-        if (!isEdit && consentCfg?.required) {
+        // consent draft now (linked to the just-created treatment). Skipped when
+        // the dentist already created it inline (createdConsentId) so there's no
+        // duplicate. Non-fatal: a consent failure never blocks treatment creation.
+        if (!isEdit && consentCfg?.required && !consentCfg.createdConsentId) {
           try {
             const consentRes = await createConsent({
               patient_id: result.data.patient_id,
@@ -865,7 +872,7 @@ export function TreatmentForm({
         {consentFormsEnabled && (
           <TreatmentConsentSection
             treatmentType={effectiveTreatmentType}
-            patientId={patientId}
+            patientId={effectivePatientId}
             appointmentId={appointmentId}
             treatmentId={treatmentId}
             mode={isEdit ? "edit" : "create"}

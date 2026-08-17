@@ -26,8 +26,10 @@ import type { Consent } from "@/types";
 interface ConsentDetailDialogProps {
   consentId: string;
   role: "dentist" | "receptionist";
-  patientName: string;
-  patientPhone: string | null;
+  /** Optional — falls back to the consent snapshot's patient name when omitted. */
+  patientName?: string;
+  /** Optional — falls back to the consent snapshot's patient phone when omitted. */
+  patientPhone?: string | null;
   baseHref: string;
   onClose: () => void;
   onChanged: () => void;
@@ -66,7 +68,10 @@ export function ConsentDetailDialog({
     }
     setConsent(res.data);
     setLoadError(null);
-    setSignName(patientName);
+    // Default the sign-name to the provided name, falling back to the
+    // snapshot's patient name (the inline treatment flow has no name prop).
+    const snap = res.data.content_snapshot as unknown as ConsentSnapshot | null;
+    setSignName(patientName ?? snap?.patient?.name ?? "");
     if (res.data.source === "uploaded") {
       const f = await getConsentFileUrl(consentId);
       if (f.data) setFileUrl(f.data.url);
@@ -80,6 +85,10 @@ export function ConsentDetailDialog({
 
   const snapshot = (consent?.content_snapshot as unknown as ConsentSnapshot | null) ?? null;
   const status = (consent?.status as ConsentStatus | undefined) ?? "draft";
+  // Patient identity for actions/labels — prefer explicit props, else the
+  // frozen snapshot (so the inline treatment-form flow needs no extra props).
+  const effPatientName = patientName ?? snapshot?.patient?.name ?? "Patient";
+  const effPatientPhone = patientPhone ?? snapshot?.patient?.phone ?? null;
   const isDentist = role === "dentist";
   const editable = isDentist && consent?.source === "digital" && isConsentEditable(status);
   const signable = isDentist && consent ? canSignConsent(status, consent.source) : false;
@@ -183,8 +192,8 @@ export function ConsentDetailDialog({
             fileName={consent.file_name}
             fileType={consent.file_type}
             fileUrl={fileUrl}
-            patientName={patientName}
-            patientPhone={patientPhone}
+            patientName={effPatientName}
+            patientPhone={effPatientPhone}
             clinicName={clinicName}
             showWhatsApp={role === "dentist" || role === "receptionist"}
             addPhoneHref={`${baseHref}/patients/${consent.patient_id}`}
@@ -193,13 +202,13 @@ export function ConsentDetailDialog({
 
         {consent && !isUploaded && snapshot && (
           <>
-            {/* Action bar (Download / Print / WhatsApp) — staff only */}
+            {/* Action bar (Download / Print / Send) — staff only */}
             <ConsentActions
               targetId="consent-document"
-              fileName={`Consent-${patientName.replace(/\s+/g, "_")}.pdf`}
-              patientName={patientName}
+              fileName={`Consent-${effPatientName.replace(/\s+/g, "_")}.pdf`}
+              patientName={effPatientName}
               clinicName={clinicName}
-              patientPhone={patientPhone}
+              patientPhone={effPatientPhone}
               showWhatsApp
               addPhoneHref={`${baseHref}/patients/${consent.patient_id}`}
             />

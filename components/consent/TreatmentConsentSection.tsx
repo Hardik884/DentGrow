@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { toast } from "sonner";
-import { Eye, PenLine, ShieldCheck, ExternalLink } from "lucide-react";
+import { Eye, PenLine, ShieldCheck, ExternalLink, FileSignature } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import { Field } from "@/components/ui/field";
@@ -10,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { getConsentTemplateContent } from "@/actions/consent-templates";
 import { createConsent } from "@/actions/consents";
+import { ConsentDetailDialog } from "@/components/consent/ConsentDetailDialog";
 import type { ConsentContent } from "@/lib/consents/content";
 import {
   DEFAULT_CONSENT_TEMPLATES,
@@ -20,6 +22,9 @@ export interface ConsentConfig {
   required: boolean;
   templateKey: string;
   sectionEdits: { key: string; body: string }[];
+  /** Set once the dentist creates the consent inline — the parent form then
+   *  skips its own save-time auto-create so no duplicate consent is made. */
+  createdConsentId?: string | null;
 }
 
 interface TreatmentConsentSectionProps {
@@ -60,6 +65,9 @@ export function TreatmentConsentSection({
   const [loading, setLoading] = useState(false);
   const [created, setCreated] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
+  // Inline consent dialog (View / Sign / Download / Print) — opened right after
+  // the consent is created, without leaving the treatment form.
+  const [openDetail, setOpenDetail] = useState(false);
 
   // Load the selected template's content (and, on first load, the sensible
   // default for the Required toggle from the template metadata).
@@ -89,15 +97,17 @@ export function TreatmentConsentSection({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [treatmentType]);
 
-  // Report config upward.
+  // Report config upward (including whether a consent was already created
+  // inline, so the parent form doesn't create a duplicate on save).
   useEffect(() => {
     onChange?.({
       required: required ?? false,
       templateKey,
       sectionEdits: Object.entries(edits).map(([key, body]) => ({ key, body })),
+      createdConsentId: created,
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [required, templateKey, edits]);
+  }, [required, templateKey, edits, created]);
 
   const templateName = TEMPLATE_OPTIONS.find((t) => t.key === templateKey)?.name ?? "Consent";
 
@@ -110,11 +120,13 @@ export function TreatmentConsentSection({
   }
 
   async function createNow() {
-    if (!patientId || !treatmentId) return;
+    if (!patientId) return;
     setCreating(true);
     const res = await createConsent({
       patient_id: patientId,
-      treatment_id: treatmentId,
+      // treatment_id is optional — in create mode the treatment isn't saved yet,
+      // so the consent is created unlinked; in edit mode it links to the treatment.
+      treatment_id: treatmentId ?? "",
       appointment_id: appointmentId ?? "",
       template_key: templateKey,
       section_edits: Object.entries(edits).map(([key, body]) => ({ key, body })),
@@ -125,8 +137,9 @@ export function TreatmentConsentSection({
       return;
     }
     if (res.data) {
-      toast.success("Consent draft created.");
+      toast.success("Consent created — you can now sign, download, or print it.");
       setCreated(res.data.id);
+      setOpenDetail(true); // open the full dialog immediately
     }
   }
 
@@ -255,37 +268,63 @@ export function TreatmentConsentSection({
             </div>
           )}
 
-          {mode === "create" ? (
-            <p className="text-[11px] text-[#71717A]">
-              A consent draft will be created for this treatment when you save. You can preview,
-              edit, and capture the patient signature from the Consent Forms tab.
-            </p>
-          ) : created ? (
-            <div className="flex items-center gap-2 rounded-md border border-[#BBF7D0] bg-[#F0FDF4] px-3 py-2">
-              <span className="text-xs font-medium text-[#16A34A]">Consent draft created.</span>
+          {created ? (
+            <div className="flex flex-wrap items-center gap-2 rounded-md border border-[#BBF7D0] bg-[#F0FDF4] px-3 py-2">
+              <span className="text-xs font-medium text-[#16A34A]">Consent created.</span>
+              <Button type="button" variant="secondary" size="xs" onClick={() => setOpenDetail(true)}>
+                <FileSignature className="h-3 w-3" aria-hidden /> View / Sign / Download / Print
+              </Button>
               {patientId && (
                 <a
                   href={`/dentist/patients/${patientId}?tab=consent-forms`}
                   className="inline-flex items-center gap-1 text-xs font-medium text-[#2563EB] underline"
                 >
-                  Open Consent Forms <ExternalLink className="h-3 w-3" aria-hidden />
+                  Consent Forms tab <ExternalLink className="h-3 w-3" aria-hidden />
                 </a>
               )}
             </div>
+          ) : patientId ? (
+            <div className="space-y-1.5">
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={createNow}
+                isLoading={creating}
+              >
+                <FileSignature className="h-3.5 w-3.5" aria-hidden /> Create Consent Now
+              </Button>
+              <p className="text-[11px] text-[#71717A]">
+                {mode === "create"
+                  ? "Create it now to sign, download, or print immediately — or just save the treatment and a draft will be created automatically."
+                  : "Create the consent to sign, download, or print it right here."}
+              </p>
+            </div>
           ) : (
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              onClick={createNow}
-              isLoading={creating}
-              disabled={!treatmentId || !patientId}
-            >
-              Create Consent
-            </Button>
+            <p className="text-[11px] text-[#71717A]">
+              A consent draft will be created for this treatment when you save. You can then sign,
+              download, or print it from the Consent Forms tab.
+            </p>
           )}
         </div>
       )}
+
+      {/* Full consent dialog (View / Sign / Download / Print). Rendered to
+          document.body via a portal so its buttons never live inside the
+          surrounding treatment <form> (which would make them submit it). */}
+      {openDetail &&
+        created &&
+        typeof document !== "undefined" &&
+        createPortal(
+          <ConsentDetailDialog
+            consentId={created}
+            role="dentist"
+            baseHref="/dentist"
+            onClose={() => setOpenDetail(false)}
+            onChanged={() => {}}
+          />,
+          document.body
+        )}
     </div>
   );
 }
