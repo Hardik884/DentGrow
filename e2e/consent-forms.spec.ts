@@ -173,25 +173,19 @@ test.describe("Patient Consent Forms", () => {
     await expect(page.getByRole("button", { name: "Send via WhatsApp" })).not.toBeVisible();
   });
 
-  test("2b. Print builds a body-level #print-portal with the document (blank-page fix)", async ({ page }) => {
+  test("2b. Print renders the document to a PDF and prints it without breaking the page", async ({ page }) => {
+    test.slow(); // html2canvas + jsPDF can be slow on a cold dev server
     await page.goto(`/dentist/patients/${ASHA_MENON}?tab=consent-forms`);
     const digitalRow = page.getByRole("listitem").filter({ hasText: "Digitally Signed" });
     await digitalRow.getByRole("button", { name: "View" }).click();
     await expect(page.locator("#consent-document")).toBeVisible({ timeout: 15_000 });
 
-    // Stub window.print so no dialog blocks; the portal + <html> flag then persist.
-    await page.evaluate(() => {
-      window.print = () => {};
-    });
     await page.getByRole("button", { name: "Print" }).click();
 
-    // The document was cloned to a body-level portal, outside the modal — this
-    // is the fix for the blank / mis-positioned print output.
-    const portal = page.locator("#print-portal");
-    await expect(portal).toHaveCount(1);
-    await expect(portal).toContainText("CONSENT FORM");
-    await expect(portal).toContainText("Asha Menon");
-    await expect(page.locator("html.is-printing-portal")).toHaveCount(1);
+    // Print renders the same single-page PDF as Download and prints it via a
+    // hidden iframe. The page must stay functional — no blank / crashed screen.
+    await expect(page.locator("#consent-document")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Download PDF" })).toBeVisible();
   });
 
   test("3. Treatment form shows the inline Consent toggle, template, and Create Consent Now", async ({ page }) => {

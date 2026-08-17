@@ -39,8 +39,17 @@ export function ConsentActions({
   directFileUrl,
 }: ConsentActionsProps) {
   const [status, setStatus] = useState<string | null>(null);
-  const [busy, setBusy] = useState<"pdf" | "whatsapp" | null>(null);
+  const [busy, setBusy] = useState<"pdf" | "print" | "whatsapp" | null>(null);
 
+  /**
+   * Render the document node to a SINGLE-PAGE A4 PDF.
+   *
+   * The whole document is fitted onto one page: it fills the page width, and if
+   * that makes it taller than one page it is scaled down (and horizontally
+   * centred) so it always fits on exactly one page — never sliced across two.
+   * This is the one source of truth for both Download PDF and Print, so the two
+   * are always identical.
+   */
   async function generatePdfBlob(): Promise<Blob | null> {
     const node = window.document.getElementById(targetId);
     if (!node) return null;
@@ -55,21 +64,57 @@ export function ConsentActions({
     const pdf = new jsPDF({ unit: "mm", format: "a4" });
     const pageWidth = pdf.internal.pageSize.getWidth();
     const pageHeight = pdf.internal.pageSize.getHeight();
-    const imgWidth = pageWidth;
-    const imgHeight = (canvas.height * imgWidth) / canvas.width;
     const imgData = canvas.toDataURL("image/png");
 
-    let heightLeft = imgHeight;
-    let position = 0;
-    pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
-    heightLeft -= pageHeight;
-    while (heightLeft > 0) {
-      position = heightLeft - imgHeight;
-      pdf.addPage();
-      pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
-      heightLeft -= pageHeight;
+    // Fit the entire document on one page.
+    let renderWidth = pageWidth;
+    let renderHeight = (canvas.height * renderWidth) / canvas.width;
+    let x = 0;
+    if (renderHeight > pageHeight) {
+      const scale = pageHeight / renderHeight;
+      renderHeight = pageHeight;
+      renderWidth = pageWidth * scale;
+      x = (pageWidth - renderWidth) / 2;
     }
+    pdf.addImage(imgData, "PNG", x, 0, renderWidth, renderHeight);
     return pdf.output("blob");
+  }
+
+  /** Print a blob (PDF or image) via a hidden, same-origin iframe. */
+  function printBlob(blob: Blob) {
+    const url = URL.createObjectURL(blob);
+    const iframe = window.document.createElement("iframe");
+    iframe.className = "consent-print-frame";
+    iframe.style.cssText = "position:fixed;right:0;bottom:0;width:0;height:0;border:0;";
+    iframe.src = url;
+
+    let done = false;
+    const cleanup = () => {
+      if (done) return;
+      done = true;
+      iframe.remove();
+      URL.revokeObjectURL(url);
+    };
+
+    iframe.onload = () => {
+      try {
+        const win = iframe.contentWindow;
+        if (!win) {
+          cleanup();
+          return;
+        }
+        win.addEventListener?.("afterprint", cleanup);
+        win.focus();
+        win.print();
+        // Safety net for browsers that never fire afterprint on the frame.
+        window.setTimeout(cleanup, 60_000);
+      } catch (err) {
+        console.error("[ConsentActions] iframe print failed:", err);
+        cleanup();
+      }
+    };
+
+    window.document.body.appendChild(iframe);
   }
 
   function downloadBlob(blob: Blob) {
@@ -102,47 +147,38 @@ export function ConsentActions({
   }
 
   /**
-   * Print the consent document.
+   * Print the consent.
    *
-   * The document lives inside a modal (a fixed, centred, overflow-capped
-   * container), so `window.print()` on the page as-is prints blank or pushes
-   * the document to the middle of the page. Instead we CLONE the document node
-   * into a body-level `#print-portal` and flag <html> with `is-printing-portal`
-   * — the print stylesheet then shows only the portal, free of the modal.
-   * The clone (and flag) are removed as soon as printing finishes.
+   * The document lives inside a modal, which the CSS "hide everything, show the
+   * target" print trick cannot escape (it printed blank / mis-positioned).
+   * Instead we print the SAME single-page PDF that Download produces — for an
+   * uploaded file we fetch the stored file — and hand it to a hidden iframe.
+   * Print output is therefore always identical to the PDF and exactly one page.
    */
-  function handlePrint() {
-    const node = window.document.getElementById(targetId);
-    if (!node) {
-      window.print();
-      return;
+  async function handlePrint() {
+    setBusy("print");
+    setStatus(null);
+    try {
+      let blob: Blob | null = null;
+      if (directFileUrl) {
+        // Uploaded consent — fetch the stored file (same-origin blob so the
+        // iframe can print it even though the signed URL is cross-origin).
+        const res = await fetch(directFileUrl);
+        blob = await res.blob();
+      } else {
+        blob = await generatePdfBlob();
+      }
+      if (!blob) {
+        setStatus("Could not prepare the document for printing.");
+        return;
+      }
+      printBlob(blob);
+    } catch (err) {
+      console.error("[ConsentActions] print failed:", err);
+      setStatus("Could not print the consent.");
+    } finally {
+      setBusy(null);
     }
-
-    const html = window.document.documentElement;
-    window.document.getElementById("print-portal")?.remove();
-
-    const portal = window.document.createElement("div");
-    portal.id = "print-portal";
-    const clone = node.cloneNode(true) as HTMLElement;
-    clone.removeAttribute("id"); // never duplicate an id in the live DOM
-    portal.appendChild(clone);
-    window.document.body.appendChild(portal);
-    html.classList.add("is-printing-portal");
-
-    let cleaned = false;
-    const cleanup = () => {
-      if (cleaned) return;
-      cleaned = true;
-      html.classList.remove("is-printing-portal");
-      portal.remove();
-      window.removeEventListener("afterprint", cleanup);
-    };
-
-    window.addEventListener("afterprint", cleanup);
-    window.print();
-    // Safety net for browsers that never fire afterprint. The portal is
-    // display:none on screen, so a late cleanup is harmless either way.
-    window.setTimeout(cleanup, 60_000);
   }
 
   async function handleWhatsApp() {
@@ -208,7 +244,7 @@ export function ConsentActions({
           <Download className="h-3.5 w-3.5" aria-hidden />
           Download PDF
         </Button>
-        <Button variant="outline" size="sm" onClick={handlePrint}>
+        <Button variant="outline" size="sm" onClick={handlePrint} isLoading={busy === "print"}>
           <Printer className="h-3.5 w-3.5" aria-hidden />
           Print
         </Button>

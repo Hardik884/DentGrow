@@ -10,7 +10,7 @@ import { Field } from "@/components/ui/field";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { getConsentTemplateContent } from "@/actions/consent-templates";
-import { createConsent } from "@/actions/consents";
+import { createConsent, getConsentsForTreatment } from "@/actions/consents";
 import { ConsentDetailDialog } from "@/components/consent/ConsentDetailDialog";
 import type { ConsentContent } from "@/lib/consents/content";
 import {
@@ -96,6 +96,28 @@ export function TreatmentConsentSection({
     if (!overridden) setTemplateKey(selectTemplateKeyForTreatmentType(treatmentType));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [treatmentType]);
+
+  // In edit mode, restore any consent that already exists for this treatment so
+  // opening a treatment shows its consent (View / Sign / Download / Print)
+  // instead of offering to create a new one — the consent's state is preserved.
+  useEffect(() => {
+    if (mode !== "edit" || !treatmentId) return;
+    let active = true;
+    getConsentsForTreatment(treatmentId).then((res) => {
+      if (!active || !res.data) return;
+      const existing = res.data.find((c) => c.status !== "cancelled");
+      if (existing) {
+        setRequired(true);
+        setTemplateKey(existing.template_key);
+        setOverridden(true); // keep the existing consent's template, don't re-auto-select
+        setCreated(existing.id);
+      }
+    });
+    return () => {
+      active = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [treatmentId, mode]);
 
   // Report config upward (including whether a consent was already created
   // inline, so the parent form doesn't create a duplicate on save).
@@ -188,91 +210,100 @@ export function TreatmentConsentSection({
 
       {required && (
         <div className="rounded-lg border border-[#E4E4E7] bg-[#FAFAFA] p-4 space-y-3">
-          <Field label="Consent Template" htmlFor="consent-template"
-            hint="Auto-selected from the treatment type. You can change it.">
-            <Select
-              id="consent-template"
-              value={templateKey}
-              onChange={(e) => {
-                setOverridden(true);
-                setTemplateKey(e.target.value);
-              }}
-            >
-              {TEMPLATE_OPTIONS.map((t) => (
-                <option key={t.key} value={t.key}>
-                  {t.name}
-                </option>
-              ))}
-            </Select>
-          </Field>
+          {/* Template picker + preview/edit — only while no consent exists yet.
+              Once a consent is created (or restored in edit mode) it is frozen
+              to its own template, so these controls are replaced by the actions. */}
+          {!created && (
+            <>
+              <Field label="Consent Template" htmlFor="consent-template"
+                hint="Auto-selected from the treatment type. You can change it.">
+                <Select
+                  id="consent-template"
+                  value={templateKey}
+                  onChange={(e) => {
+                    setOverridden(true);
+                    setTemplateKey(e.target.value);
+                  }}
+                >
+                  {TEMPLATE_OPTIONS.map((t) => (
+                    <option key={t.key} value={t.key}>
+                      {t.name}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
 
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-xs text-[#71717A]">{templateName}</span>
-            <div className="flex-1" />
-            <Button
-              type="button"
-              variant="outline"
-              size="xs"
-              onClick={() => setView(view === "preview" ? "none" : "preview")}
-              disabled={loading || !content}
-            >
-              <Eye className="h-3 w-3" aria-hidden /> Preview
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              size="xs"
-              onClick={() => (view === "edit" ? setView("none") : beginEdit())}
-              disabled={loading || !content}
-            >
-              <PenLine className="h-3 w-3" aria-hidden /> Edit
-            </Button>
-          </div>
-
-          {view === "edit" && displayContent && (
-            <div className="space-y-3 border-t border-[#E4E4E7] pt-3">
-              <p className="text-[11px] text-[#71717A]">
-                Edits here affect <strong>this consent document only</strong>, not the master
-                template.
-              </p>
-              {displayContent.sections
-                .filter((s) => s.editablePerConsent)
-                .map((s) => (
-                  <Field key={s.key} label={s.title} htmlFor={`csec-${s.key}`}>
-                    <Textarea
-                      id={`csec-${s.key}`}
-                      rows={2}
-                      value={edits[s.key] ?? s.body}
-                      onChange={(e) => setEdits((p) => ({ ...p, [s.key]: e.target.value }))}
-                    />
-                  </Field>
-                ))}
-            </div>
-          )}
-
-          {view === "preview" && displayContent && (
-            <div className="space-y-2 border-t border-[#E4E4E7] pt-3 max-h-72 overflow-y-auto">
-              {displayContent.sections
-                .filter((s) => s.body.trim().length > 0)
-                .map((s) => (
-                  <div key={s.key}>
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-[#3F3F46]">
-                      {s.title}
-                    </p>
-                    <p className="text-xs text-[#52525B] whitespace-pre-wrap">{s.body}</p>
-                  </div>
-                ))}
-              <div className="rounded border border-[#E4E4E7] bg-white px-3 py-2">
-                <p className="text-[10px] text-[#71717A]">{displayContent.disclaimer}</p>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-xs text-[#71717A]">{templateName}</span>
+                <div className="flex-1" />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="xs"
+                  onClick={() => setView(view === "preview" ? "none" : "preview")}
+                  disabled={loading || !content}
+                >
+                  <Eye className="h-3 w-3" aria-hidden /> Preview
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="xs"
+                  onClick={() => (view === "edit" ? setView("none") : beginEdit())}
+                  disabled={loading || !content}
+                >
+                  <PenLine className="h-3 w-3" aria-hidden /> Edit
+                </Button>
               </div>
-            </div>
+
+              {view === "edit" && displayContent && (
+                <div className="space-y-3 border-t border-[#E4E4E7] pt-3">
+                  <p className="text-[11px] text-[#71717A]">
+                    Edits here affect <strong>this consent document only</strong>, not the master
+                    template.
+                  </p>
+                  {displayContent.sections
+                    .filter((s) => s.editablePerConsent)
+                    .map((s) => (
+                      <Field key={s.key} label={s.title} htmlFor={`csec-${s.key}`}>
+                        <Textarea
+                          id={`csec-${s.key}`}
+                          rows={2}
+                          value={edits[s.key] ?? s.body}
+                          onChange={(e) => setEdits((p) => ({ ...p, [s.key]: e.target.value }))}
+                        />
+                      </Field>
+                    ))}
+                </div>
+              )}
+
+              {view === "preview" && displayContent && (
+                <div className="space-y-2 border-t border-[#E4E4E7] pt-3 max-h-72 overflow-y-auto">
+                  {displayContent.sections
+                    .filter((s) => s.body.trim().length > 0)
+                    .map((s) => (
+                      <div key={s.key}>
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-[#3F3F46]">
+                          {s.title}
+                        </p>
+                        <p className="text-xs text-[#52525B] whitespace-pre-wrap">{s.body}</p>
+                      </div>
+                    ))}
+                  <div className="rounded border border-[#E4E4E7] bg-white px-3 py-2">
+                    <p className="text-[10px] text-[#71717A]">{displayContent.disclaimer}</p>
+                  </div>
+                </div>
+              )}
+            </>
           )}
 
           {created ? (
             <div className="flex flex-wrap items-center gap-2 rounded-md border border-[#BBF7D0] bg-[#F0FDF4] px-3 py-2">
-              <span className="text-xs font-medium text-[#16A34A]">Consent created.</span>
+              <span className="text-xs font-medium text-[#16A34A]">
+                This treatment has a consent form.
+              </span>
               <Button type="button" variant="secondary" size="xs" onClick={() => setOpenDetail(true)}>
-                <FileSignature className="h-3 w-3" aria-hidden /> View / Sign / Download / Print
+                <FileSignature className="h-3 w-3" aria-hidden /> Open — View / Sign / Download / Print
               </Button>
               {patientId && (
                 <a

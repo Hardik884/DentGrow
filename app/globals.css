@@ -215,32 +215,17 @@ body {
   }
 }
 
-/* ── Body-level print portal (hidden on screen; only used while printing) ──── */
-/* The consent Print button clones the document here so it prints outside any
- * modal container. Always display:none on screen — it is revealed only inside
- * the print media query below. */
-#print-portal {
-  display: none;
-}
 
-/* ── Unified Print Styles ─────────────────────────────────────────────────
- * Two distinct print mechanisms, because our printable documents live in two
- * different DOM contexts:
+/* ── Full-page Print Styles (prescriptions, invoices) ──────────────────────
+ * The classic "hide everything, show only the target" approach. Works for
+ * documents rendered on a normal page (not inside a modal).
  *
- *   1. PORTAL PRINT — for documents rendered INSIDE a modal (consent forms).
- *      A modal is a `position: fixed`, vertically-centred, `max-h`/`overflow`
- *      capped container. The classic "hide everything, show only the target"
- *      trick CANNOT escape it: an absolutely-positioned child is placed
- *      relative to the centred panel and clipped by its overflow, so the
- *      document printed blank or landed in the middle of the page.
- *      Instead, the Print button CLONES the document into a body-level
- *      `#print-portal` and adds `is-printing-portal` to <html>. We then hide
- *      every other top-level node and show only the portal — no modal
- *      container in the way.
- *
- *   2. FULL-PAGE PRINT — for documents rendered on a normal page
- *      (prescriptions, invoices). The classic visibility approach works fine
- *      because there is no modal wrapper.
+ * NOTE: consent forms do NOT use this. A consent document lives inside a modal
+ * (fixed, centred, overflow-capped), which this approach cannot escape — it
+ * printed blank / mis-positioned. The consent Print button instead renders the
+ * document to the SAME single-page PDF as Download and prints that PDF via a
+ * hidden iframe (see components/consent/ConsentActions.tsx), so Print looks
+ * identical to the PDF and is always one page.
  * ─────────────────────────────────────────────────────────────────────────── */
 @media print {
   @page {
@@ -252,53 +237,19 @@ body {
     background: white;
   }
 
-  /* Hide all UI chrome in both modes */
-  nav,
-  aside,
-  header,
-  footer,
-  .no-print,
-  button {
-    display: none !important;
-  }
-
-  /* ── 1. PORTAL PRINT (modal-hosted documents, e.g. consent forms) ── */
-  html.is-printing-portal body > *:not(#print-portal) {
-    display: none !important;
-  }
-  html.is-printing-portal #print-portal {
-    display: block !important;
-    position: static !important;
-    width: 100%;
-    max-width: 100%;
-  }
-  html.is-printing-portal #print-portal .print-consent,
-  html.is-printing-portal #print-portal * {
-    visibility: visible !important;
-  }
-  html.is-printing-portal #print-portal .print-consent {
-    max-width: 100% !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    border: none !important;
-    box-shadow: none !important;
-  }
-
-  /* ── 2. FULL-PAGE PRINT (prescriptions, invoices) ── */
-  html:not(.is-printing-portal) body * {
+  body * {
     visibility: hidden;
   }
-  html:not(.is-printing-portal) .print-prescription,
-  html:not(.is-printing-portal) .print-prescription *,
-  html:not(.is-printing-portal) .print-invoice,
-  html:not(.is-printing-portal) .print-invoice *,
-  html:not(.is-printing-portal) .print-consent,
-  html:not(.is-printing-portal) .print-consent * {
+
+  .print-prescription,
+  .print-prescription *,
+  .print-invoice,
+  .print-invoice * {
     visibility: visible;
   }
-  html:not(.is-printing-portal) .print-prescription,
-  html:not(.is-printing-portal) .print-invoice,
-  html:not(.is-printing-portal) .print-consent {
+
+  .print-prescription,
+  .print-invoice {
     position: absolute;
     left: 0;
     top: 0;
@@ -307,5 +258,14 @@ body {
     padding: 0 !important;
     border: none !important;
     box-shadow: none !important;
+  }
+
+  nav,
+  aside,
+  header,
+  footer,
+  .no-print,
+  button {
+    display: none !important;
   }
 }
