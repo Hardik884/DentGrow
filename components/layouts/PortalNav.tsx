@@ -2,8 +2,10 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useTransition } from "react";
 import { cn } from "@/lib/utils";
 import { SignOutButton } from "@/components/shared/SignOutButton";
+import { signOut } from "@/actions/auth";
 import { DentGrowLogo } from "@/components/shared/DentGrowLogo";
 import {
   LayoutDashboard,
@@ -15,6 +17,7 @@ import {
   Bell,
   User,
   FileSignature,
+  LogOut,
   type LucideIcon,
 } from "lucide-react";
 
@@ -54,8 +57,15 @@ export const NAV_ITEMS: NavItem[] = [
 
 export function PortalNav({ patientId, consentFormsEnabled = false }: PortalNavProps) {
   const pathname = usePathname();
+  const [isSigningOut, startSignOutTransition] = useTransition();
 
   if (!patientId) return null;
+
+  function handleSignOut() {
+    startSignOutTransition(async () => {
+      await signOut();
+    });
+  }
 
   // Filtered per-render, never mutating the exported NAV_ITEMS constant (kept
   // stable for the nav-composition regression spec).
@@ -139,6 +149,24 @@ export function PortalNav({ patientId, consentFormsEnabled = false }: PortalNavP
             </Link>
           );
         })}
+
+        {/* Sign out — mobile has no other way to reach this (desktop-only
+            SignOutButton above lives in the "hidden sm:block" nav), so it
+            gets its own tab in the same style as the nav items. */}
+        <button
+          type="button"
+          onClick={handleSignOut}
+          disabled={isSigningOut}
+          aria-label="Sign out"
+          className="flex-1 flex flex-col items-center gap-0.5 py-1.5 px-1 text-[9px] font-medium text-[#A1A1AA] transition-colors disabled:opacity-50"
+        >
+          <span className="flex items-center justify-center h-6 w-9 rounded-full">
+            <LogOut className="h-[18px] w-[18px]" aria-hidden />
+          </span>
+          <span className="leading-none mt-0.5">
+            {isSigningOut ? "Signing out…" : "Sign out"}
+          </span>
+        </button>
       </nav>
     </header>
   );
