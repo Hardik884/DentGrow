@@ -113,23 +113,23 @@ export function PaymentForm({
       }
     })}>
       {serverError && (
-        <div className="mb-4 rounded-lg bg-[#FEF2F2] border border-[#FECACA] px-4 py-3 text-xs text-[#DC2626]">
+        <div className="mb-4 rounded-lg bg-danger-bg border border-danger-border px-4 py-3 text-xs text-danger">
           {serverError}
         </div>
       )}
 
-      <div className="bg-white border border-[#E3E9E6] rounded-xl overflow-hidden divide-y divide-[#EEF2F0]">
+      <div className="bg-surface border border-border rounded-xl overflow-hidden divide-y divide-surface-muted">
         <div className="px-6 py-5 space-y-4">
           {/* Patient */}
           <div className="space-y-1.5" ref={patientRef}>
-            <label className="block text-sm font-medium text-[#151918]">
-              Patient <span className="text-[#DC2626]" aria-hidden>*</span>
+            <label className="block text-sm font-medium text-text-primary">
+              Patient <span className="text-danger" aria-hidden>*</span>
             </label>
             {selectedPatientId ? (
               <div className="flex items-center gap-3">
-                <div className="flex-1 flex items-center gap-3 px-3 py-2 bg-[#EEF2F0] border border-[#E3E9E6] rounded-lg">
+                <div className="flex-1 flex items-center gap-3 px-3 py-2 bg-surface-muted border border-border rounded-lg">
                   <PatientAvatar name={selectedPatientName || "P"} size="sm" />
-                  <span className="text-sm font-medium text-[#151918]">
+                  <span className="text-sm font-medium text-text-primary">
                     {selectedPatientName || selectedPatientId}
                   </span>
                 </div>
@@ -158,7 +158,7 @@ export function PaymentForm({
             <input type="hidden" {...register("payment_type")} />
             <input type="hidden" {...register("treatment_id")} />
             {errors.patient_id && (
-              <p className="text-xs text-[#DC2626]" role="alert">{errors.patient_id.message}</p>
+              <p className="text-xs text-danger" role="alert">{errors.patient_id.message}</p>
             )}
           </div>
 
@@ -212,7 +212,7 @@ export function PaymentForm({
           )}
         </div>
 
-        <div className="px-6 py-4 bg-[#F6F8F6] flex items-center justify-end gap-3">
+        <div className="px-6 py-4 bg-background flex items-center justify-end gap-3">
           <Button variant="outline" size="sm" type="button" onClick={() => (onCancel ? onCancel() : router.back())}>
             Cancel
           </Button>

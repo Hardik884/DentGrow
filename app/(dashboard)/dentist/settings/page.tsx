@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { PageHeader } from "@/components/layouts/PageHeader";
+import { AppearanceSettings } from "@/components/shared/ThemeToggle";
 import { ClinicSettingsForm } from "@/components/dentist/ClinicSettingsForm";
 import { SignatureSettings } from "@/components/dentist/SignatureSettings";
 import { ConsultantSettings } from "@/components/dentist/ConsultantSettings";
@@ -51,6 +52,7 @@ export default async function ClinicSettingsPage() {
   return (
     <div className="p-6 space-y-6">
       <PageHeader title="Clinic Settings" />
+      <AppearanceSettings />
       <ClinicSettingsForm initialSettings={settings} />
       <ConsultantSettings
         initialConsultants={consultants ?? []}
@@ -64,15 +66,15 @@ export default async function ClinicSettingsPage() {
       {settings?.consent_forms_enabled === true && (
         <a
           href="/dentist/settings/consent-templates"
-          className="flex items-center justify-between rounded-xl border border-[#E3E9E6] bg-white px-5 py-4 hover:border-[#CBD5D0] transition-colors"
+          className="flex items-center justify-between rounded-xl border border-border bg-surface px-5 py-4 hover:border-border-strong transition-colors"
         >
           <div>
-            <p className="text-sm font-semibold text-[#151918]">Consent Templates</p>
-            <p className="text-xs text-[#737A76] mt-0.5">
+            <p className="text-sm font-semibold text-text-primary">Consent Templates</p>
+            <p className="text-xs text-text-secondary mt-0.5">
               Review and edit your clinic&apos;s informed-consent templates (versioned).
             </p>
           </div>
-          <span className="text-sm text-[#2563EB] font-medium">Manage →</span>
+          <span className="text-sm text-info font-medium">Manage →</span>
         </a>
       )}
     </div>

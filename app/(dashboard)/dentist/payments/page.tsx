@@ -77,27 +77,27 @@ export default async function DentistPaymentsPage({ searchParams }: Props) {
             <div className="space-y-6">
               {/* Today's revenue: clinic + consultancy = total */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div className="bg-white border rounded-lg p-4">
-                  <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+                <div className="bg-surface border rounded-lg p-4">
+                  <p className="text-xs font-medium text-text-secondary uppercase tracking-wide">
                     Today&apos;s Clinic Revenue
                   </p>
-                  <p className="text-2xl font-bold text-green-600 mt-1">
+                  <p className="text-2xl font-bold text-success mt-1">
                     {formatCurrency(clinicRevenueToday)}
                   </p>
                 </div>
-                <div className="bg-white border rounded-lg p-4">
-                  <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+                <div className="bg-surface border rounded-lg p-4">
+                  <p className="text-xs font-medium text-text-secondary uppercase tracking-wide">
                     Today&apos;s Consultancy Revenue
                   </p>
-                  <p className="text-2xl font-bold text-blue-600 mt-1">
+                  <p className="text-2xl font-bold text-info mt-1">
                     {formatCurrency(consultancyRevenueToday)}
                   </p>
                 </div>
-                <div className="bg-white border rounded-lg p-4">
-                  <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+                <div className="bg-surface border rounded-lg p-4">
+                  <p className="text-xs font-medium text-text-secondary uppercase tracking-wide">
                     Today&apos;s Total Revenue
                   </p>
-                  <p className="text-2xl font-bold text-[#151918] mt-1">
+                  <p className="text-2xl font-bold text-text-primary mt-1">
                     {formatCurrency(totalRevenueToday)}
                   </p>
                 </div>

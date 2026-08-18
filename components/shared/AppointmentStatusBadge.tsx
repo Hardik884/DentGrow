@@ -7,11 +7,11 @@ interface AppointmentStatusBadgeProps {
 }
 
 const VARIANT_CLASSES = {
-  default: "bg-[#EEF2F0] text-[#737A76]",
-  success: "bg-[#F0FDF4] text-[#16A34A] border border-[#BBF7D0]",
-  warning: "bg-[#FFFBEB] text-[#B45309] border border-[#FDE68A]",
-  info:    "bg-[#EFF6FF] text-[#2563EB] border border-[#BFDBFE]",
-  error:   "bg-[#FEF2F2] text-[#DC2626] border border-[#FECACA]",
+  default: "bg-surface-muted text-text-secondary",
+  success: "bg-success-bg text-success border border-success-border",
+  warning: "bg-warning-bg text-warning border border-warning-border",
+  info:    "bg-info-bg text-info border border-info-border",
+  error:   "bg-danger-bg text-danger border border-danger-border",
 } as const;
 
 export function AppointmentStatusBadge({ status, className }: AppointmentStatusBadgeProps) {

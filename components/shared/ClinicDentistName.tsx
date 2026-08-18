@@ -48,10 +48,10 @@ export async function ClinicDentistName() {
   if (!dentistName) return null;
 
   return (
-    <div className="mb-4 inline-flex items-center gap-2 rounded-lg border border-[#E3E9E6] bg-white px-3 py-2">
-      <Stethoscope className="h-4 w-4 text-[#9BA39D]" aria-hidden />
-      <span className="text-xs text-[#737A76]">Dentist</span>
-      <span className="text-sm font-medium text-[#151918]">{dentistName}</span>
+    <div className="mb-4 inline-flex items-center gap-2 rounded-lg border border-border bg-surface px-3 py-2">
+      <Stethoscope className="h-4 w-4 text-text-disabled" aria-hidden />
+      <span className="text-xs text-text-secondary">Dentist</span>
+      <span className="text-sm font-medium text-text-primary">{dentistName}</span>
     </div>
   );
 }

@@ -15,12 +15,12 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const variantClasses: Record<ButtonVariant, string> = {
-  default:   "bg-[#0D6B5E] text-white hover:bg-[#09544B] active:bg-[#084A42] shadow-sm focus-visible:ring-[#0D6B5E]",
-  secondary: "bg-[#EEF2F0] text-[#151918] hover:bg-[#E3E9E6] active:bg-[#D8E0DB] focus-visible:ring-[#0D6B5E]",
-  ghost:     "text-[#151918] hover:bg-[#EEF2F0] active:bg-[#E3E9E6] focus-visible:ring-[#0D6B5E]",
-  outline:   "border border-[#E3E9E6] bg-white text-[#151918] hover:border-[#CBD5D0] hover:bg-[#FAFCFA] focus-visible:ring-[#0D6B5E]",
-  danger:    "bg-[#DC2626] text-white hover:bg-[#B91C1C] active:bg-[#9F1414] shadow-sm focus-visible:ring-[#DC2626]",
-  link:      "text-[#0D6B5E] underline-offset-4 hover:underline p-0 h-auto",
+  default:   "bg-accent text-accent-foreground hover:bg-accent-hover active:bg-accent-active shadow-sm focus-visible:ring-accent",
+  secondary: "bg-surface-muted text-text-primary hover:bg-border active:bg-surface-pressed focus-visible:ring-accent",
+  ghost:     "text-text-primary hover:bg-surface-muted active:bg-border focus-visible:ring-accent",
+  outline:   "border border-border bg-surface text-text-primary hover:border-border-strong hover:bg-surface-secondary focus-visible:ring-accent",
+  danger:    "bg-danger text-danger-foreground hover:bg-danger-hover active:bg-danger-active shadow-sm focus-visible:ring-danger",
+  link:      "text-accent underline-offset-4 hover:underline p-0 h-auto",
 };
 
 const sizeClasses: Record<ButtonSize, string> = {

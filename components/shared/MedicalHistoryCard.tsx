@@ -91,9 +91,9 @@ export function MedicalHistoryCard({ appointmentId, initial, canEdit }: MedicalH
   }
 
   return (
-    <div className="bg-white border border-[#E3E9E6] rounded-xl p-5 space-y-4">
+    <div className="bg-surface border border-border rounded-xl p-5 space-y-4">
       <div className="flex items-center justify-between gap-3">
-        <h3 className="text-sm font-semibold text-[#151918]">Medical History</h3>
+        <h3 className="text-sm font-semibold text-text-primary">Medical History</h3>
         {canEdit && dirty && (
           <Button size="sm" onClick={save} isLoading={isPending} disabled={isPending}>
             <Check className="h-3.5 w-3.5" aria-hidden />
@@ -101,7 +101,7 @@ export function MedicalHistoryCard({ appointmentId, initial, canEdit }: MedicalH
           </Button>
         )}
         {canEdit && !dirty && justSaved && (
-          <span className="inline-flex items-center gap-1 text-xs text-[#16A34A]">
+          <span className="inline-flex items-center gap-1 text-xs text-success">
             <Check className="h-3 w-3" aria-hidden />
             Saved
           </span>
@@ -113,7 +113,7 @@ export function MedicalHistoryCard({ appointmentId, initial, canEdit }: MedicalH
           <label
             key={key}
             className={`inline-flex items-center gap-2 text-sm ${
-              canEdit ? "cursor-pointer text-[#151918]" : "text-[#333B36]"
+              canEdit ? "cursor-pointer text-text-primary" : "text-text-strong"
             }`}
           >
             <input
@@ -121,7 +121,7 @@ export function MedicalHistoryCard({ appointmentId, initial, canEdit }: MedicalH
               checked={value[key]}
               onChange={() => toggle(key)}
               disabled={!canEdit || isPending}
-              className="h-4 w-4 rounded border-[#CBD5D0] accent-[#0D6B5E] focus:ring-1 focus:ring-[#0D6B5E]"
+              className="h-4 w-4 rounded border-border-strong accent-accent focus:ring-1 focus:ring-accent"
             />
             {label}
           </label>
@@ -129,7 +129,7 @@ export function MedicalHistoryCard({ appointmentId, initial, canEdit }: MedicalH
       </div>
 
       <div className="space-y-1.5">
-        <p className="text-xs font-medium text-[#737A76]">Additional Medical Notes</p>
+        <p className="text-xs font-medium text-text-secondary">Additional Medical Notes</p>
         {canEdit ? (
           <Textarea
             rows={3}
@@ -142,14 +142,14 @@ export function MedicalHistoryCard({ appointmentId, initial, canEdit }: MedicalH
             disabled={isPending}
           />
         ) : (
-          <p className="text-sm text-[#333B36] whitespace-pre-wrap">
-            {saved.notes ? saved.notes : <span className="text-[#9BA39D]">None recorded</span>}
+          <p className="text-sm text-text-strong whitespace-pre-wrap">
+            {saved.notes ? saved.notes : <span className="text-text-disabled">None recorded</span>}
           </p>
         )}
       </div>
 
       {error && (
-        <p className="text-xs text-[#DC2626]" role="alert">
+        <p className="text-xs text-danger" role="alert">
           {error}
         </p>
       )}

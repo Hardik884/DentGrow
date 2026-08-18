@@ -9,24 +9,26 @@
  */
 
 import { TOOTH_STATUS_ORDER } from "@/lib/dental-chart/teeth";
-import { TOOTH_STATUS_LABELS, TOOTH_STATUS_SWATCH } from "@/lib/dental-chart/status";
+import { TOOTH_STATUS_LABELS, TOOTH_STATUS_CLASSES } from "@/lib/dental-chart/status";
+import { cn } from "@/lib/utils";
 
 export function ToothLegend() {
   return (
     <div className="flex flex-wrap items-center gap-x-4 gap-y-2" role="list" aria-label="Tooth status legend">
       {TOOTH_STATUS_ORDER.map((status) => {
-        const swatch = TOOTH_STATUS_SWATCH[status];
+        const tone = TOOTH_STATUS_CLASSES[status];
         return (
           <div key={status} role="listitem" className="flex items-center gap-1.5">
             <span
               aria-hidden
-              className="inline-block h-3 w-3 rounded-full shrink-0"
-              style={{
-                backgroundColor: swatch.fill,
-                border: `1.5px ${status === "missing" ? "dashed" : "solid"} ${swatch.stroke}`,
-              }}
+              className={cn(
+                "inline-block h-3 w-3 rounded-full shrink-0 border-[1.5px]",
+                status === "missing" ? "border-dashed" : "border-solid",
+                tone.swatchBg,
+                tone.swatchBorder,
+              )}
             />
-            <span className="text-xs text-[#737A76]">{TOOTH_STATUS_LABELS[status]}</span>
+            <span className="text-xs text-text-secondary">{TOOTH_STATUS_LABELS[status]}</span>
           </div>
         );
       })}

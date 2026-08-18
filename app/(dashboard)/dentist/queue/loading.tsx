@@ -12,7 +12,7 @@ export default function QueueLoading() {
       {/* Metric tiles */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {Array.from({ length: 4 }).map((_, i) => (
-          <div key={i} className="bg-white border border-[#E3E9E6] rounded-xl p-4 space-y-2">
+          <div key={i} className="bg-surface border border-border rounded-xl p-4 space-y-2">
             <Skeleton className="h-3.5 w-24" />
             <Skeleton className="h-7 w-12" />
           </div>
@@ -20,7 +20,7 @@ export default function QueueLoading() {
       </div>
 
       {/* Currently seeing card */}
-      <div className="bg-[#F6F8F6] border border-[#E3E9E6] rounded-xl p-4 space-y-3">
+      <div className="bg-background border border-border rounded-xl p-4 space-y-3">
         <Skeleton className="h-4 w-32" />
         <div className="flex items-center gap-3">
           <Skeleton className="h-7 w-7 rounded-full" />
@@ -34,11 +34,11 @@ export default function QueueLoading() {
       </div>
 
       {/* Waiting list */}
-      <div className="bg-white border border-[#E3E9E6] rounded-xl overflow-hidden">
-        <div className="px-5 py-3.5 border-b border-[#E3E9E6]">
+      <div className="bg-surface border border-border rounded-xl overflow-hidden">
+        <div className="px-5 py-3.5 border-b border-border">
           <Skeleton className="h-4 w-24" />
         </div>
-        <div className="divide-y divide-[#EEF2F0]">
+        <div className="divide-y divide-surface-muted">
           {Array.from({ length: 4 }).map((_, i) => (
             <div key={i} className="px-5 py-3.5 flex items-center gap-3">
               <Skeleton className="h-7 w-7 rounded-full shrink-0" />

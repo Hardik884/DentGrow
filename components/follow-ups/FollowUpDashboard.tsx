@@ -74,7 +74,7 @@ export async function FollowUpDashboard() {
 
       {/* Empty state */}
       {overdue.length === 0 && upcoming.length === 0 && (
-        <div className="bg-white border border-border rounded-xl px-6 py-12 text-center">
+        <div className="bg-surface border border-border rounded-xl px-6 py-12 text-center">
           <p className="text-text-secondary text-sm">No follow-ups to handle. All caught up!</p>
         </div>
       )}
@@ -107,12 +107,12 @@ function StatCard({
   const colorMap = {
     default: "text-text-primary",
     error:   "text-danger",
-    warning: "text-amber-600",
+    warning: "text-warning",
     success: "text-success",
   };
 
   return (
-    <div className="bg-white border border-border rounded-xl p-4 space-y-1">
+    <div className="bg-surface border border-border rounded-xl p-4 space-y-1">
       <p className="text-xs font-medium text-text-secondary uppercase tracking-wide">{label}</p>
       <p className={`text-3xl font-bold ${colorMap[variant]}`}>{value}</p>
       <p className="text-xs text-text-secondary">{description}</p>
@@ -159,7 +159,7 @@ function FollowUpTable({
   today: Date;
 }) {
   return (
-    <div className="bg-white border border-border rounded-xl divide-y divide-border overflow-hidden">
+    <div className="bg-surface border border-border rounded-xl divide-y divide-border overflow-hidden">
       {followUps.map((f) => {
         const dueDate = new Date(f.due_date);
         dueDate.setHours(0, 0, 0, 0);
@@ -174,7 +174,7 @@ function FollowUpTable({
           <Link
             key={f.id}
             href={`/dentist/follow-ups/${f.id}`}
-            className="flex items-start justify-between gap-4 px-4 py-3 hover:bg-[#F6F8F6] transition-colors"
+            className="flex items-start justify-between gap-4 px-4 py-3 hover:bg-background transition-colors"
           >
             {/* Left: info */}
             <div className="min-w-0 flex-1 space-y-1">
@@ -203,7 +203,7 @@ function FollowUpTable({
                   </span>
                 )}
                 {f.status === "pending" && !isOverdue && (
-                  <span className="text-amber-600 ml-2">
+                  <span className="text-warning ml-2">
                     · {diffDays === 0 ? "Today" : `${diffDays}d remaining`}
                   </span>
                 )}

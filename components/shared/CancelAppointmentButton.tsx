@@ -39,7 +39,7 @@ export function CancelAppointmentButton({ appointmentId, redirectHref }: CancelA
         Cancel Appointment
       </Button>
 
-      {error && <p className="text-xs text-[#DC2626] mt-1" role="alert">{error}</p>}
+      {error && <p className="text-xs text-danger mt-1" role="alert">{error}</p>}
 
       <ConfirmDialog
         open={open}

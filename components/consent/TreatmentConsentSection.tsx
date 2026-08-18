@@ -178,16 +178,16 @@ export function TreatmentConsentSection({
     <div className="px-6 py-5 space-y-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <ShieldCheck className="h-4 w-4 text-[#737A76]" aria-hidden />
-          <span className="text-sm font-medium text-[#151918]">Consent Form Required?</span>
+          <ShieldCheck className="h-4 w-4 text-text-secondary" aria-hidden />
+          <span className="text-sm font-medium text-text-primary">Consent Form Required?</span>
         </div>
-        <div className="inline-flex rounded-lg border border-[#E3E9E6] p-0.5">
+        <div className="inline-flex rounded-lg border border-border p-0.5">
           <button
             type="button"
             onClick={() => setRequired(true)}
             className={cn(
               "px-4 py-1 text-sm rounded-md transition-colors",
-              required ? "bg-[#0D6B5E] text-white" : "text-[#737A76] hover:text-[#151918]"
+              required ? "bg-accent text-accent-foreground" : "text-text-secondary hover:text-text-primary"
             )}
           >
             Yes
@@ -200,7 +200,7 @@ export function TreatmentConsentSection({
             }}
             className={cn(
               "px-4 py-1 text-sm rounded-md transition-colors",
-              required === false ? "bg-[#0D6B5E] text-white" : "text-[#737A76] hover:text-[#151918]"
+              required === false ? "bg-accent text-accent-foreground" : "text-text-secondary hover:text-text-primary"
             )}
           >
             No
@@ -209,7 +209,7 @@ export function TreatmentConsentSection({
       </div>
 
       {required && (
-        <div className="rounded-lg border border-[#E3E9E6] bg-[#F6F8F6] p-4 space-y-3">
+        <div className="rounded-lg border border-border bg-background p-4 space-y-3">
           {/* Template picker + preview/edit — only while no consent exists yet.
               Once a consent is created (or restored in edit mode) it is frozen
               to its own template, so these controls are replaced by the actions. */}
@@ -234,7 +234,7 @@ export function TreatmentConsentSection({
               </Field>
 
               <div className="flex flex-wrap items-center gap-2">
-                <span className="text-xs text-[#737A76]">{templateName}</span>
+                <span className="text-xs text-text-secondary">{templateName}</span>
                 <div className="flex-1" />
                 <Button
                   type="button"
@@ -257,8 +257,8 @@ export function TreatmentConsentSection({
               </div>
 
               {view === "edit" && displayContent && (
-                <div className="space-y-3 border-t border-[#E3E9E6] pt-3">
-                  <p className="text-[11px] text-[#737A76]">
+                <div className="space-y-3 border-t border-border pt-3">
+                  <p className="text-[11px] text-text-secondary">
                     Edits here affect <strong>this consent document only</strong>, not the master
                     template.
                   </p>
@@ -278,19 +278,19 @@ export function TreatmentConsentSection({
               )}
 
               {view === "preview" && displayContent && (
-                <div className="space-y-2 border-t border-[#E3E9E6] pt-3 max-h-72 overflow-y-auto">
+                <div className="space-y-2 border-t border-border pt-3 max-h-72 overflow-y-auto">
                   {displayContent.sections
                     .filter((s) => s.body.trim().length > 0)
                     .map((s) => (
                       <div key={s.key}>
-                        <p className="text-[10px] font-bold uppercase tracking-wider text-[#333B36]">
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-text-strong">
                           {s.title}
                         </p>
-                        <p className="text-xs text-[#5B635E] whitespace-pre-wrap">{s.body}</p>
+                        <p className="text-xs text-text-body whitespace-pre-wrap">{s.body}</p>
                       </div>
                     ))}
-                  <div className="rounded border border-[#E3E9E6] bg-white px-3 py-2">
-                    <p className="text-[10px] text-[#737A76]">{displayContent.disclaimer}</p>
+                  <div className="rounded border border-border bg-surface px-3 py-2">
+                    <p className="text-[10px] text-text-secondary">{displayContent.disclaimer}</p>
                   </div>
                 </div>
               )}
@@ -298,8 +298,8 @@ export function TreatmentConsentSection({
           )}
 
           {created ? (
-            <div className="flex flex-wrap items-center gap-2 rounded-md border border-[#BBF7D0] bg-[#F0FDF4] px-3 py-2">
-              <span className="text-xs font-medium text-[#16A34A]">
+            <div className="flex flex-wrap items-center gap-2 rounded-md border border-success-border bg-success-bg px-3 py-2">
+              <span className="text-xs font-medium text-success">
                 This treatment has a consent form.
               </span>
               <Button type="button" variant="secondary" size="xs" onClick={() => setOpenDetail(true)}>
@@ -308,7 +308,7 @@ export function TreatmentConsentSection({
               {patientId && (
                 <a
                   href={`/dentist/patients/${patientId}?tab=consent-forms`}
-                  className="inline-flex items-center gap-1 text-xs font-medium text-[#2563EB] underline"
+                  className="inline-flex items-center gap-1 text-xs font-medium text-info underline"
                 >
                   Consent Forms tab <ExternalLink className="h-3 w-3" aria-hidden />
                 </a>
@@ -325,14 +325,14 @@ export function TreatmentConsentSection({
               >
                 <FileSignature className="h-3.5 w-3.5" aria-hidden /> Create Consent Now
               </Button>
-              <p className="text-[11px] text-[#737A76]">
+              <p className="text-[11px] text-text-secondary">
                 {mode === "create"
                   ? "Create it now to sign, download, or print immediately — or just save the treatment and a draft will be created automatically."
                   : "Create the consent to sign, download, or print it right here."}
               </p>
             </div>
           ) : (
-            <p className="text-[11px] text-[#737A76]">
+            <p className="text-[11px] text-text-secondary">
               A consent draft will be created for this treatment when you save. You can then sign,
               download, or print it from the Consent Forms tab.
             </p>

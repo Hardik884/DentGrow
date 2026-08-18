@@ -86,13 +86,13 @@ export async function PatientFollowUpsTab({
       </div>
 
       {result.error && (
-        <p className="text-sm text-danger bg-danger-bg border border-[#FECACA] rounded-md px-3 py-2">
+        <p className="text-sm text-danger bg-danger-bg border border-danger-border rounded-md px-3 py-2">
           {result.error}
         </p>
       )}
 
       {followUps.length === 0 ? (
-        <div className="bg-white border border-border rounded-xl px-4 py-8 text-center">
+        <div className="bg-surface border border-border rounded-xl px-4 py-8 text-center">
           <p className="text-sm text-text-secondary">No follow-ups recorded for this patient.</p>
           {role === "dentist" && (
             <div className="mt-3 flex justify-center">
@@ -208,7 +208,7 @@ function TimelineSection({
       <p className={`text-xs font-semibold uppercase tracking-wide mb-2 ${titleClass}`}>
         {title}
       </p>
-      <div className="bg-white border border-border rounded-xl divide-y divide-border overflow-hidden">
+      <div className="bg-surface border border-border rounded-xl divide-y divide-border overflow-hidden">
         {children}
       </div>
     </div>
@@ -241,7 +241,7 @@ function FollowUpTimelineRow({
       patientName={patientName}
       role={role}
       title="Follow-up Appointment"
-      triggerClassName="w-full flex items-start justify-between px-4 py-3 hover:bg-[#F6F8F6] transition-colors gap-3 text-left"
+      triggerClassName="w-full flex items-start justify-between px-4 py-3 hover:bg-background transition-colors gap-3 text-left"
     >
       <span className="min-w-0 flex-1 space-y-1">
         {/* Type label */}
@@ -258,7 +258,7 @@ function FollowUpTimelineRow({
           {diffLabel && (
             <span
               className={`ml-2 font-medium ${
-                isOverdue ? "text-danger" : "text-amber-600"
+                isOverdue ? "text-danger" : "text-warning"
               }`}
             >
               · {diffLabel}

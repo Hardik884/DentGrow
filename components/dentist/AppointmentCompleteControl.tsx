@@ -67,11 +67,11 @@ export function AppointmentCompleteControl({
   }
 
   return (
-    <div className="bg-white border border-[#E3E9E6] rounded-xl p-5 space-y-3">
-      <h3 className="text-sm font-semibold text-[#151918]">Actions</h3>
+    <div className="bg-surface border border-border rounded-xl p-5 space-y-3">
+      <h3 className="text-sm font-semibold text-text-primary">Actions</h3>
 
       {error && (
-        <p className="text-xs text-[#DC2626]" role="alert">
+        <p className="text-xs text-danger" role="alert">
           {error}
         </p>
       )}

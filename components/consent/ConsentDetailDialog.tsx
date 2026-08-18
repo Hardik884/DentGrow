@@ -185,12 +185,12 @@ export function ConsentDetailDialog({
     >
       <div className="p-5 space-y-4">
         {loadError && (
-          <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-md px-3 py-2">
+          <p className="text-sm text-danger bg-danger-bg border border-danger-border rounded-md px-3 py-2">
             {loadError}
           </p>
         )}
 
-        {!consent && !loadError && <p className="text-sm text-[#737A76]">Loading…</p>}
+        {!consent && !loadError && <p className="text-sm text-text-secondary">Loading…</p>}
 
         {consent && isUploaded && (
           <UploadedConsentView
@@ -220,7 +220,7 @@ export function ConsentDetailDialog({
 
             {/* Dentist controls for an unsigned consent */}
             {editable && !signing && (
-              <div className="no-print flex flex-wrap items-center gap-2 border-y border-[#EEF2F0] py-3">
+              <div className="no-print flex flex-wrap items-center gap-2 border-y border-surface-muted py-3">
                 {!editing ? (
                   <Button variant="outline" size="sm" onClick={beginEdit}>
                     <PenLine className="h-3.5 w-3.5" aria-hidden /> Edit Details
@@ -250,7 +250,7 @@ export function ConsentDetailDialog({
                   </Button>
                 )}
                 {cancellable && (
-                  <Button variant="ghost" size="sm" onClick={doCancel} className="text-[#DC2626]">
+                  <Button variant="ghost" size="sm" onClick={doCancel} className="text-danger">
                     <Ban className="h-3.5 w-3.5" aria-hidden /> Cancel
                   </Button>
                 )}
@@ -259,8 +259,8 @@ export function ConsentDetailDialog({
 
             {/* Inline per-section editor */}
             {editing && (
-              <div className="no-print space-y-3 rounded-md border border-[#E3E9E6] bg-[#F6F8F6] p-4">
-                <p className="text-xs text-[#737A76]">
+              <div className="no-print space-y-3 rounded-md border border-border bg-background p-4">
+                <p className="text-xs text-text-secondary">
                   These edits affect <strong>this consent document only</strong>, not the master
                   template.
                 </p>
@@ -281,9 +281,9 @@ export function ConsentDetailDialog({
 
             {/* Sign form */}
             {signing && (
-              <div className="no-print space-y-3 rounded-md border border-[#BFDBFE] bg-[#EFF6FF] p-4">
-                <p className="text-sm font-medium text-[#1E40AF]">Patient Signature</p>
-                <p className="text-xs text-[#333B36]">
+              <div className="no-print space-y-3 rounded-md border border-info-border bg-info-bg p-4">
+                <p className="text-sm font-medium text-info-strong">Patient Signature</p>
+                <p className="text-xs text-text-strong">
                   Confirm the patient has read and understood this consent and had the opportunity to
                   ask questions, then capture their signature below.
                 </p>
@@ -308,7 +308,7 @@ export function ConsentDetailDialog({
             )}
 
             {/* The document itself (also the PDF/print capture target) */}
-            <div className="rounded-md border border-[#E3E9E6] overflow-hidden">
+            <div className="rounded-md border border-border overflow-hidden">
               <ConsentDocument
                 snapshot={snapshot}
                 status={status}
@@ -346,9 +346,9 @@ function UploadedConsentView({
   const isImg = isImageMime(fileType);
   return (
     <div className="space-y-3">
-      <div className="rounded-md border border-[#FDE68A] bg-[#FFFBEB] px-3 py-2">
-        <p className="text-xs font-medium text-[#854D0E]">Uploaded Signed Consent</p>
-        <p className="text-[11px] text-[#A16207]">
+      <div className="rounded-md border border-warning-border bg-warning-bg px-3 py-2">
+        <p className="text-xs font-medium text-warning-strong">Uploaded Signed Consent</p>
+        <p className="text-[11px] text-warning-strong">
           This consent was signed on paper outside DentGrow and uploaded. The original file is shown
           below exactly as uploaded — it was not digitally signed in DentGrow.
         </p>
@@ -365,22 +365,22 @@ function UploadedConsentView({
         directFileUrl={fileUrl}
       />
 
-      <div id="consent-uploaded-file" className="rounded-md border border-[#E3E9E6] p-3">
+      <div id="consent-uploaded-file" className="rounded-md border border-border p-3">
         {!fileUrl ? (
-          <p className="text-sm text-[#737A76]">Loading file…</p>
+          <p className="text-sm text-text-secondary">Loading file…</p>
         ) : isImg ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={fileUrl} alt={fileName ?? "Signed consent"} className="max-w-full mx-auto" />
         ) : (
           <div className="flex items-center gap-3">
-            <FileText className="h-5 w-5 text-[#737A76]" aria-hidden />
+            <FileText className="h-5 w-5 text-text-secondary" aria-hidden />
             <div className="min-w-0">
-              <p className="text-sm text-[#151918] truncate">{fileName}</p>
+              <p className="text-sm text-text-primary truncate">{fileName}</p>
               <a
                 href={fileUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-xs font-medium text-[#2563EB] underline"
+                className="text-xs font-medium text-info underline"
               >
                 Open / Download PDF
               </a>

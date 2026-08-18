@@ -68,14 +68,14 @@ export function RescheduleModal({
       aria-modal="true"
       aria-labelledby="reschedule-title"
     >
-      <div className="absolute inset-0 bg-[#0B0F0E]/45 backdrop-blur-[2px]" onClick={onClose} aria-hidden />
-      <div className="relative bg-white rounded-xl border border-[#E3E9E6] shadow-2xl w-full max-w-md p-6 space-y-5 animate-fade-in-up">
-        <h2 id="reschedule-title" className="text-base font-semibold text-[#151918]">
+      <div className="absolute inset-0 bg-scrim/45 backdrop-blur-[2px]" onClick={onClose} aria-hidden />
+      <div className="relative bg-surface rounded-xl border border-border shadow-2xl w-full max-w-md p-6 space-y-5 animate-fade-in-up">
+        <h2 id="reschedule-title" className="text-base font-semibold text-text-primary">
           Reschedule Appointment
         </h2>
 
         {error && (
-          <div className="rounded-lg bg-[#FEF2F2] border border-[#FECACA] px-4 py-3 text-xs text-[#DC2626]" role="alert">
+          <div className="rounded-lg bg-danger-bg border border-danger-border px-4 py-3 text-xs text-danger" role="alert">
             {error}
           </div>
         )}
@@ -89,17 +89,17 @@ export function RescheduleModal({
         </Field>
 
         {slotsLoading ? (
-          <div className="flex items-center gap-2 text-sm text-[#737A76]">
+          <div className="flex items-center gap-2 text-sm text-text-secondary">
             <LoadingSpinner size="sm" />
             Loading slots…
           </div>
         ) : slots.length === 0 ? (
-          <div className="rounded-lg bg-[#F6F8F6] border border-[#E3E9E6] p-4 text-center">
-            <p className="text-sm text-[#737A76]">No slots available on this date.</p>
+          <div className="rounded-lg bg-background border border-border p-4 text-center">
+            <p className="text-sm text-text-secondary">No slots available on this date.</p>
           </div>
         ) : (
           <div className="space-y-2">
-            <p className="text-sm font-medium text-[#151918]">Select Time</p>
+            <p className="text-sm font-medium text-text-primary">Select Time</p>
             <div className="grid grid-cols-3 gap-2 max-h-44 overflow-y-auto">
               {slots.map((slot) => {
                 const timePart = slot.split("T")[1]?.slice(0, 5) ?? "";
@@ -111,8 +111,8 @@ export function RescheduleModal({
                     className={cn(
                       "flex items-center justify-center gap-1 py-2 text-xs rounded-lg border transition-all",
                       selectedSlot === slot
-                        ? "border-[#0D6B5E] bg-[#0D6B5E] text-white font-medium"
-                        : "border-[#E3E9E6] text-[#151918] hover:border-[#CBD5D0] hover:bg-[#F6F8F6]"
+                        ? "border-accent bg-accent text-accent-foreground font-medium"
+                        : "border-border text-text-primary hover:border-border-strong hover:bg-background"
                     )}
                   >
                     <Clock className="h-3 w-3 opacity-60" aria-hidden />

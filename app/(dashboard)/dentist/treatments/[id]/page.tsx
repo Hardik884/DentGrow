@@ -67,10 +67,10 @@ export default async function DentistTreatmentDetailPage({ params }: Props) {
       />
 
       {/* ── Info card ─────────────────────────────────────────── */}
-      <div className="bg-white border rounded-lg p-6 space-y-4">
+      <div className="bg-surface border rounded-lg p-6 space-y-4">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h2 className="text-lg font-semibold text-gray-900">
+            <h2 className="text-lg font-semibold text-text-primary">
               {treatment.treatment_type}
             </h2>
             <Link
@@ -101,7 +101,7 @@ export default async function DentistTreatmentDetailPage({ params }: Props) {
 
         {medications.length > 0 && (
           <div className="pt-4 border-t">
-            <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">
+            <p className="text-xs font-medium text-text-secondary uppercase tracking-wide mb-2">
               Medications
             </p>
             <MedicationTable medications={medications} />
@@ -110,10 +110,10 @@ export default async function DentistTreatmentDetailPage({ params }: Props) {
 
         {treatment.patient_visible_notes && (
           <div className="pt-4 border-t">
-            <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">
+            <p className="text-xs font-medium text-text-secondary uppercase tracking-wide mb-1">
               Clinical Notes
             </p>
-            <p className="text-sm text-gray-700 whitespace-pre-wrap">
+            <p className="text-sm text-text-secondary whitespace-pre-wrap">
               {treatment.patient_visible_notes}
             </p>
           </div>
@@ -131,8 +131,8 @@ export default async function DentistTreatmentDetailPage({ params }: Props) {
 
       {/* ── Payment summary ───────────────────────────────────── */}
       {linkedPayments.length > 0 && (
-        <div className="bg-white border rounded-lg p-4 space-y-3">
-          <h3 className="font-semibold text-gray-900 text-sm">
+        <div className="bg-surface border rounded-lg p-4 space-y-3">
+          <h3 className="font-semibold text-text-primary text-sm">
             Payments for this Appointment
           </h3>
           <PaymentList payments={linkedPayments} role="dentist" />
@@ -154,8 +154,8 @@ export default async function DentistTreatmentDetailPage({ params }: Props) {
 function Detail({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">{label}</p>
-      <p className="text-sm font-semibold text-gray-900 mt-0.5">{value}</p>
+      <p className="text-xs font-medium text-text-secondary uppercase tracking-wide">{label}</p>
+      <p className="text-sm font-semibold text-text-primary mt-0.5">{value}</p>
     </div>
   );
 }

@@ -84,17 +84,17 @@ export default async function DentistAppointmentDetailPage({ params }: Props) {
       <PageHeader title="Patient Visit" backHref="/dentist/appointments" />
 
       {/* ── Summary card ─────────────────────────────────────── */}
-      <div className="bg-white border rounded-lg p-6 space-y-4">
+      <div className="bg-surface border rounded-lg p-6 space-y-4">
         <div className="flex items-start justify-between gap-4">
           <div>
             <Link
               href={`/dentist/patients/${appt.patient_id}`}
-              className="text-lg font-semibold text-gray-900 hover:text-accent transition-colors"
+              className="text-lg font-semibold text-text-primary hover:text-accent transition-colors"
             >
               {appt.patient.name}
             </Link>
             {appt.patient.phone && (
-              <p className="text-sm text-gray-500">{appt.patient.phone}</p>
+              <p className="text-sm text-text-secondary">{appt.patient.phone}</p>
             )}
           </div>
           <AppointmentStatusBadge status={appt.status as AppointmentStatus} />
@@ -219,12 +219,12 @@ export default async function DentistAppointmentDetailPage({ params }: Props) {
 function Detail({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
   return (
     <div>
-      <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+      <p className="text-xs font-medium text-text-secondary uppercase tracking-wide">
         {label}
       </p>
       <p className={cn(
         "text-sm font-semibold mt-0.5",
-        highlight ? "text-red-600" : "text-gray-900"
+        highlight ? "text-danger" : "text-text-primary"
       )}>
         {value}
       </p>

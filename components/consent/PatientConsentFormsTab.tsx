@@ -38,15 +38,15 @@ export async function PatientConsentFormsTab({ patientId, role, baseHref }: Pati
   return (
     <div className="space-y-4">
       <div>
-        <h3 className="font-semibold text-gray-900">Consent Forms</h3>
-        <p className="text-xs text-gray-500 mt-0.5">
+        <h3 className="font-semibold text-text-primary">Consent Forms</h3>
+        <p className="text-xs text-text-secondary mt-0.5">
           Informed-consent documents for this patient — digitally signed in DentGrow or uploaded
           after being signed on paper.
         </p>
       </div>
 
       {consentsRes.error && (
-        <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-md px-3 py-2">
+        <p className="text-sm text-danger bg-danger-bg border border-danger-border rounded-md px-3 py-2">
           {consentsRes.error}
         </p>
       )}

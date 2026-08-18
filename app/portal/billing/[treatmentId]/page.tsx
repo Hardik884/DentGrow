@@ -41,7 +41,7 @@ export default async function PortalBillPage({ params }: Props) {
       <div>
         <Link
           href="/portal/billing"
-          className="inline-flex items-center gap-1 text-xs text-[#737A76] hover:text-[#151918] transition-colors mb-1"
+          className="inline-flex items-center gap-1 text-xs text-text-secondary hover:text-text-primary transition-colors mb-1"
         >
           <ChevronLeft className="h-3 w-3" aria-hidden />
           Back to Billing &amp; Payments
@@ -58,7 +58,7 @@ export default async function PortalBillPage({ params }: Props) {
         showWhatsApp={false}
       />
 
-      <div className="border border-[#E3E9E6] rounded-xl overflow-hidden shadow-sm">
+      <div className="border border-border rounded-xl overflow-hidden shadow-sm">
         <InvoiceDocument document={doc} audience="patient" timezone={doc.timezone} />
       </div>
     </div>

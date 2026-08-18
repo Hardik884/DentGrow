@@ -20,7 +20,7 @@ const HOURS = Array.from({ length: 13 }, (_, i) => i + 8); // 8 AM – 8 PM
 export function PeakHoursHeatmap({ data }: PeakHoursHeatmapProps) {
   if (!data.length) {
     return (
-      <div className="h-48 flex items-center justify-center text-sm text-gray-400">
+      <div className="h-48 flex items-center justify-center text-sm text-text-disabled">
         No data for selected period
       </div>
     );
@@ -36,13 +36,13 @@ export function PeakHoursHeatmap({ data }: PeakHoursHeatmapProps) {
   }
 
   function intensity(count: number): string {
-    if (maxCount === 0 || count === 0) return "bg-[#EEF2F0]";
+    if (maxCount === 0 || count === 0) return "bg-heat-0";
     const ratio = count / maxCount;
-    if (ratio < 0.2) return "bg-[#E3E9E6]";
-    if (ratio < 0.4) return "bg-[#9BA39D]";
-    if (ratio < 0.6) return "bg-[#737A76]";
-    if (ratio < 0.8) return "bg-[#333B36]";
-    return "bg-[#0D6B5E]";
+    if (ratio < 0.2) return "bg-heat-1";
+    if (ratio < 0.4) return "bg-heat-2";
+    if (ratio < 0.6) return "bg-heat-3";
+    if (ratio < 0.8) return "bg-heat-4";
+    return "bg-heat-5";
   }
 
   return (
@@ -51,7 +51,7 @@ export function PeakHoursHeatmap({ data }: PeakHoursHeatmapProps) {
         {/* Hour labels */}
         <div className="flex mb-1 ml-8">
           {HOURS.map((h) => (
-            <div key={h} className="flex-1 text-center text-[9px] text-gray-400">
+            <div key={h} className="flex-1 text-center text-[9px] text-text-disabled">
               {h % 12 === 0 ? "12" : h % 12}
               {h < 12 ? "a" : "p"}
             </div>
@@ -60,7 +60,7 @@ export function PeakHoursHeatmap({ data }: PeakHoursHeatmapProps) {
         {/* Grid rows */}
         {DAYS.map((day, dayIdx) => (
           <div key={day} className="flex items-center mb-0.5">
-            <span className="w-8 text-[10px] text-gray-500 text-right pr-1">{day}</span>
+            <span className="w-8 text-[10px] text-text-secondary text-right pr-1">{day}</span>
             {HOURS.map((hour) => {
               const count = lookup[`${dayIdx}:${hour}`] ?? 0;
               return (
@@ -73,7 +73,7 @@ export function PeakHoursHeatmap({ data }: PeakHoursHeatmapProps) {
             })}
           </div>
         ))}
-        <p className="text-[10px] text-gray-400 mt-1 text-center">Hour of day (8 AM – 8 PM)</p>
+        <p className="text-[10px] text-text-disabled mt-1 text-center">Hour of day (8 AM – 8 PM)</p>
       </div>
     </div>
   );

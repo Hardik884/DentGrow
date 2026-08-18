@@ -36,7 +36,7 @@ export async function VisitBillPreview({ appointmentId, baseHref }: VisitBillPre
 
   if (result.error || !result.data) {
     return (
-      <p className="text-sm text-[#737A76]">
+      <p className="text-sm text-text-secondary">
         {result.error ?? "No bill available for this visit."}
       </p>
     );
@@ -45,20 +45,20 @@ export async function VisitBillPreview({ appointmentId, baseHref }: VisitBillPre
   const { bill } = result.data;
 
   return (
-    <div className="bg-white border rounded-lg p-4 space-y-4">
+    <div className="bg-surface border rounded-lg p-4 space-y-4">
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div>
           <div className="flex items-center gap-2">
-            <p className="text-sm font-semibold text-[#151918]">Bill · {bill.invoiceNumber}</p>
+            <p className="text-sm font-semibold text-text-primary">Bill · {bill.invoiceNumber}</p>
             <Badge variant={STATUS_VARIANT[bill.status]}>{STATUS_LABEL[bill.status]}</Badge>
           </div>
-          <p className="text-xs text-gray-500 mt-0.5">
+          <p className="text-xs text-text-secondary mt-0.5">
             {bill.lineItems.length} {bill.lineItems.length === 1 ? "charge" : "charges"} on this visit
           </p>
         </div>
         <Link
           href={`${baseHref}/appointments/${appointmentId}/bill`}
-          className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-md border border-[#E3E9E6] text-[#151918] hover:bg-[#EEF2F0] transition-colors"
+          className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-md border border-border text-text-primary hover:bg-surface-muted transition-colors"
         >
           <FileText className="h-3.5 w-3.5" aria-hidden />
           View Full Bill
@@ -88,10 +88,10 @@ function Stat({
   accent?: "green" | "red";
 }) {
   const color =
-    accent === "green" ? "text-[#16A34A]" : accent === "red" ? "text-[#DC2626]" : "text-[#151918]";
+    accent === "green" ? "text-success" : accent === "red" ? "text-danger" : "text-text-primary";
   return (
-    <div className="rounded-lg bg-[#F6F8F6] border border-[#E3E9E6] px-3 py-2">
-      <p className="text-[10px] uppercase tracking-wide text-[#737A76]">{label}</p>
+    <div className="rounded-lg bg-background border border-border px-3 py-2">
+      <p className="text-[10px] uppercase tracking-wide text-text-secondary">{label}</p>
       <p className={`text-sm font-semibold ${color}`}>{value}</p>
     </div>
   );

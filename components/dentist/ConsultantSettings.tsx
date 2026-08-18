@@ -111,20 +111,20 @@ function ConsultantDirectory({ initial }: { initial: Consultant[] }) {
   }
 
   return (
-    <div className="bg-white border border-[#E3E9E6] rounded-xl overflow-hidden">
-      <div className="px-6 py-5 border-b border-[#EEF2F0]">
+    <div className="bg-surface border border-border rounded-xl overflow-hidden">
+      <div className="px-6 py-5 border-b border-surface-muted">
         <div className="flex items-center gap-1.5">
-          <Users className="h-4 w-4 text-[#737A76]" aria-hidden />
-          <h3 className="text-sm font-semibold text-[#151918]">Consultants</h3>
+          <Users className="h-4 w-4 text-text-secondary" aria-hidden />
+          <h3 className="text-sm font-semibold text-text-primary">Consultants</h3>
         </div>
-        <p className="text-xs text-[#737A76] mt-0.5">
+        <p className="text-xs text-text-secondary mt-0.5">
           Manage the consultants who can be assigned to treatments for revenue distribution.
         </p>
       </div>
 
       <div className="px-6 py-5 space-y-4">
         {error && (
-          <div role="alert" className="rounded-lg bg-[#FEF2F2] border border-[#FECACA] px-4 py-3 text-xs text-[#DC2626]">
+          <div role="alert" className="rounded-lg bg-danger-bg border border-danger-border px-4 py-3 text-xs text-danger">
             {error}
           </div>
         )}
@@ -159,7 +159,7 @@ function ConsultantDirectory({ initial }: { initial: Consultant[] }) {
             description="Add a consultant to allocate treatment revenue."
           />
         ) : (
-          <div className="divide-y divide-[#EEF2F0] border border-[#EEF2F0] rounded-lg">
+          <div className="divide-y divide-surface-muted border border-surface-muted rounded-lg">
             {consultants.map((c) => (
               <div key={c.id} className="flex items-center justify-between gap-2 px-3 py-2.5">
                 {editingId === c.id ? (
@@ -174,7 +174,7 @@ function ConsultantDirectory({ initial }: { initial: Consultant[] }) {
                       <button
                         type="button"
                         onClick={() => saveEdit(c.id)}
-                        className="h-8 w-8 flex items-center justify-center rounded-lg border border-[#E3E9E6] text-[#16A34A] hover:bg-[#F0FDF4]"
+                        className="h-8 w-8 flex items-center justify-center rounded-lg border border-border text-success hover:bg-success-bg"
                         aria-label="Save"
                       >
                         <Check className="h-3.5 w-3.5" />
@@ -185,7 +185,7 @@ function ConsultantDirectory({ initial }: { initial: Consultant[] }) {
                           setEditingId(null);
                           setEditingName("");
                         }}
-                        className="h-8 w-8 flex items-center justify-center rounded-lg border border-[#E3E9E6] text-[#737A76] hover:bg-[#EEF2F0]"
+                        className="h-8 w-8 flex items-center justify-center rounded-lg border border-border text-text-secondary hover:bg-surface-muted"
                         aria-label="Cancel"
                       >
                         <X className="h-3.5 w-3.5" />
@@ -194,7 +194,7 @@ function ConsultantDirectory({ initial }: { initial: Consultant[] }) {
                   </>
                 ) : (
                   <>
-                    <span className="text-sm text-[#151918]">{c.name}</span>
+                    <span className="text-sm text-text-primary">{c.name}</span>
                     <div className="flex items-center gap-1">
                       <button
                         type="button"
@@ -202,7 +202,7 @@ function ConsultantDirectory({ initial }: { initial: Consultant[] }) {
                           setEditingId(c.id);
                           setEditingName(c.name);
                         }}
-                        className="h-8 w-8 flex items-center justify-center rounded-lg border border-[#E3E9E6] text-[#5B635E] hover:bg-[#EEF2F0]"
+                        className="h-8 w-8 flex items-center justify-center rounded-lg border border-border text-text-body hover:bg-surface-muted"
                         aria-label={`Edit ${c.name}`}
                       >
                         <Pencil className="h-3.5 w-3.5" />
@@ -210,7 +210,7 @@ function ConsultantDirectory({ initial }: { initial: Consultant[] }) {
                       <button
                         type="button"
                         onClick={() => remove(c.id)}
-                        className="h-8 w-8 flex items-center justify-center rounded-lg border border-[#E3E9E6] text-[#DC2626] hover:bg-[#FEF2F2]"
+                        className="h-8 w-8 flex items-center justify-center rounded-lg border border-border text-danger hover:bg-danger-bg"
                         aria-label={`Delete ${c.name}`}
                       >
                         <Trash2 className="h-3.5 w-3.5" />
@@ -280,20 +280,20 @@ function ConsultancyScheduleSection({ initial }: { initial: ConsultancySchedule[
   }
 
   return (
-    <div className="bg-white border border-[#E3E9E6] rounded-xl overflow-hidden">
-      <div className="px-6 py-5 border-b border-[#EEF2F0]">
+    <div className="bg-surface border border-border rounded-xl overflow-hidden">
+      <div className="px-6 py-5 border-b border-surface-muted">
         <div className="flex items-center gap-1.5">
-          <Clock className="h-4 w-4 text-[#737A76]" aria-hidden />
-          <h3 className="text-sm font-semibold text-[#151918]">External Consultancy Schedule</h3>
+          <Clock className="h-4 w-4 text-text-secondary" aria-hidden />
+          <h3 className="text-sm font-semibold text-text-primary">External Consultancy Schedule</h3>
         </div>
-        <p className="text-xs text-[#737A76] mt-0.5">
+        <p className="text-xs text-text-secondary mt-0.5">
           Block a specific date and time range when you consult elsewhere. Those slots are removed from appointment booking.
         </p>
       </div>
 
       <div className="px-6 py-5 space-y-4">
         {error && (
-          <div role="alert" className="rounded-lg bg-[#FEF2F2] border border-[#FECACA] px-4 py-3 text-xs text-[#DC2626]">
+          <div role="alert" className="rounded-lg bg-danger-bg border border-danger-border px-4 py-3 text-xs text-danger">
             {error}
           </div>
         )}
@@ -332,12 +332,12 @@ function ConsultancyScheduleSection({ initial }: { initial: ConsultancySchedule[
             description="Add a weekly block to reserve time for external consultancy."
           />
         ) : (
-          <div className="divide-y divide-[#EEF2F0] border border-[#EEF2F0] rounded-lg">
+          <div className="divide-y divide-surface-muted border border-surface-muted rounded-lg">
             {schedules.map((s) => (
               <div key={s.id} className="flex items-center justify-between gap-2 px-3 py-2.5">
-                <div className="text-sm text-[#151918]">
+                <div className="text-sm text-text-primary">
                   <span className="font-medium">{formatDate(s.date)}</span>
-                  <span className="text-[#737A76]">
+                  <span className="text-text-secondary">
                     {" "}
                     · {timeLabel(s.start_time)} – {timeLabel(s.end_time)}
                     {s.reason ? ` · ${s.reason}` : ""}
@@ -346,7 +346,7 @@ function ConsultancyScheduleSection({ initial }: { initial: ConsultancySchedule[
                 <button
                   type="button"
                   onClick={() => remove(s.id)}
-                  className="h-8 w-8 flex items-center justify-center rounded-lg border border-[#E3E9E6] text-[#DC2626] hover:bg-[#FEF2F2]"
+                  className="h-8 w-8 flex items-center justify-center rounded-lg border border-border text-danger hover:bg-danger-bg"
                   aria-label="Delete schedule"
                 >
                   <Trash2 className="h-3.5 w-3.5" />
@@ -402,20 +402,20 @@ function UnavailableDatesSection({ initial }: { initial: UnavailableDate[] }) {
   }
 
   return (
-    <div className="bg-white border border-[#E3E9E6] rounded-xl overflow-hidden">
-      <div className="px-6 py-5 border-b border-[#EEF2F0]">
+    <div className="bg-surface border border-border rounded-xl overflow-hidden">
+      <div className="px-6 py-5 border-b border-surface-muted">
         <div className="flex items-center gap-1.5">
-          <CalendarOff className="h-4 w-4 text-[#737A76]" aria-hidden />
-          <h3 className="text-sm font-semibold text-[#151918]">Unavailable Days</h3>
+          <CalendarOff className="h-4 w-4 text-text-secondary" aria-hidden />
+          <h3 className="text-sm font-semibold text-text-primary">Unavailable Days</h3>
         </div>
-        <p className="text-xs text-[#737A76] mt-0.5">
+        <p className="text-xs text-text-secondary mt-0.5">
           Mark full-day closures or holidays. No appointments can be booked on these dates.
         </p>
       </div>
 
       <div className="px-6 py-5 space-y-4">
         {error && (
-          <div role="alert" className="rounded-lg bg-[#FEF2F2] border border-[#FECACA] px-4 py-3 text-xs text-[#DC2626]">
+          <div role="alert" className="rounded-lg bg-danger-bg border border-danger-border px-4 py-3 text-xs text-danger">
             {error}
           </div>
         )}
@@ -445,17 +445,17 @@ function UnavailableDatesSection({ initial }: { initial: UnavailableDate[] }) {
             description="Add dates when the clinic is closed."
           />
         ) : (
-          <div className="divide-y divide-[#EEF2F0] border border-[#EEF2F0] rounded-lg">
+          <div className="divide-y divide-surface-muted border border-surface-muted rounded-lg">
             {dates.map((d) => (
               <div key={d.id} className="flex items-center justify-between gap-2 px-3 py-2.5">
-                <div className="text-sm text-[#151918]">
+                <div className="text-sm text-text-primary">
                   <span className="font-medium">{formatDate(d.date)}</span>
-                  {d.reason ? <span className="text-[#737A76]"> · {d.reason}</span> : null}
+                  {d.reason ? <span className="text-text-secondary"> · {d.reason}</span> : null}
                 </div>
                 <button
                   type="button"
                   onClick={() => remove(d.id)}
-                  className="h-8 w-8 flex items-center justify-center rounded-lg border border-[#E3E9E6] text-[#DC2626] hover:bg-[#FEF2F2]"
+                  className="h-8 w-8 flex items-center justify-center rounded-lg border border-border text-danger hover:bg-danger-bg"
                   aria-label="Delete date"
                 >
                   <Trash2 className="h-3.5 w-3.5" />

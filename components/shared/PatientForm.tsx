@@ -110,7 +110,7 @@ export function PatientForm({ patient, successRedirect, cancelHref, onSuccess, h
       {errors.root && (
         <div
           role="alert"
-          className="mb-4 rounded-lg bg-[#FEF2F2] border border-[#FECACA] px-4 py-3 text-xs text-[#DC2626] flex items-start gap-2"
+          className="mb-4 rounded-lg bg-danger-bg border border-danger-border px-4 py-3 text-xs text-danger flex items-start gap-2"
         >
           <svg className="h-4 w-4 shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20" aria-hidden>
             <path fillRule="evenodd" d="M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0Zm-8-5a.75.75 0 0 1 .75.75v4.5a.75.75 0 0 1-1.5 0v-4.5A.75.75 0 0 1 10 5Zm0 10a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z" clipRule="evenodd" />
@@ -119,13 +119,13 @@ export function PatientForm({ patient, successRedirect, cancelHref, onSuccess, h
         </div>
       )}
 
-      <div className="bg-white border border-[#E3E9E6] rounded-xl overflow-hidden divide-y divide-[#EEF2F0]">
+      <div className="bg-surface border border-border rounded-xl overflow-hidden divide-y divide-surface-muted">
 
         {/* ── Basic Information ────────────────────────────────── */}
         <div className="px-6 py-5 space-y-4">
           <div>
-            <h3 className="text-sm font-semibold text-[#151918]">Basic Information</h3>
-            <p className="text-xs text-[#737A76] mt-0.5">Core patient demographic details</p>
+            <h3 className="text-sm font-semibold text-text-primary">Basic Information</h3>
+            <p className="text-xs text-text-secondary mt-0.5">Core patient demographic details</p>
           </div>
 
           <Field label="Full Name" htmlFor="name" required error={errors.name?.message}>
@@ -197,8 +197,8 @@ export function PatientForm({ patient, successRedirect, cancelHref, onSuccess, h
         {/* ── Emergency Contact ────────────────────────────────── */}
         <div className="px-6 py-5 space-y-4">
           <div>
-            <h3 className="text-sm font-semibold text-[#151918]">Emergency Contact</h3>
-            <p className="text-xs text-[#737A76] mt-0.5">Optional — contact in case of emergency</p>
+            <h3 className="text-sm font-semibold text-text-primary">Emergency Contact</h3>
+            <p className="text-xs text-text-secondary mt-0.5">Optional — contact in case of emergency</p>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -229,8 +229,8 @@ export function PatientForm({ patient, successRedirect, cancelHref, onSuccess, h
         {/* ── Notes ────────────────────────────────────────────── */}
         <div className="px-6 py-5 space-y-4">
           <div>
-            <h3 className="text-sm font-semibold text-[#151918]">Clinical Notes</h3>
-            <p className="text-xs text-[#737A76] mt-0.5">Allergies, medical history, admin notes</p>
+            <h3 className="text-sm font-semibold text-text-primary">Clinical Notes</h3>
+            <p className="text-xs text-text-secondary mt-0.5">Allergies, medical history, admin notes</p>
           </div>
 
           <Field label="Notes" htmlFor="notes" error={errors.notes?.message}>
@@ -246,7 +246,7 @@ export function PatientForm({ patient, successRedirect, cancelHref, onSuccess, h
         </div>
 
         {/* ── Actions ──────────────────────────────────────────── */}
-        <div className="px-6 py-4 bg-[#F6F8F6] flex items-center justify-end gap-3">
+        <div className="px-6 py-4 bg-background flex items-center justify-end gap-3">
           {!hideCancel && (
             <Button variant="outline" size="sm" asChild>
               <a href={cancelHref}>Cancel</a>

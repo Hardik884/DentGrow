@@ -22,14 +22,14 @@ export default async function PortalConsentsPage() {
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="text-lg font-semibold text-[#151918]">My Consent Forms</h1>
-        <p className="text-sm text-[#737A76] mt-0.5">
+        <h1 className="text-lg font-semibold text-text-primary">My Consent Forms</h1>
+        <p className="text-sm text-text-secondary mt-0.5">
           Your consent forms. You can view, download, and print them here.
         </p>
       </div>
 
       {res.error ? (
-        <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-md px-3 py-2">
+        <p className="text-sm text-danger bg-danger-bg border border-danger-border rounded-md px-3 py-2">
           {res.error}
         </p>
       ) : (

@@ -21,17 +21,17 @@ export default async function ResetPasswordPage({
         <div className="mb-6">
           <DentGrowLogo size={32} withWordmark />
         </div>
-        <h1 className="text-2xl font-semibold text-[#151918] tracking-tight">Set a new password</h1>
-        <p className="text-sm text-[#737A76]">Choose a strong password you don&apos;t use elsewhere.</p>
+        <h1 className="text-2xl font-semibold text-text-primary tracking-tight">Set a new password</h1>
+        <p className="text-sm text-text-secondary">Choose a strong password you don&apos;t use elsewhere.</p>
       </div>
 
       {/* Card */}
-      <div className="bg-white border border-[#E3E9E6] rounded-xl p-6 shadow-sm">
+      <div className="bg-surface border border-border rounded-xl p-6 shadow-sm">
         <ResetPasswordForm linkError={error === "link"} />
       </div>
 
-      <p className="text-center text-xs text-[#737A76]">
-        <a href="/login" className="text-[#151918] font-medium hover:underline underline-offset-4">
+      <p className="text-center text-xs text-text-secondary">
+        <a href="/login" className="text-text-primary font-medium hover:underline underline-offset-4">
           Back to sign in
         </a>
       </p>

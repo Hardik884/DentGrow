@@ -75,7 +75,7 @@ export async function FollowUpList({
   });
 
   return (
-    <div className="bg-white border border-border rounded-xl overflow-hidden">
+    <div className="bg-surface border border-border rounded-xl overflow-hidden">
       {/* Header */}
       <div className="px-4 py-3 border-b border-border flex items-center justify-between">
         <h2 className="text-sm font-semibold text-text-primary">Follow-up Appointments</h2>
@@ -137,7 +137,7 @@ function FollowUpRow({
   const typeLabel = FOLLOW_UP_TYPE_LABELS[followUpType] ?? followUpType ?? "Follow-up";
 
   return (
-    <li className="hover:bg-[#F6F8F6] transition-colors">
+    <li className="hover:bg-background transition-colors">
       <Link
         href={`${baseHref}/follow-ups/${followUp.id}`}
         className="block px-4 py-3"
@@ -178,7 +178,7 @@ function FollowUpRow({
                 </span>
               )}
               {followUp.status === "pending" && !isOverdue && (
-                <span className="text-amber-600 ml-2">
+                <span className="text-warning ml-2">
                   · {diffDays === 0 ? "Due today" : `${diffDays} day${diffDays !== 1 ? "s" : ""} remaining`}
                 </span>
               )}

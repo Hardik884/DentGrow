@@ -31,7 +31,7 @@ export async function AppointmentCard({
 
   if (!appointment) {
     return (
-      <div className="px-5 py-4 text-sm text-[#737A76]">
+      <div className="px-5 py-4 text-sm text-text-secondary">
         Appointment not found.
       </div>
     );
@@ -40,19 +40,19 @@ export async function AppointmentCard({
   const href = baseHref ? `${baseHref}/appointments/${appointment.id}` : undefined;
 
   const content = (
-    <div className="px-5 py-3.5 flex items-center gap-3 hover:bg-[#F6F8F6] transition-colors group">
+    <div className="px-5 py-3.5 flex items-center gap-3 hover:bg-background transition-colors group">
       {!portalView && (
         <PatientAvatar name={appointment.patient.name} size="sm" />
       )}
       <div className="flex-1 min-w-0">
         {!portalView && (
-          <p className="text-sm font-medium text-[#151918] truncate">
+          <p className="text-sm font-medium text-text-primary truncate">
             {appointment.patient.name}
           </p>
         )}
         <div className="flex items-center gap-1.5 mt-0.5">
-          <Clock className="h-3 w-3 text-[#9BA39D] shrink-0" aria-hidden />
-          <p className="text-xs text-[#737A76]">
+          <Clock className="h-3 w-3 text-text-disabled shrink-0" aria-hidden />
+          <p className="text-xs text-text-secondary">
             {formatDateTimeInTimezone(appointment.scheduled_at, timezone)}
             {" · "}
             {appointment.duration_minutes} min
@@ -66,7 +66,7 @@ export async function AppointmentCard({
             fetches it at all, but this guard protects any future caller that
             supplies data another way). */}
         {!portalView && appointment.chief_complaints && (
-          <p className="text-xs text-[#9BA39D] truncate mt-0.5">{appointment.chief_complaints}</p>
+          <p className="text-xs text-text-disabled truncate mt-0.5">{appointment.chief_complaints}</p>
         )}
       </div>
       <AppointmentStatusBadge status={appointment.status} />

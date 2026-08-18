@@ -15,14 +15,14 @@ interface BadgeProps extends React.HTMLAttributes<HTMLSpanElement> {
 }
 
 const variantClasses: Record<BadgeVariant, string> = {
-  default:   "bg-[#151918] text-white",
-  secondary: "bg-[#EEF2F0] text-[#151918]",
-  outline:   "border border-[#E3E9E6] text-[#737A76] bg-transparent",
-  accent:    "bg-[#E8F4F0] text-[#09544B] border border-[#CFE7E0]",
-  success:   "bg-[#F0FDF4] text-[#16A34A] border border-[#BBF7D0]",
-  warning:   "bg-[#FFFBEB] text-[#B45309] border border-[#FDE68A]",
-  danger:    "bg-[#FEF2F2] text-[#DC2626] border border-[#FECACA]",
-  info:      "bg-[#EFF6FF] text-[#2563EB] border border-[#BFDBFE]",
+  default:   "bg-text-primary text-background",
+  secondary: "bg-surface-muted text-text-primary",
+  outline:   "border border-border text-text-secondary bg-transparent",
+  accent:    "bg-accent-soft text-accent-hover border border-accent-soft-border",
+  success:   "bg-success-bg text-success border border-success-border",
+  warning:   "bg-warning-bg text-warning border border-warning-border",
+  danger:    "bg-danger-bg text-danger border border-danger-border",
+  info:      "bg-info-bg text-info border border-info-border",
 };
 
 export function Badge({ variant = "secondary", className, children, ...props }: BadgeProps) {

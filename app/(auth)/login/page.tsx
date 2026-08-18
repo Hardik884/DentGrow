@@ -23,17 +23,17 @@ export default async function LoginPage({
         <div className="mb-6">
           <DentGrowLogo size={32} withWordmark />
         </div>
-        <h1 className="text-2xl font-semibold text-[#151918] tracking-tight">Welcome back</h1>
+        <h1 className="text-2xl font-semibold text-text-primary tracking-tight">Welcome back</h1>
       </div>
 
       {/* Card */}
-      <div className="bg-white border border-[#E3E9E6] rounded-xl p-6 shadow-sm">
+      <div className="bg-surface border border-border rounded-xl p-6 shadow-sm">
         <LoginForm clinics={clinics ?? []} resetSuccess={reset === "1"} />
       </div>
 
-      <p className="text-center text-xs text-[#737A76]">
+      <p className="text-center text-xs text-text-secondary">
         New patient?{" "}
-        <a href="/signup" className="text-[#151918] font-medium hover:underline underline-offset-4">
+        <a href="/signup" className="text-text-primary font-medium hover:underline underline-offset-4">
           Create an account
         </a>
       </p>

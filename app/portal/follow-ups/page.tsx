@@ -32,18 +32,18 @@ export default async function PortalFollowUpsPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-xl font-semibold text-gray-900">My Follow-Ups</h1>
+      <h1 className="text-xl font-semibold text-text-primary">My Follow-Ups</h1>
 
       {result.error && (
-        <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-md px-3 py-2">
+        <p className="text-sm text-danger bg-danger-bg border border-danger-border rounded-md px-3 py-2">
           {result.error}
         </p>
       )}
 
       {followUps.length === 0 ? (
-        <div className="bg-white border rounded-lg px-6 py-12 text-center">
-          <p className="text-gray-500 text-sm">No follow-ups on record.</p>
-          <p className="text-gray-400 text-xs mt-1">
+        <div className="bg-surface border rounded-lg px-6 py-12 text-center">
+          <p className="text-text-secondary text-sm">No follow-ups on record.</p>
+          <p className="text-text-disabled text-xs mt-1">
             Your dentist will create follow-ups when needed.
           </p>
         </div>
@@ -52,13 +52,13 @@ export default async function PortalFollowUpsPage() {
           {/* Summary */}
           <div className="grid grid-cols-3 gap-3">
             <SummaryCard label="Pending" value={pending.length} />
-            <SummaryCard label="Overdue" value={overdue.length} valueClass="text-red-600" />
-            <SummaryCard label="Completed" value={completed.length} valueClass="text-green-600" />
+            <SummaryCard label="Overdue" value={overdue.length} valueClass="text-danger" />
+            <SummaryCard label="Completed" value={completed.length} valueClass="text-success" />
           </div>
 
           {/* Overdue */}
           {overdue.length > 0 && (
-            <Section title="Overdue" titleClass="text-red-600">
+            <Section title="Overdue" titleClass="text-danger">
               {overdue.map((f) => {
                 const diffDays = daysBetween(f.due_date, today);
                 return (
@@ -120,15 +120,15 @@ export default async function PortalFollowUpsPage() {
 function SummaryCard({
   label,
   value,
-  valueClass = "text-gray-900",
+  valueClass = "text-text-primary",
 }: {
   label: string;
   value: number;
   valueClass?: string;
 }) {
   return (
-    <div className="bg-white border rounded-lg p-3 text-center">
-      <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">{label}</p>
+    <div className="bg-surface border rounded-lg p-3 text-center">
+      <p className="text-xs font-medium text-text-secondary uppercase tracking-wide">{label}</p>
       <p className={`text-2xl font-bold mt-1 ${valueClass}`}>{value}</p>
     </div>
   );
@@ -136,7 +136,7 @@ function SummaryCard({
 
 function Section({
   title,
-  titleClass = "text-gray-700",
+  titleClass = "text-text-secondary",
   children,
 }: {
   title: string;
@@ -146,7 +146,7 @@ function Section({
   return (
     <div className="space-y-2">
       <p className={`text-xs font-semibold uppercase tracking-wide ${titleClass}`}>{title}</p>
-      <div className="bg-white border rounded-lg divide-y">{children}</div>
+      <div className="bg-surface border rounded-lg divide-y">{children}</div>
     </div>
   );
 }
@@ -170,18 +170,18 @@ function FollowUpCard({
     <div className="px-4 py-3">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-medium text-gray-900">{notes ?? "Follow-up"}</p>
-          <p className="text-xs text-gray-500 mt-0.5">
+          <p className="text-sm font-medium text-text-primary">{notes ?? "Follow-up"}</p>
+          <p className="text-xs text-text-secondary mt-0.5">
             Due {formatDate(dueDate)}
             {status === "completed" && (
-              <span className="text-green-600 ml-2">
+              <span className="text-success ml-2">
                 · Completed {formatDate(updatedAt)}
               </span>
             )}
             {label && (
               <span
                 className={`ml-2 font-medium ${
-                  isOverdue ? "text-red-600" : "text-amber-600"
+                  isOverdue ? "text-danger" : "text-warning"
                 }`}
               >
                 · {label}

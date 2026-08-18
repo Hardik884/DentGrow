@@ -12,7 +12,7 @@ interface SourceBreakdownTableProps {
 export function SourceBreakdownTable({ data }: SourceBreakdownTableProps) {
   if (!data.length || data.every((d) => d.patientCount === 0 && d.revenue === 0)) {
     return (
-      <div className="text-sm text-gray-400 py-6 text-center">
+      <div className="text-sm text-text-disabled py-6 text-center">
         No source data for selected period
       </div>
     );
@@ -26,23 +26,23 @@ export function SourceBreakdownTable({ data }: SourceBreakdownTableProps) {
       <table className="w-full text-sm">
         <thead>
           <tr className="border-b text-left">
-            <th className="pb-2 font-medium text-gray-500">Source</th>
-            <th className="pb-2 font-medium text-gray-500 text-right">Patients</th>
-            <th className="pb-2 font-medium text-gray-500 text-right">% of Total</th>
-            <th className="pb-2 font-medium text-gray-500 text-right">Revenue</th>
+            <th className="pb-2 font-medium text-text-secondary">Source</th>
+            <th className="pb-2 font-medium text-text-secondary text-right">Patients</th>
+            <th className="pb-2 font-medium text-text-secondary text-right">% of Total</th>
+            <th className="pb-2 font-medium text-text-secondary text-right">Revenue</th>
           </tr>
         </thead>
         <tbody className="divide-y">
           {data.map((row) => (
             <tr key={row.source}>
-              <td className="py-2 font-medium text-gray-800">{row.label}</td>
-              <td className="py-2 text-right text-gray-700">{row.patientCount}</td>
-              <td className="py-2 text-right text-gray-500">
+              <td className="py-2 font-medium text-text-primary">{row.label}</td>
+              <td className="py-2 text-right text-text-secondary">{row.patientCount}</td>
+              <td className="py-2 text-right text-text-secondary">
                 {totalPatients > 0
                   ? `${Math.round((row.patientCount / totalPatients) * 100)}%`
                   : "—"}
               </td>
-              <td className="py-2 text-right text-gray-700">
+              <td className="py-2 text-right text-text-secondary">
                 {row.revenue > 0 ? formatCurrency(row.revenue) : "—"}
               </td>
             </tr>
@@ -50,10 +50,10 @@ export function SourceBreakdownTable({ data }: SourceBreakdownTableProps) {
         </tbody>
         <tfoot>
           <tr className="border-t font-semibold">
-            <td className="pt-2 text-gray-800">Total</td>
-            <td className="pt-2 text-right text-gray-800">{totalPatients}</td>
-            <td className="pt-2 text-right text-gray-500">100%</td>
-            <td className="pt-2 text-right text-gray-800">{formatCurrency(totalRevenue)}</td>
+            <td className="pt-2 text-text-primary">Total</td>
+            <td className="pt-2 text-right text-text-primary">{totalPatients}</td>
+            <td className="pt-2 text-right text-text-secondary">100%</td>
+            <td className="pt-2 text-right text-text-primary">{formatCurrency(totalRevenue)}</td>
           </tr>
         </tfoot>
       </table>

@@ -107,7 +107,7 @@ function TreatmentDetail({
 
   if (loading) {
     return (
-      <div className="flex items-center gap-2 p-8 text-sm text-[#737A76]">
+      <div className="flex items-center gap-2 p-8 text-sm text-text-secondary">
         <LoadingSpinner size="sm" />
         Loading treatment…
       </div>
@@ -115,7 +115,7 @@ function TreatmentDetail({
   }
 
   if (!treatment) {
-    return <p className="p-8 text-sm text-[#DC2626]">Treatment could not be loaded.</p>;
+    return <p className="p-8 text-sm text-danger">Treatment could not be loaded.</p>;
   }
 
   const status = treatment.status as TreatmentStatus;
@@ -128,8 +128,8 @@ function TreatmentDetail({
       {/* Header */}
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h3 className="text-lg font-semibold text-[#151918]">{treatment.treatment_type}</h3>
-          <p className="text-xs text-[#737A76] mt-0.5">
+          <h3 className="text-lg font-semibold text-text-primary">{treatment.treatment_type}</h3>
+          <p className="text-xs text-text-secondary mt-0.5">
             {treatment.performed_at
               ? formatDateTime(treatment.performed_at)
               : `Added ${formatDate(treatment.created_at)}`}
@@ -141,7 +141,7 @@ function TreatmentDetail({
         />
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 pt-4 border-t border-[#EEF2F0]">
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 pt-4 border-t border-surface-muted">
         <Detail label="Cost" value={formatCurrency(Number(treatment.cost ?? 0))} />
         <Detail
           label="Performed"
@@ -158,8 +158,8 @@ function TreatmentDetail({
 
       {/* Medicines + Instructions */}
       {medications.length > 0 && (
-        <div className="pt-4 border-t border-[#EEF2F0]">
-          <p className="text-xs font-medium text-[#737A76] uppercase tracking-wide mb-2">
+        <div className="pt-4 border-t border-surface-muted">
+          <p className="text-xs font-medium text-text-secondary uppercase tracking-wide mb-2">
             Medicines &amp; Instructions
           </p>
           <MedicationTable medications={medications} />
@@ -168,11 +168,11 @@ function TreatmentDetail({
 
       {/* Clinical / Patient notes */}
       {treatment.patient_visible_notes && (
-        <div className="pt-4 border-t border-[#EEF2F0]">
-          <p className="text-xs font-medium text-[#737A76] uppercase tracking-wide mb-1">
+        <div className="pt-4 border-t border-surface-muted">
+          <p className="text-xs font-medium text-text-secondary uppercase tracking-wide mb-1">
             Clinical Notes
           </p>
-          <p className="text-sm text-[#5B635E] whitespace-pre-wrap">
+          <p className="text-sm text-text-body whitespace-pre-wrap">
             {treatment.patient_visible_notes}
           </p>
         </div>
@@ -180,8 +180,8 @@ function TreatmentDetail({
 
       {/* Documents */}
       {documents.length > 0 && (
-        <div className="pt-4 border-t border-[#EEF2F0]">
-          <p className="text-xs font-medium text-[#737A76] uppercase tracking-wide mb-2">
+        <div className="pt-4 border-t border-surface-muted">
+          <p className="text-xs font-medium text-text-secondary uppercase tracking-wide mb-2">
             Documents
           </p>
           <ul className="space-y-1.5">
@@ -198,7 +198,7 @@ function TreatmentDetail({
                     <span className="truncate">{doc.file_name}</span>
                   </a>
                 ) : (
-                  <span className="flex items-center gap-2 text-sm text-[#9BA39D]">
+                  <span className="flex items-center gap-2 text-sm text-text-disabled">
                     <FileText className="h-3.5 w-3.5 shrink-0" aria-hidden />
                     <span className="truncate">{doc.file_name}</span>
                   </span>
@@ -211,8 +211,8 @@ function TreatmentDetail({
 
       {/* Signature + Registration */}
       {(signatureUrl || regNumber) && (
-        <div className="pt-4 border-t border-[#EEF2F0] space-y-2">
-          <p className="text-xs font-medium text-[#737A76] uppercase tracking-wide">
+        <div className="pt-4 border-t border-surface-muted space-y-2">
+          <p className="text-xs font-medium text-text-secondary uppercase tracking-wide">
             Signature
           </p>
           {signatureUrl && (
@@ -227,7 +227,7 @@ function TreatmentDetail({
             </div>
           )}
           {regNumber && (
-            <p className="text-xs text-[#5B635E]">Registration No: {regNumber}</p>
+            <p className="text-xs text-text-body">Registration No: {regNumber}</p>
           )}
         </div>
       )}
@@ -238,8 +238,8 @@ function TreatmentDetail({
 function Detail({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <p className="text-xs font-medium text-[#737A76] uppercase tracking-wide">{label}</p>
-      <p className="text-sm font-semibold text-[#151918] mt-0.5">{value}</p>
+      <p className="text-xs font-medium text-text-secondary uppercase tracking-wide">{label}</p>
+      <p className="text-sm font-semibold text-text-primary mt-0.5">{value}</p>
     </div>
   );
 }

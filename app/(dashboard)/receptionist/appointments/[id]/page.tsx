@@ -90,17 +90,17 @@ export default async function ReceptionistAppointmentDetailPage({ params }: Prop
       <PageHeader title="Appointment" backHref="/receptionist/appointments" />
 
       {/* ── Summary ──────────────────────────────────────────── */}
-      <div className="bg-white border rounded-lg p-6 space-y-4">
+      <div className="bg-surface border rounded-lg p-6 space-y-4">
         <div className="flex items-start justify-between gap-4">
           <div>
             <Link
               href={`/receptionist/patients/${appt.patient_id}`}
-              className="text-lg font-semibold text-gray-900 hover:text-accent"
+              className="text-lg font-semibold text-text-primary hover:text-accent"
             >
               {appt.patient.name}
             </Link>
             {appt.patient.phone && (
-              <p className="text-sm text-gray-500">{appt.patient.phone}</p>
+              <p className="text-sm text-text-secondary">{appt.patient.phone}</p>
             )}
           </div>
           <AppointmentStatusBadge status={status} />
@@ -150,8 +150,8 @@ export default async function ReceptionistAppointmentDetailPage({ params }: Prop
 
       {/* ── Actions ──────────────────────────────────────────── */}
       {!isTerminal && (
-        <div className="bg-white border rounded-lg p-4 space-y-3">
-          <h3 className="text-sm font-semibold text-gray-900">Actions</h3>
+        <div className="bg-surface border rounded-lg p-4 space-y-3">
+          <h3 className="text-sm font-semibold text-text-primary">Actions</h3>
           <div className="flex flex-wrap gap-3">
             {/* Check-in — only for scheduled appointments */}
             {status === "scheduled" && (
@@ -161,7 +161,7 @@ export default async function ReceptionistAppointmentDetailPage({ params }: Prop
               />
             )}
             {isCheckedIn && (
-              <div className="px-4 py-2 bg-green-50 text-green-700 text-sm font-medium rounded-md border border-green-200">
+              <div className="px-4 py-2 bg-success-bg text-success text-sm font-medium rounded-md border border-success-border">
                 ✓ Checked In
               </div>
             )}
@@ -191,12 +191,12 @@ export default async function ReceptionistAppointmentDetailPage({ params }: Prop
 function Detail({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
   return (
     <div>
-      <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+      <p className="text-xs font-medium text-text-secondary uppercase tracking-wide">
         {label}
       </p>
       <p className={cn(
         "text-sm font-semibold mt-0.5",
-        highlight ? "text-red-600" : "text-gray-900"
+        highlight ? "text-danger" : "text-text-primary"
       )}>
         {value}
       </p>

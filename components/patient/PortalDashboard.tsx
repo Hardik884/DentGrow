@@ -44,23 +44,23 @@ interface StatCardProps {
 
 function StatCard({ label, value, sub, icon, href, accent = "default" }: StatCardProps) {
   const accentIcon: Record<string, string> = {
-    default: "bg-[#EEF2F0] text-[#737A76]",
-    danger:  "bg-[#FEF2F2] text-[#DC2626]",
-    success: "bg-[#F0FDF4] text-[#16A34A]",
-    warning: "bg-[#FFFBEB] text-[#B45309]",
+    default: "bg-surface-muted text-text-secondary",
+    danger:  "bg-danger-bg text-danger",
+    success: "bg-success-bg text-success",
+    warning: "bg-warning-bg text-warning",
   };
 
   const inner = (
-    <div className="bg-white border border-[#E3E9E6] rounded-xl p-5 space-y-3 hover:bg-[#F6F8F6] transition-colors">
+    <div className="bg-surface border border-border rounded-xl p-5 space-y-3 hover:bg-background transition-colors">
       <div className="flex items-center justify-between">
-        <p className="text-xs font-medium text-[#737A76] tracking-wide">{label}</p>
+        <p className="text-xs font-medium text-text-secondary tracking-wide">{label}</p>
         <div className={`h-7 w-7 rounded-lg flex items-center justify-center ${accentIcon[accent]}`}>
           {icon}
         </div>
       </div>
       <div>
-        <p className="text-2xl font-semibold text-[#151918] tracking-tight tabular-nums">{value}</p>
-        {sub && <p className="text-xs text-[#737A76] mt-0.5">{sub}</p>}
+        <p className="text-2xl font-semibold text-text-primary tracking-tight tabular-nums">{value}</p>
+        {sub && <p className="text-xs text-text-secondary mt-0.5">{sub}</p>}
       </div>
     </div>
   );
@@ -78,14 +78,14 @@ interface SectionHeaderProps {
 
 function SectionHeader({ title, count, viewAllHref, badge }: SectionHeaderProps) {
   return (
-    <div className="px-5 py-4 border-b border-[#E3E9E6] flex items-center justify-between">
+    <div className="px-5 py-4 border-b border-border flex items-center justify-between">
       <div>
         <div className="flex items-center gap-2">
-          <h2 className="text-sm font-semibold text-[#151918]">{title}</h2>
+          <h2 className="text-sm font-semibold text-text-primary">{title}</h2>
           {badge}
         </div>
         {count !== undefined && (
-          <p className="text-xs text-[#737A76] mt-0.5">
+          <p className="text-xs text-text-secondary mt-0.5">
             {count} item{count !== 1 ? "s" : ""}
           </p>
         )}
@@ -93,7 +93,7 @@ function SectionHeader({ title, count, viewAllHref, badge }: SectionHeaderProps)
       {viewAllHref && (
         <Link
           href={viewAllHref}
-          className="flex items-center gap-1 text-xs text-[#737A76] hover:text-[#151918] transition-colors shrink-0"
+          className="flex items-center gap-1 text-xs text-text-secondary hover:text-text-primary transition-colors shrink-0"
         >
           View all <ArrowRight className="h-3 w-3" aria-hidden />
         </Link>
@@ -186,10 +186,10 @@ export async function PortalDashboard({ bookingEnabled }: PortalDashboardProps) 
       {/* ── Page header ─────────────────────────────────────── */}
       <div className="flex items-start justify-between gap-4">
         <div className="space-y-0.5">
-          <h1 className="text-xl font-semibold text-[#151918] tracking-tight">
+          <h1 className="text-xl font-semibold text-text-primary tracking-tight">
             My Dashboard
           </h1>
-          <p className="text-sm text-[#737A76]">
+          <p className="text-sm text-text-secondary">
             Your appointments, treatments and account at a glance
           </p>
         </div>
@@ -245,10 +245,10 @@ export async function PortalDashboard({ bookingEnabled }: PortalDashboardProps) 
       {(isInQueue || isBeingSeen) && queueData && (
         <Link href="/portal/queue" className="block">
           {isBeingSeen ? (
-            <div className="bg-[#F0FDF4] border border-[#BBF7D0] rounded-xl p-5 flex items-center gap-4">
-              <div className="h-10 w-10 rounded-full bg-[#16A34A] flex items-center justify-center shrink-0">
+            <div className="bg-success-bg border border-success-border rounded-xl p-5 flex items-center gap-4">
+              <div className="h-10 w-10 rounded-full bg-success flex items-center justify-center shrink-0">
                 <svg
-                  className="h-5 w-5 text-white"
+                  className="h-5 w-5 text-success-foreground"
                   fill="none"
                   viewBox="0 0 24 24"
                   stroke="currentColor"
@@ -263,46 +263,46 @@ export async function PortalDashboard({ bookingEnabled }: PortalDashboardProps) 
                 </svg>
               </div>
               <div className="flex-1">
-                <p className="text-sm font-semibold text-[#16A34A]">
+                <p className="text-sm font-semibold text-success">
                   It&apos;s Your Turn!
                 </p>
-                <p className="text-xs text-[#737A76] mt-0.5">
+                <p className="text-xs text-text-secondary mt-0.5">
                   Please proceed to the chair — you&apos;re #{queueData.position}.
                 </p>
               </div>
-              <ArrowRight className="h-4 w-4 text-[#16A34A] shrink-0" aria-hidden />
+              <ArrowRight className="h-4 w-4 text-success shrink-0" aria-hidden />
             </div>
           ) : (
-            <div className="bg-white border border-[#E3E9E6] rounded-xl overflow-hidden">
-              <div className="px-5 py-4 border-b border-[#E3E9E6] flex items-center justify-between">
+            <div className="bg-surface border border-border rounded-xl overflow-hidden">
+              <div className="px-5 py-4 border-b border-border flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <div className="h-2 w-2 rounded-full bg-[#16A34A] animate-pulse" />
-                  <p className="text-sm font-semibold text-[#151918]">
+                  <div className="h-2 w-2 rounded-full bg-success animate-pulse" />
+                  <p className="text-sm font-semibold text-text-primary">
                     You&apos;re in the queue
                   </p>
                 </div>
-                <span className="flex items-center gap-1 text-xs text-[#737A76]">
+                <span className="flex items-center gap-1 text-xs text-text-secondary">
                   Live <ArrowRight className="h-3 w-3" aria-hidden />
                 </span>
               </div>
-              <div className="grid grid-cols-3 divide-x divide-[#EEF2F0] text-center">
+              <div className="grid grid-cols-3 divide-x divide-surface-muted text-center">
                 <div className="px-5 py-4">
-                  <p className="text-2xl font-semibold text-[#151918] tabular-nums">
+                  <p className="text-2xl font-semibold text-text-primary tabular-nums">
                     #{queueData.position}
                   </p>
-                  <p className="text-xs text-[#737A76] mt-0.5">your number</p>
+                  <p className="text-xs text-text-secondary mt-0.5">your number</p>
                 </div>
                 <div className="px-5 py-4">
-                  <p className="text-2xl font-semibold text-[#151918] tabular-nums">
+                  <p className="text-2xl font-semibold text-text-primary tabular-nums">
                     {queueData.patientsAhead}
                   </p>
-                  <p className="text-xs text-[#737A76] mt-0.5">ahead</p>
+                  <p className="text-xs text-text-secondary mt-0.5">ahead</p>
                 </div>
                 <div className="px-5 py-4">
-                  <p className="text-2xl font-semibold text-[#151918] tabular-nums">
+                  <p className="text-2xl font-semibold text-text-primary tabular-nums">
                     ~{queueData.estimatedWaitMinutes}m
                   </p>
-                  <p className="text-xs text-[#737A76] mt-0.5">est. wait</p>
+                  <p className="text-xs text-text-secondary mt-0.5">est. wait</p>
                 </div>
               </div>
             </div>
@@ -317,7 +317,7 @@ export async function PortalDashboard({ bookingEnabled }: PortalDashboardProps) 
         <div className="lg:col-span-3 space-y-4">
 
           {/* Upcoming appointments */}
-          <div className="bg-white border border-[#E3E9E6] rounded-xl overflow-hidden">
+          <div className="bg-surface border border-border rounded-xl overflow-hidden">
             <SectionHeader
               title="Upcoming Appointments"
               count={appointments.length}
@@ -338,7 +338,7 @@ export async function PortalDashboard({ bookingEnabled }: PortalDashboardProps) 
                 className="py-10"
               />
             ) : (
-              <div className="divide-y divide-[#EEF2F0]">
+              <div className="divide-y divide-surface-muted">
                 {appointments.map((appt) => (
                   <Link key={appt.id} href={`/portal/appointments/${appt.id}`}>
                     <AppointmentCard appointment={appt} portalView timezone={clinicTimezone} />
@@ -350,20 +350,20 @@ export async function PortalDashboard({ bookingEnabled }: PortalDashboardProps) 
 
           {/* Pending follow-ups */}
           {pendingFollowUps.length > 0 && (
-            <div className="bg-white border border-[#E3E9E6] rounded-xl overflow-hidden">
+            <div className="bg-surface border border-border rounded-xl overflow-hidden">
               <SectionHeader
                 title="Follow-Ups"
                 count={pendingFollowUps.length}
                 viewAllHref="/portal/follow-ups"
                 badge={
                   overdueFollowUps.length > 0 ? (
-                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-[#FEF2F2] text-[#DC2626] border border-[#FECACA]">
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-danger-bg text-danger border border-danger-border">
                       {overdueFollowUps.length} overdue
                     </span>
                   ) : undefined
                 }
               />
-              <div className="divide-y divide-[#EEF2F0]">
+              <div className="divide-y divide-surface-muted">
                 {[...overdueFollowUps, ...upcomingFollowUps]
                   .slice(0, 4)
                   .map((f) => {
@@ -376,14 +376,14 @@ export async function PortalDashboard({ bookingEnabled }: PortalDashboardProps) 
                         className="px-5 py-3.5 flex items-center justify-between gap-3"
                       >
                         <div className="flex items-center gap-2.5 min-w-0">
-                          <div className="h-7 w-7 rounded-lg bg-[#EEF2F0] flex items-center justify-center shrink-0">
-                            <Bell className="h-3.5 w-3.5 text-[#737A76]" aria-hidden />
+                          <div className="h-7 w-7 rounded-lg bg-surface-muted flex items-center justify-center shrink-0">
+                            <Bell className="h-3.5 w-3.5 text-text-secondary" aria-hidden />
                           </div>
                           <div className="min-w-0">
-                            <p className="text-sm font-medium text-[#151918] truncate">
+                            <p className="text-sm font-medium text-text-primary truncate">
                               {f.notes ?? "Follow-up"}
                             </p>
-                            <p className="text-xs text-[#737A76]">
+                            <p className="text-xs text-text-secondary">
                               Due {formatDate(f.due_date)}
                             </p>
                           </div>
@@ -391,8 +391,8 @@ export async function PortalDashboard({ bookingEnabled }: PortalDashboardProps) 
                         <span
                           className={`text-xs font-medium shrink-0 ${
                             isOverdue
-                              ? "text-[#DC2626]"
-                              : "text-[#B45309]"
+                              ? "text-danger"
+                              : "text-warning"
                           }`}
                         >
                           {isOverdue
@@ -413,21 +413,21 @@ export async function PortalDashboard({ bookingEnabled }: PortalDashboardProps) 
         <div className="lg:col-span-2 space-y-4">
 
           {/* Balance card */}
-          <div className="bg-white border border-[#E3E9E6] rounded-xl overflow-hidden">
+          <div className="bg-surface border border-border rounded-xl overflow-hidden">
             <SectionHeader title="Account Balance" />
             <div className="px-5 pb-5 pt-4">
               {balanceResult.error ? (
-                <p className="text-sm text-[#737A76]">Unable to load balance.</p>
+                <p className="text-sm text-text-secondary">Unable to load balance.</p>
               ) : balance <= 0 ? (
                 <div className="flex items-center gap-3">
-                  <div className="h-9 w-9 rounded-lg bg-[#F0FDF4] flex items-center justify-center shrink-0">
-                    <CheckCircle2 className="h-4.5 w-4.5 text-[#16A34A]" aria-hidden />
+                  <div className="h-9 w-9 rounded-lg bg-success-bg flex items-center justify-center shrink-0">
+                    <CheckCircle2 className="h-4.5 w-4.5 text-success" aria-hidden />
                   </div>
                   <div>
-                    <p className="text-sm font-semibold text-[#16A34A]">
+                    <p className="text-sm font-semibold text-success">
                       No remaining balance
                     </p>
-                    <p className="text-xs text-[#737A76] mt-0.5">
+                    <p className="text-xs text-text-secondary mt-0.5">
                       Your account is all clear.
                     </p>
                   </div>
@@ -435,24 +435,24 @@ export async function PortalDashboard({ bookingEnabled }: PortalDashboardProps) 
               ) : (
                 <>
                   <div className="flex items-center gap-3">
-                    <div className="h-9 w-9 rounded-lg bg-[#FEF2F2] flex items-center justify-center shrink-0">
-                      <AlertCircle className="h-4.5 w-4.5 text-[#DC2626]" aria-hidden />
+                    <div className="h-9 w-9 rounded-lg bg-danger-bg flex items-center justify-center shrink-0">
+                      <AlertCircle className="h-4.5 w-4.5 text-danger" aria-hidden />
                     </div>
                     <div className="flex-1">
-                      <p className="text-xs font-medium text-[#737A76]">
+                      <p className="text-xs font-medium text-text-secondary">
                         Remaining Balance
                       </p>
-                      <p className="text-2xl font-semibold text-[#151918] tracking-tight tabular-nums mt-0.5">
+                      <p className="text-2xl font-semibold text-text-primary tracking-tight tabular-nums mt-0.5">
                         {formatCurrency(balance)}
                       </p>
                     </div>
                   </div>
-                  <p className="text-xs text-[#737A76] mt-3">
+                  <p className="text-xs text-text-secondary mt-3">
                     Please contact the clinic to arrange payment.
                   </p>
                   <Link
                     href="/portal/payments"
-                    className="mt-3 flex items-center gap-1 text-xs font-medium text-[#151918] hover:underline underline-offset-4"
+                    className="mt-3 flex items-center gap-1 text-xs font-medium text-text-primary hover:underline underline-offset-4"
                   >
                     View payment history{" "}
                     <ArrowRight className="h-3 w-3" aria-hidden />
@@ -463,7 +463,7 @@ export async function PortalDashboard({ bookingEnabled }: PortalDashboardProps) 
           </div>
 
           {/* Recent treatments */}
-          <div className="bg-white border border-[#E3E9E6] rounded-xl overflow-hidden">
+          <div className="bg-surface border border-border rounded-xl overflow-hidden">
             <SectionHeader
               title="Recent Treatments"
               count={treatments.length}
@@ -477,35 +477,35 @@ export async function PortalDashboard({ bookingEnabled }: PortalDashboardProps) 
                 className="py-10"
               />
             ) : (
-              <div className="divide-y divide-[#EEF2F0]">
+              <div className="divide-y divide-surface-muted">
                 {treatments.map((t) => (
                   <div
                     key={t.id}
                     className="px-5 py-3.5 flex items-center justify-between gap-3"
                   >
                     <div className="flex items-center gap-2.5 min-w-0">
-                      <div className="h-7 w-7 rounded-lg bg-[#EEF2F0] flex items-center justify-center shrink-0">
+                      <div className="h-7 w-7 rounded-lg bg-surface-muted flex items-center justify-center shrink-0">
                         <Stethoscope
-                          className="h-3.5 w-3.5 text-[#737A76]"
+                          className="h-3.5 w-3.5 text-text-secondary"
                           aria-hidden
                         />
                       </div>
                       <div className="min-w-0">
-                        <p className="text-sm font-medium text-[#151918] truncate">
+                        <p className="text-sm font-medium text-text-primary truncate">
                           {t.treatment_type}
                         </p>
                         {t.patient_visible_notes && (
-                          <p className="text-xs text-[#737A76] truncate">
+                          <p className="text-xs text-text-secondary truncate">
                             {t.patient_visible_notes}
                           </p>
                         )}
                       </div>
                     </div>
                     <div className="text-right shrink-0">
-                      <p className="text-xs text-[#737A76]">
+                      <p className="text-xs text-text-secondary">
                         {TREATMENT_STATUS_LABELS[t.status as TreatmentStatus]}
                       </p>
-                      <p className="text-xs text-[#9BA39D] tabular-nums">
+                      <p className="text-xs text-text-disabled tabular-nums">
                         {formatCurrency(Number(t.cost))}
                       </p>
                     </div>
@@ -516,9 +516,9 @@ export async function PortalDashboard({ bookingEnabled }: PortalDashboardProps) 
           </div>
 
           {/* Quick actions */}
-          <div className="bg-white border border-[#E3E9E6] rounded-xl overflow-hidden">
-            <div className="px-5 py-4 border-b border-[#E3E9E6]">
-              <h2 className="text-sm font-semibold text-[#151918]">Quick Actions</h2>
+          <div className="bg-surface border border-border rounded-xl overflow-hidden">
+            <div className="px-5 py-4 border-b border-border">
+              <h2 className="text-sm font-semibold text-text-primary">Quick Actions</h2>
             </div>
             <div className="p-3 grid grid-cols-2 gap-2">
               {[
@@ -549,9 +549,9 @@ export async function PortalDashboard({ bookingEnabled }: PortalDashboardProps) 
                 <Link
                   key={link.href}
                   href={link.href}
-                  className="flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium text-[#151918] hover:bg-[#EEF2F0] transition-colors"
+                  className="flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium text-text-primary hover:bg-surface-muted transition-colors"
                 >
-                  <span className="text-[#737A76]">{link.icon}</span>
+                  <span className="text-text-secondary">{link.icon}</span>
                   <span className="truncate">{link.label}</span>
                 </Link>
               ))}

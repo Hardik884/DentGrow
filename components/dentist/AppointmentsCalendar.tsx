@@ -128,7 +128,7 @@ export function AppointmentsCalendar({ clinicTimezone, clinicToday }: Appointmen
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
       {/* Calendar grid */}
-      <div className="lg:col-span-2 bg-white border border-border rounded-xl p-4">
+      <div className="lg:col-span-2 bg-surface border border-border rounded-xl p-4">
         <div className="flex items-center justify-between mb-4">
           <button
             type="button"
@@ -205,7 +205,7 @@ export function AppointmentsCalendar({ clinicTimezone, clinicToday }: Appointmen
       </div>
 
       {/* Day panel */}
-      <div className="bg-white border border-border rounded-xl p-4">
+      <div className="bg-surface border border-border rounded-xl p-4">
         <h3 className="text-sm font-semibold text-text-primary mb-3">
           {new Date(`${selectedDay}T12:00:00`).toLocaleDateString("en-GB", {
             weekday: "long",

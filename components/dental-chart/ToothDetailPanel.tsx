@@ -162,7 +162,7 @@ export function ToothDetailPanel({
       <Dialog open={open} onClose={onClose} title={`Tooth ${entry.toothNumber}`} size="md">
         <div className="p-5 space-y-5">
           {error && (
-            <div className="rounded-lg bg-[#FEF2F2] border border-[#FECACA] px-3 py-2 text-xs text-[#DC2626]">
+            <div className="rounded-lg bg-danger-bg border border-danger-border px-3 py-2 text-xs text-danger">
               {error}
             </div>
           )}
@@ -208,10 +208,10 @@ export function ToothDetailPanel({
             </div>
           </div>
 
-          <div className="border-t border-[#EEF2F0] pt-4 space-y-2">
+          <div className="border-t border-surface-muted pt-4 space-y-2">
             <div className="flex items-center justify-between gap-2">
-              <h3 className="text-xs font-semibold text-[#151918] uppercase tracking-wide flex items-center gap-1.5">
-                <Stethoscope className="h-3.5 w-3.5 text-[#737A76]" aria-hidden />
+              <h3 className="text-xs font-semibold text-text-primary uppercase tracking-wide flex items-center gap-1.5">
+                <Stethoscope className="h-3.5 w-3.5 text-text-secondary" aria-hidden />
                 Linked Treatments
               </h3>
               <div className="flex items-center gap-1.5">
@@ -236,14 +236,14 @@ export function ToothDetailPanel({
             </div>
 
             {linkPickerOpen && (
-              <div className="rounded-lg border border-[#E3E9E6] bg-[#F6F8F6] p-3 space-y-2">
+              <div className="rounded-lg border border-border bg-background p-3 space-y-2">
                 {linkError && (
-                  <p className="text-xs text-[#DC2626]">{linkError}</p>
+                  <p className="text-xs text-danger">{linkError}</p>
                 )}
                 {loadingTreatments ? (
-                  <p className="text-xs text-[#737A76]">Loading this patient's treatments…</p>
+                  <p className="text-xs text-text-secondary">Loading this patient's treatments…</p>
                 ) : linkableTreatments.length === 0 ? (
-                  <p className="text-xs text-[#9BA39D]">
+                  <p className="text-xs text-text-disabled">
                     No other treatments to link — every existing treatment for this patient is already linked here.
                   </p>
                 ) : (
@@ -280,19 +280,19 @@ export function ToothDetailPanel({
             )}
 
             {entry.treatments.length === 0 ? (
-              <p className="text-xs text-[#9BA39D]">No treatments linked to this tooth yet.</p>
+              <p className="text-xs text-text-disabled">No treatments linked to this tooth yet.</p>
             ) : (
-              <ul className="divide-y divide-[#EEF2F0] border border-[#E3E9E6] rounded-lg overflow-hidden">
+              <ul className="divide-y divide-surface-muted border border-border rounded-lg overflow-hidden">
                 {entry.treatments.map((t) => (
                   <li key={t.id} className="flex items-stretch">
                     <button
                       type="button"
                       onClick={() => setViewingTreatmentId(t.id)}
-                      className="flex-1 min-w-0 flex items-center justify-between gap-3 px-3 py-2 text-left hover:bg-[#F6F8F6] transition-colors"
+                      className="flex-1 min-w-0 flex items-center justify-between gap-3 px-3 py-2 text-left hover:bg-background transition-colors"
                     >
                       <span className="min-w-0">
-                        <span className="block text-sm text-[#151918] truncate">{t.treatment_type}</span>
-                        <span className="block text-[11px] text-[#737A76]">
+                        <span className="block text-sm text-text-primary truncate">{t.treatment_type}</span>
+                        <span className="block text-[11px] text-text-secondary">
                           {t.performed_at ? formatDateTime(t.performed_at) : "Not yet performed"}
                           {" · "}
                           {formatCurrency(Number(t.cost))}
@@ -311,7 +311,7 @@ export function ToothDetailPanel({
                       disabled={unlinkingId === t.id}
                       aria-label={`Unlink ${t.treatment_type} from this tooth`}
                       title="Unlink from this tooth"
-                      className="px-2.5 flex items-center justify-center text-[#9BA39D] hover:text-[#DC2626] hover:bg-[#FEF2F2] transition-colors border-l border-[#EEF2F0] disabled:opacity-40"
+                      className="px-2.5 flex items-center justify-center text-text-disabled hover:text-danger hover:bg-danger-bg transition-colors border-l border-surface-muted disabled:opacity-40"
                     >
                       <X className="h-3.5 w-3.5" aria-hidden />
                     </button>
@@ -321,13 +321,13 @@ export function ToothDetailPanel({
             )}
           </div>
 
-          <div className="border-t border-[#EEF2F0] pt-4 space-y-2">
-            <h3 className="text-xs font-semibold text-[#151918] uppercase tracking-wide flex items-center gap-1.5">
-              <HistoryIcon className="h-3.5 w-3.5 text-[#737A76]" aria-hidden />
+          <div className="border-t border-surface-muted pt-4 space-y-2">
+            <h3 className="text-xs font-semibold text-text-primary uppercase tracking-wide flex items-center gap-1.5">
+              <HistoryIcon className="h-3.5 w-3.5 text-text-secondary" aria-hidden />
               History
             </h3>
             {entry.history.length === 0 ? (
-              <p className="text-xs text-[#9BA39D]">No chart history yet.</p>
+              <p className="text-xs text-text-disabled">No chart history yet.</p>
             ) : (
               <ul className="space-y-2">
                 {entry.history.map((h) => (
@@ -366,8 +366,8 @@ function HistoryRow({ history }: { history: ToothHistory }) {
   }
 
   return (
-    <li className="text-xs text-[#5B635E] flex items-start gap-2">
-      <span className="text-[#9BA39D] tabular-nums shrink-0">{formatDateTime(history.timestamp)}</span>
+    <li className="text-xs text-text-body flex items-start gap-2">
+      <span className="text-text-disabled tabular-nums shrink-0">{formatDateTime(history.timestamp)}</span>
       <span className="min-w-0">{summary}</span>
     </li>
   );

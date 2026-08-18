@@ -38,8 +38,8 @@ export function QueueEntry({ entry, showActions = false }: QueueEntryProps) {
     <div className="space-y-1.5">
       <div className="flex items-center gap-3">
         {/* Position badge */}
-        <div className="w-7 h-7 rounded-full bg-[#EEF2F0] flex items-center justify-center shrink-0">
-          <span className="text-xs font-semibold text-[#737A76] tabular-nums">
+        <div className="w-7 h-7 rounded-full bg-surface-muted flex items-center justify-center shrink-0">
+          <span className="text-xs font-semibold text-text-secondary tabular-nums">
             {entry.position}
           </span>
         </div>
@@ -47,10 +47,10 @@ export function QueueEntry({ entry, showActions = false }: QueueEntryProps) {
         <PatientAvatar name={entry.patient.name} size="sm" />
 
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium text-[#151918] truncate">
+          <p className="text-sm font-medium text-text-primary truncate">
             {entry.patient.name}
           </p>
-          <p className="text-xs text-[#737A76]">
+          <p className="text-xs text-text-secondary">
             {formatTimeAgo(entry.checked_in_at)} · {durationMinutes} min appt
           </p>
         </div>
@@ -78,7 +78,7 @@ export function QueueEntry({ entry, showActions = false }: QueueEntryProps) {
       </div>
 
       {error && (
-        <p className="text-xs text-[#DC2626] pl-10" role="alert">{error}</p>
+        <p className="text-xs text-danger pl-10" role="alert">{error}</p>
       )}
     </div>
   );

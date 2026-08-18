@@ -50,19 +50,19 @@ export function CompleteAppointmentButton({
   }
 
   return (
-    <div className="bg-white border border-[#E3E9E6] rounded-xl p-5 flex items-center justify-between gap-3">
+    <div className="bg-surface border border-border rounded-xl p-5 flex items-center justify-between gap-3">
       <div>
-        <h3 className="text-sm font-semibold text-[#151918]">
+        <h3 className="text-sm font-semibold text-text-primary">
           {isCompleted ? "Appointment Complete" : "Mark as Complete"}
         </h3>
-        <p className="text-xs text-[#737A76] mt-0.5">
+        <p className="text-xs text-text-secondary mt-0.5">
           {isCompleted
             ? "This appointment has been marked complete."
             : canComplete
               ? "Mark this appointment as complete when the visit is finished."
               : `Current status: ${APPOINTMENT_STATUS_LABELS[currentStatus] ?? currentStatus}.`}
         </p>
-        {error && <p className="text-xs text-[#DC2626] mt-1" role="alert">{error}</p>}
+        {error && <p className="text-xs text-danger mt-1" role="alert">{error}</p>}
       </div>
 
       {canComplete && (

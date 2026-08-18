@@ -13,14 +13,20 @@ const SIZE_CLASSES = {
 };
 
 // Neutral palette — no bright colors, consistent with the design system
+/**
+ * Identity palette — a patient always gets the same swatch, derived from their
+ * name. Deliberately quiet: these are background chips behind two initials, not
+ * status indicators. Each entry pairs a status tint with its own text colour so
+ * the pair stays legible in either theme.
+ */
 const PALETTES = [
-  "bg-[#EEF2F0] text-[#5B635E]",
-  "bg-[#EFF6FF] text-[#2563EB]",
-  "bg-[#F0FDF4] text-[#16A34A]",
-  "bg-[#FEFCE8] text-[#A16207]",
-  "bg-[#FEF2F2] text-[#B91C1C]",
-  "bg-[#F5F3FF] text-[#6D28D9]",
-  "bg-[#FFF7ED] text-[#C2410C]",
+  'bg-surface-muted text-text-body',
+  'bg-info-bg text-info',
+  'bg-success-bg text-success',
+  'bg-warning-bg text-warning',
+  'bg-danger-bg text-danger',
+  'bg-accent-soft text-accent',
+  'bg-accent-subtle-bg text-accent-hover',
 ];
 
 export function PatientAvatar({ name, size = "md", className }: PatientAvatarProps) {

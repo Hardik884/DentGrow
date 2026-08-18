@@ -1,6 +1,7 @@
 "use client";
 
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from "recharts";
+import { useChartTheme } from "@/hooks/useChartTheme";
 
 interface DataPoint {
   gender: string;
@@ -14,15 +15,15 @@ const GENDER_LABELS: Record<string, string> = {
   unknown: "Unknown",
 };
 
-const COLORS = ["#3b82f6", "#ec4899", "#94a3b8", "#f59e0b"];
-
 /**
  * GenderBreakdownChart — patient gender distribution (donut).
  */
 export function GenderBreakdownChart({ data }: { data: DataPoint[] }) {
+  const chart = useChartTheme();
+
   if (!data.length || data.every((d) => d.count === 0)) {
     return (
-      <div className="h-48 flex items-center justify-center text-sm text-gray-400">
+      <div className="h-48 flex items-center justify-center text-sm text-text-disabled">
         No patient data available
       </div>
     );
@@ -45,11 +46,11 @@ export function GenderBreakdownChart({ data }: { data: DataPoint[] }) {
           dataKey="value"
         >
           {chartData.map((_, i) => (
-            <Cell key={i} fill={COLORS[i % COLORS.length]} />
+            <Cell key={i} fill={chart.series[i % chart.series.length]} />
           ))}
         </Pie>
-        <Tooltip formatter={(v: number) => [v, "Patients"]} />
-        <Legend />
+        <Tooltip {...chart.tooltip} formatter={(v: number) => [v, "Patients"]} />
+        <Legend wrapperStyle={{ fontSize: 12, color: chart.axis }} />
       </PieChart>
     </ResponsiveContainer>
   );

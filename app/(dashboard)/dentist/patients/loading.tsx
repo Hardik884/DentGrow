@@ -19,11 +19,11 @@ export default function PatientsLoading() {
       </div>
 
       {/* Table */}
-      <div className="bg-white border border-[#E3E9E6] rounded-xl overflow-hidden">
+      <div className="bg-surface border border-border rounded-xl overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-[#EEF2F0] bg-[#F6F8F6]">
+              <tr className="border-b border-surface-muted bg-background">
                 {Array.from({ length: 5 }).map((_, i) => (
                   <th key={i} className="px-4 py-3">
                     <Skeleton className="h-3 w-16" />
@@ -31,7 +31,7 @@ export default function PatientsLoading() {
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#EEF2F0]">
+            <tbody className="divide-y divide-surface-muted">
               {Array.from({ length: 12 }).map((_, i) => (
                 <tr key={i}>
                   <td className="px-4 py-3">

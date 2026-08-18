@@ -1,7 +1,9 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import { Toaster } from "sonner";
 import { QueryProvider } from "@/components/providers/QueryProvider";
+import { ThemeProvider } from "@/components/providers/ThemeProvider";
+import { ThemedToaster } from "@/components/providers/ThemedToaster";
+import { THEME_INIT_SCRIPT } from "@/lib/theme/script";
 import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 
@@ -32,30 +34,42 @@ export const metadata: Metadata = {
   },
 };
 
+/**
+ * Matches the mobile browser chrome to whichever theme is painted, so the
+ * address bar does not sit as a bright white band above a dark app.
+ */
+export const viewport: Viewport = {
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#F6F8F6" },
+    { media: "(prefers-color-scheme: dark)", color: "#0F1412" },
+  ],
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${geistSans.variable} ${geistMono.variable}`}>
+    // suppressHydrationWarning: THEME_INIT_SCRIPT below edits <html>'s class and
+    // style before React hydrates, which is intentional and is the only thing
+    // that prevents a flash of the wrong theme. Without this attribute React
+    // would warn about the server/client difference it deliberately creates.
+    <html
+      lang="en"
+      className={`${geistSans.variable} ${geistMono.variable}`}
+      suppressHydrationWarning
+    >
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
+      </head>
       <body className="font-sans antialiased">
-        <QueryProvider>{children}</QueryProvider>
-        <Toaster
-          position="bottom-right"
-          toastOptions={{
-            style: {
-              fontFamily: "var(--font-geist-sans)",
-              fontSize: "13px",
-              borderRadius: "8px",
-              border: "1px solid #E3E9E6",
-              boxShadow: "0 4px 16px -4px rgba(0,0,0,0.12)",
-            },
-          }}
-        />
+        <ThemeProvider>
+          <QueryProvider>{children}</QueryProvider>
+          <ThemedToaster />
+        </ThemeProvider>
         <Analytics />
       </body>
     </html>
   );
 }
-

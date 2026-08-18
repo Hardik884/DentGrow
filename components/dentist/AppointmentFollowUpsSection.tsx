@@ -9,11 +9,11 @@ import type { FollowUpWithRelations } from "@/types";
 
 /** Inline badge colours for this section's older tailwind-token styling. */
 const BADGE_CLASSES: Record<BadgeVariant, string> = {
-  success: "bg-green-100 text-green-700",
-  error: "bg-red-100 text-red-700",
-  warning: "bg-amber-100 text-amber-700",
-  default: "bg-gray-100 text-gray-600",
-  info: "bg-blue-100 text-blue-700",
+  success: "bg-success-bg text-success",
+  error: "bg-danger-bg text-danger",
+  warning: "bg-warning-bg text-warning",
+  default: "bg-surface-muted text-text-secondary",
+  info: "bg-info-bg text-info",
 };
 
 interface AppointmentFollowUpsSectionProps {
@@ -45,12 +45,12 @@ export async function AppointmentFollowUpsSection({
   const today = profile ? await todayForClinic(db, profile.clinic_id) : "";
 
   return (
-    <div className="bg-white border rounded-lg p-4 space-y-4">
+    <div className="bg-surface border rounded-lg p-4 space-y-4">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h3 className="font-semibold text-gray-900">Follow-up Appointments</h3>
+          <h3 className="font-semibold text-text-primary">Follow-up Appointments</h3>
           {followUps.length > 0 && (
-            <p className="text-xs text-gray-500 mt-0.5">
+            <p className="text-xs text-text-secondary mt-0.5">
               {followUps.length} follow-up appointment{followUps.length !== 1 ? "s" : ""} linked
             </p>
           )}
@@ -68,11 +68,11 @@ export async function AppointmentFollowUpsSection({
       </div>
 
       {result.error && (
-        <p className="text-sm text-red-600">{result.error}</p>
+        <p className="text-sm text-danger">{result.error}</p>
       )}
 
       {followUps.length === 0 ? (
-        <p className="text-sm text-gray-400">No follow-up appointments linked to this appointment.</p>
+        <p className="text-sm text-text-disabled">No follow-up appointments linked to this appointment.</p>
       ) : (
         <ul className="space-y-2">
           {followUps.map((fu) => (
@@ -84,16 +84,16 @@ export async function AppointmentFollowUpsSection({
                 patientName={patientName}
                 appointmentId={appointmentId}
                 title="Follow-up Appointment"
-                triggerClassName="w-full flex items-center justify-between gap-3 rounded-lg border border-gray-100 bg-gray-50 px-3 py-2.5 hover:bg-gray-100 transition-colors group text-left"
+                triggerClassName="w-full flex items-center justify-between gap-3 rounded-lg border border-border bg-surface-secondary px-3 py-2.5 hover:bg-surface-muted transition-colors group text-left"
               >
                 <span className="flex-1 min-w-0">
-                  <span className="block text-sm font-medium text-gray-900 truncate">
+                  <span className="block text-sm font-medium text-text-primary truncate">
                     {FOLLOW_UP_TYPE_LABELS[fu.follow_up_type] ?? fu.follow_up_type}
                   </span>
-                  <span className="block text-xs text-gray-500 mt-0.5">
+                  <span className="block text-xs text-text-secondary mt-0.5">
                     Due: {formatDate(fu.due_date)}
                     {fu.notes && (
-                      <span className="ml-2 text-gray-400 truncate">— {fu.notes}</span>
+                      <span className="ml-2 text-text-disabled truncate">— {fu.notes}</span>
                     )}
                   </span>
                 </span>

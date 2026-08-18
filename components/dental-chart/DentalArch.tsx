@@ -54,7 +54,7 @@ export function DentalArch({
       />
       {/* Midline */}
       <div
-        className="w-px self-stretch bg-[#E3E9E6] mx-1 sm:mx-2"
+        className="w-px self-stretch bg-border mx-1 sm:mx-2"
         aria-hidden
         title="Midline"
       />
@@ -99,7 +99,7 @@ function ArchHalf({
           <span
             className={cn(
               "text-[11px] font-medium tabular-nums transition-colors",
-              isActive ? "text-[#0D6B5E] font-semibold" : "text-[#737A76]"
+              isActive ? "text-accent font-semibold" : "text-text-secondary"
             )}
           >
             {identity.toothNumber}
@@ -116,9 +116,9 @@ function ArchHalf({
             title={`Tooth ${identity.toothNumber}`}
             className={cn(
               "flex flex-col items-center gap-1 rounded-lg px-1 py-1.5 transition-all",
-              "hover:bg-[#EEF2F0] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0D6B5E] focus-visible:ring-offset-1",
-              isSelected && "ring-2 ring-[#0D6B5E] bg-[#EEF2F0]",
-              isActive && !multiSelectMode && "bg-[#EEF2F0]"
+              "hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-1",
+              isSelected && "ring-2 ring-accent bg-surface-muted",
+              isActive && !multiSelectMode && "bg-surface-muted"
             )}
           >
             {arch === "upper" && numberLabel}

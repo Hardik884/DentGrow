@@ -62,11 +62,11 @@ export default async function PortalSetupPage() {
   const presetClinicId = signupClinicId ?? selectedClinicId ?? undefined;
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-xl border p-6 w-full max-w-md space-y-6 shadow-sm">
+    <div className="min-h-screen bg-surface-secondary flex items-center justify-center p-4">
+      <div className="bg-surface rounded-xl border p-6 w-full max-w-md space-y-6 shadow-sm">
         <div className="text-center space-y-1">
-          <h1 className="text-2xl font-bold text-gray-900">Set Up Your Account</h1>
-          <p className="text-sm text-gray-500">
+          <h1 className="text-2xl font-bold text-text-primary">Set Up Your Account</h1>
+          <p className="text-sm text-text-secondary">
             Confirm your clinic and the phone number you&apos;d like to use for
             your patient account. We&apos;ll connect you to your existing record,
             or create a new one if you&apos;re visiting for the first time.

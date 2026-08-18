@@ -106,7 +106,7 @@ export function FollowUpsView({
   if (isPending) {
     return (
       <>
-        <p className="text-sm text-[#737A76]">Loading follow-ups…</p>
+        <p className="text-sm text-text-secondary">Loading follow-ups…</p>
         <ListTableSkeleton />
       </>
     );
@@ -115,22 +115,22 @@ export function FollowUpsView({
   return (
     <>
       {/* Results count */}
-      <p className="text-sm text-[#737A76]">
+      <p className="text-sm text-text-secondary">
         {total} follow-up{total !== 1 ? "s" : ""} found
       </p>
 
       {/* Error */}
       {isError && (
-        <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-md px-3 py-2">
+        <p className="text-sm text-danger bg-danger-bg border border-danger-border rounded-md px-3 py-2">
           {(error as Error)?.message ?? "Failed to load follow-ups."}
         </p>
       )}
 
       {/* Table */}
       {followUps.length === 0 ? (
-        <div className="bg-white border border-[#E3E9E6] rounded-xl p-12 text-center">
-          <p className="text-[#737A76] text-sm">No follow-ups match your filters.</p>
-          <p className="text-[#9BA39D] text-xs mt-1">
+        <div className="bg-surface border border-border rounded-xl p-12 text-center">
+          <p className="text-text-secondary text-sm">No follow-ups match your filters.</p>
+          <p className="text-text-disabled text-xs mt-1">
             Try adjusting the date range or clearing filters.
           </p>
         </div>
@@ -140,11 +140,11 @@ export function FollowUpsView({
             isPlaceholderData && isFetching ? "opacity-60 transition-opacity" : "transition-opacity"
           }
         >
-          <div className="bg-white border border-[#E3E9E6] rounded-xl overflow-hidden">
+          <div className="bg-surface border border-border rounded-xl overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-[#EEF2F0] bg-[#F6F8F6] text-left text-xs font-semibold text-[#737A76] uppercase tracking-wide">
+                  <tr className="border-b border-surface-muted bg-background text-left text-xs font-semibold text-text-secondary uppercase tracking-wide">
                     <th className="px-4 py-3">Patient</th>
                     <th className="px-4 py-3">Type</th>
                     <th className="px-4 py-3">Due Date</th>
@@ -153,7 +153,7 @@ export function FollowUpsView({
                     <th className="px-4 py-3 sr-only">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[#EEF2F0]">
+                <tbody className="divide-y divide-surface-muted">
                   {followUps.map((fu) => (
                     <FollowUpRow key={fu.id} fu={fu} today={today} />
                   ))}
@@ -166,13 +166,13 @@ export function FollowUpsView({
 
       {/* Pagination */}
       {totalPages > 1 && (
-        <div className="flex items-center justify-between text-sm text-[#737A76]">
+        <div className="flex items-center justify-between text-sm text-text-secondary">
           <span>Page {page} of {totalPages}</span>
           <div className="flex gap-1">
             {page > 1 && (
               <Link
                 href={pageHref(page - 1)}
-                className="px-3 py-1 border border-[#E3E9E6] rounded-lg hover:bg-[#F6F8F6] text-[#151918]"
+                className="px-3 py-1 border border-border rounded-lg hover:bg-background text-text-primary"
               >
                 ← Prev
               </Link>
@@ -180,7 +180,7 @@ export function FollowUpsView({
             {page < totalPages && (
               <Link
                 href={pageHref(page + 1)}
-                className="px-3 py-1 border border-[#E3E9E6] rounded-lg hover:bg-[#F6F8F6] text-[#151918]"
+                className="px-3 py-1 border border-border rounded-lg hover:bg-background text-text-primary"
               >
                 Next →
               </Link>
@@ -212,9 +212,9 @@ function FollowUpRow({
     FOLLOW_UP_TYPE_LABELS[fu.follow_up_type ?? ""] ?? fu.follow_up_type ?? "Follow-up";
 
   return (
-    <tr className="hover:bg-[#F6F8F6] transition-colors">
+    <tr className="hover:bg-background transition-colors">
       {/* Patient */}
-      <td className="px-4 py-3 font-medium text-[#151918]">
+      <td className="px-4 py-3 font-medium text-text-primary">
         {fu.patient ? (
           <Link
             href={`/dentist/patients/${fu.patient_id}`}
@@ -223,37 +223,37 @@ function FollowUpRow({
             {fu.patient.name}
           </Link>
         ) : (
-          <span className="text-[#737A76]">—</span>
+          <span className="text-text-secondary">—</span>
         )}
         {fu.patient?.phone && (
-          <p className="text-xs text-[#737A76] font-normal mt-0.5">{fu.patient.phone}</p>
+          <p className="text-xs text-text-secondary font-normal mt-0.5">{fu.patient.phone}</p>
         )}
       </td>
 
       {/* Type */}
-      <td className="px-4 py-3 text-[#5B635E]">{typeLabel}</td>
+      <td className="px-4 py-3 text-text-body">{typeLabel}</td>
 
       {/* Due Date */}
-      <td className="px-4 py-3 text-[#5B635E]">
+      <td className="px-4 py-3 text-text-body">
         <div>{formatDate(fu.due_date)}</div>
         {fu.status === "pending" && isOverdue && (
-          <span className="text-xs text-red-600 font-medium">
+          <span className="text-xs text-danger font-medium">
             {Math.abs(diffDays)}d overdue
           </span>
         )}
         {fu.status === "pending" && !isOverdue && (
-          <span className="text-xs text-amber-600">
+          <span className="text-xs text-warning">
             {diffDays === 0 ? "Today" : `${diffDays}d remaining`}
           </span>
         )}
       </td>
 
       {/* Notes */}
-      <td className="px-4 py-3 text-[#5B635E] max-w-xs">
+      <td className="px-4 py-3 text-text-body max-w-xs">
         {fu.notes ? (
           <span className="truncate block text-xs">{fu.notes}</span>
         ) : (
-          <span className="text-[#9BA39D]">—</span>
+          <span className="text-text-disabled">—</span>
         )}
       </td>
 

@@ -97,24 +97,24 @@ export function ClinicSettingsForm({ initialSettings }: ClinicSettingsFormProps)
     <form onSubmit={handleSubmit(onSubmit)} className="max-w-2xl" noValidate>
       {/* Root error */}
       {errors.root && (
-        <div role="alert" className="mb-4 rounded-lg bg-[#FEF2F2] border border-[#FECACA] px-4 py-3 text-xs text-[#DC2626]">
+        <div role="alert" className="mb-4 rounded-lg bg-danger-bg border border-danger-border px-4 py-3 text-xs text-danger">
           {errors.root.message}
         </div>
       )}
 
       {/* Success */}
       {successMessage && (
-        <div role="status" className="mb-4 rounded-lg bg-[#F0FDF4] border border-[#BBF7D0] px-4 py-3 text-xs text-[#16A34A] flex items-center gap-2">
+        <div role="status" className="mb-4 rounded-lg bg-success-bg border border-success-border px-4 py-3 text-xs text-success flex items-center gap-2">
           <CheckCircle2 className="h-4 w-4 shrink-0" aria-hidden />
           {successMessage}
         </div>
       )}
 
-      <div className="bg-white border border-[#E3E9E6] rounded-xl overflow-hidden divide-y divide-[#EEF2F0]">
+      <div className="bg-surface border border-border rounded-xl overflow-hidden divide-y divide-surface-muted">
 
         {/* ── Clinic Info ─────────────────────────────────────── */}
         <div className="px-6 py-5 space-y-4">
-          <h3 className="text-sm font-semibold text-[#151918]">Clinic Information</h3>
+          <h3 className="text-sm font-semibold text-text-primary">Clinic Information</h3>
 
           <Field label="Clinic Name" htmlFor="clinic_name" required error={errors.clinic_name?.message}>
             <Input id="clinic_name" type="text" {...register("clinic_name")} disabled={isSubmitting} hasError={!!errors.clinic_name} />
@@ -150,7 +150,7 @@ export function ClinicSettingsForm({ initialSettings }: ClinicSettingsFormProps)
 
         {/* ── Operational ─────────────────────────────────────── */}
         <div className="px-6 py-5 space-y-4">
-          <h3 className="text-sm font-semibold text-[#151918]">Operational Settings</h3>
+          <h3 className="text-sm font-semibold text-text-primary">Operational Settings</h3>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Field
@@ -202,7 +202,7 @@ export function ClinicSettingsForm({ initialSettings }: ClinicSettingsFormProps)
 
         {/* ── OPD Consultation Settings ───────────────────────── */}
         <div className="px-6 py-5 space-y-4">
-          <h3 className="text-sm font-semibold text-[#151918]">OPD Consultation Settings</h3>
+          <h3 className="text-sm font-semibold text-text-primary">OPD Consultation Settings</h3>
 
           <Field
             label="Default OPD Consultation Fee (₹)"
@@ -235,26 +235,26 @@ export function ClinicSettingsForm({ initialSettings }: ClinicSettingsFormProps)
               disabled={isSubmitting}
               className={cn(
                 "relative inline-flex h-5 w-9 shrink-0 rounded-full border-2 border-transparent transition-colors",
-                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0D6B5E]",
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent",
                 "disabled:cursor-not-allowed",
-                watch("enable_xray_charges") !== false ? "bg-[#0D6B5E]" : "bg-[#E3E9E6]"
+                watch("enable_xray_charges") !== false ? "bg-accent" : "bg-border"
               )}
               aria-pressed={watch("enable_xray_charges") !== false ? "true" : "false"}
               aria-label="Enable X-ray Charges"
             >
               <span
                 className={cn(
-                  "pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow transform transition-transform",
+                  "pointer-events-none inline-block h-4 w-4 rounded-full bg-surface shadow transform transition-transform",
                   watch("enable_xray_charges") !== false ? "translate-x-4" : "translate-x-0"
                 )}
               />
             </button>
 
             <div>
-              <label className="text-sm font-medium text-[#151918]">
+              <label className="text-sm font-medium text-text-primary">
                 Enable X-ray Charges
               </label>
-              <p className="text-xs text-[#737A76] mt-0.5">
+              <p className="text-xs text-text-secondary mt-0.5">
                 When enabled, the X-ray section appears inside treatment forms so dentists can record whether an X-ray was taken and its cost. When disabled, the X-ray section is hidden clinic-wide.
               </p>
             </div>
@@ -263,7 +263,7 @@ export function ClinicSettingsForm({ initialSettings }: ClinicSettingsFormProps)
 
         {/* ── Access Control ─────────────────────────────────────── */}
         <div className="px-6 py-5 space-y-4">
-          <h3 className="text-sm font-semibold text-[#151918]">Access Control</h3>
+          <h3 className="text-sm font-semibold text-text-primary">Access Control</h3>
 
           <div className="flex items-start gap-3">
             <button
@@ -275,26 +275,26 @@ export function ClinicSettingsForm({ initialSettings }: ClinicSettingsFormProps)
               disabled={isSubmitting}
               className={cn(
                 "relative inline-flex h-5 w-9 shrink-0 rounded-full border-2 border-transparent transition-colors",
-                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0D6B5E]",
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent",
                 "disabled:cursor-not-allowed",
-                watch("allow_receptionist_payments") ? "bg-[#0D6B5E]" : "bg-[#E3E9E6]"
+                watch("allow_receptionist_payments") ? "bg-accent" : "bg-border"
               )}
               aria-pressed={watch("allow_receptionist_payments") ? "true" : "false"}
               aria-label="Allow Receptionist to Access Payments"
             >
               <span
                 className={cn(
-                  "pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow transform transition-transform",
+                  "pointer-events-none inline-block h-4 w-4 rounded-full bg-surface shadow transform transition-transform",
                   watch("allow_receptionist_payments") ? "translate-x-4" : "translate-x-0"
                 )}
               />
             </button>
 
             <div>
-              <label className="text-sm font-medium text-[#151918]">
+              <label className="text-sm font-medium text-text-primary">
                 Allow Receptionist to Access Payments
               </label>
-              <p className="text-xs text-[#737A76] mt-0.5">
+              <p className="text-xs text-text-secondary mt-0.5">
                 When enabled, receptionists can view and manage payments. When disabled, payment pages and actions are completely hidden from receptionists.
               </p>
             </div>
@@ -310,26 +310,26 @@ export function ClinicSettingsForm({ initialSettings }: ClinicSettingsFormProps)
               disabled={isSubmitting}
               className={cn(
                 "relative inline-flex h-5 w-9 shrink-0 rounded-full border-2 border-transparent transition-colors",
-                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0D6B5E]",
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent",
                 "disabled:cursor-not-allowed",
-                watch("show_consultancy_on_dashboard") ? "bg-[#0D6B5E]" : "bg-[#E3E9E6]"
+                watch("show_consultancy_on_dashboard") ? "bg-accent" : "bg-border"
               )}
               aria-pressed={watch("show_consultancy_on_dashboard") ? "true" : "false"}
               aria-label="Show External Consultation Income on Dashboard"
             >
               <span
                 className={cn(
-                  "pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow transform transition-transform",
+                  "pointer-events-none inline-block h-4 w-4 rounded-full bg-surface shadow transform transition-transform",
                   watch("show_consultancy_on_dashboard") ? "translate-x-4" : "translate-x-0"
                 )}
               />
             </button>
 
             <div>
-              <label className="text-sm font-medium text-[#151918]">
+              <label className="text-sm font-medium text-text-primary">
                 Show External Consultation Income on Dashboard
               </label>
-              <p className="text-xs text-[#737A76] mt-0.5">
+              <p className="text-xs text-text-secondary mt-0.5">
                 When enabled, the dashboard shows today&apos;s External Consultation Income card. When disabled, every External Consultation widget is hidden from the dashboard. The External Consultations page stays accessible either way.
               </p>
             </div>
@@ -339,8 +339,8 @@ export function ClinicSettingsForm({ initialSettings }: ClinicSettingsFormProps)
         {/* ── Clinic Hours ─────────────────────────────────────── */}
         <div className="px-6 py-5 space-y-4">
           <div>
-            <h3 className="text-sm font-semibold text-[#151918]">Clinic Hours</h3>
-            <p className="text-xs text-[#737A76] mt-0.5">
+            <h3 className="text-sm font-semibold text-text-primary">Clinic Hours</h3>
+            <p className="text-xs text-text-secondary mt-0.5">
               Defines when appointments can be booked. Days marked closed generate no slots.
             </p>
           </div>
@@ -367,22 +367,22 @@ export function ClinicSettingsForm({ initialSettings }: ClinicSettingsFormProps)
                     disabled={isSubmitting}
                     className={cn(
                       "relative inline-flex h-5 w-9 shrink-0 rounded-full border-2 border-transparent transition-colors",
-                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0D6B5E]",
+                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent",
                       "disabled:cursor-not-allowed",
-                      isOpen ? "bg-[#0D6B5E]" : "bg-[#E3E9E6]"
+                      isOpen ? "bg-accent" : "bg-border"
                     )}
                     aria-pressed={isOpen ? "true" : "false"}
                     aria-label={`${day.label}: ${isOpen ? "open" : "closed"}`}
                   >
                     <span
                       className={cn(
-                        "pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow transform transition-transform",
+                        "pointer-events-none inline-block h-4 w-4 rounded-full bg-surface shadow transform transition-transform",
                         isOpen ? "translate-x-4" : "translate-x-0"
                       )}
                     />
                   </button>
 
-                  <span className={cn("w-8 text-xs font-medium", isOpen ? "text-[#151918]" : "text-[#9BA39D]")}>
+                  <span className={cn("w-8 text-xs font-medium", isOpen ? "text-text-primary" : "text-text-disabled")}>
                     {day.label}
                   </span>
 
@@ -394,7 +394,7 @@ export function ClinicSettingsForm({ initialSettings }: ClinicSettingsFormProps)
                         disabled={isSubmitting}
                         className="w-28 text-xs"
                       />
-                      <span className="text-xs text-[#737A76]">–</span>
+                      <span className="text-xs text-text-secondary">–</span>
                       <Input
                         type="time"
                         {...register(`clinic_hours.${day.key as DayKey}.close`)}
@@ -403,7 +403,7 @@ export function ClinicSettingsForm({ initialSettings }: ClinicSettingsFormProps)
                       />
                     </div>
                   ) : (
-                    <span className="text-xs text-[#9BA39D]">Closed</span>
+                    <span className="text-xs text-text-disabled">Closed</span>
                   )}
                 </div>
               );
@@ -412,7 +412,7 @@ export function ClinicSettingsForm({ initialSettings }: ClinicSettingsFormProps)
         </div>
 
         {/* ── Actions ─────────────────────────────────────────── */}
-        <div className="px-6 py-4 bg-[#F6F8F6] flex items-center justify-end">
+        <div className="px-6 py-4 bg-background flex items-center justify-end">
           <Button type="submit" size="sm" isLoading={isSubmitting}>
             {isSubmitting ? "Saving…" : "Save Settings"}
           </Button>

@@ -24,7 +24,7 @@ export function DeleteTreatmentDocumentButton({ documentId }: DeleteTreatmentDoc
       onClick={handleDelete}
       disabled={isPending}
       aria-label="Delete document"
-      className="shrink-0 text-gray-400 hover:text-red-600 disabled:opacity-50"
+      className="shrink-0 text-text-disabled hover:text-danger disabled:opacity-50"
     >
       <Trash2 className="h-3.5 w-3.5" />
     </button>

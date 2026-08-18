@@ -21,8 +21,8 @@ export function FollowUpForm({ followUpId, patientId }: FollowUpFormProps) {
   void patientId;
 
   return (
-    <div className="bg-white border rounded-lg p-6">
-      <h2 className="font-semibold text-gray-900 mb-4">
+    <div className="bg-surface border rounded-lg p-6">
+      <h2 className="font-semibold text-text-primary mb-4">
         {followUpId ? "Edit Follow-Up" : "New Follow-Up"}
       </h2>
       {/* TODO: due_date, notes fields */}

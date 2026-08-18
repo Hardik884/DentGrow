@@ -75,7 +75,7 @@ export function PortalProfileView({ profile }: PortalProfileViewProps) {
   return (
     <div className="space-y-5">
       {/* Identity card — read-only */}
-      <div className="bg-white border rounded-xl p-5 space-y-4">
+      <div className="bg-surface border rounded-xl p-5 space-y-4">
         <div className="flex items-center gap-4">
           {/* Avatar */}
           <div className="h-14 w-14 rounded-full bg-accent-tint flex items-center justify-center shrink-0">
@@ -84,9 +84,9 @@ export function PortalProfileView({ profile }: PortalProfileViewProps) {
             </span>
           </div>
           <div>
-            <p className="font-semibold text-gray-900 text-lg">{profile.name}</p>
+            <p className="font-semibold text-text-primary text-lg">{profile.name}</p>
             {age !== null && (
-              <p className="text-sm text-gray-500">
+              <p className="text-sm text-text-secondary">
                 {age} years old
                 {profile.gender ? ` · ${GENDER_LABEL[profile.gender]}` : ""}
               </p>
@@ -107,14 +107,14 @@ export function PortalProfileView({ profile }: PortalProfileViewProps) {
           />
         </div>
 
-        <p className="text-xs text-gray-400 pt-1">
+        <p className="text-xs text-text-disabled pt-1">
           Name, date of birth, and gender are managed by your clinic.
         </p>
       </div>
 
       {/* Saved notice */}
       {saved && (
-        <div className="bg-green-50 border border-green-200 rounded-lg px-4 py-2 text-sm text-green-700">
+        <div className="bg-success-bg border border-success-border rounded-lg px-4 py-2 text-sm text-success">
           Profile updated successfully.
         </div>
       )}
@@ -137,7 +137,7 @@ export function PortalProfileView({ profile }: PortalProfileViewProps) {
                 type="button"
                 onClick={handleCancel}
                 disabled={isPending}
-                className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 transition-colors"
+                className="px-4 py-2 text-sm font-medium text-text-secondary hover:text-text-secondary border border-border-strong rounded-lg hover:bg-surface-secondary disabled:opacity-50 transition-colors"
               >
                 Cancel
               </button>
@@ -156,15 +156,15 @@ export function PortalProfileView({ profile }: PortalProfileViewProps) {
         {error && (
           <div
             role="alert"
-            className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-md px-4 py-3"
+            className="text-sm text-danger bg-danger-bg border border-danger-border rounded-md px-4 py-3"
           >
             {error}
           </div>
         )}
 
         {/* Contact Information section */}
-        <div className="bg-white border rounded-xl p-5 space-y-4">
-          <h2 className="font-semibold text-gray-900">Contact Information</h2>
+        <div className="bg-surface border rounded-xl p-5 space-y-4">
+          <h2 className="font-semibold text-text-primary">Contact Information</h2>
           <div className="space-y-3">
             <EditableField
               label="Phone Number"
@@ -189,8 +189,8 @@ export function PortalProfileView({ profile }: PortalProfileViewProps) {
         </div>
 
         {/* Emergency Contact section */}
-        <div className="bg-white border rounded-xl p-5 space-y-3">
-          <h2 className="font-semibold text-gray-900">Emergency Contact</h2>
+        <div className="bg-surface border rounded-xl p-5 space-y-3">
+          <h2 className="font-semibold text-text-primary">Emergency Contact</h2>
           <div className="space-y-3">
             <EditableField
               label="Name"
@@ -222,10 +222,10 @@ export function PortalProfileView({ profile }: PortalProfileViewProps) {
 function InfoRow({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">
+      <p className="text-xs font-medium text-text-disabled uppercase tracking-wide">
         {label}
       </p>
-      <p className="text-gray-900 mt-0.5">{value || "—"}</p>
+      <p className="text-text-primary mt-0.5">{value || "—"}</p>
     </div>
   );
 }
@@ -253,7 +253,7 @@ function EditableField({
 }) {
   return (
     <div>
-      <p className="text-xs font-medium text-gray-500 mb-1">{label}</p>
+      <p className="text-xs font-medium text-text-secondary mb-1">{label}</p>
       {isEditing ? (
         multiline ? (
           <textarea
@@ -262,7 +262,7 @@ function EditableField({
             disabled={disabled}
             placeholder={placeholder}
             rows={3}
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 disabled:bg-gray-50 resize-none"
+            className="w-full border border-border-strong rounded-lg px-3 py-2 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 disabled:bg-surface-secondary resize-none"
           />
         ) : (
           <input
@@ -272,11 +272,11 @@ function EditableField({
             onChange={(e) => onChange(e.target.value)}
             disabled={disabled}
             placeholder={placeholder}
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 disabled:bg-gray-50"
+            className="w-full border border-border-strong rounded-lg px-3 py-2 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 disabled:bg-surface-secondary"
           />
         )
       ) : (
-        <p className="text-sm text-gray-900">{value || <span className="text-gray-400">—</span>}</p>
+        <p className="text-sm text-text-primary">{value || <span className="text-text-disabled">—</span>}</p>
       )}
     </div>
   );

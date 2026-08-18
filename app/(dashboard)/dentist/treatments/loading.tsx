@@ -9,7 +9,7 @@ export default function TreatmentsLoading() {
       </div>
 
       {/* Filter bar skeleton */}
-      <div className="bg-white border border-[#E3E9E6] rounded-xl px-5 py-4 space-y-4">
+      <div className="bg-surface border border-border rounded-xl px-5 py-4 space-y-4">
         <div className="flex items-center gap-2">
           <Skeleton className="h-4 w-4 rounded" />
           <Skeleton className="h-4 w-16" />
@@ -27,11 +27,11 @@ export default function TreatmentsLoading() {
       <Skeleton className="h-4 w-28" />
 
       {/* Table */}
-      <div className="bg-white border border-[#E3E9E6] rounded-xl overflow-hidden">
+      <div className="bg-surface border border-border rounded-xl overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-[#EEF2F0] bg-[#F6F8F6]">
+              <tr className="border-b border-surface-muted bg-background">
                 {["Patient", "Treatment Type", "Date", "Cost", "Status", ""].map((h) => (
                   <th key={h} className="px-4 py-3 text-left">
                     <Skeleton className="h-3 w-16" />
@@ -39,7 +39,7 @@ export default function TreatmentsLoading() {
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#EEF2F0]">
+            <tbody className="divide-y divide-surface-muted">
               {Array.from({ length: 10 }).map((_, i) => (
                 <tr key={i}>
                   <td className="px-4 py-3"><Skeleton className="h-4 w-28" /></td>

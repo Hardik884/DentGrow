@@ -63,7 +63,7 @@ export default async function DentistBillPage({ params, searchParams }: Props) {
         addPhoneHref={`/dentist/patients/${doc.patient.id}/edit`}
       />
 
-      <div className="border border-[#E3E9E6] rounded-xl overflow-hidden shadow-sm">
+      <div className="border border-border rounded-xl overflow-hidden shadow-sm">
         <InvoiceDocument document={doc} audience="staff" timezone={doc.timezone} />
       </div>
     </div>

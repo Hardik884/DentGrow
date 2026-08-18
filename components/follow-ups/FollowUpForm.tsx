@@ -422,7 +422,7 @@ export function FollowUpForm({
 
   return (
     <>
-      <div className="bg-white border border-border rounded-xl overflow-hidden max-w-2xl">
+      <div className="bg-surface border border-border rounded-xl overflow-hidden max-w-2xl">
 
         {/* ── Header (edit mode only) ── */}
         {currentStatus && (
@@ -451,7 +451,7 @@ export function FollowUpForm({
                 hint={patientLocked ? undefined : "Search by name or phone number"}
               >
               {patientLocked ? (
-                <div className="flex items-center gap-3 rounded-lg border border-border bg-[#F6F8F6] px-3 py-2">
+                <div className="flex items-center gap-3 rounded-lg border border-border bg-background px-3 py-2">
                   <PatientAvatar
                     name={selectedPatient?.name ?? initialData?.patient?.name ?? "?"}
                     size="sm"
@@ -468,7 +468,7 @@ export function FollowUpForm({
                   </div>
                   <Link
                     href={`/dentist/patients/${selectedPatient?.id ?? initialData?.patient_id}`}
-                    className="text-xs text-blue-600 hover:underline shrink-0"
+                    className="text-xs text-info hover:underline shrink-0"
                     tabIndex={-1}
                   >
                     View
@@ -500,7 +500,7 @@ export function FollowUpForm({
                     )}
                   </div>
                   {selectedPatient && (
-                    <div className="mt-2 flex items-center gap-2 rounded-lg border border-border bg-[#F6F8F6] px-3 py-2">
+                    <div className="mt-2 flex items-center gap-2 rounded-lg border border-border bg-background px-3 py-2">
                       <PatientAvatar name={selectedPatient.name} size="sm" />
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium text-text-primary">{selectedPatient.name}</p>
@@ -527,14 +527,14 @@ export function FollowUpForm({
                     </div>
                   )}
                   {patientDropOpen && patientResults.length > 0 && (
-                    <ul className="absolute z-20 w-full mt-1 bg-white border border-border rounded-xl shadow-lg max-h-60 overflow-y-auto">
+                    <ul className="absolute z-20 w-full mt-1 bg-surface border border-border rounded-xl shadow-lg max-h-60 overflow-y-auto">
                       {patientResults.map((p) => (
                         <li key={p.id}>
                           <button
                             type="button"
                             onMouseDown={(e) => e.preventDefault()}
                             onClick={() => handleSelectPatient(p)}
-                            className="w-full px-4 py-2.5 text-left hover:bg-[#F6F8F6] flex items-center gap-3 transition-colors"
+                            className="w-full px-4 py-2.5 text-left hover:bg-background flex items-center gap-3 transition-colors"
                           >
                             <PatientAvatar name={p.name} size="sm" />
                             <div className="flex-1 min-w-0">
@@ -547,7 +547,7 @@ export function FollowUpForm({
                     </ul>
                   )}
                   {patientDropOpen && !patientLoading && patientQuery.trim().length >= 2 && patientResults.length === 0 && (
-                    <div className="absolute z-20 w-full mt-1 bg-white border border-border rounded-xl shadow-lg p-4">
+                    <div className="absolute z-20 w-full mt-1 bg-surface border border-border rounded-xl shadow-lg p-4">
                       <p className="text-sm text-text-secondary text-center">No patients found</p>
                     </div>
                   )}
@@ -628,7 +628,7 @@ export function FollowUpForm({
                 <div
                   role="radiogroup"
                   aria-label="Appointment status"
-                  className="inline-flex rounded-lg border border-border p-0.5 bg-[#F6F8F6]"
+                  className="inline-flex rounded-lg border border-border p-0.5 bg-background"
                 >
                   {(["tentative", "confirmed"] as const).map((opt) => (
                     <button
@@ -641,8 +641,8 @@ export function FollowUpForm({
                       className={cn(
                         "px-3 py-1.5 text-xs font-medium rounded-md transition-colors capitalize disabled:opacity-50 disabled:cursor-not-allowed",
                         confirmationStatus === opt
-                          ? "bg-white text-[#151918] shadow-sm border border-border"
-                          : "text-[#737A76] hover:text-[#151918]"
+                          ? "bg-surface text-text-primary shadow-sm border border-border"
+                          : "text-text-secondary hover:text-text-primary"
                       )}
                     >
                       {opt}
@@ -669,7 +669,7 @@ export function FollowUpForm({
                   <div
                     role="radiogroup"
                     aria-label="Initial status"
-                    className="inline-flex rounded-lg border border-border p-0.5 bg-[#F6F8F6]"
+                    className="inline-flex rounded-lg border border-border p-0.5 bg-background"
                   >
                     {/* Value stays the backend status; only the label changes. */}
                     {([
@@ -686,8 +686,8 @@ export function FollowUpForm({
                         className={cn(
                           "px-3 py-1.5 text-xs font-medium rounded-md transition-colors",
                           initialStatus === opt
-                            ? "bg-white text-[#151918] shadow-sm border border-border"
-                            : "text-[#737A76] hover:text-[#151918]"
+                            ? "bg-surface text-text-primary shadow-sm border border-border"
+                            : "text-text-secondary hover:text-text-primary"
                         )}
                       >
                         {label}
@@ -718,7 +718,7 @@ export function FollowUpForm({
                     Loading available slots…
                   </div>
                 ) : slots.length === 0 ? (
-                  <div className="rounded-lg bg-[#F6F8F6] border border-border p-3 text-center">
+                  <div className="rounded-lg bg-background border border-border p-3 text-center">
                     <p className="text-xs text-text-secondary">No available slots on this date.</p>
                   </div>
                 ) : (
@@ -735,8 +735,8 @@ export function FollowUpForm({
                           className={cn(
                             "flex items-center justify-center gap-1 py-2 px-1 text-xs rounded-lg border transition-all",
                             isSelected
-                              ? "border-[#0D6B5E] bg-[#0D6B5E] text-white font-medium"
-                              : "border-border text-[#151918] hover:border-[#CBD5D0] hover:bg-[#F6F8F6]",
+                              ? "border-accent bg-accent text-accent-foreground font-medium"
+                              : "border-border text-text-primary hover:border-border-strong hover:bg-background",
                             "disabled:opacity-50 disabled:cursor-not-allowed"
                           )}
                         >
@@ -825,7 +825,7 @@ export function FollowUpForm({
                             <button
                               type="button"
                               onClick={() => loadRelatedOptions(selectedPatient.id)}
-                              className="text-xs text-blue-600 hover:underline"
+                              className="text-xs text-info hover:underline"
                             >
                               Retry
                             </button>
@@ -877,7 +877,7 @@ export function FollowUpForm({
             {formError && (
               <div
                 role="alert"
-                className="rounded-lg bg-danger-bg border border-[#FECACA] px-4 py-3 text-xs text-danger"
+                className="rounded-lg bg-danger-bg border border-danger-border px-4 py-3 text-xs text-danger"
               >
                 {formError}
               </div>
@@ -885,7 +885,7 @@ export function FollowUpForm({
             {formSuccess && (
               <div
                 role="status"
-                className="rounded-lg bg-success-bg border border-[#BBF7D0] px-4 py-3 text-xs text-success flex items-center gap-2"
+                className="rounded-lg bg-success-bg border border-success-border px-4 py-3 text-xs text-success flex items-center gap-2"
               >
                 <CheckCircle2 className="h-4 w-4 shrink-0" aria-hidden />
                 {formSuccess}
@@ -916,7 +916,7 @@ export function FollowUpForm({
                     size="sm"
                     onClick={() => setConfirmAction("complete")}
                     disabled={isActioning}
-                    className="bg-success hover:bg-[#15803D]"
+                    className="bg-success hover:bg-success-hover"
                   >
                     <CheckCircle2 className="h-3.5 w-3.5" aria-hidden />
                     Mark Complete

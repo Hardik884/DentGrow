@@ -15,9 +15,18 @@
   --color-border: #E3E9E6;
   --color-border-strong: #CBD5D0;
 
+  /* Text ramp, darkest to lightest. `strong` and `body` were in use across the
+     app long before they had names; they are tokens now so dark mode can move
+     the whole ramp together. */
   --color-text-primary: #151918;
+  --color-text-strong: #333B36;
+  --color-text-body: #5B635E;
   --color-text-secondary: #737A76;
   --color-text-disabled: #9BA39D;
+
+  /* Pressed state for neutral (secondary) buttons, and the modal scrim. */
+  --color-surface-pressed: #D8E0DB;
+  --color-scrim: #0B0F0E;
 
   /* Emerald is the brand accent — used sparingly for primary actions, active
      states, and DentGrow's AI/intelligence features. Never a background wash.
@@ -32,19 +41,99 @@
   --color-accent-tint-hover: #DCEEE8;
   --color-accent-border: #CFE7E0;
   --color-accent-subtle-bg: #F6FBF9;
+  --color-accent-active: #084A42;
+
+  /* Foreground colours for text sitting ON a filled status chip or button.
+     Light mode fills are dark, so they take white. Dark mode fills are LIGHT
+     (they have to be, to read against a dark page), so they take dark ink —
+     white on the dark-mode emerald measures 3.16:1 and fails outright. */
+  --color-success-foreground: #FFFFFF;
+  --color-warning-foreground: #FFFFFF;
+  --color-danger-foreground: #FFFFFF;
+  --color-info-foreground: #FFFFFF;
 
   --color-success: #16A34A;
   --color-success-bg: #F0FDF4;
   --color-success-border: #BBF7D0;
+  --color-success-strong: #166534;
+  --color-success-hover: #15803D;
   --color-warning: #B45309;
   --color-warning-bg: #FFFBEB;
   --color-warning-border: #FDE68A;
+  --color-warning-strong: #854D0E;
   --color-danger: #DC2626;
   --color-danger-bg: #FEF2F2;
   --color-danger-border: #FECACA;
+  --color-danger-hover: #B91C1C;
+  --color-danger-active: #9F1414;
   --color-info: #2563EB;
   --color-info-bg: #EFF6FF;
   --color-info-border: #BFDBFE;
+  --color-info-strong: #1E40AF;
+
+  /* Chart series. Recharts takes colours as props, not classes, so charts read
+     these through getComputedStyle rather than through a utility. */
+  --color-chart-1: #0D6B5E;
+  --color-chart-2: #2563EB;
+  --color-chart-3: #B45309;
+  --color-chart-4: #7C3AED;
+  --color-chart-5: #0E7490;
+  --color-chart-6: #BE185D;
+  --color-chart-7: #4D7C0F;
+  --color-chart-8: #9A3412;
+  --color-chart-grid: #E3E9E6;
+  --color-chart-axis: #737A76;
+
+  /* Peak-hours density ramp — a MONOTONIC scale from "nothing booked" to
+     "busiest hour". It must not be remapped colour-by-colour in dark mode or
+     the ramp inverts and a quiet hour reads as the busiest one. Dark gets its
+     own ramp running the same direction: faint -> emerald. */
+  --color-heat-0: #EEF2F0;
+  --color-heat-1: #E3E9E6;
+  --color-heat-2: #9BA39D;
+  --color-heat-3: #737A76;
+  --color-heat-4: #333B36;
+  --color-heat-5: #0D6B5E;
+
+  /* Dental chart — clinical states. Light values are enamel-white tints with
+     coloured outlines. Dark mode does NOT invert these (an inverted enamel
+     tint reads as a cavity); it defines its own muted clinical set below. */
+  --color-tooth-normal: #FFFFFF;
+  --color-tooth-normal-line: #CBD5D0;
+  --color-tooth-recommended: #FFFBEB;
+  --color-tooth-recommended-line: #EAB308;
+  --color-tooth-planned: #EFF6FF;
+  --color-tooth-planned-line: #93C5FD;
+  --color-tooth-in-progress: #EFF6FF;
+  --color-tooth-in-progress-line: #2563EB;
+  --color-tooth-completed: #F0FDF4;
+  --color-tooth-completed-line: #4ADE80;
+  --color-tooth-missing: #EEF2F0;
+  --color-tooth-missing-line: #9BA39D;
+  /* The enamel gloss highlight painted over a tooth. */
+  --color-tooth-gloss: #FFFFFF;
+
+  /* Business Brain severity — an ORDERED scale, so dark redefines all five
+     steps together rather than remapping each colour independently. */
+  /* Dashboard KPI card tones. These are WHISPERS — a barely-there tint that
+     groups related cards — not status chips. They get their own tokens because
+     borrowing the status "-bg" ramp (built for small alert chips) paints a
+     loud panel at card size. */
+  --color-kpi-mint: #F6FBF9;
+  --color-kpi-mint-border: #DCEEE8;
+  --color-kpi-mint-chip: #E8F4F0;
+  --color-kpi-amber: #FFFCF6;
+  --color-kpi-amber-border: #F5E6C6;
+  --color-kpi-amber-chip: #FEF3E2;
+  --color-kpi-cool: #F7F9FB;
+  --color-kpi-cool-border: #E1E7ED;
+  --color-kpi-cool-chip: #EBF1F7;
+
+  --color-severity-critical: #DC2626;
+  --color-severity-high: #EA580C;
+  --color-severity-medium: #B45309;
+  --color-severity-low: #65A30D;
+  --color-severity-info: #9BA39D;
 
   --radius-sm: 6px;
   --radius-DEFAULT: 8px;
@@ -62,68 +151,336 @@
   --shadow-xl: 0 20px 44px -12px rgba(21, 25, 24, 0.16), 0 8px 16px -6px rgba(21, 25, 24, 0.08);
 }
 
-/* ── Design Tokens (legacy var() aliases — kept for components that read
-   custom properties directly instead of Tailwind's generated utilities) ──── */
+/* ── Design Tokens — legacy var() aliases ───────────────────────────────────
+ * Some code reads custom properties directly rather than through a Tailwind
+ * utility: rules in this stylesheet, inline `style` props, and libraries that
+ * take a colour string (Sonner, Recharts).
+ *
+ * These used to be a second hardcoded copy of the palette, which meant every
+ * colour existed twice and dark mode would have had to override both. They now
+ * simply POINT AT the @theme variables above, so there is exactly one place
+ * where a colour is defined and the `.dark` block below only has to override
+ * that one place.
+ * ─────────────────────────────────────────────────────────────────────────── */
 :root {
   /* Backgrounds */
-  --background: #F6F8F6;
-  --surface: #FFFFFF;
-  --surface-raised: #FFFFFF;
-  --surface-secondary: #FAFCFA;
-  --surface-muted: #EEF2F0;
+  --background: var(--color-background);
+  --surface: var(--color-surface);
+  --surface-raised: var(--color-surface);
+  --surface-secondary: var(--color-surface-secondary);
+  --surface-muted: var(--color-surface-muted);
+  --surface-pressed: var(--color-surface-pressed);
+  --scrim: var(--color-scrim);
 
   /* Text */
-  --text-primary: #151918;
-  --text-secondary: #737A76;
-  --text-disabled: #9BA39D;
+  --text-primary: var(--color-text-primary);
+  --text-strong: var(--color-text-strong);
+  --text-body: var(--color-text-body);
+  --text-secondary: var(--color-text-secondary);
+  --text-disabled: var(--color-text-disabled);
 
   /* Borders */
-  --border: #E3E9E6;
-  --border-strong: #CBD5D0;
+  --border: var(--color-border);
+  --border-strong: var(--color-border-strong);
 
-  /* Accents — deep emerald brand accent. Primary actions, active nav,
-     selected controls, focus rings, and success-adjacent AI accents draw
-     from this ramp. Keep usage restrained: a small highlight against a
-     near-monochrome UI, never a wash of color. `-tint`/`-border`/`-subtle-bg`
-     alias `-soft`/`-soft-border` for components written against either name. */
-  --accent: #0D6B5E;
-  --accent-hover: #09544B;
-  --accent-foreground: #FFFFFF;
-  --accent-soft: #E8F4F0;
-  --accent-soft-border: #CFE7E0;
-  --accent-tint: #E8F4F0;
-  --accent-tint-hover: #DCEEE8;
-  --accent-border: #CFE7E0;
-  --accent-subtle-bg: #F6FBF9;
+  /* Accents */
+  --accent: var(--color-accent);
+  --accent-hover: var(--color-accent-hover);
+  --accent-active: var(--color-accent-active);
+  --accent-foreground: var(--color-accent-foreground);
+  --accent-soft: var(--color-accent-soft);
+  --accent-soft-border: var(--color-accent-soft-border);
+  --accent-tint: var(--color-accent-tint);
+  --accent-tint-hover: var(--color-accent-tint-hover);
+  --accent-border: var(--color-accent-border);
+  --accent-subtle-bg: var(--color-accent-subtle-bg);
 
   /* Status */
-  --success: #16A34A;
-  --success-bg: #F0FDF4;
-  --success-border: #BBF7D0;
+  --success: var(--color-success);
+  --success-bg: var(--color-success-bg);
+  --success-border: var(--color-success-border);
+  --success-strong: var(--color-success-strong);
 
-  --warning: #B45309;
-  --warning-bg: #FFFBEB;
-  --warning-border: #FDE68A;
+  --warning: var(--color-warning);
+  --warning-bg: var(--color-warning-bg);
+  --warning-border: var(--color-warning-border);
+  --warning-strong: var(--color-warning-strong);
 
-  --danger: #DC2626;
-  --danger-bg: #FEF2F2;
-  --danger-border: #FECACA;
+  --danger: var(--color-danger);
+  --danger-bg: var(--color-danger-bg);
+  --danger-border: var(--color-danger-border);
 
-  --info: #2563EB;
-  --info-bg: #EFF6FF;
-  --info-border: #BFDBFE;
+  --info: var(--color-info);
+  --info-bg: var(--color-info-bg);
+  --info-border: var(--color-info-border);
+  --info-strong: var(--color-info-strong);
 
   /* Spacing scale */
-  --radius-sm: 6px;
   --radius: 8px;
-  --radius-lg: 12px;
-  --radius-xl: 16px;
 
   /* Elevation */
   --shadow-xs: 0 1px 2px rgba(21, 25, 24, 0.04);
   --shadow-sm: 0 1px 2px rgba(21, 25, 24, 0.04), 0 1px 3px rgba(21, 25, 24, 0.03);
   --shadow-md: 0 6px 16px -4px rgba(21, 25, 24, 0.08), 0 2px 6px -2px rgba(21, 25, 24, 0.05);
   --shadow-lg: 0 12px 28px -8px rgba(21, 25, 24, 0.12), 0 4px 10px -4px rgba(21, 25, 24, 0.06);
+
+  /* Skeleton shimmer stops — overridden wholesale in dark. */
+  --skeleton-base: var(--color-surface-muted);
+  --skeleton-sheen: var(--color-border);
+
+  /* Scrollbar */
+  --scrollbar-thumb: var(--color-border-strong);
+  --scrollbar-thumb-hover: var(--color-text-disabled);
+
+  /* <select> dropdown chevron. It is a background-image, so it cannot inherit
+     currentColor — the stroke colour is baked into the SVG and the whole image
+     is swapped per theme instead. */
+  --select-chevron: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%23737A76' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3E%3C/svg%3E");
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * DARK THEME
+ *
+ * Every colour in DentGrow resolves through the `--color-*` custom properties
+ * declared in the @theme block above. Redefining them here re-themes the whole
+ * application — utilities, inline var() reads, charts and SVGs alike — without
+ * a single `dark:` variant in a component.
+ *
+ * This is NOT the light palette inverted. The values were derived by measuring
+ * WCAG contrast for every foreground/background pairing the app actually uses
+ * and correcting the ones that failed, while holding each family's hue.
+ * Notable consequences of that process:
+ *
+ *  - The primary button's emerald is LIGHTER than light mode's and carries
+ *    DARK ink. White on emerald measured 3.16:1 and could not be rescued.
+ *  - The button BRIGHTENS on hover instead of darkening; darkening a dark-ink
+ *    button reduces the label's contrast.
+ *  - `surface-muted` inverts its light-mode relationship: in light it sits
+ *    darker than the card, in dark it sits lighter. Depth in dark mode is
+ *    luminance, and a surface below the page floor reads as a hole.
+ *  - Status `-bg` values are deep desaturated tints, never light pastels.
+ *
+ * The class is applied to <html> before first paint by THEME_INIT_SCRIPT
+ * (lib/theme/script.ts) and maintained thereafter by ThemeProvider.
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Tailwind v4 points the `dark:` variant at prefers-color-scheme by default.
+   DentGrow offers an explicit Light/Dark/System choice, so the variant is
+   redefined to follow the class the provider sets. Components should still
+   reach for plain token utilities first — `dark:` is for the rare rule that
+   genuinely differs in dark, not merely for a different colour. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+.dark {
+  /* Renders native UI — scrollbars, form controls, the <select> popup, date
+     pickers — in dark chrome. Without it those paint light against the dark
+     page, entirely outside our CSS. */
+  color-scheme: dark;
+
+  /* ── Surfaces: a four-step luminance ladder ───────────────────────────── */
+  --color-background: #0F1412;
+  --color-surface: #151C19;
+  --color-surface-secondary: #1B2421;
+  --color-surface-muted: #202A26;
+  --color-surface-pressed: #26312C;
+
+  --color-border: #2C3733;
+  --color-border-strong: #5F766C;
+
+  /* ── Text ─────────────────────────────────────────────────────────────── */
+  --color-text-primary: #F1F5F3;
+  --color-text-strong: #DCE4E0;
+  --color-text-body: #C2CCC8;
+  --color-text-secondary: #A5B0AB;
+  /* Despite the name, this tier is used across the app for muted METADATA —
+     timestamps, placeholders, axis labels, empty-state copy — not for disabled
+     controls, which additionally carry opacity-50. At the audited "disabled"
+     value of #5E6A65 all of that copy measured 3.07:1. This is the audited
+     muted-text value instead, which clears 4.5:1 on every surface. */
+  --color-text-disabled: #86938D;
+
+  /* ── Emerald accent ───────────────────────────────────────────────────── */
+  --color-accent: #35A18F;
+  --color-accent-hover: #45B5A2;
+  --color-accent-active: #2A8274;
+  --color-accent-foreground: #0F1412;
+  --color-accent-soft: #122E29;
+  --color-accent-soft-border: #2F6559;
+  --color-accent-tint: #122E29;
+  --color-accent-tint-hover: #16332E;
+  --color-accent-border: #2F6559;
+  --color-accent-subtle-bg: #101F1C;
+
+  /* ── Status ───────────────────────────────────────────────────────────── */
+  --color-success-foreground: #0F1412;
+  --color-warning-foreground: #0F1412;
+  --color-danger-foreground: #0F1412;
+  --color-info-foreground: #0F1412;
+
+  --color-success: #43C97A;
+  --color-success-bg: #163628;
+  --color-success-border: #2C6E4F;
+  --color-success-strong: #7FDBA4;
+  --color-success-hover: #5FD68F;
+
+  --color-warning: #E0A63F;
+  --color-warning-bg: #3B2E17;
+  --color-warning-border: #775E24;
+  --color-warning-strong: #EFC176;
+
+  --color-danger: #EF7B76;
+  --color-danger-bg: #402725;
+  --color-danger-border: #84463F;
+  --color-danger-hover: #F59892;
+  --color-danger-active: #FAB2AD;
+
+  --color-info: #6BA6F0;
+  --color-info-bg: #1F3050;
+  --color-info-border: #345F94;
+  --color-info-strong: #9CC4F6;
+
+  /* The scrim covers the page, so it goes to pure black rather than the light
+     theme's near-black charcoal — charcoal over charcoal is not a scrim. */
+  --color-scrim: #000000;
+
+  /* ── Charts ───────────────────────────────────────────────────────────── */
+  /* Banded by lightness rather than hue alone, so the series stay separable
+     under deuteranopia — the light palette's blue/violet pair collapsed to a
+     CIEDE2000 distance of 2.4, effectively identical for those viewers. */
+  --color-chart-1: #3FB3A0;
+  --color-chart-2: #CFAE54;
+  --color-chart-3: #5786B7;
+  --color-chart-4: #DF9FD3;
+  --color-chart-5: #D3725A;
+  --color-chart-6: #C4D7D9;
+  --color-chart-7: #ABB181;
+  --color-chart-8: #89756C;
+  --color-chart-grid: #242F2B;
+  --color-chart-axis: #A5B0AB;
+
+  /* ── Peak-hours density ramp ──────────────────────────────────────────── */
+  /* Runs the same direction as light: faint means quiet, emerald means busy. */
+  --color-heat-0: #1A211E;
+  --color-heat-1: #223029;
+  --color-heat-2: #2C4740;
+  --color-heat-3: #2F6559;
+  --color-heat-4: #2A8274;
+  --color-heat-5: #45B5A2;
+
+  /* ── Dental chart ─────────────────────────────────────────────────────── */
+  /* Muted clinical tints, not inverted enamel. Each state also sits in its own
+     lightness band so the chart survives colour-vision deficiency, and
+     `in_progress` keeps its heavier stroke width as a second, non-colour cue. */
+  --color-tooth-normal: #B5BAB9;
+  --color-tooth-normal-line: #5D6666;
+  --color-tooth-recommended: #E0C893;
+  --color-tooth-recommended-line: #7C5E17;
+  --color-tooth-planned: #98B3C3;
+  --color-tooth-planned-line: #274C60;
+  --color-tooth-in-progress: #98B3C3;
+  --color-tooth-in-progress-line: #1B3E58;
+  --color-tooth-completed: #9FC4A6;
+  --color-tooth-completed-line: #2C5E3C;
+  --color-tooth-missing: #0F1412;
+  --color-tooth-missing-line: #5A6862;
+  --color-tooth-gloss: #F1F5F3;
+
+  /* ── Business Brain severity ramp ─────────────────────────────────────── */
+  --color-kpi-mint: #131F1B;
+  --color-kpi-mint-border: #24382F;
+  --color-kpi-mint-chip: #182C26;
+  --color-kpi-amber: #1D1A14;
+  --color-kpi-amber-border: #38301F;
+  --color-kpi-amber-chip: #272217;
+  --color-kpi-cool: #141A21;
+  --color-kpi-cool-border: #25313D;
+  --color-kpi-cool-chip: #1B2530;
+
+  --color-severity-critical: #EF7B76;
+  --color-severity-high: #E08A5A;
+  --color-severity-medium: #E0A63F;
+  --color-severity-low: #A9C46C;
+  --color-severity-info: #6E7B76;
+
+  /* ── Values with no --color-* counterpart ─────────────────────────────── */
+  --surface-raised: #1B2421;
+
+  --skeleton-base: #1E2723;
+  --skeleton-sheen: #2A3531;
+
+  --scrollbar-thumb: #3E4C46;
+  --scrollbar-thumb-hover: #5F766C;
+
+  /* Same chevron geometry, restroked for a dark field. */
+  --select-chevron: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%23A5B0AB' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3E%3C/svg%3E");
+
+  /* Elevation is carried by the surface ladder above; shadow only grounds it.
+     Pure black at roughly four times the light opacity — a charcoal-tinted
+     shadow on a charcoal ground just muddies the hue. */
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.30);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.32), 0 1px 3px rgba(0, 0, 0, 0.24);
+  --shadow-md: 0 6px 16px -4px rgba(0, 0, 0, 0.48), 0 2px 6px -2px rgba(0, 0, 0, 0.34);
+  --shadow-lg: 0 12px 28px -8px rgba(0, 0, 0, 0.56), 0 4px 10px -4px rgba(0, 0, 0, 0.38);
+}
+
+/* ── Printable documents stay light ────────────────────────────────────────
+ * An invoice, a prescription and a signed consent form are DOCUMENTS. They are
+ * printed, and they are rasterised by html2canvas-pro into a PDF that is forced
+ * to a white background. A dark bill is not a styling preference, it is a
+ * broken document.
+ *
+ * Applying this class pins the token values back to light INSIDE the document,
+ * so the document renders as paper while the app chrome around it — the modal
+ * backdrop, the header bar, the Print and Download buttons — themes normally.
+ * It also isolates the document from any future token change: nothing inside
+ * has to be hardcoded to stay correct.
+ * ───────────────────────────────────────────────────────────────────────── */
+.document-light {
+  color-scheme: light;
+  --color-background: #F6F8F6;
+  --color-surface: #FFFFFF;
+  --color-surface-secondary: #FAFCFA;
+  --color-surface-muted: #EEF2F0;
+  --color-border: #E3E9E6;
+  --color-border-strong: #CBD5D0;
+  --color-text-primary: #151918;
+  --color-text-strong: #333B36;
+  --color-text-body: #5B635E;
+  --color-text-secondary: #737A76;
+  --color-text-disabled: #9BA39D;
+  --color-accent: #0D6B5E;
+  --color-accent-foreground: #FFFFFF;
+  --color-success: #16A34A;
+  --color-warning: #B45309;
+  --color-danger: #DC2626;
+  --color-info: #2563EB;
+
+  background: #FFFFFF;
+  color: #151918;
+}
+
+/* Selection: reusing the light rule paints emerald on emerald once the accent
+   moves, which loses the crispness a selection needs. */
+.dark ::selection {
+  background: var(--color-accent-tint-hover);
+  color: var(--color-text-primary);
+}
+
+/* The enamel gloss is a white wash at 0.75 opacity. Left alone it blows the
+   dark clinical tints out to near-white and erases the tooth's state. */
+.dark .tooth-gloss {
+  opacity: 0.12;
+}
+
+/* Colour transitions are suppressed for one frame while the theme class flips.
+   Hundreds of elements carry `transition-colors`; without this the whole page
+   visibly smears between palettes. Suppressing rather than animating also
+   avoids a full-viewport luminance animation, which is a vestibular and
+   photosensitivity trigger at that scale. */
+[data-theme-switching] *,
+[data-theme-switching] *::before,
+[data-theme-switching] *::after {
+  transition: none !important;
 }
 
 /* ── Base Reset ─────────────────────────────────────────────────────────────── */
@@ -131,6 +488,15 @@
 *::before,
 *::after {
   box-sizing: border-box;
+}
+
+/* Tailwind's ring-offset colour defaults to white, which paints a white halo
+   around every focused control on a dark page. Point it at the theme instead;
+   components sitting on a raised surface can still override it locally. */
+*,
+*::before,
+*::after {
+  --tw-ring-offset-color: var(--color-background);
 }
 
 html {
@@ -152,6 +518,18 @@ html {
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
+
+  /* Two Business Brain animations are not decoration — they ARE the feedback.
+     Both end at opacity 0 with `forwards`, so collapsing them to 0.01ms made
+     the completed action and the "+N Health" note disappear instantly, leaving
+     a reduced-motion user with no confirmation that anything happened. Hold
+     them at their visible state instead of racing them to nothing. */
+  .animate-complete-out,
+  .animate-score-pop {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
 }
 
 body {
@@ -172,12 +550,12 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #CBD5D0;
+  background: var(--scrollbar-thumb);
   border-radius: 999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #9BA39D;
+  background: var(--scrollbar-thumb-hover);
 }
 
 /* ── Focus Styles ──────────────────────────────────────────────────────────── */
@@ -265,7 +643,12 @@ body {
 }
 
 .skeleton {
-  background: linear-gradient(90deg, #EEF2F0 25%, #E3E9E6 50%, #EEF2F0 75%);
+  background: linear-gradient(
+    90deg,
+    var(--skeleton-base) 25%,
+    var(--skeleton-sheen) 50%,
+    var(--skeleton-base) 75%
+  );
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite;
   border-radius: var(--radius-sm);

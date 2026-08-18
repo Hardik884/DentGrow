@@ -91,7 +91,7 @@ export function PrescriptionsView({
   if (isPending) {
     return (
       <>
-        <p className="text-sm text-[#737A76]">Loading prescriptions…</p>
+        <p className="text-sm text-text-secondary">Loading prescriptions…</p>
         <ListTableSkeleton />
       </>
     );
@@ -100,22 +100,22 @@ export function PrescriptionsView({
   return (
     <>
       {/* Results count */}
-      <p className="text-sm text-[#737A76]">
+      <p className="text-sm text-text-secondary">
         {total} prescription{total !== 1 ? "s" : ""} found
       </p>
 
       {/* Error */}
       {isError && (
-        <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-md px-3 py-2">
+        <p className="text-sm text-danger bg-danger-bg border border-danger-border rounded-md px-3 py-2">
           {(error as Error)?.message ?? "Failed to load prescriptions."}
         </p>
       )}
 
       {/* Table */}
       {prescriptions.length === 0 ? (
-        <div className="bg-white border border-[#E3E9E6] rounded-xl p-12 text-center">
-          <p className="text-[#737A76] text-sm">No prescriptions match your filters.</p>
-          <p className="text-[#9BA39D] text-xs mt-1">
+        <div className="bg-surface border border-border rounded-xl p-12 text-center">
+          <p className="text-text-secondary text-sm">No prescriptions match your filters.</p>
+          <p className="text-text-disabled text-xs mt-1">
             Try adjusting the date range or clearing filters.
           </p>
         </div>
@@ -125,11 +125,11 @@ export function PrescriptionsView({
             isPlaceholderData && isFetching ? "opacity-60 transition-opacity" : "transition-opacity"
           }
         >
-          <div className="bg-white border border-[#E3E9E6] rounded-xl overflow-hidden">
+          <div className="bg-surface border border-border rounded-xl overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-[#EEF2F0] bg-[#F6F8F6] text-left text-xs font-semibold text-[#737A76] uppercase tracking-wide">
+                  <tr className="border-b border-surface-muted bg-background text-left text-xs font-semibold text-text-secondary uppercase tracking-wide">
                     <th className="px-4 py-3">Prescription Date</th>
                     <th className="px-4 py-3">Patient Name</th>
                     <th className="px-4 py-3">Phone Number</th>
@@ -139,25 +139,25 @@ export function PrescriptionsView({
                     <th className="px-4 py-3 text-right">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[#EEF2F0]">
+                <tbody className="divide-y divide-surface-muted">
                   {prescriptions.map((rx) => (
-                    <tr key={rx.id} className="hover:bg-[#F6F8F6] transition-colors">
-                      <td className="px-4 py-3 text-[#5B635E]">
+                    <tr key={rx.id} className="hover:bg-background transition-colors">
+                      <td className="px-4 py-3 text-text-body">
                         {formatDateInTimezone(rx.treatment_date, clinicTimezone)}
                       </td>
-                      <td className="px-4 py-3 font-medium text-[#151918]">
+                      <td className="px-4 py-3 font-medium text-text-primary">
                         {rx.patient_name}
                       </td>
-                      <td className="px-4 py-3 text-[#5B635E]">
+                      <td className="px-4 py-3 text-text-body">
                         {rx.patient_phone ?? "—"}
                       </td>
-                      <td className="px-4 py-3 text-[#5B635E]">
+                      <td className="px-4 py-3 text-text-body">
                         {rx.treatment_type}
                       </td>
-                      <td className="px-4 py-3 text-[#5B635E]">
+                      <td className="px-4 py-3 text-text-body">
                         {rx.dentist_name}
                       </td>
-                      <td className="px-4 py-3 text-center text-[#5B635E]">
+                      <td className="px-4 py-3 text-center text-text-body">
                         {rx.medicine_count}
                       </td>
                       <td className="px-4 py-3 text-right">

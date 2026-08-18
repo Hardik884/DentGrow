@@ -25,26 +25,9 @@
 import type { ToothStatus } from "@/types";
 import type { ToothType, ArchSide } from "@/lib/dental-chart/teeth";
 import { cn } from "@/lib/utils";
+import { TOOTH_STATUS_CLASSES } from "@/lib/dental-chart/status";
 
 export type ToothVisualState = ToothStatus;
-
-const STATUS_FILL: Record<ToothVisualState, string> = {
-  normal: "#FFFFFF",
-  recommended: "#FFFBEB",
-  planned: "#EFF6FF",
-  in_progress: "#EFF6FF",
-  completed: "#F0FDF4",
-  missing: "#EEF2F0",
-};
-
-const STATUS_STROKE: Record<ToothVisualState, string> = {
-  normal: "#CBD5D0",
-  recommended: "#EAB308",
-  planned: "#93C5FD",
-  in_progress: "#2563EB",
-  completed: "#4ADE80",
-  missing: "#CBD5D0",
-};
 
 const STATUS_STROKE_WIDTH: Record<ToothVisualState, number> = {
   normal: 0.6,
@@ -104,8 +87,7 @@ export type ToothProps = {
 
 export function Tooth({ toothType, arch, status, size = 40, className, ariaLabel }: ToothProps) {
   const shape = TOOTH_SHAPES[toothType];
-  const fill = STATUS_FILL[status];
-  const stroke = STATUS_STROKE[status];
+  const tone = TOOTH_STATUS_CLASSES[status];
   const strokeWidth = STATUS_STROKE_WIDTH[status];
   const isMissing = status === "missing";
 
@@ -131,19 +113,18 @@ export function Tooth({ toothType, arch, status, size = 40, className, ariaLabel
       <g transform={flipTransform} opacity={isMissing ? 0.5 : 1}>
         <path
           d={shape.outline}
-          fill={fill}
-          stroke={stroke}
+          className={cn(tone.fill, tone.stroke)}
           strokeWidth={strokeWidth}
           strokeLinejoin="round"
           strokeDasharray={isMissing ? "2.5 2" : undefined}
         />
         {shape.highlight && !isMissing && (
-          <path d={shape.highlight} fill="#FFFFFF" opacity={0.75} />
+          <path d={shape.highlight} className="tooth-gloss fill-tooth-gloss" opacity={0.75} />
         )}
         {isMissing && (
           <path
             d={`M${vbWidth * 0.28},${vbHeight * 0.15} L${vbWidth * 0.72},${vbHeight * 0.92} M${vbWidth * 0.72},${vbHeight * 0.15} L${vbWidth * 0.28},${vbHeight * 0.92}`}
-            stroke="#9BA39D"
+            className="stroke-tooth-missing-line"
             strokeWidth={0.6}
             strokeLinecap="round"
           />

@@ -79,7 +79,7 @@ export function PatientsView({ page, limit, search, filter, baseHref }: Patients
       <form onSubmit={submitSearch} className="flex gap-2 mb-5">
         <div className="relative flex-1 max-w-sm">
           <Search
-            className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#9BA39D]"
+            className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-text-disabled"
             aria-hidden
           />
           <Input
@@ -105,14 +105,14 @@ export function PatientsView({ page, limit, search, filter, baseHref }: Patients
       </form>
 
       {search && !showSkeleton && (
-        <p className="text-xs text-[#737A76] mb-3">
+        <p className="text-xs text-text-secondary mb-3">
           {total} result{total !== 1 ? "s" : ""} for &ldquo;{search}&rdquo;
         </p>
       )}
 
       {/* Error — keep any previously cached rows visible underneath */}
       {isError && (
-        <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-md px-3 py-2 mb-3">
+        <p className="text-sm text-danger bg-danger-bg border border-danger-border rounded-md px-3 py-2 mb-3">
           {(error as Error)?.message ?? "Failed to load patients."}
         </p>
       )}

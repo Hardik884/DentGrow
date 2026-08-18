@@ -51,7 +51,7 @@ export default async function PortalNewAppointmentPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-xl font-semibold">Book an Appointment</h1>
-        <p className="text-gray-600 text-sm mt-1">
+        <p className="text-text-secondary text-sm mt-1">
           Select an available date and time slot.
         </p>
       </div>

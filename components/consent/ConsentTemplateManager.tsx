@@ -28,8 +28,8 @@ export function ConsentTemplateManager({ templates }: ConsentTemplateManagerProp
 
   return (
     <div className="space-y-3">
-      <div className="rounded-md border border-[#E3E9E6] bg-[#F6F8F6] px-4 py-3">
-        <p className="text-xs text-[#5B635E]">
+      <div className="rounded-md border border-border bg-background px-4 py-3">
+        <p className="text-xs text-text-body">
           These are your clinic&apos;s consent templates. They are a starting point —{" "}
           <strong>review and approve the wording</strong> (with legal counsel where appropriate)
           before using them with patients. Editing a template creates a new version; consents
@@ -37,15 +37,15 @@ export function ConsentTemplateManager({ templates }: ConsentTemplateManagerProp
         </p>
       </div>
 
-      <ul className="divide-y divide-[#EEF2F0] rounded-lg border border-[#E3E9E6]">
+      <ul className="divide-y divide-surface-muted rounded-lg border border-border">
         {templates.map((t) => (
           <li key={t.id} className="flex items-center justify-between gap-3 px-4 py-3">
             <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <p className="text-sm font-medium text-[#151918] truncate">{t.name}</p>
+                <p className="text-sm font-medium text-text-primary truncate">{t.name}</p>
                 {!t.is_active && <StatusBadge label="Inactive" variant="default" />}
               </div>
-              <p className="text-xs text-[#737A76] mt-0.5">
+              <p className="text-xs text-text-secondary mt-0.5">
                 Version {t.current_version} · Last updated {formatDate(t.updated_at)}
                 {t.consent_required ? " · Required by default" : ""}
               </p>
@@ -122,20 +122,20 @@ function TemplateEditDialog({
     <Dialog open onClose={onClose} size="xl" busy={pending} title={`Edit: ${template.name}`}
       description="Saving creates a new version. Signed consents are not affected.">
       <div className="p-5 space-y-4">
-        {!loaded && <p className="text-sm text-[#737A76]">Loading…</p>}
-        {loaded && !content && <p className="text-sm text-red-600">Could not load template content.</p>}
+        {!loaded && <p className="text-sm text-text-secondary">Loading…</p>}
+        {loaded && !content && <p className="text-sm text-danger">Could not load template content.</p>}
         {content && (
           <>
             <Field label="Template name" htmlFor="tpl-name">
               <Input id="tpl-name" value={name} onChange={(e) => setName(e.target.value)} />
             </Field>
 
-            <label className="flex items-center gap-2 text-sm text-[#333B36]">
+            <label className="flex items-center gap-2 text-sm text-text-strong">
               <input type="checkbox" checked={required} onChange={(e) => setRequired(e.target.checked)} />
               Recommend consent by default for matching treatments
             </label>
 
-            <div className="space-y-3 border-t border-[#EEF2F0] pt-3">
+            <div className="space-y-3 border-t border-surface-muted pt-3">
               {content.sections.map((s, i) => (
                 <div key={s.key} className="space-y-1">
                   <Input

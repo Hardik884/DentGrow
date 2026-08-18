@@ -23,7 +23,7 @@ export function DateRangeFilter() {
 
   return (
     <div className="flex items-center gap-2">
-      <span className="text-xs text-[#9BA39D] sr-only">From</span>
+      <span className="text-xs text-text-disabled sr-only">From</span>
       <CalendarPicker
         value={from}
         max={to}
@@ -31,8 +31,8 @@ export function DateRangeFilter() {
         aria-label="Start date"
         className="w-36 text-xs"
       />
-      <span className="text-xs text-[#9BA39D]">–</span>
-      <span className="text-xs text-[#9BA39D] sr-only">To</span>
+      <span className="text-xs text-text-disabled">–</span>
+      <span className="text-xs text-text-disabled sr-only">To</span>
       <CalendarPicker
         value={to}
         min={from}

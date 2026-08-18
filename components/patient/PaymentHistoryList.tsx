@@ -10,7 +10,7 @@ export async function PaymentHistoryList() {
 
   if (result.error) {
     return (
-      <div className="border border-[#FECACA] rounded-xl p-4 text-xs text-[#DC2626] bg-[#FEF2F2] text-center">
+      <div className="border border-danger-border rounded-xl p-4 text-xs text-danger bg-danger-bg text-center">
         Failed to load payments. Please try again later.
       </div>
     );
@@ -18,7 +18,7 @@ export async function PaymentHistoryList() {
 
   if (payments.length === 0) {
     return (
-      <div className="bg-white border border-[#E3E9E6] rounded-xl">
+      <div className="bg-surface border border-border rounded-xl">
         <EmptyState
           icon={<CreditCard className="h-5 w-5" aria-hidden />}
           title="No payment records"
@@ -29,19 +29,19 @@ export async function PaymentHistoryList() {
   }
 
   return (
-    <div className="bg-white border border-[#E3E9E6] rounded-xl overflow-hidden divide-y divide-[#EEF2F0]">
+    <div className="bg-surface border border-border rounded-xl overflow-hidden divide-y divide-surface-muted">
       {payments.map((payment) => (
         <div key={payment.id} className="px-5 py-4 flex items-center justify-between gap-4">
           <div className="min-w-0 space-y-0.5">
-            <p className="text-sm font-medium text-[#151918]">
+            <p className="text-sm font-medium text-text-primary">
               {PAYMENT_METHOD_LABELS[payment.method as PaymentMethod]}
             </p>
-            <p className="text-xs text-[#9BA39D]">{formatDate(payment.payment_date)}</p>
+            <p className="text-xs text-text-disabled">{formatDate(payment.payment_date)}</p>
             {payment.notes && (
-              <p className="text-xs text-[#737A76]">{payment.notes}</p>
+              <p className="text-xs text-text-secondary">{payment.notes}</p>
             )}
           </div>
-          <span className="text-sm font-semibold text-[#16A34A] shrink-0">
+          <span className="text-sm font-semibold text-success shrink-0">
             +{formatCurrency(Number(payment.amount))}
           </span>
         </div>

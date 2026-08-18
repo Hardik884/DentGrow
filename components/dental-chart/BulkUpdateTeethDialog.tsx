@@ -78,7 +78,7 @@ export function BulkUpdateTeethDialog({
     >
       <div className="p-5 space-y-4">
         {error && (
-          <div className="rounded-lg bg-[#FEF2F2] border border-[#FECACA] px-3 py-2 text-xs text-[#DC2626]">
+          <div className="rounded-lg bg-danger-bg border border-danger-border px-3 py-2 text-xs text-danger">
             {error}
           </div>
         )}

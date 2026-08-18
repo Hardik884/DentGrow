@@ -46,21 +46,21 @@ export function DeleteTreatmentButton({
   if (confirming) {
     return (
       <div className="flex items-center gap-2">
-        <span className="text-sm text-gray-700">Delete this treatment?</span>
+        <span className="text-sm text-text-secondary">Delete this treatment?</span>
         <button
           onClick={handleDelete}
           disabled={isPending}
-          className="px-3 py-1.5 text-sm font-medium bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50 transition-colors"
+          className="px-3 py-1.5 text-sm font-medium bg-danger text-danger-foreground rounded-md hover:bg-danger-hover disabled:opacity-50 transition-colors"
         >
           {isPending ? "Deleting..." : "Confirm"}
         </button>
         <button
           onClick={() => setConfirming(false)}
-          className="px-3 py-1.5 text-sm font-medium border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
+          className="px-3 py-1.5 text-sm font-medium border border-border-strong rounded-md hover:bg-surface-secondary transition-colors"
         >
           Cancel
         </button>
-        {error && <p className="text-xs text-red-600">{error}</p>}
+        {error && <p className="text-xs text-danger">{error}</p>}
       </div>
     );
   }
@@ -69,7 +69,7 @@ export function DeleteTreatmentButton({
     <button
       onClick={() => setConfirming(true)}
       title={`Delete treatment: ${treatmentType}`}
-      className="px-3 py-1.5 text-sm font-medium text-red-600 border border-red-300 rounded-md hover:bg-red-50 transition-colors"
+      className="px-3 py-1.5 text-sm font-medium text-danger border border-danger-border rounded-md hover:bg-danger-bg transition-colors"
     >
       Delete
     </button>

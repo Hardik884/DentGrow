@@ -38,9 +38,9 @@ export async function PatientTreatmentsTab({
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="font-semibold text-gray-900">Treatments</h3>
+          <h3 className="font-semibold text-text-primary">Treatments</h3>
           {treatments.length > 0 && (
-            <p className="text-xs text-gray-500 mt-0.5">
+            <p className="text-xs text-text-secondary mt-0.5">
               Total cost: {formatCurrency(totalCost)}
             </p>
           )}
@@ -58,7 +58,7 @@ export async function PatientTreatmentsTab({
       </div>
 
       {result.error && (
-        <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-md px-3 py-2">
+        <p className="text-sm text-danger bg-danger-bg border border-danger-border rounded-md px-3 py-2">
           {result.error}
         </p>
       )}

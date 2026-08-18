@@ -8,6 +8,7 @@ import {
   Legend,
   ResponsiveContainer,
 } from "recharts";
+import { useChartTheme } from "@/hooks/useChartTheme";
 import type { AppointmentSource } from "@/types";
 
 interface DataPoint {
@@ -23,15 +24,15 @@ const SOURCE_LABELS: Record<string, string> = {
   other: "Other",
 };
 
-const COLORS = ["#3b82f6", "#22c55e", "#f59e0b", "#8b5cf6", "#94a3b8"];
-
 /**
  * AcquisitionSourceChart — appointment source breakdown (donut chart).
  */
 export function AcquisitionSourceChart({ data }: { data: DataPoint[] }) {
+  const chart = useChartTheme();
+
   if (!data.length || data.every((d) => d.count === 0)) {
     return (
-      <div className="h-48 flex items-center justify-center text-sm text-gray-400">
+      <div className="h-48 flex items-center justify-center text-sm text-text-disabled">
         No source data for selected period
       </div>
     );
@@ -54,11 +55,11 @@ export function AcquisitionSourceChart({ data }: { data: DataPoint[] }) {
           dataKey="value"
         >
           {chartData.map((_, index) => (
-            <Cell key={index} fill={COLORS[index % COLORS.length]} />
+            <Cell key={index} fill={chart.series[index % chart.series.length]} />
           ))}
         </Pie>
-        <Tooltip formatter={(v: number) => [v, "Appointments"]} />
-        <Legend />
+        <Tooltip {...chart.tooltip} formatter={(v: number) => [v, "Appointments"]} />
+        <Legend wrapperStyle={{ fontSize: 12, color: chart.axis }} />
       </PieChart>
     </ResponsiveContainer>
   );

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getPortalProfile } from "@/actions/portal-link";
 import { PortalProfileView } from "@/components/patient/PortalProfileView";
+import { AppearanceSettings } from "@/components/shared/ThemeToggle";
 
 export const metadata: Metadata = {
   title: "My Profile",
@@ -36,7 +37,7 @@ export default async function PortalProfilePage() {
     return (
       <div className="space-y-4">
         <h1 className="text-xl font-semibold">My Profile</h1>
-        <div className="border rounded-lg p-4 text-sm text-red-600 bg-red-50">
+        <div className="border rounded-lg p-4 text-sm text-danger bg-danger-bg">
           Unable to load your profile. Please try refreshing the page.
         </div>
       </div>
@@ -45,8 +46,9 @@ export default async function PortalProfilePage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-xl font-semibold text-gray-900">My Profile</h1>
+      <h1 className="text-xl font-semibold text-text-primary">My Profile</h1>
       <PortalProfileView profile={result.data} />
+      <AppearanceSettings />
     </div>
   );
 }

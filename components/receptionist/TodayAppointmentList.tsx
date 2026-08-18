@@ -21,10 +21,10 @@ export async function TodayAppointmentList() {
   }).format(new Date());
 
   return (
-    <div className="bg-white border border-[#E3E9E6] rounded-xl overflow-hidden">
-      <div className="px-5 py-4 border-b border-[#E3E9E6]">
-        <h2 className="text-sm font-semibold text-[#151918]">Today&apos;s Appointments</h2>
-        <p className="text-xs text-[#737A76] mt-0.5">
+    <div className="bg-surface border border-border rounded-xl overflow-hidden">
+      <div className="px-5 py-4 border-b border-border">
+        <h2 className="text-sm font-semibold text-text-primary">Today&apos;s Appointments</h2>
+        <p className="text-xs text-text-secondary mt-0.5">
           {appointments.length} appointment{appointments.length !== 1 ? "s" : ""} today
         </p>
       </div>

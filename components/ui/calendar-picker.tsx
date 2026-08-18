@@ -142,7 +142,7 @@ function YearSelector({ year, onSelect, onClose }: YearSelectorProps) {
   }, [onClose]);
 
   return (
-    <div className="absolute inset-0 z-10 bg-white rounded-xl flex flex-col">
+    <div className="absolute inset-0 z-10 bg-surface rounded-xl flex flex-col">
       <div className="flex items-center justify-between px-3 py-2.5 border-b border-border">
         <span className="text-xs font-semibold text-text-primary">Select Year</span>
         <button
@@ -171,7 +171,7 @@ function YearSelector({ year, onSelect, onClose }: YearSelectorProps) {
               className={cn(
                 "w-full px-4 py-1.5 text-sm text-left transition-colors",
                 isSelected
-                  ? "bg-accent text-white font-semibold"
+                  ? "bg-accent text-accent-foreground font-semibold"
                   : "text-text-primary hover:bg-surface"
               )}
             >
@@ -294,7 +294,7 @@ function CalendarGrid({
             className={cn(
               "py-0.5 text-[10px] rounded transition-colors",
               i === month
-                ? "bg-accent text-white font-semibold"
+                ? "bg-accent text-accent-foreground font-semibold"
                 : "text-text-secondary hover:bg-surface hover:text-text-primary"
             )}
             aria-label={MONTH_NAMES[i]}
@@ -335,7 +335,7 @@ function CalendarGrid({
               className={cn(
                 "h-8 w-full flex items-center justify-center text-xs rounded-md transition-colors",
                 isSelected
-                  ? "bg-accent text-white font-semibold"
+                  ? "bg-accent text-accent-foreground font-semibold"
                   : isToday && !isSelected
                   ? "bg-surface text-text-primary font-semibold ring-1 ring-border"
                   : "text-text-primary hover:bg-surface",
@@ -500,7 +500,7 @@ export function CalendarPicker({
           aria-haspopup="dialog"
           className={cn(
             "flex items-center gap-2 w-full h-9 px-3 py-2 rounded-lg border border-border",
-            "bg-white text-sm text-left transition-colors",
+            "bg-surface text-sm text-left transition-colors",
             "hover:border-border-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-1",
             "disabled:opacity-50 disabled:cursor-not-allowed",
             !value && "text-text-disabled",
@@ -541,7 +541,7 @@ export function CalendarPicker({
             minWidth: popoverPos.minWidth,
           }}
           className={cn(
-            "z-[9999] rounded-xl border border-border bg-white shadow-lg p-3",
+            "z-[9999] rounded-xl border border-border bg-surface shadow-lg p-3",
             "animate-in fade-in-0 zoom-in-95 duration-100"
           )}
         >

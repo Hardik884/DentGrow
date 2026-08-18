@@ -93,16 +93,16 @@ export function AvailabilityRulesManager({ initialRules }: AvailabilityRulesMana
   return (
     <div className="space-y-4 max-w-3xl">
       {globalError && (
-        <div role="alert" className="rounded-lg bg-[#FEF2F2] border border-[#FECACA] px-4 py-3 text-xs text-[#DC2626]">
+        <div role="alert" className="rounded-lg bg-danger-bg border border-danger-border px-4 py-3 text-xs text-danger">
           {globalError}
         </div>
       )}
 
-      <div className="bg-white border border-[#E3E9E6] rounded-xl overflow-hidden">
-        <div className="px-5 py-4 border-b border-[#E3E9E6] flex items-center justify-between">
+      <div className="bg-surface border border-border rounded-xl overflow-hidden">
+        <div className="px-5 py-4 border-b border-border flex items-center justify-between">
           <div>
-            <h2 className="text-sm font-semibold text-[#151918]">Availability Rules</h2>
-            <p className="text-xs text-[#737A76] mt-0.5">{rules.length} rule{rules.length !== 1 ? "s" : ""} configured</p>
+            <h2 className="text-sm font-semibold text-text-primary">Availability Rules</h2>
+            <p className="text-xs text-text-secondary mt-0.5">{rules.length} rule{rules.length !== 1 ? "s" : ""} configured</p>
           </div>
           <Button
             size="sm"
@@ -121,7 +121,7 @@ export function AvailabilityRulesManager({ initialRules }: AvailabilityRulesMana
             description="Add rules to define when appointments can be booked."
           />
         ) : (
-          <div className="divide-y divide-[#EEF2F0]">
+          <div className="divide-y divide-surface-muted">
             {rules.map((rule) => (
               <div key={rule.id}>
                 {editingId === rule.id ? (
@@ -140,30 +140,30 @@ export function AvailabilityRulesManager({ initialRules }: AvailabilityRulesMana
                         disabled={isPending}
                         className={cn(
                           "relative inline-flex h-5 w-9 shrink-0 rounded-full border-2 border-transparent transition-colors",
-                          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0D6B5E]",
+                          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent",
                           "disabled:cursor-not-allowed",
-                          rule.is_active ? "bg-[#0D6B5E]" : "bg-[#E3E9E6]"
+                          rule.is_active ? "bg-accent" : "bg-border"
                         )}
                         aria-pressed={rule.is_active}
                         aria-label={`${DAY_LABELS[rule.day_of_week]}: ${rule.is_active ? "active" : "inactive"}`}
                       >
                         <span className={cn(
-                          "pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow transform transition-transform",
+                          "pointer-events-none inline-block h-4 w-4 rounded-full bg-surface shadow transform transition-transform",
                           rule.is_active ? "translate-x-4" : "translate-x-0"
                         )} />
                       </button>
 
                       <div>
-                        <p className="text-sm font-medium text-[#151918]">
+                        <p className="text-sm font-medium text-text-primary">
                           {DAY_LABELS[rule.day_of_week]}
                           {" "}
-                          <span className="font-normal text-[#737A76]">
+                          <span className="font-normal text-text-secondary">
                             {formatTime(rule.start_time)} – {formatTime(rule.end_time)}
                           </span>
                         </p>
-                        <p className="text-xs text-[#9BA39D]">
+                        <p className="text-xs text-text-disabled">
                           {rule.slot_duration_minutes} min slots ·{" "}
-                          <span className={rule.is_active ? "text-[#16A34A]" : "text-[#9BA39D]"}>
+                          <span className={rule.is_active ? "text-success" : "text-text-disabled"}>
                             {rule.is_active ? "Active" : "Inactive"}
                           </span>
                         </p>
@@ -187,8 +187,8 @@ export function AvailabilityRulesManager({ initialRules }: AvailabilityRulesMana
         )}
 
         {showAddForm && (
-          <div className="px-5 py-4 border-t border-[#E3E9E6] bg-[#F6F8F6]">
-            <p className="text-xs font-semibold text-[#151918] mb-3">New Rule</p>
+          <div className="px-5 py-4 border-t border-border bg-background">
+            <p className="text-xs font-semibold text-text-primary mb-3">New Rule</p>
             <form onSubmit={createForm.handleSubmit(handleCreate)}>
               <RuleFormFields
                 form={createForm}
@@ -200,7 +200,7 @@ export function AvailabilityRulesManager({ initialRules }: AvailabilityRulesMana
         )}
       </div>
 
-      <p className="text-xs text-[#737A76]">
+      <p className="text-xs text-text-secondary">
         Changes take effect immediately — available booking slots update automatically.
       </p>
     </div>
@@ -223,7 +223,7 @@ function RuleFormFields({
   return (
     <div className="space-y-4">
       {form.formState.errors.root && (
-        <p className="text-xs text-[#DC2626]" role="alert">{form.formState.errors.root.message}</p>
+        <p className="text-xs text-danger" role="alert">{form.formState.errors.root.message}</p>
       )}
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">

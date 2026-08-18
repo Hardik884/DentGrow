@@ -125,7 +125,7 @@ export function PortalLinkForm({
 
   if (success) {
     return (
-      <div className="text-center py-4 text-green-600 text-sm font-medium">
+      <div className="text-center py-4 text-success text-sm font-medium">
         Account linked! Redirecting to your portal…
       </div>
     );
@@ -134,11 +134,11 @@ export function PortalLinkForm({
   // Shared clinic selector block (locked label or dropdown).
   const clinicBlock = (
     <div className="space-y-1.5">
-      <label htmlFor="clinic" className="block text-sm font-medium text-gray-700">
+      <label htmlFor="clinic" className="block text-sm font-medium text-text-secondary">
         Clinic
       </label>
       {clinicLocked ? (
-        <div className="w-full border border-gray-200 bg-gray-50 rounded-lg px-3 py-2 text-sm text-gray-700">
+        <div className="w-full border border-border bg-surface-secondary rounded-lg px-3 py-2 text-sm text-text-secondary">
           {presetClinicName ?? "Selected clinic"}
         </div>
       ) : (
@@ -148,7 +148,7 @@ export function PortalLinkForm({
           value={clinicId}
           onChange={(e) => setClinicId(e.target.value)}
           disabled={isPending}
-          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 disabled:bg-gray-50 disabled:text-gray-400"
+          className="w-full border border-border-strong rounded-lg px-3 py-2 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 disabled:bg-surface-secondary disabled:text-text-disabled"
         >
           <option value="" disabled>
             Select a clinic…
@@ -173,7 +173,7 @@ export function PortalLinkForm({
         <div className="space-y-1.5">
           <label
             htmlFor="phone"
-            className="block text-sm font-medium text-gray-700"
+            className="block text-sm font-medium text-text-secondary"
           >
             Phone Number
           </label>
@@ -187,14 +187,14 @@ export function PortalLinkForm({
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
             disabled={isPending}
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 disabled:bg-gray-50 disabled:text-gray-400"
+            className="w-full border border-border-strong rounded-lg px-3 py-2 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 disabled:bg-surface-secondary disabled:text-text-disabled"
           />
         </div>
 
         {error && (
           <p
             role="alert"
-            className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-md px-3 py-2"
+            className="text-sm text-danger bg-danger-bg border border-danger-border rounded-md px-3 py-2"
           >
             {error}
           </p>
@@ -215,9 +215,9 @@ export function PortalLinkForm({
 
   return (
     <form onSubmit={handleNewPatientSubmit} className="space-y-4">
-      <div className="rounded-lg bg-blue-50 border border-blue-200 px-4 py-3 text-sm text-blue-800">
+      <div className="rounded-lg bg-info-bg border border-info-border px-4 py-3 text-sm text-info-strong">
         <p className="font-medium">New patient detected</p>
-        <p className="mt-0.5 text-blue-700">
+        <p className="mt-0.5 text-info">
           No existing record was found for{" "}
           <span className="font-mono font-semibold">{confirmedPhone}</span>.
           We&apos;ll create a new patient profile for you right now.
@@ -227,7 +227,7 @@ export function PortalLinkForm({
       <div className="space-y-1.5">
         <label
           htmlFor="name"
-          className="block text-sm font-medium text-gray-700"
+          className="block text-sm font-medium text-text-secondary"
         >
           Full Name
         </label>
@@ -240,14 +240,14 @@ export function PortalLinkForm({
           value={name}
           onChange={(e) => setName(e.target.value)}
           disabled={isPending}
-          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 disabled:bg-gray-50 disabled:text-gray-400"
+          className="w-full border border-border-strong rounded-lg px-3 py-2 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 disabled:bg-surface-secondary disabled:text-text-disabled"
         />
       </div>
 
       {error && (
         <p
           role="alert"
-          className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-md px-3 py-2"
+          className="text-sm text-danger bg-danger-bg border border-danger-border rounded-md px-3 py-2"
         >
           {error}
         </p>
@@ -269,7 +269,7 @@ export function PortalLinkForm({
           setError(null);
           setName("");
         }}
-        className="w-full py-2 text-sm text-gray-500 hover:text-gray-700 underline underline-offset-2 disabled:opacity-50"
+        className="w-full py-2 text-sm text-text-secondary hover:text-text-secondary underline underline-offset-2 disabled:opacity-50"
       >
         ← Use a different phone number
       </button>

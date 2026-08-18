@@ -1,6 +1,7 @@
 "use client";
 
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from "recharts";
+import { useChartTheme } from "@/hooks/useChartTheme";
 import type { PaymentMethod } from "@/types";
 
 interface DataPoint {
@@ -15,15 +16,15 @@ const METHOD_LABELS: Record<string, string> = {
   bank_transfer: "Bank Transfer",
 };
 
-const COLORS = ["#22c55e", "#3b82f6", "#f59e0b", "#8b5cf6"];
-
 /**
  * PaymentMethodDonut — revenue split by payment method.
  */
 export function PaymentMethodDonut({ data }: { data: DataPoint[] }) {
+  const chart = useChartTheme();
+
   if (!data.length || data.every((d) => d.amount === 0)) {
     return (
-      <div className="h-48 flex items-center justify-center text-sm text-gray-400">
+      <div className="h-48 flex items-center justify-center text-sm text-text-disabled">
         No payment data for selected period
       </div>
     );
@@ -49,11 +50,11 @@ export function PaymentMethodDonut({ data }: { data: DataPoint[] }) {
           dataKey="value"
         >
           {chartData.map((_, i) => (
-            <Cell key={i} fill={COLORS[i % COLORS.length]} />
+            <Cell key={i} fill={chart.series[i % chart.series.length]} />
           ))}
         </Pie>
-        <Tooltip formatter={(v: number) => [`₹${v.toLocaleString("en-IN")}`, "Amount"]} />
-        <Legend />
+        <Tooltip {...chart.tooltip} formatter={(v: number) => [`₹${v.toLocaleString("en-IN")}`, "Amount"]} />
+        <Legend wrapperStyle={{ fontSize: 12, color: chart.axis }} />
       </PieChart>
     </ResponsiveContainer>
   );

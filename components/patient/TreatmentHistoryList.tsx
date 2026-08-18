@@ -38,7 +38,7 @@ export async function TreatmentHistoryList() {
 
   if (result.error) {
     return (
-      <div className="border border-[#FECACA] rounded-xl p-4 text-xs text-[#DC2626] bg-[#FEF2F2] text-center">
+      <div className="border border-danger-border rounded-xl p-4 text-xs text-danger bg-danger-bg text-center">
         Failed to load treatments. Please try again later.
       </div>
     );
@@ -46,7 +46,7 @@ export async function TreatmentHistoryList() {
 
   if (treatments.length === 0) {
     return (
-      <div className="bg-white border border-[#E3E9E6] rounded-xl">
+      <div className="bg-surface border border-border rounded-xl">
         <EmptyState
           icon={<Stethoscope className="h-5 w-5" aria-hidden />}
           title="No treatment records"
@@ -71,11 +71,11 @@ export async function TreatmentHistoryList() {
         return (
           <div
             key={treatment.id}
-            className="bg-white border border-[#E3E9E6] rounded-xl overflow-hidden"
+            className="bg-surface border border-border rounded-xl overflow-hidden"
           >
             {/* ── Header ──────────────────────────────────────── */}
-            <div className="px-5 py-4 flex items-start justify-between gap-3 border-b border-[#EEF2F0]">
-              <p className="text-sm font-semibold text-[#151918]">
+            <div className="px-5 py-4 flex items-start justify-between gap-3 border-b border-surface-muted">
+              <p className="text-sm font-semibold text-text-primary">
                 {treatment.treatment_type}
               </p>
               <StatusBadge
@@ -96,8 +96,8 @@ export async function TreatmentHistoryList() {
 
             {/* ── Medications ─────────────────────────────────── */}
             {medications.length > 0 && (
-              <div className="px-5 py-4 border-t border-[#EEF2F0] space-y-2">
-                <div className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-[#737A76]">
+              <div className="px-5 py-4 border-t border-surface-muted space-y-2">
+                <div className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-text-secondary">
                   <Pill className="h-3.5 w-3.5" aria-hidden />
                   Medications
                 </div>
@@ -107,11 +107,11 @@ export async function TreatmentHistoryList() {
 
             {/* ── Patient-visible notes (never clinical notes) ── */}
             {treatment.patient_visible_notes && (
-              <div className="px-5 py-4 border-t border-[#EEF2F0] space-y-1">
-                <p className="text-xs font-medium uppercase tracking-wide text-[#737A76]">
+              <div className="px-5 py-4 border-t border-surface-muted space-y-1">
+                <p className="text-xs font-medium uppercase tracking-wide text-text-secondary">
                   Notes
                 </p>
-                <p className="text-sm text-[#5B635E] whitespace-pre-wrap">
+                <p className="text-sm text-text-body whitespace-pre-wrap">
                   {treatment.patient_visible_notes}
                 </p>
               </div>
@@ -130,18 +130,18 @@ export async function TreatmentHistoryList() {
             {/* ── Digital signature — shown for ANY status whose
                  dentist has uploaded a signature. Hidden otherwise. */}
             {treatment.signature && (
-              <div className="px-5 py-4 border-t border-[#EEF2F0]">
-                <div className="rounded-lg border border-[#E3E9E6] bg-[#F6F8F6] px-4 py-3">
-                  <div className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wide text-[#737A76]">
+              <div className="px-5 py-4 border-t border-surface-muted">
+                <div className="rounded-lg border border-border bg-background px-4 py-3">
+                  <div className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wide text-text-secondary">
                     <PenLine className="h-3 w-3" aria-hidden />
                     Digitally Signed By
                   </div>
                   <div className="mt-3 space-y-2">
-                    <p className="text-sm font-medium text-[#151918]">
+                    <p className="text-sm font-medium text-text-primary">
                       {treatment.signature.dentistName}
                     </p>
                     {treatment.signature.registrationNumber && (
-                      <p className="text-xs text-[#737A76]">
+                      <p className="text-xs text-text-secondary">
                         Registration No: {treatment.signature.registrationNumber}
                       </p>
                     )}
@@ -151,7 +151,7 @@ export async function TreatmentHistoryList() {
                       alt={`Signature of ${treatment.signature.dentistName}`}
                       className="max-h-14 max-w-[180px] object-contain"
                     />
-                    <div className="space-y-0.5 text-xs text-[#737A76]">
+                    <div className="space-y-0.5 text-xs text-text-secondary">
                       <p>Status: {statusLabel}</p>
                       <p>Treatment Date: {treatmentDate}</p>
                     </div>
@@ -169,10 +169,10 @@ export async function TreatmentHistoryList() {
 function Detail({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <p className="text-xs font-medium uppercase tracking-wide text-[#737A76]">
+      <p className="text-xs font-medium uppercase tracking-wide text-text-secondary">
         {label}
       </p>
-      <p className="text-sm font-semibold text-[#151918] mt-0.5">{value}</p>
+      <p className="text-sm font-semibold text-text-primary mt-0.5">{value}</p>
     </div>
   );
 }

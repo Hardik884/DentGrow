@@ -56,7 +56,7 @@ export function RescheduleReceptionistPanel({
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="px-3 py-1.5 text-sm font-medium text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
+        className="px-3 py-1.5 text-sm font-medium text-text-secondary border border-border-strong rounded-md hover:bg-surface-secondary transition-colors"
       >
         Reschedule
       </button>

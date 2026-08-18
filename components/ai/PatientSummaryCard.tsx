@@ -29,11 +29,11 @@ function PatientSummaryCardInner({ patientId }: PatientSummaryCardProps) {
   }
 
   return (
-    <div className="bg-white border border-[#E3E9E6] rounded-xl overflow-hidden">
-      <div className="px-5 py-4 border-b border-[#E3E9E6] flex items-center justify-between">
+    <div className="bg-surface border border-border rounded-xl overflow-hidden">
+      <div className="px-5 py-4 border-b border-border flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Sparkles className="h-3.5 w-3.5 text-[#737A76]" aria-hidden />
-          <h2 className="text-sm font-semibold text-[#151918]">AI Summary</h2>
+          <Sparkles className="h-3.5 w-3.5 text-text-secondary" aria-hidden />
+          <h2 className="text-sm font-semibold text-text-primary">AI Summary</h2>
         </div>
         <Button
           variant="outline"
@@ -62,13 +62,13 @@ function PatientSummaryCardInner({ patientId }: PatientSummaryCardProps) {
 
       <div className="px-5 py-4">
         {!summary && !isLoading && !error && (
-          <p className="text-sm text-[#9BA39D]">
+          <p className="text-sm text-text-disabled">
             Generate an AI-powered clinical summary for this patient.
           </p>
         )}
 
         {isLoading && (
-          <div className="flex items-center gap-2 text-sm text-[#737A76]">
+          <div className="flex items-center gap-2 text-sm text-text-secondary">
             <LoadingSpinner size="sm" />
             Analysing patient records…
           </div>
@@ -77,7 +77,7 @@ function PatientSummaryCardInner({ patientId }: PatientSummaryCardProps) {
         {error && <AIFallbackMessage message={error} />}
 
         {summary && (
-          <div className="text-sm text-[#151918] leading-relaxed whitespace-pre-wrap">
+          <div className="text-sm text-text-primary leading-relaxed whitespace-pre-wrap">
             {summary}
           </div>
         )}

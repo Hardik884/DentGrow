@@ -27,21 +27,21 @@ export async function PendingPaymentsList({ search, basePath = "/dentist" }: Pen
   }
 
   return (
-    <div className="bg-white border border-[#E3E9E6] rounded-xl overflow-hidden">
-      <div className="px-5 py-4 border-b border-[#E3E9E6] flex items-center justify-between">
+    <div className="bg-surface border border-border rounded-xl overflow-hidden">
+      <div className="px-5 py-4 border-b border-border flex items-center justify-between">
         <div>
-          <h2 className="text-sm font-semibold text-[#151918]">Remaining Balances</h2>
-          <p className="text-xs text-[#737A76] mt-0.5">Patients with unpaid amounts</p>
+          <h2 className="text-sm font-semibold text-text-primary">Remaining Balances</h2>
+          <p className="text-xs text-text-secondary mt-0.5">Patients with unpaid amounts</p>
         </div>
         {pendingPatients.length > 0 && (
-          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-[#FEF2F2] text-[#DC2626] border border-[#FECACA]">
+          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-danger-bg text-danger border border-danger-border">
             {pendingPatients.length}
           </span>
         )}
       </div>
 
       {result.error && (
-        <div className="px-5 py-3 text-xs text-[#DC2626]">{result.error}</div>
+        <div className="px-5 py-3 text-xs text-danger">{result.error}</div>
       )}
 
       {pendingPatients.length === 0 ? (
@@ -55,22 +55,22 @@ export async function PendingPaymentsList({ search, basePath = "/dentist" }: Pen
           }
         />
       ) : (
-        <div className="divide-y divide-[#EEF2F0]">
+        <div className="divide-y divide-surface-muted">
           {pendingPatients.map((patient) => (
-            <div key={patient.id} className="flex items-center justify-between px-5 py-3 hover:bg-[#F6F8F6] transition-colors">
+            <div key={patient.id} className="flex items-center justify-between px-5 py-3 hover:bg-background transition-colors">
               <div>
                 <Link
                   href={`${basePath}/patients/${patient.id}`}
-                  className="text-sm font-medium text-[#151918] hover:underline underline-offset-4"
+                  className="text-sm font-medium text-text-primary hover:underline underline-offset-4"
                 >
                   {patient.name}
                 </Link>
                 {patient.phone && (
-                  <p className="text-xs text-[#9BA39D]">{patient.phone}</p>
+                  <p className="text-xs text-text-disabled">{patient.phone}</p>
                 )}
               </div>
               <div className="flex items-center gap-3">
-                <span className="text-sm font-semibold text-[#DC2626]">
+                <span className="text-sm font-semibold text-danger">
                   {formatCurrency(patient.balance)}
                 </span>
                 <PaymentFormDialog

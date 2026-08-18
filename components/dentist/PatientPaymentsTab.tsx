@@ -78,7 +78,7 @@ export async function PatientPaymentsTab({
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h3 className="font-semibold text-gray-900">Payments</h3>
+        <h3 className="font-semibold text-text-primary">Payments</h3>
         <PaymentFormDialog
           patientId={patientId}
           patientName={patientName}
@@ -91,35 +91,35 @@ export async function PatientPaymentsTab({
 
       {/* Summary cards */}
       <div className="grid grid-cols-3 gap-3">
-        <SummaryCard label="Total Cost" value={formatCurrency(totalCost)} valueClass="text-gray-900" />
-        <SummaryCard label="Total Paid" value={formatCurrency(totalPaid)} valueClass="text-green-600" />
+        <SummaryCard label="Total Cost" value={formatCurrency(totalCost)} valueClass="text-text-primary" />
+        <SummaryCard label="Total Paid" value={formatCurrency(totalPaid)} valueClass="text-success" />
         <SummaryCard
           label="Remaining"
           value={formatCurrency(balance)}
-          valueClass={balance > 0 ? "text-red-600" : "text-green-600"}
+          valueClass={balance > 0 ? "text-danger" : "text-success"}
         />
       </div>
 
       {paymentsResult.error && (
-        <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-md px-3 py-2">
+        <p className="text-sm text-danger bg-danger-bg border border-danger-border rounded-md px-3 py-2">
           {paymentsResult.error}
         </p>
       )}
 
       {/* Payment history */}
       {payments.length === 0 ? (
-        <div className="border rounded-lg p-6 text-center text-sm text-gray-500">
+        <div className="border rounded-lg p-6 text-center text-sm text-text-secondary">
           No payment records found.
         </div>
       ) : (
-        <div className="bg-white border border-[#E3E9E6] rounded-xl overflow-hidden">
-          <div className="px-5 py-3 border-b border-[#E3E9E6]">
-            <h4 className="text-sm font-semibold text-[#151918]">Payment History</h4>
+        <div className="bg-surface border border-border rounded-xl overflow-hidden">
+          <div className="px-5 py-3 border-b border-border">
+            <h4 className="text-sm font-semibold text-text-primary">Payment History</h4>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead className="bg-[#F6F8F6] border-b border-[#E3E9E6]">
-                <tr className="text-left text-xs font-medium text-[#737A76] uppercase tracking-wider">
+              <thead className="bg-background border-b border-border">
+                <tr className="text-left text-xs font-medium text-text-secondary uppercase tracking-wider">
                   <th className="px-5 py-3">Date</th>
                   <th className="px-5 py-3">Amount</th>
                   <th className="px-5 py-3">Method</th>
@@ -129,30 +129,30 @@ export async function PatientPaymentsTab({
                   <th className="px-5 py-3">Recorded By</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#EEF2F0]">
+              <tbody className="divide-y divide-surface-muted">
                 {payments.map((p) => (
-                  <tr key={p.id} className="hover:bg-[#F6F8F6] transition-colors">
-                    <td className="px-5 py-3 whitespace-nowrap text-[#151918]">
+                  <tr key={p.id} className="hover:bg-background transition-colors">
+                    <td className="px-5 py-3 whitespace-nowrap text-text-primary">
                       {formatDate(p.payment_date)}
                     </td>
-                    <td className="px-5 py-3 whitespace-nowrap font-semibold text-[#16A34A]">
+                    <td className="px-5 py-3 whitespace-nowrap font-semibold text-success">
                       {formatCurrency(Number(p.amount))}
                     </td>
                     <td className="px-5 py-3 whitespace-nowrap">
-                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-[#EEF2F0] text-[#5B635E]">
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-surface-muted text-text-body">
                         {PAYMENT_METHOD_LABELS[p.method as PaymentMethod] ?? p.method}
                       </span>
                     </td>
-                    <td className="px-5 py-3 whitespace-nowrap text-[#5B635E]">
+                    <td className="px-5 py-3 whitespace-nowrap text-text-body">
                       {p.payment_type === "opd" ? "OPD" : "Treatment"}
                     </td>
-                    <td className="px-5 py-3 text-[#737A76]">
-                      {p.notes ? <span className="line-clamp-2">{p.notes}</span> : <span className="text-[#9BA39D]">—</span>}
+                    <td className="px-5 py-3 text-text-secondary">
+                      {p.notes ? <span className="line-clamp-2">{p.notes}</span> : <span className="text-text-disabled">—</span>}
                     </td>
-                    <td className="px-5 py-3 whitespace-nowrap text-[#151918]">
+                    <td className="px-5 py-3 whitespace-nowrap text-text-primary">
                       {formatCurrency(remainingAfter.get(p.id) ?? 0)}
                     </td>
-                    <td className="px-5 py-3 whitespace-nowrap text-[#5B635E]">
+                    <td className="px-5 py-3 whitespace-nowrap text-text-body">
                       {(p.created_by && recorders[p.created_by]) || "—"}
                     </td>
                   </tr>
@@ -176,8 +176,8 @@ function SummaryCard({
   valueClass: string;
 }) {
   return (
-    <div className="bg-gray-50 border rounded-lg p-3 text-center">
-      <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">{label}</p>
+    <div className="bg-surface-secondary border rounded-lg p-3 text-center">
+      <p className="text-xs font-medium text-text-secondary uppercase tracking-wide">{label}</p>
       <p className={`text-sm font-semibold mt-1 ${valueClass}`}>{value}</p>
     </div>
   );

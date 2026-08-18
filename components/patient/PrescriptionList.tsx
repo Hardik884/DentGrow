@@ -24,7 +24,7 @@ export async function PrescriptionList() {
 
   if (result.error) {
     return (
-      <div className="border border-[#FECACA] rounded-xl p-4 text-xs text-[#DC2626] bg-[#FEF2F2] text-center">
+      <div className="border border-danger-border rounded-xl p-4 text-xs text-danger bg-danger-bg text-center">
         Failed to load prescriptions. Please try again later.
       </div>
     );
@@ -32,7 +32,7 @@ export async function PrescriptionList() {
 
   if (prescriptions.length === 0) {
     return (
-      <div className="bg-white border border-[#E3E9E6] rounded-xl">
+      <div className="bg-surface border border-border rounded-xl">
         <EmptyState
           icon={<Pill className="h-5 w-5" aria-hidden />}
           title="No prescriptions"
@@ -53,17 +53,17 @@ export async function PrescriptionList() {
         return (
           <div
             key={p.id}
-            className="bg-white border border-[#E3E9E6] rounded-xl overflow-hidden"
+            className="bg-surface border border-border rounded-xl overflow-hidden"
           >
-            <div className="px-5 py-4 flex items-start justify-between gap-3 border-b border-[#EEF2F0]">
+            <div className="px-5 py-4 flex items-start justify-between gap-3 border-b border-surface-muted">
               <div>
-                <p className="text-sm font-semibold text-[#151918]">{p.treatment_type}</p>
-                <p className="text-xs text-[#737A76] mt-0.5">{prescribedOn}</p>
+                <p className="text-sm font-semibold text-text-primary">{p.treatment_type}</p>
+                <p className="text-xs text-text-secondary mt-0.5">{prescribedOn}</p>
               </div>
             </div>
 
             <div className="px-5 py-4 space-y-2">
-              <div className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-[#737A76]">
+              <div className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-text-secondary">
                 <Pill className="h-3.5 w-3.5" aria-hidden />
                 Medications
               </div>
@@ -71,23 +71,23 @@ export async function PrescriptionList() {
             </div>
 
             {p.patient_visible_notes && (
-              <div className="px-5 py-4 border-t border-[#EEF2F0] space-y-1">
-                <p className="text-xs font-medium uppercase tracking-wide text-[#737A76]">Notes</p>
-                <p className="text-sm text-[#5B635E] whitespace-pre-wrap">{p.patient_visible_notes}</p>
+              <div className="px-5 py-4 border-t border-surface-muted space-y-1">
+                <p className="text-xs font-medium uppercase tracking-wide text-text-secondary">Notes</p>
+                <p className="text-sm text-text-body whitespace-pre-wrap">{p.patient_visible_notes}</p>
               </div>
             )}
 
             {p.signature && (
-              <div className="px-5 py-4 border-t border-[#EEF2F0]">
-                <div className="rounded-lg border border-[#E3E9E6] bg-[#F6F8F6] px-4 py-3">
-                  <div className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wide text-[#737A76]">
+              <div className="px-5 py-4 border-t border-surface-muted">
+                <div className="rounded-lg border border-border bg-background px-4 py-3">
+                  <div className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wide text-text-secondary">
                     <PenLine className="h-3 w-3" aria-hidden />
                     Prescribed By
                   </div>
                   <div className="mt-3 space-y-2">
-                    <p className="text-sm font-medium text-[#151918]">{p.signature.dentistName}</p>
+                    <p className="text-sm font-medium text-text-primary">{p.signature.dentistName}</p>
                     {p.signature.registrationNumber && (
-                      <p className="text-xs text-[#737A76]">
+                      <p className="text-xs text-text-secondary">
                         Registration No: {p.signature.registrationNumber}
                       </p>
                     )}

@@ -73,11 +73,11 @@ export async function AppointmentPaymentsSection({
   const unassignedPayments = payments.filter((p) => !p.treatment_id);
 
   return (
-    <div className="bg-white border rounded-lg p-4 space-y-5">
+    <div className="bg-surface border rounded-lg p-4 space-y-5">
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div>
-          <h3 className="font-semibold text-gray-900">Payments</h3>
-          <p className="text-xs text-gray-500 mt-0.5">
+          <h3 className="font-semibold text-text-primary">Payments</h3>
+          <p className="text-xs text-text-secondary mt-0.5">
             Payments are tracked per treatment recorded on this visit.
           </p>
         </div>
@@ -103,18 +103,18 @@ export async function AppointmentPaymentsSection({
               <Plus className="h-3.5 w-3.5" aria-hidden />
               Add Payment
             </PaymentFormDialog>
-            <p className="text-[11px] text-[#DC2626] mt-1">
+            <p className="text-[11px] text-danger mt-1">
               {formatCurrency(outstandingBalance)} outstanding
             </p>
           </div>
         )}
       </div>
 
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {error && <p className="text-sm text-danger">{error}</p>}
 
       {/* ── Treatment-wise payments ─────────────────────────── */}
       {treatments.length === 0 ? (
-        <p className="text-sm text-gray-500">
+        <p className="text-sm text-text-secondary">
           No treatments recorded on this visit.
           {outstandingBalance > 0
             ? " Use Add Payment above to collect against the patient's outstanding balance."
@@ -205,11 +205,11 @@ function TreatmentPaymentCard({
 }) {
   const showStats = cost != null;
   return (
-    <div className="rounded-lg border border-[#E3E9E6] p-4 space-y-3">
+    <div className="rounded-lg border border-border p-4 space-y-3">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-sm font-semibold text-[#151918] truncate">{title}</p>
-          {subtitle && <p className="text-xs text-gray-500 mt-0.5">{subtitle}</p>}
+          <p className="text-sm font-semibold text-text-primary truncate">{title}</p>
+          {subtitle && <p className="text-xs text-text-secondary mt-0.5">{subtitle}</p>}
         </div>
         {statusLabel && statusVariant && (
           <Badge variant={statusVariant}>{statusLabel}</Badge>
@@ -244,19 +244,19 @@ function PaymentRows({
   emptyLabel: string;
 }) {
   if (payments.length === 0) {
-    return <p className="text-xs text-gray-400">{emptyLabel}</p>;
+    return <p className="text-xs text-text-disabled">{emptyLabel}</p>;
   }
   return (
-    <ul className="divide-y divide-[#EEF2F0] rounded-lg bg-[#F6F8F6] px-3">
+    <ul className="divide-y divide-surface-muted rounded-lg bg-background px-3">
       {payments.map((p) => (
         <li key={p.id} className="flex items-center justify-between gap-3 py-2">
           <div className="min-w-0">
-            <p className="text-xs font-medium text-[#151918]">
+            <p className="text-xs font-medium text-text-primary">
               {PAYMENT_METHOD_LABELS[p.method as PaymentMethod]}
             </p>
-            <p className="text-[11px] text-gray-400">{formatDate(p.payment_date)}</p>
+            <p className="text-[11px] text-text-disabled">{formatDate(p.payment_date)}</p>
           </div>
-          <span className="text-sm font-semibold text-[#16A34A] shrink-0">
+          <span className="text-sm font-semibold text-success shrink-0">
             +{formatCurrency(Number(p.amount ?? 0))}
           </span>
         </li>
@@ -276,10 +276,10 @@ function Stat({
   accent?: "green" | "red";
 }) {
   const color =
-    accent === "green" ? "text-[#16A34A]" : accent === "red" ? "text-[#DC2626]" : "text-[#151918]";
+    accent === "green" ? "text-success" : accent === "red" ? "text-danger" : "text-text-primary";
   return (
-    <div className="rounded-lg bg-white border border-[#E3E9E6] px-3 py-2">
-      <p className="text-[10px] uppercase tracking-wide text-[#737A76]">{label}</p>
+    <div className="rounded-lg bg-surface border border-border px-3 py-2">
+      <p className="text-[10px] uppercase tracking-wide text-text-secondary">{label}</p>
       <p className={`text-sm font-semibold ${color}`}>{value}</p>
     </div>
   );

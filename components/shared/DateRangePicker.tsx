@@ -34,7 +34,7 @@ export function DateRangePicker({ from, to, onChange }: DateRangePickerProps) {
         className="w-36"
         clearable
       />
-      <span className="text-sm text-[#9BA39D]">to</span>
+      <span className="text-sm text-text-disabled">to</span>
       <CalendarPicker
         value={to}
         onChange={handleToChange}

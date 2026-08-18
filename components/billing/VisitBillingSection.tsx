@@ -27,7 +27,7 @@ export async function VisitBillingSection({
 }: VisitBillingSectionProps) {
   return (
     <div className="space-y-3">
-      <h3 className="font-semibold text-gray-900">Billing &amp; Payments</h3>
+      <h3 className="font-semibold text-text-primary">Billing &amp; Payments</h3>
       <SegmentedTabs
         tabs={[
           { key: "payments", label: "Payments" },

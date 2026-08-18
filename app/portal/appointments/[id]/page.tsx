@@ -68,10 +68,10 @@ export default async function PortalAppointmentDetailPage({ params }: Props) {
       </div>
 
       {/* ── Summary ──────────────────────────────────────────── */}
-      <div className="bg-white border rounded-lg p-5 space-y-4">
+      <div className="bg-surface border rounded-lg p-5 space-y-4">
         <div className="grid grid-cols-2 gap-4 text-sm">
           <div>
-            <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+            <p className="text-xs font-medium text-text-secondary uppercase tracking-wide">
               Date &amp; Time
             </p>
             <p className="font-semibold mt-0.5">
@@ -79,7 +79,7 @@ export default async function PortalAppointmentDetailPage({ params }: Props) {
             </p>
           </div>
           <div>
-            <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+            <p className="text-xs font-medium text-text-secondary uppercase tracking-wide">
               Duration
             </p>
             <p className="font-semibold mt-0.5">{appt.duration_minutes} min</p>
@@ -102,7 +102,7 @@ export default async function PortalAppointmentDetailPage({ params }: Props) {
       )}
 
       {["cancelled", "no_show"].includes(status) && (
-        <p className="text-sm text-center text-gray-500">
+        <p className="text-sm text-center text-text-secondary">
           This appointment has been {status === "cancelled" ? "cancelled" : "marked as no-show"}.
         </p>
       )}

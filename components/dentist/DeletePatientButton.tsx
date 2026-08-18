@@ -57,15 +57,15 @@ export function DeletePatientButton({
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="px-3 py-1.5 text-sm font-medium text-red-600 border border-red-200
-                   rounded-md hover:bg-red-50 transition-colors"
+        className="px-3 py-1.5 text-sm font-medium text-danger border border-danger-border
+                   rounded-md hover:bg-danger-bg transition-colors"
         aria-label={`Delete patient ${patientName}`}
       >
         Delete
       </button>
 
       {error && (
-        <p className="text-xs text-red-600 mt-1" role="alert">
+        <p className="text-xs text-danger mt-1" role="alert">
           {error}
         </p>
       )}

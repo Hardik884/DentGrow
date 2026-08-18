@@ -280,20 +280,20 @@ export function AppointmentForm({
       {bookError && (
         <div
           role="alert"
-          className="mb-4 rounded-lg bg-[#FEF2F2] border border-[#FECACA] px-4 py-3 text-xs text-[#DC2626]"
+          className="mb-4 rounded-lg bg-danger-bg border border-danger-border px-4 py-3 text-xs text-danger"
         >
           {bookError}
         </div>
       )}
 
-      <div className="bg-white border border-[#E3E9E6] rounded-xl overflow-hidden divide-y divide-[#EEF2F0]">
+      <div className="bg-surface border border-border rounded-xl overflow-hidden divide-y divide-surface-muted">
 
         {/* ── Patient ─────────────────────────────────────────────── */}
         <div className="px-6 py-5 space-y-3">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="text-sm font-semibold text-[#151918]">Patient</h3>
-              <p className="text-xs text-[#737A76] mt-0.5">
+              <h3 className="text-sm font-semibold text-text-primary">Patient</h3>
+              <p className="text-xs text-text-secondary mt-0.5">
                 Search by name or phone — new patients are added automatically
               </p>
             </div>
@@ -302,7 +302,7 @@ export function AppointmentForm({
                 type="button"
                 onClick={resetPatientSelection}
                 disabled={isBooking}
-                className="text-xs text-[#737A76] hover:text-[#151918] transition-colors"
+                className="text-xs text-text-secondary hover:text-text-primary transition-colors"
               >
                 Change
               </button>
@@ -312,23 +312,23 @@ export function AppointmentForm({
           <input type="hidden" {...register("patient_id")} />
 
           {preselectedPatient ? (
-            <div className="flex items-center gap-3 px-3 py-2.5 bg-[#EEF2F0] border border-[#E3E9E6] rounded-lg">
+            <div className="flex items-center gap-3 px-3 py-2.5 bg-surface-muted border border-border rounded-lg">
               <PatientAvatar name={preselectedPatient.name} size="sm" />
-              <span className="text-sm font-medium text-[#151918]">{preselectedPatient.name}</span>
-              <span className="text-xs text-[#9BA39D]">Pre-selected</span>
+              <span className="text-sm font-medium text-text-primary">{preselectedPatient.name}</span>
+              <span className="text-xs text-text-disabled">Pre-selected</span>
             </div>
           ) : selectedPatient ? (
-            <div className="flex items-center gap-3 px-3 py-2.5 bg-[#F0FDF4] border border-[#BBF7D0] rounded-lg">
-              <CheckCircle2 className="h-4 w-4 text-[#16A34A] shrink-0" aria-hidden />
+            <div className="flex items-center gap-3 px-3 py-2.5 bg-success-bg border border-success-border rounded-lg">
+              <CheckCircle2 className="h-4 w-4 text-success shrink-0" aria-hidden />
               <PatientAvatar name={selectedPatient.name} size="sm" />
-              <span className="text-sm font-medium text-[#151918]">{selectedPatient.name}</span>
+              <span className="text-sm font-medium text-text-primary">{selectedPatient.name}</span>
             </div>
           ) : (
             <>
               {/* Single entry field: Patient Name / Phone Number */}
               <div className="relative">
                 <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#9BA39D]" aria-hidden />
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-text-disabled" aria-hidden />
                   <Input
                     type="search"
                     value={patientQuery}
@@ -348,25 +348,25 @@ export function AppointmentForm({
                   )}
                 </div>
                 {showDropdown && patientResults.length > 0 && (
-                  <ul className="absolute z-20 w-full mt-1 bg-white border border-[#E3E9E6] rounded-xl shadow-lg max-h-52 overflow-y-auto">
+                  <ul className="absolute z-20 w-full mt-1 bg-surface border border-border rounded-xl shadow-lg max-h-52 overflow-y-auto">
                     {patientResults.map((p) => (
                       <li key={p.id}>
                         <button
                           type="button"
                           onMouseDown={(e) => e.preventDefault()}
                           onClick={() => selectPatient(p)}
-                          className="w-full px-4 py-2.5 text-left hover:bg-[#F6F8F6] flex items-center gap-3 transition-colors"
+                          className="w-full px-4 py-2.5 text-left hover:bg-background flex items-center gap-3 transition-colors"
                         >
                           <PatientAvatar name={p.name} size="sm" />
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-[#151918] truncate">{p.name}</p>
-                            <p className="text-xs text-[#737A76]">{p.phone ?? "—"}</p>
+                            <p className="text-sm font-medium text-text-primary truncate">{p.name}</p>
+                            <p className="text-xs text-text-secondary">{p.phone ?? "—"}</p>
                           </div>
                         </button>
                       </li>
                     ))}
                     {patientQuery.trim().length >= 2 && (
-                      <li className="border-t border-[#EEF2F0]">
+                      <li className="border-t border-surface-muted">
                         <button
                           type="button"
                           onMouseDown={(e) => e.preventDefault()}
@@ -374,9 +374,9 @@ export function AppointmentForm({
                             setShowDropdown(false);
                             enterNewPatientMode(patientQuery.trim());
                           }}
-                          className="w-full px-4 py-2.5 text-left hover:bg-[#F6F8F6] flex items-center gap-2 text-sm text-[#5B635E] transition-colors"
+                          className="w-full px-4 py-2.5 text-left hover:bg-background flex items-center gap-2 text-sm text-text-body transition-colors"
                         >
-                          <UserPlus className="h-3.5 w-3.5 text-[#737A76]" aria-hidden />
+                          <UserPlus className="h-3.5 w-3.5 text-text-secondary" aria-hidden />
                           Add “{patientQuery.trim()}” as new patient
                         </button>
                       </li>
@@ -387,14 +387,14 @@ export function AppointmentForm({
 
               {/* New patient — revealed automatically when no match is found */}
               {newPatientMode && (
-                <div className="space-y-3 border border-dashed border-[#E3E9E6] rounded-lg p-4 bg-[#F6F8F6]">
-                  <div className="flex items-center gap-1.5 text-xs font-semibold text-[#151918]">
-                    <UserPlus className="h-3.5 w-3.5 text-[#737A76]" aria-hidden />
+                <div className="space-y-3 border border-dashed border-border rounded-lg p-4 bg-background">
+                  <div className="flex items-center gap-1.5 text-xs font-semibold text-text-primary">
+                    <UserPlus className="h-3.5 w-3.5 text-text-secondary" aria-hidden />
                     New Patient — no existing record found
                   </div>
 
                   {newPatientError && (
-                    <p className="text-xs text-[#DC2626]" role="alert">{newPatientError}</p>
+                    <p className="text-xs text-danger" role="alert">{newPatientError}</p>
                   )}
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -408,7 +408,7 @@ export function AppointmentForm({
                         hasError={!!newPatientForm.formState.errors.name}
                       />
                       {newPatientForm.formState.errors.name && (
-                        <p className="text-xs text-[#DC2626] mt-1">{newPatientForm.formState.errors.name.message}</p>
+                        <p className="text-xs text-danger mt-1">{newPatientForm.formState.errors.name.message}</p>
                       )}
                     </Field>
 
@@ -477,8 +477,8 @@ export function AppointmentForm({
         {/* ── Date & Time ─────────────────────────────────────────── */}
         <div className="px-6 py-5 space-y-4">
           <div>
-            <h3 className="text-sm font-semibold text-[#151918]">Date &amp; Time</h3>
-            <p className="text-xs text-[#737A76] mt-0.5">Choose an available slot</p>
+            <h3 className="text-sm font-semibold text-text-primary">Date &amp; Time</h3>
+            <p className="text-xs text-text-secondary mt-0.5">Choose an available slot</p>
           </div>
 
           <input type="hidden" {...register("scheduled_at")} />
@@ -494,14 +494,14 @@ export function AppointmentForm({
 
           {/* Slot grid */}
           {slotsLoading ? (
-            <div className="flex items-center gap-2 text-sm text-[#737A76] py-2">
+            <div className="flex items-center gap-2 text-sm text-text-secondary py-2">
               <LoadingSpinner size="sm" />
               Loading available slots…
             </div>
           ) : slots.length === 0 ? (
-            <div className="rounded-lg bg-[#F6F8F6] border border-[#E3E9E6] p-4 text-center">
-              <p className="text-sm text-[#737A76]">No available slots on this date.</p>
-              <p className="text-xs text-[#9BA39D] mt-0.5">Try selecting a different date.</p>
+            <div className="rounded-lg bg-background border border-border p-4 text-center">
+              <p className="text-sm text-text-secondary">No available slots on this date.</p>
+              <p className="text-xs text-text-disabled mt-0.5">Try selecting a different date.</p>
             </div>
           ) : (
             <Field label="Available Times" required error={!selectedSlot && bookError ? "Please select a time slot." : undefined}>
@@ -517,8 +517,8 @@ export function AppointmentForm({
                       className={cn(
                         "flex items-center justify-center gap-1 py-2 px-1 text-xs rounded-lg border transition-all",
                         selectedSlot === slot
-                          ? "border-[#0D6B5E] bg-[#0D6B5E] text-white font-medium"
-                          : "border-[#E3E9E6] text-[#151918] hover:border-[#CBD5D0] hover:bg-[#F6F8F6]",
+                          ? "border-accent bg-accent text-accent-foreground font-medium"
+                          : "border-border text-text-primary hover:border-border-strong hover:bg-background",
                         "disabled:opacity-50 disabled:cursor-not-allowed"
                       )}
                     >
@@ -535,7 +535,7 @@ export function AppointmentForm({
         {/* ── Appointment Details ──────────────────────────────────── */}
         <div className="px-6 py-5 space-y-4">
           <div>
-            <h3 className="text-sm font-semibold text-[#151918]">Details</h3>
+            <h3 className="text-sm font-semibold text-text-primary">Details</h3>
           </div>
 
           <Field label="Booking Source" htmlFor="source" required error={errors.source?.message}>
@@ -585,7 +585,7 @@ export function AppointmentForm({
         {success && (
           <div
             role="status"
-            className="px-6 py-3 bg-[#F0FDF4] border-t border-[#BBF7D0] text-sm text-[#16A34A] flex items-center gap-2"
+            className="px-6 py-3 bg-success-bg border-t border-success-border text-sm text-success flex items-center gap-2"
           >
             <CheckCircle2 className="h-4 w-4 shrink-0" aria-hidden />
             Appointment booked successfully.
@@ -593,7 +593,7 @@ export function AppointmentForm({
         )}
 
         {/* ── Actions ─────────────────────────────────────────────── */}
-        <div className="px-6 py-4 bg-[#F6F8F6] flex items-center justify-end gap-3">
+        <div className="px-6 py-4 bg-background flex items-center justify-end gap-3">
           {onCancel ? (
             <Button variant="outline" size="sm" type="button" onClick={onCancel} disabled={isBooking}>
               Cancel

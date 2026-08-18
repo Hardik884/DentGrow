@@ -51,7 +51,7 @@ export function QueueBoard({ initialQueue, clinicId = "", metrics }: QueueBoardP
 
   if (error) {
     return (
-      <div className="border border-[#FECACA] rounded-xl p-4 bg-[#FEF2F2] text-sm text-[#DC2626]">
+      <div className="border border-danger-border rounded-xl p-4 bg-danger-bg text-sm text-danger">
         {error}
       </div>
     );
@@ -70,7 +70,7 @@ export function QueueBoard({ initialQueue, clinicId = "", metrics }: QueueBoardP
       )}
 
       {/* ── Status bar ─────────────────────────────────────── */}
-      <div className="flex items-center justify-between text-xs text-[#737A76]">
+      <div className="flex items-center justify-between text-xs text-text-secondary">
         <span>
           {waiting.length} waiting · {completed.length} completed today
         </span>
@@ -79,15 +79,15 @@ export function QueueBoard({ initialQueue, clinicId = "", metrics }: QueueBoardP
 
       {/* ── Currently Seeing ──────────────────────────────── */}
       {inProgress ? (
-        <div className="bg-[#F6F8F6] border border-[#E3E9E6] rounded-xl p-4 space-y-3">
+        <div className="bg-background border border-border rounded-xl p-4 space-y-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <div className="h-2 w-2 rounded-full bg-[#16A34A] animate-pulse" />
-              <p className="text-xs font-semibold text-[#151918] uppercase tracking-wider">
+              <div className="h-2 w-2 rounded-full bg-success animate-pulse" />
+              <p className="text-xs font-semibold text-text-primary uppercase tracking-wider">
                 Currently Seeing
               </p>
             </div>
-            <span className="text-xs text-[#737A76]">
+            <span className="text-xs text-text-secondary">
               {inProgress.duration_minutes ?? 30} min appt
             </span>
           </div>
@@ -102,13 +102,13 @@ export function QueueBoard({ initialQueue, clinicId = "", metrics }: QueueBoardP
               Mark Done & Call Next
             </Button>
             {advanceError && (
-              <p className="text-xs text-[#DC2626] mt-2" role="alert">{advanceError}</p>
+              <p className="text-xs text-danger mt-2" role="alert">{advanceError}</p>
             )}
           </div>
         </div>
       ) : waiting.length > 0 ? (
-        <div className="bg-[#F6F8F6] border border-[#E3E9E6] rounded-xl p-4 space-y-3">
-          <p className="text-sm text-[#737A76]">No one is currently being seen.</p>
+        <div className="bg-background border border-border rounded-xl p-4 space-y-3">
+          <p className="text-sm text-text-secondary">No one is currently being seen.</p>
           <Button
             onClick={handleAdvance}
             disabled={isPending}
@@ -118,17 +118,17 @@ export function QueueBoard({ initialQueue, clinicId = "", metrics }: QueueBoardP
             Call First Patient
           </Button>
           {advanceError && (
-            <p className="text-xs text-[#DC2626]" role="alert">{advanceError}</p>
+            <p className="text-xs text-danger" role="alert">{advanceError}</p>
           )}
         </div>
       ) : null}
 
       {/* ── Waiting Queue ──────────────────────────────────── */}
-      <div className="bg-white border border-[#E3E9E6] rounded-xl overflow-hidden">
-        <div className="px-5 py-3.5 border-b border-[#E3E9E6] flex items-center gap-2">
-          <ListOrdered className="h-4 w-4 text-[#737A76]" aria-hidden />
-          <h2 className="text-sm font-semibold text-[#151918]">
-            Waiting <span className="text-[#737A76] font-normal">({waiting.length})</span>
+      <div className="bg-surface border border-border rounded-xl overflow-hidden">
+        <div className="px-5 py-3.5 border-b border-border flex items-center gap-2">
+          <ListOrdered className="h-4 w-4 text-text-secondary" aria-hidden />
+          <h2 className="text-sm font-semibold text-text-primary">
+            Waiting <span className="text-text-secondary font-normal">({waiting.length})</span>
           </h2>
         </div>
 
@@ -138,7 +138,7 @@ export function QueueBoard({ initialQueue, clinicId = "", metrics }: QueueBoardP
             description="No patients are currently waiting."
           />
         ) : (
-          <div className="divide-y divide-[#EEF2F0]">
+          <div className="divide-y divide-surface-muted">
             {waiting.map((entry, idx) => {
               const durationAhead = waiting
                 .slice(0, idx)
@@ -149,7 +149,7 @@ export function QueueBoard({ initialQueue, clinicId = "", metrics }: QueueBoardP
                 <div key={entry.id} className="px-5 py-3.5">
                   <QueueEntry entry={entry} showActions={!inProgress} />
                   {waitBefore > 0 && (
-                    <p className="text-xs text-[#9BA39D] mt-1.5 pl-10">
+                    <p className="text-xs text-text-disabled mt-1.5 pl-10">
                       Est. wait: ~{waitBefore} min
                     </p>
                   )}
@@ -162,28 +162,28 @@ export function QueueBoard({ initialQueue, clinicId = "", metrics }: QueueBoardP
 
       {/* ── Completed Today ─────────────────────────────────── */}
       {completed.length > 0 && (
-        <div className="bg-white border border-[#E3E9E6] rounded-xl overflow-hidden">
-          <div className="px-5 py-3.5 border-b border-[#E3E9E6] flex items-center gap-2">
-            <CheckCircle2 className="h-4 w-4 text-[#737A76]" aria-hidden />
-            <h2 className="text-sm font-semibold text-[#151918]">
-              Completed <span className="text-[#737A76] font-normal">({completed.length})</span>
+        <div className="bg-surface border border-border rounded-xl overflow-hidden">
+          <div className="px-5 py-3.5 border-b border-border flex items-center gap-2">
+            <CheckCircle2 className="h-4 w-4 text-text-secondary" aria-hidden />
+            <h2 className="text-sm font-semibold text-text-primary">
+              Completed <span className="text-text-secondary font-normal">({completed.length})</span>
             </h2>
           </div>
-          <div className="divide-y divide-[#EEF2F0]">
+          <div className="divide-y divide-surface-muted">
             {completed.map((entry) => (
               <div key={entry.id} className="px-5 py-3 flex items-center gap-3">
-                <div className="w-7 h-7 rounded-full bg-[#F0FDF4] flex items-center justify-center shrink-0">
-                  <CheckCircle2 className="h-3.5 w-3.5 text-[#16A34A]" aria-hidden />
+                <div className="w-7 h-7 rounded-full bg-success-bg flex items-center justify-center shrink-0">
+                  <CheckCircle2 className="h-3.5 w-3.5 text-success" aria-hidden />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-[#737A76] truncate">
+                  <p className="text-sm font-medium text-text-secondary truncate">
                     {entry.patient.name}
                   </p>
-                  <p className="text-xs text-[#9BA39D]">
+                  <p className="text-xs text-text-disabled">
                     {entry.called_at ? `Seen ${formatTimeAgo(entry.called_at)}` : "Completed"}
                   </p>
                 </div>
-                <span className="text-xs text-[#16A34A] font-medium">Done</span>
+                <span className="text-xs text-success font-medium">Done</span>
               </div>
             ))}
           </div>
@@ -207,12 +207,12 @@ function MetricTile({
   highlight?: boolean;
 }) {
   return (
-    <div className="bg-white border border-[#E3E9E6] rounded-xl p-4 space-y-2">
+    <div className="bg-surface border border-border rounded-xl p-4 space-y-2">
       <div className="flex items-center justify-between">
-        <p className="text-xs font-medium text-[#737A76]">{label}</p>
-        <div className={`text-${highlight ? "[#B45309]" : "[#9BA39D]"}`}>{icon}</div>
+        <p className="text-xs font-medium text-text-secondary">{label}</p>
+        <div className={highlight ? "text-warning" : "text-text-disabled"}>{icon}</div>
       </div>
-      <p className={`text-xl font-semibold tracking-tight ${highlight ? "text-[#B45309]" : "text-[#151918]"}`}>
+      <p className={`text-xl font-semibold tracking-tight ${highlight ? "text-warning" : "text-text-primary"}`}>
         {value}
       </p>
     </div>

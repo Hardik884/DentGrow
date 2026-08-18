@@ -22,7 +22,7 @@ export default async function ConsentTemplatesPage() {
       <PageHeader title="Consent Templates" backHref="/dentist/settings" />
 
       {res.error ? (
-        <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-md px-3 py-2">
+        <p className="text-sm text-danger bg-danger-bg border border-danger-border rounded-md px-3 py-2">
           {res.error}
         </p>
       ) : (

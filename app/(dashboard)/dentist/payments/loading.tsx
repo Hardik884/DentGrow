@@ -10,18 +10,18 @@ export default function PaymentsLoading() {
 
       {/* Revenue today card */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div className="bg-white border rounded-lg p-4 space-y-2">
+        <div className="bg-surface border rounded-lg p-4 space-y-2">
           <Skeleton className="h-3 w-28" />
           <Skeleton className="h-8 w-24" />
         </div>
       </div>
 
       {/* Outstanding balances table */}
-      <div className="bg-white border border-[#E3E9E6] rounded-xl overflow-hidden">
-        <div className="px-5 py-4 border-b border-[#E3E9E6]">
+      <div className="bg-surface border border-border rounded-xl overflow-hidden">
+        <div className="px-5 py-4 border-b border-border">
           <Skeleton className="h-4 w-40" />
         </div>
-        <div className="divide-y divide-[#EEF2F0]">
+        <div className="divide-y divide-surface-muted">
           {Array.from({ length: 8 }).map((_, i) => (
             <div key={i} className="px-5 py-3.5 flex items-center justify-between gap-3">
               <div className="flex items-center gap-3">

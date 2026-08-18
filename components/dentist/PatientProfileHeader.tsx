@@ -26,20 +26,20 @@ export async function PatientProfileHeader({ patientId, role, baseHref }: Patien
     : null;
 
   return (
-    <div className="bg-white border border-[#E3E9E6] rounded-xl overflow-hidden">
+    <div className="bg-surface border border-border rounded-xl overflow-hidden">
       {/* Header row */}
       <div className="px-6 py-5 flex items-start gap-4">
         <PatientAvatar name={patient.name} size="lg" />
 
         <div className="flex-1 min-w-0 space-y-1">
-          <h2 className="text-lg font-semibold text-[#151918] tracking-tight">{patient.name}</h2>
-          <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-[#737A76]">
+          <h2 className="text-lg font-semibold text-text-primary tracking-tight">{patient.name}</h2>
+          <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-text-secondary">
             {age !== null && <span>{age} years</span>}
             {genderLabel && <span>{genderLabel}</span>}
             {patient.phone && (
               <a
                 href={`tel:${patient.phone}`}
-                className="flex items-center gap-1 text-[#151918] hover:underline underline-offset-4"
+                className="flex items-center gap-1 text-text-primary hover:underline underline-offset-4"
               >
                 <Phone className="h-3 w-3" aria-hidden />
                 {patient.phone}
@@ -48,8 +48,8 @@ export async function PatientProfileHeader({ patientId, role, baseHref }: Patien
           </div>
           {patient.pendingFollowUps.length > 0 && (
             <div className="flex items-center gap-1.5 mt-1">
-              <AlertTriangle className="h-3.5 w-3.5 text-[#B45309]" aria-hidden />
-              <span className="text-xs text-[#B45309] font-medium">
+              <AlertTriangle className="h-3.5 w-3.5 text-warning" aria-hidden />
+              <span className="text-xs text-warning font-medium">
                 {patient.pendingFollowUps.length} follow-up{patient.pendingFollowUps.length !== 1 ? "s" : ""} to handle
               </span>
             </div>
@@ -76,7 +76,7 @@ export async function PatientProfileHeader({ patientId, role, baseHref }: Patien
       <Separator />
 
       {/* Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-0 divide-x divide-[#EEF2F0]">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-0 divide-x divide-surface-muted">
         <StatCell
           label="Total Visits"
           value={String(patient.total_visits)}
@@ -91,7 +91,7 @@ export async function PatientProfileHeader({ patientId, role, baseHref }: Patien
           <StatCell
             label="Remaining"
             value={formatCurrency(patient.outstandingBalance)}
-            valueClass={patient.outstandingBalance > 0 ? "text-[#DC2626]" : "text-[#16A34A]"}
+            valueClass={patient.outstandingBalance > 0 ? "text-danger" : "text-success"}
           />
         )}
         <StatCell
@@ -106,13 +106,13 @@ export async function PatientProfileHeader({ patientId, role, baseHref }: Patien
           <Separator />
           <div className="px-6 py-4 space-y-2.5">
             {patient.address && (
-              <div className="flex items-start gap-2 text-sm text-[#737A76]">
+              <div className="flex items-start gap-2 text-sm text-text-secondary">
                 <MapPin className="h-3.5 w-3.5 mt-0.5 shrink-0" aria-hidden />
                 <span>{patient.address}</span>
               </div>
             )}
             {patient.emergency_contact_name && (
-              <div className="flex items-center gap-2 text-sm text-[#737A76]">
+              <div className="flex items-center gap-2 text-sm text-text-secondary">
                 <AlertTriangle className="h-3.5 w-3.5 shrink-0" aria-hidden />
                 <span>
                   Emergency: {patient.emergency_contact_name}
@@ -122,8 +122,8 @@ export async function PatientProfileHeader({ patientId, role, baseHref }: Patien
             )}
             {isDentist && patient.notes && (
               <div className="mt-1">
-                <p className="text-xs font-medium text-[#737A76] uppercase tracking-wider mb-1">Notes</p>
-                <p className="text-sm text-[#151918] whitespace-pre-wrap">{patient.notes}</p>
+                <p className="text-xs font-medium text-text-secondary uppercase tracking-wider mb-1">Notes</p>
+                <p className="text-sm text-text-primary whitespace-pre-wrap">{patient.notes}</p>
               </div>
             )}
           </div>
@@ -147,10 +147,10 @@ function StatCell({
   return (
     <div className="px-5 py-4">
       <div className="flex items-center gap-1.5 mb-1">
-        {icon && <span className="text-[#9BA39D]">{icon}</span>}
-        <p className="text-xs text-[#737A76]">{label}</p>
+        {icon && <span className="text-text-disabled">{icon}</span>}
+        <p className="text-xs text-text-secondary">{label}</p>
       </div>
-      <p className={`text-sm font-semibold ${valueClass ?? "text-[#151918]"}`}>{value}</p>
+      <p className={`text-sm font-semibold ${valueClass ?? "text-text-primary"}`}>{value}</p>
     </div>
   );
 }

@@ -368,15 +368,15 @@ export function TreatmentForm({
   return (
     <form onSubmit={handleSubmit(onSubmit)}>
       {serverError && (
-        <div className="mb-4 rounded-lg bg-[#FEF2F2] border border-[#FECACA] px-4 py-3 text-xs text-[#DC2626]">
+        <div className="mb-4 rounded-lg bg-danger-bg border border-danger-border px-4 py-3 text-xs text-danger">
           {serverError}
         </div>
       )}
 
-      <div className="bg-white border border-[#E3E9E6] rounded-xl overflow-hidden divide-y divide-[#EEF2F0]">
+      <div className="bg-surface border border-border rounded-xl overflow-hidden divide-y divide-surface-muted">
         <div className="px-6 py-5 space-y-4">
           {toothNumber != null && (
-            <div className="inline-flex items-center gap-1.5 rounded-full bg-[#EFF6FF] border border-[#BFDBFE] px-3 py-1 text-xs font-medium text-[#2563EB]">
+            <div className="inline-flex items-center gap-1.5 rounded-full bg-info-bg border border-info-border px-3 py-1 text-xs font-medium text-info">
               Linked to Tooth {toothNumber}
             </div>
           )}
@@ -526,7 +526,7 @@ export function TreatmentForm({
               id="opd-charged"
               role="radiogroup"
               aria-label="OPD consultation charged"
-              className="inline-flex rounded-lg border border-[#E3E9E6] bg-[#F6F8F6] p-0.5"
+              className="inline-flex rounded-lg border border-border bg-background p-0.5"
             >
               <button
                 type="button"
@@ -538,8 +538,8 @@ export function TreatmentForm({
                 className={cn(
                   "px-4 py-1.5 text-xs font-semibold rounded-md transition-colors cursor-pointer",
                   !opdChargedValue
-                    ? "bg-white text-[#151918] shadow-sm border border-[#E3E9E6]"
-                    : "text-[#737A76] hover:text-[#151918]"
+                    ? "bg-surface text-text-primary shadow-sm border border-border"
+                    : "text-text-secondary hover:text-text-primary"
                 )}
               >
                 No
@@ -554,8 +554,8 @@ export function TreatmentForm({
                 className={cn(
                   "px-4 py-1.5 text-xs font-semibold rounded-md transition-colors cursor-pointer",
                   opdChargedValue
-                    ? "bg-[#0D6B5E] text-white shadow-sm"
-                    : "text-[#737A76] hover:text-[#151918]"
+                    ? "bg-accent text-accent-foreground shadow-sm"
+                    : "text-text-secondary hover:text-text-primary"
                 )}
               >
                 Yes
@@ -575,7 +575,7 @@ export function TreatmentForm({
                   id="xray-taken"
                   role="radiogroup"
                   aria-label="X-ray taken"
-                  className="inline-flex rounded-lg border border-[#E3E9E6] bg-[#F6F8F6] p-0.5"
+                  className="inline-flex rounded-lg border border-border bg-background p-0.5"
                 >
                   <button
                     type="button"
@@ -588,8 +588,8 @@ export function TreatmentForm({
                     className={cn(
                       "px-4 py-1.5 text-xs font-semibold rounded-md transition-colors cursor-pointer",
                       !xrayTakenValue
-                        ? "bg-white text-[#151918] shadow-sm border border-[#E3E9E6]"
-                        : "text-[#737A76] hover:text-[#151918]"
+                        ? "bg-surface text-text-primary shadow-sm border border-border"
+                        : "text-text-secondary hover:text-text-primary"
                     )}
                   >
                     No
@@ -604,8 +604,8 @@ export function TreatmentForm({
                     className={cn(
                       "px-4 py-1.5 text-xs font-semibold rounded-md transition-colors cursor-pointer",
                       xrayTakenValue
-                        ? "bg-[#0D6B5E] text-white shadow-sm"
-                        : "text-[#737A76] hover:text-[#151918]"
+                        ? "bg-accent text-accent-foreground shadow-sm"
+                        : "text-text-secondary hover:text-text-primary"
                     )}
                   >
                     Yes
@@ -614,10 +614,10 @@ export function TreatmentForm({
               </Field>
 
               {xrayTakenValue && (
-                <div className="rounded-lg border border-[#E3E9E6] bg-[#F6F8F6] px-4 py-4">
+                <div className="rounded-lg border border-border bg-background px-4 py-4">
                   <div className="flex items-center gap-1.5 mb-3">
-                    <ScanLine className="h-3.5 w-3.5 text-[#737A76]" aria-hidden />
-                    <span className="text-xs font-semibold text-[#151918] uppercase tracking-wide">X-ray Details</span>
+                    <ScanLine className="h-3.5 w-3.5 text-text-secondary" aria-hidden />
+                    <span className="text-xs font-semibold text-text-primary uppercase tracking-wide">X-ray Details</span>
                   </div>
                   <Field
                     label="X-ray Cost (₹)"
@@ -645,8 +645,8 @@ export function TreatmentForm({
         {/* ── Performed By / Revenue Distribution ─────────────── */}
         <div className="px-6 py-5 space-y-4">
           <div className="flex items-center gap-1.5">
-            <Briefcase className="h-4 w-4 text-[#737A76]" aria-hidden />
-            <h3 className="text-sm font-semibold text-[#151918]">Performed By</h3>
+            <Briefcase className="h-4 w-4 text-text-secondary" aria-hidden />
+            <h3 className="text-sm font-semibold text-text-primary">Performed By</h3>
           </div>
 
           <Field
@@ -679,8 +679,8 @@ export function TreatmentForm({
           </Field>
 
           {hasConsultant && (
-            <div className="rounded-lg border border-[#E3E9E6] bg-[#F6F8F6] p-4 space-y-4">
-              <p className="text-xs font-semibold text-[#151918] uppercase tracking-wide">
+            <div className="rounded-lg border border-border bg-background p-4 space-y-4">
+              <p className="text-xs font-semibold text-text-primary uppercase tracking-wide">
                 Revenue Distribution
               </p>
 
@@ -733,8 +733,8 @@ export function TreatmentForm({
         <div className="px-6 py-5 space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-1.5">
-              <Pill className="h-4 w-4 text-[#737A76]" aria-hidden />
-              <h3 className="text-sm font-semibold text-[#151918]">Medications</h3>
+              <Pill className="h-4 w-4 text-text-secondary" aria-hidden />
+              <h3 className="text-sm font-semibold text-text-primary">Medications</h3>
             </div>
             <Button
               type="button"
@@ -748,11 +748,11 @@ export function TreatmentForm({
           </div>
 
           {fields.length === 0 ? (
-            <p className="text-xs text-[#9BA39D]">No medications added.</p>
+            <p className="text-xs text-text-disabled">No medications added.</p>
           ) : (
             <div className="space-y-3">
               {/* Column headers (md+) — order: Medicine | Number | Dosage | Instructions | Days */}
-              <div className="hidden md:grid grid-cols-[minmax(200px,2fr)_90px_120px_160px_130px_36px] gap-2 text-xs font-medium text-[#737A76] uppercase tracking-wide px-1">
+              <div className="hidden md:grid grid-cols-[minmax(200px,2fr)_90px_120px_160px_130px_36px] gap-2 text-xs font-medium text-text-secondary uppercase tracking-wide px-1">
                 <span>Medicine</span>
                 <span>Number</span>
                 <span>Dosage</span>
@@ -829,7 +829,7 @@ export function TreatmentForm({
                       <button
                         type="button"
                         onClick={() => remove(index)}
-                        className="h-9 w-9 flex items-center justify-center rounded-lg border border-[#E3E9E6] text-[#DC2626] hover:bg-[#FEF2F2] transition-colors"
+                        className="h-9 w-9 flex items-center justify-center rounded-lg border border-border text-danger hover:bg-danger-bg transition-colors"
                         aria-label="Remove medicine"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
@@ -844,7 +844,7 @@ export function TreatmentForm({
 
         {/* ── Notes ──────────────────────────────────────────── */}
         <div className="px-6 py-5 space-y-4">
-          <h3 className="text-sm font-semibold text-[#151918]">Notes</h3>
+          <h3 className="text-sm font-semibold text-text-primary">Notes</h3>
 
           {/* Patient-Visible Notes — shown in the patient portal */}
           <Field
@@ -852,7 +852,7 @@ export function TreatmentForm({
             htmlFor="patient-notes"
           >
             <div className="space-y-1.5">
-              <div className="flex items-center gap-1.5 text-xs text-[#16A34A]">
+              <div className="flex items-center gap-1.5 text-xs text-success">
                 <Eye className="h-3 w-3" aria-hidden />
                 <span>Patient can see this</span>
               </div>
@@ -879,7 +879,7 @@ export function TreatmentForm({
           />
         )}
 
-        <div className="px-6 py-4 bg-[#F6F8F6] flex items-center justify-end gap-3">
+        <div className="px-6 py-4 bg-background flex items-center justify-end gap-3">
           <Button variant="outline" size="sm" type="button" onClick={() => (onCancel ? onCancel() : router.back())}>
             Cancel
           </Button>
@@ -903,10 +903,10 @@ function PreviewStat({
   accent?: "amber" | "green";
 }) {
   const color =
-    accent === "amber" ? "text-[#B45309]" : accent === "green" ? "text-[#16A34A]" : "text-[#151918]";
+    accent === "amber" ? "text-warning" : accent === "green" ? "text-success" : "text-text-primary";
   return (
-    <div className="rounded-lg bg-white border border-[#E3E9E6] px-3 py-2">
-      <p className="text-[10px] uppercase tracking-wide text-[#737A76]">{label}</p>
+    <div className="rounded-lg bg-surface border border-border px-3 py-2">
+      <p className="text-[10px] uppercase tracking-wide text-text-secondary">{label}</p>
       <p className={`text-sm font-semibold ${color}`}>{value}</p>
     </div>
   );
@@ -933,7 +933,7 @@ function DaysCounter({
       <button
         type="button"
         onClick={() => commit(value - 1)}
-        className="h-9 w-8 flex items-center justify-center rounded-l-lg border border-[#E3E9E6] text-[#5B635E] hover:bg-[#EEF2F0]"
+        className="h-9 w-8 flex items-center justify-center rounded-l-lg border border-border text-text-body hover:bg-surface-muted"
         aria-label="Decrease days"
       >
         <Minus className="h-3 w-3" />
@@ -945,13 +945,13 @@ function DaysCounter({
         value={value}
         onChange={(e) => commit(parseInt(e.target.value, 10) || 1)}
         onWheel={(e) => (e.target as HTMLElement).blur()}
-        className="h-9 w-12 text-center text-sm border-y border-[#E3E9E6] outline-none focus:ring-1 focus:ring-[#0D6B5E] text-[#151918] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+        className="h-9 w-12 text-center text-sm border-y border-border outline-none focus:ring-1 focus:ring-accent text-text-primary [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
         aria-label="Days"
       />
       <button
         type="button"
         onClick={() => commit(value + 1)}
-        className="h-9 w-8 flex items-center justify-center rounded-r-lg border border-[#E3E9E6] text-[#5B635E] hover:bg-[#EEF2F0]"
+        className="h-9 w-8 flex items-center justify-center rounded-r-lg border border-border text-text-body hover:bg-surface-muted"
         aria-label="Increase days"
       >
         <Plus className="h-3 w-3" />

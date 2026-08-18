@@ -63,21 +63,21 @@ export async function PatientFinancialTimeline({
   if (balance === 0 && priorPayments.length === 0 && !followUp) return null;
 
   return (
-    <div className="bg-white border rounded-lg p-4 space-y-4">
+    <div className="bg-surface border rounded-lg p-4 space-y-4">
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div>
-          <h3 className="font-semibold text-gray-900">Account so far</h3>
-          <p className="text-xs text-gray-500 mt-0.5">
+          <h3 className="font-semibold text-text-primary">Account so far</h3>
+          <p className="text-xs text-text-secondary mt-0.5">
             {followUp
               ? "This visit was booked as a follow-up, so it continues the patient's existing account."
               : "Across all of this patient's visits, not just this one."}
           </p>
         </div>
         <div className="text-right">
-          <div className="text-xl font-semibold text-gray-900 tabular-nums leading-none">
+          <div className="text-xl font-semibold text-text-primary tabular-nums leading-none">
             {formatCurrency(balance)}
           </div>
-          <div className="text-xs text-gray-500 mt-1">
+          <div className="text-xs text-text-secondary mt-1">
             {balance > 0 ? "outstanding" : "fully settled"}
           </div>
         </div>
@@ -85,31 +85,31 @@ export async function PatientFinancialTimeline({
 
       {/* Why this visit exists, when it came from a recall. */}
       {followUp && (
-        <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5">
-          <p className="text-xs text-gray-600">
+        <div className="rounded-lg border border-border bg-surface-secondary px-3 py-2.5">
+          <p className="text-xs text-text-secondary">
             Follow-up due {formatDate(followUp.due_date)}
             {followUp.follow_up_type ? ` — ${followUp.follow_up_type}` : ""}
           </p>
           {followUp.notes && (
-            <p className="text-xs text-gray-500 mt-1 line-clamp-2">{followUp.notes}</p>
+            <p className="text-xs text-text-secondary mt-1 line-clamp-2">{followUp.notes}</p>
           )}
         </div>
       )}
 
       {priorPayments.length > 0 && (
         <div className="space-y-2">
-          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+          <p className="text-xs font-medium text-text-secondary uppercase tracking-wide">
             Earlier payments
           </p>
-          <ul className="divide-y divide-gray-100 border border-gray-100 rounded-lg">
+          <ul className="divide-y divide-border border border-border rounded-lg">
             {priorPayments.map((p) => (
               <li key={p.id} className="flex items-center justify-between gap-3 px-3 py-2">
-                <span className="text-xs text-gray-500">
+                <span className="text-xs text-text-secondary">
                   {formatDate(p.payment_date)}
                   {p.payment_type === "opd" ? " · consultation" : ""}
                 </span>
-                <span className="text-sm font-medium text-gray-800 tabular-nums flex items-center">
-                  <IndianRupee className="h-3 w-3 text-gray-400" aria-hidden />
+                <span className="text-sm font-medium text-text-primary tabular-nums flex items-center">
+                  <IndianRupee className="h-3 w-3 text-text-disabled" aria-hidden />
                   {Number(p.amount).toLocaleString("en-IN")}
                 </span>
               </li>
@@ -118,7 +118,7 @@ export async function PatientFinancialTimeline({
           {priorCount > priorPayments.length && (
             <Link
               href={`/dentist/patients/${patientId}?tab=payments`}
-              className="inline-flex items-center gap-1 text-xs font-medium text-gray-600 hover:text-gray-900 transition-colors"
+              className="inline-flex items-center gap-1 text-xs font-medium text-text-secondary hover:text-text-primary transition-colors"
             >
               See all {priorCount} earlier payments
               <ArrowRight className="h-3 w-3" aria-hidden />

@@ -26,7 +26,7 @@ export function SignOutButton({ className }: SignOutButtonProps) {
       aria-label="Sign out"
       className={cn(
         "flex items-center gap-2 w-full px-2 py-1.5 rounded-lg text-xs font-medium",
-        "text-[#737A76] hover:text-[#151918] hover:bg-[#EEF2F0]",
+        "text-text-secondary hover:text-text-primary hover:bg-surface-muted",
         "transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-50",
         className
       )}

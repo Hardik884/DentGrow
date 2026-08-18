@@ -68,7 +68,7 @@ export function PatientSearch({
       </div>
 
       {isOpen && results.length > 0 && (
-        <ul className="absolute z-20 w-full mt-1 bg-white border border-[#E3E9E6] rounded-xl shadow-lg max-h-60 overflow-y-auto">
+        <ul className="absolute z-20 w-full mt-1 bg-surface border border-border rounded-xl shadow-lg max-h-60 overflow-y-auto">
           {results.map((patient) => (
             <li key={patient.id}>
               <button
@@ -80,13 +80,13 @@ export function PatientSearch({
                   setResults([]);
                   setIsOpen(false);
                 }}
-                className="w-full px-4 py-2.5 text-left hover:bg-[#F6F8F6] flex items-center gap-3 transition-colors"
+                className="w-full px-4 py-2.5 text-left hover:bg-background flex items-center gap-3 transition-colors"
               >
                 <PatientAvatar name={patient.name} size="sm" />
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-[#151918] truncate">{patient.name}</p>
+                  <p className="text-sm font-medium text-text-primary truncate">{patient.name}</p>
                   {patient.phone && (
-                    <p className="text-xs text-[#737A76]">{patient.phone}</p>
+                    <p className="text-xs text-text-secondary">{patient.phone}</p>
                   )}
                 </div>
               </button>
@@ -96,8 +96,8 @@ export function PatientSearch({
       )}
 
       {isOpen && !isLoading && query.trim().length >= 2 && results.length === 0 && (
-        <div className="absolute z-20 w-full mt-1 bg-white border border-[#E3E9E6] rounded-xl shadow-lg p-4">
-          <p className="text-sm text-[#737A76] text-center">No patients found</p>
+        <div className="absolute z-20 w-full mt-1 bg-surface border border-border rounded-xl shadow-lg p-4">
+          <p className="text-sm text-text-secondary text-center">No patients found</p>
         </div>
       )}
     </div>

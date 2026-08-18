@@ -64,9 +64,9 @@ interface AppointmentFiltersProps {
 }
 
 const selectClasses = cn(
-  "w-full h-9 px-3 py-2 text-sm border border-[#E3E9E6] rounded-lg bg-white",
-  "outline-none focus:ring-2 focus:ring-[#0D6B5E] focus:ring-offset-1 focus:border-[#0D6B5E]",
-  "text-[#151918] cursor-pointer"
+  "w-full h-9 px-3 py-2 text-sm border border-border rounded-lg bg-surface",
+  "outline-none focus:ring-2 focus:ring-accent focus:ring-offset-1 focus:border-accent",
+  "text-text-primary cursor-pointer"
 );
 
 export function AppointmentFilters({
@@ -130,16 +130,16 @@ export function AppointmentFilters({
     !!timeTo;
 
   return (
-    <div className="bg-white border border-[#E3E9E6] rounded-xl px-5 py-4 space-y-4">
+    <div className="bg-surface border border-border rounded-xl px-5 py-4 space-y-4">
       {/* Header row */}
       <div className="flex items-center gap-2">
-        <SlidersHorizontal className="h-4 w-4 text-[#9BA39D]" aria-hidden />
-        <span className="text-sm font-semibold text-[#151918]">Filters</span>
+        <SlidersHorizontal className="h-4 w-4 text-text-disabled" aria-hidden />
+        <span className="text-sm font-semibold text-text-primary">Filters</span>
         {hasActiveFilters && (
           <button
             type="button"
             onClick={handleReset}
-            className="ml-auto flex items-center gap-1 text-xs text-[#737A76] hover:text-[#151918] transition-colors"
+            className="ml-auto flex items-center gap-1 text-xs text-text-secondary hover:text-text-primary transition-colors"
           >
             <X className="h-3 w-3" />
             Reset
@@ -149,7 +149,7 @@ export function AppointmentFilters({
 
       {/* Search */}
       <div className="relative max-w-md">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#9BA39D]" aria-hidden />
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-text-disabled" aria-hidden />
         <Input
           type="search"
           value={search}
@@ -165,7 +165,7 @@ export function AppointmentFilters({
       <div className="flex flex-wrap gap-4 items-end">
         {/* Status */}
         <div className="space-y-1.5 min-w-[140px]">
-          <label htmlFor="appt-status" className="text-xs font-medium text-[#737A76] uppercase tracking-wide">
+          <label htmlFor="appt-status" className="text-xs font-medium text-text-secondary uppercase tracking-wide">
             Status
           </label>
           <select
@@ -182,7 +182,7 @@ export function AppointmentFilters({
 
         {/* Date From — future dates allowed, independent of To */}
         <div className="space-y-1.5">
-          <label className="text-xs font-medium text-[#737A76] uppercase tracking-wide block">
+          <label className="text-xs font-medium text-text-secondary uppercase tracking-wide block">
             From Date
           </label>
           <CalendarPicker
@@ -196,7 +196,7 @@ export function AppointmentFilters({
 
         {/* Date To — independent of From */}
         <div className="space-y-1.5">
-          <label className="text-xs font-medium text-[#737A76] uppercase tracking-wide block">
+          <label className="text-xs font-medium text-text-secondary uppercase tracking-wide block">
             To Date
           </label>
           <CalendarPicker
@@ -210,7 +210,7 @@ export function AppointmentFilters({
 
         {/* Time From */}
         <div className="space-y-1.5 min-w-[120px]">
-          <label htmlFor="appt-time-from" className="text-xs font-medium text-[#737A76] uppercase tracking-wide">
+          <label htmlFor="appt-time-from" className="text-xs font-medium text-text-secondary uppercase tracking-wide">
             From Time
           </label>
           <select
@@ -227,7 +227,7 @@ export function AppointmentFilters({
 
         {/* Time To */}
         <div className="space-y-1.5 min-w-[120px]">
-          <label htmlFor="appt-time-to" className="text-xs font-medium text-[#737A76] uppercase tracking-wide">
+          <label htmlFor="appt-time-to" className="text-xs font-medium text-text-secondary uppercase tracking-wide">
             To Time
           </label>
           <select
@@ -252,7 +252,7 @@ export function AppointmentFilters({
       </div>
 
       {rangeInvalid && (
-        <p className="text-xs text-[#DC2626]">
+        <p className="text-xs text-danger">
           From date is after To date — no appointments will match this range.
         </p>
       )}

@@ -14,7 +14,7 @@ export default function BusinessBrainLoading() {
       </div>
 
       {/* Status banner with headline metrics */}
-      <div className="bg-white border border-[#E3E9E6] rounded-xl overflow-hidden">
+      <div className="bg-surface border border-border rounded-xl overflow-hidden">
         <div className="p-6">
           <div className="flex items-start gap-3.5">
             <Skeleton className="h-2.5 w-2.5 rounded-full mt-1.5" />
@@ -24,7 +24,7 @@ export default function BusinessBrainLoading() {
             </div>
           </div>
         </div>
-        <div className="border-t border-[#EEF2F0] px-6 py-4 bg-[#F6F8F6]/50">
+        <div className="border-t border-surface-muted px-6 py-4 bg-background/50">
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
             {Array.from({ length: 6 }).map((_, i) => (
               <div key={i} className="space-y-1.5">
@@ -38,8 +38,8 @@ export default function BusinessBrainLoading() {
 
       {/* Focus cards */}
       {Array.from({ length: 2 }).map((_, i) => (
-        <div key={i} className="bg-white border border-[#E3E9E6] rounded-xl overflow-hidden flex">
-          <div className="w-1 shrink-0 bg-[#E3E9E6]" />
+        <div key={i} className="bg-surface border border-border rounded-xl overflow-hidden flex">
+          <div className="w-1 shrink-0 bg-border" />
           <div className="flex-1 p-5 space-y-3">
             <div className="flex items-start justify-between gap-4">
               <Skeleton className="h-5 w-48" />
@@ -59,7 +59,7 @@ export default function BusinessBrainLoading() {
 
       {/* Collapsed sections */}
       {Array.from({ length: 2 }).map((_, i) => (
-        <div key={i} className="bg-white border border-[#E3E9E6] rounded-xl px-5 py-4">
+        <div key={i} className="bg-surface border border-border rounded-xl px-5 py-4">
           <div className="space-y-1.5">
             <Skeleton className="h-4 w-36" />
             <Skeleton className="h-3 w-56" />

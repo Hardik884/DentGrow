@@ -103,29 +103,29 @@ export function WhatsAppContactWorkflow({
   return (
     <Dialog open={open} onClose={onClose} title={title} description={progress} size="md">
       <div className="px-6 py-5">
-        {state === "loading" && <p className="text-sm text-[#9BA39D] py-6 text-center">Loading patients…</p>}
+        {state === "loading" && <p className="text-sm text-text-disabled py-6 text-center">Loading patients…</p>}
 
         {state === "error" && (
-          <p className="text-sm text-[#B45309] py-6 text-center">
+          <p className="text-sm text-warning py-6 text-center">
             Couldn&apos;t load the list right now. The rest of DentGrow still works.
           </p>
         )}
 
         {state === "ready" && total === 0 && (
-          <p className="text-sm text-[#737A76] py-6 text-center">No one to contact right now.</p>
+          <p className="text-sm text-text-secondary py-6 text-center">No one to contact right now.</p>
         )}
 
         {state === "ready" && total > 0 && allDone && (
           <div className="py-8 text-center">
-            <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-full bg-[#F0FDF4] mb-3">
-              <CheckCircle2 className="h-6 w-6 text-[#16A34A]" aria-hidden />
+            <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-full bg-success-bg mb-3">
+              <CheckCircle2 className="h-6 w-6 text-success" aria-hidden />
             </div>
-            <h3 className="text-base font-semibold text-[#151918]">All patients contacted</h3>
-            <p className="text-sm text-[#737A76] mt-1">{contacted} of {total} contacted.</p>
+            <h3 className="text-base font-semibold text-text-primary">All patients contacted</h3>
+            <p className="text-sm text-text-secondary mt-1">{contacted} of {total} contacted.</p>
             <button
               type="button"
               onClick={onClose}
-              className="mt-5 inline-flex items-center rounded-lg bg-[#151918] text-white px-4 py-2 text-sm font-medium hover:bg-[#09544B] transition-colors cursor-pointer"
+              className="mt-5 inline-flex items-center rounded-lg bg-text-primary text-accent-foreground px-4 py-2 text-sm font-medium hover:bg-accent-hover transition-colors cursor-pointer"
             >
               Done
             </button>
@@ -218,37 +218,37 @@ function PatientStep({
       {/* Who + why */}
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h3 className="text-lg font-semibold text-[#151918] leading-tight">{recipient.name}</h3>
-          <p className="text-sm text-[#5B635E] mt-0.5">{recipient.subject}</p>
+          <h3 className="text-lg font-semibold text-text-primary leading-tight">{recipient.name}</h3>
+          <p className="text-sm text-text-body mt-0.5">{recipient.subject}</p>
         </div>
         {done && (
-          <span className="inline-flex items-center gap-1 text-xs font-medium text-[#15803D] bg-[#F0FDF4] rounded-full px-2 py-0.5 shrink-0">
+          <span className="inline-flex items-center gap-1 text-xs font-medium text-success-hover bg-success-bg rounded-full px-2 py-0.5 shrink-0">
             <Check className="h-3 w-3" strokeWidth={3} aria-hidden />
             Contacted
           </span>
         )}
       </div>
-      <p className="mt-2 inline-block text-xs text-[#737A76] bg-[#EEF2F0] rounded px-2 py-0.5">
+      <p className="mt-2 inline-block text-xs text-text-secondary bg-surface-muted rounded px-2 py-0.5">
         {recipient.reason}
       </p>
 
       {/* Message: clean preview, edit only on demand */}
       <div className="mt-4">
         <div className="flex items-center justify-between">
-          <span className="text-xs font-medium uppercase tracking-wider text-[#9BA39D]">Message</span>
+          <span className="text-xs font-medium uppercase tracking-wider text-text-disabled">Message</span>
           <div className="flex items-center gap-3">
             <button
               type="button"
               onClick={copy}
-              className="inline-flex items-center gap-1 text-xs font-medium text-[#737A76] hover:text-[#0D6B5E] transition-colors cursor-pointer"
+              className="inline-flex items-center gap-1 text-xs font-medium text-text-secondary hover:text-accent transition-colors cursor-pointer"
             >
-              {copied ? <Check className="h-3 w-3 text-[#16A34A]" aria-hidden /> : <Copy className="h-3 w-3" aria-hidden />}
+              {copied ? <Check className="h-3 w-3 text-success" aria-hidden /> : <Copy className="h-3 w-3" aria-hidden />}
               {copied ? "Copied" : "Copy"}
             </button>
             <button
               type="button"
               onClick={() => setEditing((e) => !e)}
-              className="inline-flex items-center gap-1 text-xs font-medium text-[#737A76] hover:text-[#0D6B5E] transition-colors cursor-pointer"
+              className="inline-flex items-center gap-1 text-xs font-medium text-text-secondary hover:text-accent transition-colors cursor-pointer"
             >
               <Pencil className="h-3 w-3" aria-hidden />
               {editing ? "Done" : edited ? "Edited" : "Edit message"}
@@ -261,10 +261,10 @@ function PatientStep({
             onChange={(e) => onMessageChange(e.target.value)}
             rows={6}
             autoFocus
-            className="mt-1.5 w-full resize-none rounded-lg border border-[#E3E9E6] bg-white px-3 py-2.5 text-sm leading-relaxed text-[#333B36] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0D6B5E]/15"
+            className="mt-1.5 w-full resize-none rounded-lg border border-border bg-surface px-3 py-2.5 text-sm leading-relaxed text-text-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/15"
           />
         ) : (
-          <p className="mt-1.5 rounded-lg border border-[#E3E9E6] bg-[#F6F8F6] px-3 py-2.5 text-sm leading-relaxed text-[#333B36] whitespace-pre-wrap">
+          <p className="mt-1.5 rounded-lg border border-border bg-background px-3 py-2.5 text-sm leading-relaxed text-text-strong whitespace-pre-wrap">
             {message}
           </p>
         )}
@@ -272,14 +272,14 @@ function PatientStep({
 
       {/* Primary action / confirmation */}
       {awaitingConfirm ? (
-        <div className="mt-4 rounded-lg border border-[#E3E9E6] bg-[#F6F8F6] p-3">
-          <p className="text-sm font-medium text-[#151918]">Did you send this message?</p>
+        <div className="mt-4 rounded-lg border border-border bg-background p-3">
+          <p className="text-sm font-medium text-text-primary">Did you send this message?</p>
           <div className="mt-2.5 flex flex-wrap items-center gap-2">
             <button
               type="button"
               onClick={confirmSent}
               disabled={saving}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-[#16A34A] text-white px-3.5 py-2 text-sm font-medium hover:bg-[#15803D] transition-colors cursor-pointer disabled:opacity-60"
+              className="inline-flex items-center gap-1.5 rounded-lg bg-success text-success-foreground px-3.5 py-2 text-sm font-medium hover:bg-success-hover transition-colors cursor-pointer disabled:opacity-60"
             >
               <Check className="h-4 w-4" strokeWidth={2.5} aria-hidden />
               {saving ? "Saving…" : "Yes, mark as sent"}
@@ -287,7 +287,7 @@ function PatientStep({
             <button
               type="button"
               onClick={() => setAwaitingConfirm(false)}
-              className="inline-flex items-center rounded-lg border border-[#E3E9E6] text-[#5B635E] px-3.5 py-2 text-sm font-medium hover:bg-white transition-colors cursor-pointer"
+              className="inline-flex items-center rounded-lg border border-border text-text-body px-3.5 py-2 text-sm font-medium hover:bg-surface transition-colors cursor-pointer"
             >
               No, keep pending
             </button>
@@ -301,18 +301,18 @@ function PatientStep({
               target="_blank"
               rel="noopener noreferrer"
               onClick={() => setAwaitingConfirm(true)}
-              className="inline-flex items-center gap-2 rounded-lg bg-[#16A34A] text-white px-4 py-2.5 text-sm font-medium hover:bg-[#15803D] transition-colors cursor-pointer"
+              className="inline-flex items-center gap-2 rounded-lg bg-success text-success-foreground px-4 py-2.5 text-sm font-medium hover:bg-success-hover transition-colors cursor-pointer"
             >
               <MessageCircle className="h-4 w-4" aria-hidden />
               Open WhatsApp
             </a>
           ) : (
-            <span className="text-sm text-[#9BA39D]">No usable phone number for this patient.</span>
+            <span className="text-sm text-text-disabled">No usable phone number for this patient.</span>
           )}
           <button
             type="button"
             onClick={onSkip}
-            className="inline-flex items-center text-sm font-medium text-[#737A76] hover:text-[#0D6B5E] transition-colors cursor-pointer"
+            className="inline-flex items-center text-sm font-medium text-text-secondary hover:text-accent transition-colors cursor-pointer"
           >
             Skip
           </button>
@@ -320,12 +320,12 @@ function PatientStep({
       )}
 
       {/* Manual navigation — the primary flow rarely needs it */}
-      <div className="mt-6 pt-4 border-t border-[#EEF2F0] flex items-center justify-between">
+      <div className="mt-6 pt-4 border-t border-surface-muted flex items-center justify-between">
         <button
           type="button"
           onClick={onPrev}
           disabled={!canPrev}
-          className="inline-flex items-center gap-1 text-sm font-medium text-[#5B635E] hover:text-[#151918] transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+          className="inline-flex items-center gap-1 text-sm font-medium text-text-body hover:text-text-primary transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
         >
           <ChevronLeft className="h-4 w-4" aria-hidden />
           Previous
@@ -334,7 +334,7 @@ function PatientStep({
           type="button"
           onClick={onNext}
           disabled={!canNext}
-          className="inline-flex items-center gap-1 text-sm font-medium text-[#5B635E] hover:text-[#151918] transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+          className="inline-flex items-center gap-1 text-sm font-medium text-text-body hover:text-text-primary transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
         >
           Next
           <ChevronRight className="h-4 w-4" aria-hidden />

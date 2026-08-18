@@ -169,14 +169,14 @@ export function UploadConsentDialog({
             type="file"
             accept={ALLOWED_CONSENT_UPLOAD_TYPES.join(",")}
             onChange={(e) => onFileChange(e.target.files?.[0] ?? null)}
-            className="block w-full text-sm text-[#5B635E] file:mr-3 file:rounded-md file:border-0 file:bg-[#EEF2F0] file:px-3 file:py-1.5 file:text-sm file:font-medium hover:file:bg-[#E3E9E6]"
+            className="block w-full text-sm text-text-body file:mr-3 file:rounded-md file:border-0 file:bg-surface-muted file:px-3 file:py-1.5 file:text-sm file:font-medium hover:file:bg-border"
           />
         </Field>
 
         {file && (
-          <div className="rounded-md border border-[#E3E9E6] p-3">
-            <p className="text-xs text-[#5B635E]">
-              Selected: <span className="font-medium text-[#151918]">{file.name}</span>{" "}
+          <div className="rounded-md border border-border p-3">
+            <p className="text-xs text-text-body">
+              Selected: <span className="font-medium text-text-primary">{file.name}</span>{" "}
               ({Math.round(file.size / 1024)} KB)
             </p>
             {previewUrl && (

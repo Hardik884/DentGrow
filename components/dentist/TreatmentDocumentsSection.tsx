@@ -40,15 +40,15 @@ export async function TreatmentDocumentsSection({
   }
 
   return (
-    <div className="bg-white border rounded-lg p-4 space-y-3">
-      <h3 className="font-semibold text-gray-900 text-sm">Documents</h3>
+    <div className="bg-surface border rounded-lg p-4 space-y-3">
+      <h3 className="font-semibold text-text-primary text-sm">Documents</h3>
 
-      {result.error && <p className="text-sm text-red-600">{result.error}</p>}
+      {result.error && <p className="text-sm text-danger">{result.error}</p>}
 
       {docs.length === 0 ? (
-        <p className="text-sm text-gray-500">No documents uploaded.</p>
+        <p className="text-sm text-text-secondary">No documents uploaded.</p>
       ) : (
-        <ul className="divide-y divide-gray-100">
+        <ul className="divide-y divide-border">
           {docs.map((doc) => {
             const isImage = doc.file_type.startsWith("image/");
             return (
@@ -60,13 +60,13 @@ export async function TreatmentDocumentsSection({
                   className="flex items-center gap-2 min-w-0 text-sm text-accent hover:underline"
                 >
                   {isImage ? (
-                    <ImageIcon className="h-4 w-4 shrink-0 text-gray-400" aria-hidden />
+                    <ImageIcon className="h-4 w-4 shrink-0 text-text-disabled" aria-hidden />
                   ) : (
-                    <FileText className="h-4 w-4 shrink-0 text-gray-400" aria-hidden />
+                    <FileText className="h-4 w-4 shrink-0 text-text-disabled" aria-hidden />
                   )}
                   <span className="truncate">{doc.file_name}</span>
                   {doc.file_size != null && (
-                    <span className="text-xs text-gray-400 shrink-0">
+                    <span className="text-xs text-text-disabled shrink-0">
                       {formatSize(doc.file_size)}
                     </span>
                   )}

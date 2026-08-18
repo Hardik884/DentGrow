@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { SignOutButton } from "@/components/shared/SignOutButton";
 import { DentGrowLogo } from "@/components/shared/DentGrowLogo";
+import { ThemeToggle } from "@/components/shared/ThemeToggle";
 import {
   LayoutDashboard,
   Users,
@@ -107,9 +108,9 @@ export function DashboardSidebar({
     .slice(0, 2);
 
   return (
-    <aside className="w-56 shrink-0 h-screen bg-white border-r border-[#E3E9E6] flex flex-col">
+    <aside className="w-56 shrink-0 h-screen bg-surface border-r border-border flex flex-col">
       {/* Brand */}
-      <div className="h-14 flex items-center px-5 border-b border-[#E3E9E6] shrink-0">
+      <div className="h-14 flex items-center px-5 border-b border-border shrink-0">
         <DentGrowLogo size={28} withWordmark />
       </div>
 
@@ -128,19 +129,19 @@ export function DashboardSidebar({
               className={cn(
                 "sidebar-nav-item relative flex items-center gap-2.5 pl-3.5 pr-3 py-2 rounded-lg text-sm",
                 isActive
-                  ? "bg-[#E8F4F0] text-[#09544B] font-medium"
-                  : "text-[#737A76] hover:bg-[#EEF2F0] hover:text-[#151918] font-normal"
+                  ? "bg-accent-soft text-accent-hover font-medium"
+                  : "text-text-secondary hover:bg-surface-muted hover:text-text-primary font-normal"
               )}
               aria-current={isActive ? "page" : undefined}
             >
               {isActive && (
                 <span
-                  className="absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-full bg-[#0D6B5E]"
+                  className="absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-full bg-accent"
                   aria-hidden
                 />
               )}
               <item.icon
-                className={cn("h-4 w-4 shrink-0", isActive ? "text-[#0D6B5E]" : "text-[#9BA39D]")}
+                className={cn("h-4 w-4 shrink-0", isActive ? "text-accent" : "text-text-disabled")}
                 aria-hidden
               />
               {item.label}
@@ -150,16 +151,20 @@ export function DashboardSidebar({
       </nav>
 
       {/* User footer */}
-      <div className="p-3 border-t border-[#E3E9E6] shrink-0">
+      <div className="p-3 border-t border-border shrink-0">
         <div className="flex items-center gap-2.5 px-2 py-1.5 mb-2">
-          <div className="h-7 w-7 rounded-full bg-[#E8F4F0] flex items-center justify-center shrink-0">
-            <span className="text-xs font-semibold text-[#09544B]">{initials}</span>
+          <div className="h-7 w-7 rounded-full bg-accent-soft flex items-center justify-center shrink-0">
+            <span className="text-xs font-semibold text-accent-hover">{initials}</span>
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-xs font-medium text-[#151918] truncate">{fullName}</p>
-            <p className="text-xs text-[#9BA39D] capitalize">{role}</p>
+            <p className="text-xs font-medium text-text-primary truncate">{fullName}</p>
+            <p className="text-xs text-text-disabled capitalize">{role}</p>
           </div>
         </div>
+        {/* Appearance lives here so every role can reach it — the receptionist
+            has no Settings page of its own. Nav items, routes and labels above
+            are untouched. */}
+        <ThemeToggle className="w-full justify-between mb-2" />
         <SignOutButton className="w-full" />
       </div>
     </aside>

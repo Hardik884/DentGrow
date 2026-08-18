@@ -44,7 +44,7 @@ export function BillList({
 }: BillListProps) {
   if (error) {
     return (
-      <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-md px-3 py-2">
+      <p className="text-sm text-danger bg-danger-bg border border-danger-border rounded-md px-3 py-2">
         {error}
       </p>
     );
@@ -52,7 +52,7 @@ export function BillList({
 
   if (bills.length === 0) {
     return (
-      <div className="bg-white border border-[#E3E9E6] rounded-xl">
+      <div className="bg-surface border border-border rounded-xl">
         <EmptyState
           icon={<FileText className="h-5 w-5" aria-hidden />}
           title={emptyTitle}
@@ -69,33 +69,33 @@ export function BillList({
         return (
           <div
             key={bill.treatmentId}
-            className="bg-white border border-[#E3E9E6] rounded-xl p-4 flex flex-wrap items-center justify-between gap-4"
+            className="bg-surface border border-border rounded-xl p-4 flex flex-wrap items-center justify-between gap-4"
           >
             <div className="min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
-                <p className="text-sm font-semibold text-[#151918]">{bill.treatmentType}</p>
+                <p className="text-sm font-semibold text-text-primary">{bill.treatmentType}</p>
                 <Badge variant={STATUS_VARIANT[bill.status]}>{STATUS_LABEL[bill.status]}</Badge>
               </div>
-              <p className="text-xs text-[#737A76] mt-0.5">{formatDate(bill.treatmentDate)}</p>
+              <p className="text-xs text-text-secondary mt-0.5">{formatDate(bill.treatmentDate)}</p>
             </div>
 
             <div className="flex items-center gap-5 shrink-0">
               <Stat label="Total" value={formatCurrency(bill.total)} />
-              <Stat label="Paid" value={formatCurrency(bill.paid)} valueClass="text-[#16A34A]" />
+              <Stat label="Paid" value={formatCurrency(bill.paid)} valueClass="text-success" />
               <Stat
                 label="Balance"
                 value={formatCurrency(bill.balanceDue)}
-                valueClass={bill.balanceDue > 0 ? "text-[#DC2626]" : "text-[#16A34A]"}
+                valueClass={bill.balanceDue > 0 ? "text-danger" : "text-success"}
               />
               {href ? (
                 <Link
                   href={href}
-                  className="text-xs font-medium px-3 py-1.5 rounded-md border border-[#E3E9E6] text-[#151918] hover:bg-[#EEF2F0] transition-colors shrink-0"
+                  className="text-xs font-medium px-3 py-1.5 rounded-md border border-border text-text-primary hover:bg-surface-muted transition-colors shrink-0"
                 >
                   View Bill
                 </Link>
               ) : (
-                <span className="text-xs text-[#9BA39D] shrink-0">Unavailable</span>
+                <span className="text-xs text-text-disabled shrink-0">Unavailable</span>
               )}
             </div>
           </div>
@@ -116,8 +116,8 @@ function Stat({
 }) {
   return (
     <div className="text-right">
-      <p className="text-[10px] uppercase tracking-wide text-[#9BA39D]">{label}</p>
-      <p className={`text-sm font-semibold ${valueClass ?? "text-[#151918]"}`}>{value}</p>
+      <p className="text-[10px] uppercase tracking-wide text-text-disabled">{label}</p>
+      <p className={`text-sm font-semibold ${valueClass ?? "text-text-primary"}`}>{value}</p>
     </div>
   );
 }

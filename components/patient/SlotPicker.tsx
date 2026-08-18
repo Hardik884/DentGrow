@@ -85,7 +85,7 @@ export function SlotPicker({ patientId }: SlotPickerProps) {
       {error && (
         <div
           role="alert"
-          className="px-4 py-3 bg-red-50 border border-red-200 text-sm text-red-700 rounded-lg"
+          className="px-4 py-3 bg-danger-bg border border-danger-border text-sm text-danger rounded-lg"
         >
           {error}
         </div>
@@ -93,7 +93,7 @@ export function SlotPicker({ patientId }: SlotPickerProps) {
 
       {/* Date picker */}
       <div className="space-y-1.5">
-        <label className="text-sm font-medium text-gray-700 block" htmlFor="slot-date">
+        <label className="text-sm font-medium text-text-secondary block" htmlFor="slot-date">
           Select Date
         </label>
         <CalendarPicker
@@ -117,14 +117,14 @@ export function SlotPicker({ patientId }: SlotPickerProps) {
 
       {/* Slot grid */}
       {isLoadingSlots ? (
-        <p className="text-sm text-gray-500">Loading available slots…</p>
+        <p className="text-sm text-text-secondary">Loading available slots…</p>
       ) : slotsLoaded && slots.length === 0 ? (
-        <p className="text-sm text-gray-500">
+        <p className="text-sm text-text-secondary">
           No available slots on this date. Please try another day.
         </p>
       ) : slotsLoaded ? (
         <div className="space-y-2">
-          <p className="text-sm font-medium text-gray-700">Select Time</p>
+          <p className="text-sm font-medium text-text-secondary">Select Time</p>
           <div className="grid grid-cols-3 gap-2">
             {slots.map((slot) => {
               const timePart = slot.split("T")[1]?.slice(0, 5) ?? "";
@@ -138,7 +138,7 @@ export function SlotPicker({ patientId }: SlotPickerProps) {
                     "py-2 text-sm rounded-lg border transition-colors",
                     selectedSlot === slot
                       ? "border-accent bg-accent text-accent-foreground font-semibold"
-                      : "border-gray-200 text-gray-700 hover:border-accent hover:bg-accent-tint",
+                      : "border-border text-text-secondary hover:border-accent hover:bg-accent-tint",
                     "disabled:opacity-50 disabled:cursor-not-allowed"
                   )}
                 >
@@ -153,7 +153,7 @@ export function SlotPicker({ patientId }: SlotPickerProps) {
       {/* Confirm */}
       {selectedSlot && (
         <div className="space-y-2">
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-text-secondary">
             Selected:{" "}
             <strong>
               {selectedDate} at{" "}

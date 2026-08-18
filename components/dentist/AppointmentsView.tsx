@@ -117,14 +117,14 @@ export function AppointmentsView({
       <p className="text-sm text-text-secondary">
         {total} appointment{total !== 1 ? "s" : ""} found
       </p>
-      <div className="inline-flex rounded-lg border border-border bg-white p-0.5">
+      <div className="inline-flex rounded-lg border border-border bg-surface p-0.5">
         <button
           type="button"
           onClick={() => setView("list")}
           aria-pressed={view === "list"}
           className={cn(
             "inline-flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded-md transition-colors",
-            view === "list" ? "bg-accent text-white" : "text-text-secondary hover:text-text-primary"
+            view === "list" ? "bg-accent text-accent-foreground" : "text-text-secondary hover:text-text-primary"
           )}
         >
           <List className="h-3.5 w-3.5" aria-hidden />
@@ -136,7 +136,7 @@ export function AppointmentsView({
           aria-pressed={view === "calendar"}
           className={cn(
             "inline-flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded-md transition-colors",
-            view === "calendar" ? "bg-accent text-white" : "text-text-secondary hover:text-text-primary"
+            view === "calendar" ? "bg-accent text-accent-foreground" : "text-text-secondary hover:text-text-primary"
           )}
         >
           <CalendarDays className="h-3.5 w-3.5" aria-hidden />
@@ -169,13 +169,13 @@ export function AppointmentsView({
       {toggle}
 
       {isError && (
-        <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-md px-3 py-2">
+        <p className="text-sm text-danger bg-danger-bg border border-danger-border rounded-md px-3 py-2">
           {(error as Error)?.message ?? "Failed to load appointments."}
         </p>
       )}
 
       {appointments.length === 0 ? (
-        <div className="bg-white border border-border rounded-xl p-12 text-center">
+        <div className="bg-surface border border-border rounded-xl p-12 text-center">
           <p className="text-text-secondary text-sm">No appointments match your filters.</p>
           <p className="text-text-disabled text-xs mt-1">Try adjusting the date range or clearing filters.</p>
         </div>
@@ -185,11 +185,11 @@ export function AppointmentsView({
             isPlaceholderData && isFetching ? "opacity-60 transition-opacity" : "transition-opacity"
           }
         >
-          <div className="bg-white border border-border rounded-xl overflow-hidden">
+          <div className="bg-surface border border-border rounded-xl overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-[#EEF2F0] bg-surface text-left text-xs font-semibold text-text-secondary uppercase tracking-wide">
+                  <tr className="border-b border-surface-muted bg-surface text-left text-xs font-semibold text-text-secondary uppercase tracking-wide">
                     <th className="px-4 py-3">Patient</th>
                     <th className="px-4 py-3">Treating Doctor</th>
                     <th className="px-4 py-3">Date &amp; Time</th>
@@ -199,7 +199,7 @@ export function AppointmentsView({
                     <th className="px-4 py-3 text-right">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[#EEF2F0]">
+                <tbody className="divide-y divide-surface-muted">
                   {appointments.map((appt) => (
                     <tr key={appt.id} className="hover:bg-surface transition-colors">
                       <td className="px-4 py-3 font-medium text-text-primary">
@@ -210,16 +210,16 @@ export function AppointmentsView({
                           {appt.patient.name}
                         </Link>
                       </td>
-                      <td className="px-4 py-3 text-[#5B635E]">
+                      <td className="px-4 py-3 text-text-body">
                         {appt.dentistName ? appt.dentistName : "—"}
                       </td>
-                      <td className="px-4 py-3 text-[#5B635E]">
+                      <td className="px-4 py-3 text-text-body">
                         {formatDateTimeInTimezone(appt.scheduled_at, clinicTimezone)}
                       </td>
                       <td className="px-4 py-3">
                         <PaymentStatusBadge status={paymentStatuses?.[appt.id]} />
                       </td>
-                      <td className="px-4 py-3 text-[#5B635E]">
+                      <td className="px-4 py-3 text-text-body">
                         {APPOINTMENT_SOURCE_LABELS[appt.source] ?? appt.source}
                       </td>
                       <td className="px-4 py-3">

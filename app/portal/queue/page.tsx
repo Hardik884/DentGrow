@@ -97,9 +97,9 @@ export default async function PortalQueuePage() {
         initialStatus={status}
       />
 
-      <div className="bg-white border rounded-lg p-4 text-sm text-gray-600 space-y-1">
-        <p className="font-medium text-gray-900">What to expect</p>
-        <ul className="space-y-1 text-gray-500 list-disc list-inside">
+      <div className="bg-surface border rounded-lg p-4 text-sm text-text-secondary space-y-1">
+        <p className="font-medium text-text-primary">What to expect</p>
+        <ul className="space-y-1 text-text-secondary list-disc list-inside">
           <li>Estimated wait times are based on appointment durations</li>
           <li>Your position updates automatically in real time</li>
           <li>You will be called when it&apos;s your turn</li>

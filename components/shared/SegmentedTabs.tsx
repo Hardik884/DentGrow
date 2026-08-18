@@ -27,7 +27,7 @@ export function SegmentedTabs({ tabs, panels, defaultKey }: SegmentedTabsProps) 
     <div className="space-y-4">
       <div
         role="tablist"
-        className="inline-flex items-center gap-0.5 rounded-lg bg-[#EEF2F0] p-1 no-print"
+        className="inline-flex items-center gap-0.5 rounded-lg bg-surface-muted p-1 no-print"
       >
         {tabs.map((tab) => (
           <button
@@ -39,8 +39,8 @@ export function SegmentedTabs({ tabs, panels, defaultKey }: SegmentedTabsProps) 
             className={cn(
               "px-3.5 py-1.5 text-sm font-medium rounded-md transition-all duration-150 cursor-pointer",
               active === tab.key
-                ? "bg-white text-[#151918] shadow-sm"
-                : "text-[#737A76] hover:text-[#151918]"
+                ? "bg-surface text-text-primary shadow-sm"
+                : "text-text-secondary hover:text-text-primary"
             )}
           >
             {tab.label}

@@ -30,7 +30,7 @@ export function MedicationTable({ medications }: MedicationTableProps) {
     <div className="overflow-x-auto">
       <table className="w-full text-sm">
         <thead>
-          <tr className="text-left text-xs text-[#9BA39D] uppercase tracking-wide">
+          <tr className="text-left text-xs text-text-disabled uppercase tracking-wide">
             <th className="py-1 pr-4 font-medium">Medicine</th>
             <th className="py-1 pr-4 font-medium">Number</th>
             <th className="py-1 pr-4 font-medium">Dosage</th>
@@ -38,16 +38,16 @@ export function MedicationTable({ medications }: MedicationTableProps) {
             <th className="py-1 font-medium">Days</th>
           </tr>
         </thead>
-        <tbody className="divide-y divide-[#EEF2F0]">
+        <tbody className="divide-y divide-surface-muted">
           {medications.map((m, i) => (
             <tr key={i}>
-              <td className="py-1.5 pr-4 text-[#151918]">{m.name}</td>
-              <td className="py-1.5 pr-4 text-[#5B635E]">{formatNumber(m.number)}</td>
-              <td className="py-1.5 pr-4 text-[#5B635E]">{m.dosage || "—"}</td>
-              <td className="py-1.5 pr-4 text-[#5B635E] whitespace-pre-wrap">
+              <td className="py-1.5 pr-4 text-text-primary">{m.name}</td>
+              <td className="py-1.5 pr-4 text-text-body">{formatNumber(m.number)}</td>
+              <td className="py-1.5 pr-4 text-text-body">{m.dosage || "—"}</td>
+              <td className="py-1.5 pr-4 text-text-body whitespace-pre-wrap">
                 {m.instructions || "—"}
               </td>
-              <td className="py-1.5 text-[#5B635E]">{m.days}</td>
+              <td className="py-1.5 text-text-body">{m.days}</td>
             </tr>
           ))}
         </tbody>

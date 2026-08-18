@@ -40,14 +40,14 @@ export function FollowUpPrompt({
   return (
     <Dialog open={open} onClose={onDismiss} title="" size="sm">
       <div className="p-6 text-center">
-        <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-full bg-gray-100">
-          <CalendarPlus className="h-5 w-5 text-gray-600" aria-hidden />
+        <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-full bg-surface-muted">
+          <CalendarPlus className="h-5 w-5 text-text-secondary" aria-hidden />
         </div>
 
-        <h2 className="mt-4 text-base font-semibold text-gray-900">
+        <h2 className="mt-4 text-base font-semibold text-text-primary">
           Schedule a follow-up?
         </h2>
-        <p className="mt-1.5 text-sm text-gray-500">
+        <p className="mt-1.5 text-sm text-text-secondary">
           {patientName
             ? `The treatment is saved. Would you like to book ${patientName}'s next visit now?`
             : "The treatment is saved. Would you like to book the next visit now?"}

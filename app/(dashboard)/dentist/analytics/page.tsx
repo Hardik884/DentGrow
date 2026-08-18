@@ -115,13 +115,13 @@ export default async function AnalyticsDashboardPage({
 
       {/* ── INSIGHTS (top of dashboard) ─────────────────────────────── */}
       <section>
-        <h2 className="text-xs font-semibold text-[#737A76] uppercase tracking-wider mb-3">Insights</h2>
+        <h2 className="text-xs font-semibold text-text-secondary uppercase tracking-wider mb-3">Insights</h2>
         <AnalyticsInsightsPanel insights={insights} />
       </section>
 
       {/* ── REVENUE (Revenue Summary + Revenue Over Time, below Insights) ── */}
       <section>
-        <h2 className="text-xs font-semibold text-[#737A76] uppercase tracking-wider mb-3">Revenue</h2>
+        <h2 className="text-xs font-semibold text-text-secondary uppercase tracking-wider mb-3">Revenue</h2>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <MetricCard
             label="Clinic Revenue"
@@ -177,12 +177,12 @@ export default async function AnalyticsDashboardPage({
                 <p className="text-5xl font-bold text-accent">
                   {appointmentAnalytics.averagePerDay}
                 </p>
-                <p className="text-sm text-gray-500 mt-2">appointments per day</p>
-                <p className="text-xs text-gray-400 mt-1">
+                <p className="text-sm text-text-secondary mt-2">appointments per day</p>
+                <p className="text-xs text-text-disabled mt-1">
                   MoM growth:{" "}
                   <span
                     className={
-                      revenueAnalytics.momGrowth >= 0 ? "text-green-600" : "text-red-600"
+                      revenueAnalytics.momGrowth >= 0 ? "text-success" : "text-danger"
                     }
                   >
                     {revenueAnalytics.momGrowth >= 0 ? "+" : ""}
@@ -197,7 +197,7 @@ export default async function AnalyticsDashboardPage({
 
       {/* ── APPOINTMENTS ─────────────────────────────────────────────── */}
       <section>
-        <h2 className="text-sm font-semibold text-[#151918] mb-3 uppercase tracking-wider text-[#737A76]">Appointments</h2>
+        <h2 className="text-sm font-semibold text-text-primary mb-3 uppercase tracking-wider text-text-secondary">Appointments</h2>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <MetricCard label="Total" value={summary.totalAppointments} />
           <MetricCard label="Completed" value={summary.completedAppointments} accent="green" />
@@ -217,7 +217,7 @@ export default async function AnalyticsDashboardPage({
 
       {/* ── PATIENTS ─────────────────────────────────────────────────── */}
       <section>
-        <h2 className="text-xs font-semibold text-[#737A76] uppercase tracking-wider mb-3">Patients</h2>
+        <h2 className="text-xs font-semibold text-text-secondary uppercase tracking-wider mb-3">Patients</h2>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <MetricCard label="Total Patients" value={summary.totalPatients} />
           <MetricCard label="New This Month" value={summary.newPatientsThisMonth} accent="blue" />
@@ -237,7 +237,7 @@ export default async function AnalyticsDashboardPage({
 
       {/* ── SOURCE ANALYTICS ────────────────────────────────────────── */}
       <section>
-        <h2 className="text-xs font-semibold text-[#737A76] uppercase tracking-wider mb-3">Acquisition Sources</h2>
+        <h2 className="text-xs font-semibold text-text-secondary uppercase tracking-wider mb-3">Acquisition Sources</h2>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <ChartCard title="Appointment Sources">
             <AcquisitionSourceChart data={sourceAnalytics.breakdown} />
@@ -250,7 +250,7 @@ export default async function AnalyticsDashboardPage({
 
       {/* ── TREATMENTS ──────────────────────────────────────────────── */}
       <section>
-        <h2 className="text-xs font-semibold text-[#737A76] uppercase tracking-wider mb-3">Treatments</h2>
+        <h2 className="text-xs font-semibold text-text-secondary uppercase tracking-wider mb-3">Treatments</h2>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <ChartCard title="Most Common Treatments">
             <TreatmentBreakdownChart data={treatmentAnalytics.byType} />
@@ -258,10 +258,10 @@ export default async function AnalyticsDashboardPage({
           <ChartCard title="Treatment Completion Rate">
             <div className="flex items-center justify-center h-48">
               <div className="text-center">
-                <p className="text-5xl font-bold text-green-600">
+                <p className="text-5xl font-bold text-success">
                   {treatmentAnalytics.completionRate}%
                 </p>
-                <p className="text-sm text-gray-500 mt-2">of treatments completed</p>
+                <p className="text-sm text-text-secondary mt-2">of treatments completed</p>
               </div>
             </div>
           </ChartCard>
@@ -270,7 +270,7 @@ export default async function AnalyticsDashboardPage({
 
       {/* ── FOLLOW-UPS ──────────────────────────────────────────────── */}
       <section>
-        <h2 className="text-xs font-semibold text-[#737A76] uppercase tracking-wider mb-3">Follow-Ups</h2>
+        <h2 className="text-xs font-semibold text-text-secondary uppercase tracking-wider mb-3">Follow-Ups</h2>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
           {/* Pending/Overdue are a current-backlog snapshot, not activity within
               the selected range, so they carry an explicit "all-time" label

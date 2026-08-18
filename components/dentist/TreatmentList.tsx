@@ -57,7 +57,7 @@ export function TreatmentList({
 
   if (treatments.length === 0) {
     return (
-      <div className="border rounded-lg p-6 text-center text-sm text-gray-500">
+      <div className="border rounded-lg p-6 text-center text-sm text-text-secondary">
         No treatments found.
       </div>
     );
@@ -70,7 +70,7 @@ export function TreatmentList({
         return (
           <div
             key={treatment.id}
-            className="bg-white border rounded-lg p-4 space-y-2"
+            className="bg-surface border rounded-lg p-4 space-y-2"
           >
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0 flex-1">
@@ -84,14 +84,14 @@ export function TreatmentList({
                     {treatment.treatment_type}
                   </button>
                 ) : (
-                  <p className="font-medium text-sm text-gray-900 truncate">
+                  <p className="font-medium text-sm text-text-primary truncate">
                     {treatment.treatment_type}
                   </p>
                 )}
 
                 {/* Patient name — only in clinic-wide list */}
                 {showPatient && (full as unknown as { patients?: { name: string } }).patients && (
-                  <p className="text-xs text-gray-500 mt-0.5">
+                  <p className="text-xs text-text-secondary mt-0.5">
                     {(full as unknown as { patients: { name: string } }).patients.name}
                   </p>
                 )}
@@ -107,25 +107,25 @@ export function TreatmentList({
 
             {/* Notes */}
             {treatment.patient_visible_notes && (
-              <p className="text-xs text-gray-500">{treatment.patient_visible_notes}</p>
+              <p className="text-xs text-text-secondary">{treatment.patient_visible_notes}</p>
             )}
 
             {/* Footer row: date + cost */}
-            <div className="flex items-center justify-between text-xs text-gray-400 pt-1 border-t">
+            <div className="flex items-center justify-between text-xs text-text-disabled pt-1 border-t">
               <span>
                 {treatment.performed_at
                   ? formatDate(treatment.performed_at)
                   : `Added ${formatDate(treatment.created_at)}`}
               </span>
               <span className="flex items-center gap-3">
-                <span className="font-medium text-gray-700">
+                <span className="font-medium text-text-secondary">
                   {formatCurrency(Number(treatment.cost))}
                 </span>
                 {canEdit && (
                   <button
                     type="button"
                     onClick={() => setEditingId(treatment.id)}
-                    className="inline-flex items-center gap-1 text-xs font-medium text-gray-500 hover:text-gray-900 transition-colors cursor-pointer"
+                    className="inline-flex items-center gap-1 text-xs font-medium text-text-secondary hover:text-text-primary transition-colors cursor-pointer"
                     aria-label={`Edit ${full.treatment_type ?? "treatment"}`}
                   >
                     <Pencil className="h-3 w-3" aria-hidden />

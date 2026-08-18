@@ -51,16 +51,16 @@ function CopilotChatInner() {
   }
 
   return (
-    <div className="flex flex-col h-full bg-white border rounded-lg overflow-hidden">
-      <div className="p-3 border-b bg-gray-50">
-        <h2 className="font-semibold text-sm text-gray-900 flex items-center gap-2">
+    <div className="flex flex-col h-full bg-surface border rounded-lg overflow-hidden">
+      <div className="p-3 border-b bg-surface-secondary">
+        <h2 className="font-semibold text-sm text-text-primary flex items-center gap-2">
           <span>🤖</span> Clinic Copilot
         </h2>
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 space-y-3">
         {messages.length === 0 && (
-          <p className="text-sm text-gray-400 text-center mt-4">
+          <p className="text-sm text-text-disabled text-center mt-4">
             Ask me about today&apos;s appointments, payments, or patient history.
           </p>
         )}
@@ -78,7 +78,7 @@ function CopilotChatInner() {
               className={
                 msg.role === "user"
                   ? "max-w-xs bg-accent text-accent-foreground rounded-lg px-3 py-2 text-sm"
-                  : "max-w-xs bg-gray-100 text-gray-900 rounded-lg px-3 py-2 text-sm"
+                  : "max-w-xs bg-surface-muted text-text-primary rounded-lg px-3 py-2 text-sm"
               }
             >
               {msg.content}
@@ -88,7 +88,7 @@ function CopilotChatInner() {
 
         {isLoading && (
           <div className="flex justify-start">
-            <div className="bg-gray-100 rounded-lg px-3 py-2 text-sm text-gray-400">
+            <div className="bg-surface-muted rounded-lg px-3 py-2 text-sm text-text-disabled">
               Thinking…
             </div>
           </div>

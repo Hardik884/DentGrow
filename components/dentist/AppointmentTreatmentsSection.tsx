@@ -33,14 +33,14 @@ export async function AppointmentTreatmentsSection({
   const totalCost = sumTreatmentCharges(treatments);
 
   return (
-    <div className="bg-white border rounded-lg p-4 space-y-5">
+    <div className="bg-surface border rounded-lg p-4 space-y-5">
       {/* ── Current Treatment ─────────────────────────────── */}
       <div className="space-y-4">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <h3 className="font-semibold text-gray-900">Treatments</h3>
+            <h3 className="font-semibold text-text-primary">Treatments</h3>
             {treatments.length > 0 && (
-              <p className="text-xs text-gray-500 mt-0.5">
+              <p className="text-xs text-text-secondary mt-0.5">
                 Total: {formatCurrency(totalCost)}
               </p>
             )}
@@ -60,7 +60,7 @@ export async function AppointmentTreatmentsSection({
           </TreatmentFormDialog>
         </div>
 
-        {result.error && <p className="text-sm text-red-600">{result.error}</p>}
+        {result.error && <p className="text-sm text-danger">{result.error}</p>}
 
         {/* editable: a completed appointment is not a sealed record. Clinics
             discover mistakes later, and locking the form only forces a
@@ -74,7 +74,7 @@ export async function AppointmentTreatmentsSection({
       </div>
 
       {/* ── Past Treatment History (visually separated) ───── */}
-      <div className="pt-5 border-t border-gray-100">
+      <div className="pt-5 border-t border-border">
         <AppointmentPatientHistorySection
           patientId={patientId}
           currentAppointmentId={appointmentId}

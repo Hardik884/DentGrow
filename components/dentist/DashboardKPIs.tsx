@@ -15,13 +15,17 @@ import {
 
 type KPITone = "neutral" | "mint" | "amber" | "cool";
 
+/**
+ * Four quiet card tones. Each is a tinted surface + border + icon chip, so all
+ * three parts have to move together per theme — hence dedicated tokens rather
+ * than reusing the generic status ramp.
+ */
 const TONE_STYLES: Record<KPITone, { card: string; iconBg: string; iconText: string }> = {
-  neutral: { card: "bg-white border-[#E3E9E6]", iconBg: "bg-[#EEF2F0]", iconText: "text-[#737A76]" },
-  mint:    { card: "bg-[#F6FBF9] border-[#DCEEE8]", iconBg: "bg-[#E8F4F0]", iconText: "text-[#0D6B5E]" },
-  amber:   { card: "bg-[#FFFCF6] border-[#F5E6C6]", iconBg: "bg-[#FEF3E2]", iconText: "text-[#B45309]" },
-  cool:    { card: "bg-[#F7F9FB] border-[#E1E7ED]", iconBg: "bg-[#EBF1F7]", iconText: "text-[#3F5872]" },
+  neutral: { card: 'bg-surface border-border', iconBg: 'bg-surface-muted', iconText: 'text-text-secondary' },
+  mint:    { card: 'bg-kpi-mint border-kpi-mint-border', iconBg: 'bg-kpi-mint-chip', iconText: 'text-accent' },
+  amber:   { card: 'bg-kpi-amber border-kpi-amber-border', iconBg: 'bg-kpi-amber-chip', iconText: 'text-warning' },
+  cool:    { card: 'bg-kpi-cool border-kpi-cool-border', iconBg: 'bg-kpi-cool-chip', iconText: 'text-info' },
 };
-
 interface KPICardProps {
   label: string;
   value: string;
@@ -37,14 +41,14 @@ function KPICard({ label, value, icon, sub, tone = "neutral" }: KPICardProps) {
       className={`rounded-xl border p-5 space-y-3 shadow-[0_1px_2px_rgba(21,25,24,0.04)] transition-shadow duration-200 hover:shadow-[0_4px_12px_-2px_rgba(21,25,24,0.06)] ${styles.card}`}
     >
       <div className="flex items-center justify-between">
-        <p className="text-xs font-medium text-[#737A76] tracking-wide">{label}</p>
+        <p className="text-xs font-medium text-text-secondary tracking-wide">{label}</p>
         <div className={`h-7 w-7 rounded-lg flex items-center justify-center shrink-0 ${styles.iconBg} ${styles.iconText}`}>
           {icon}
         </div>
       </div>
       <div>
-        <p className="text-3xl font-bold text-[#151918] tracking-tight leading-none">{value}</p>
-        {sub && <p className="text-xs text-[#737A76] mt-1.5">{sub}</p>}
+        <p className="text-3xl font-bold text-text-primary tracking-tight leading-none">{value}</p>
+        {sub && <p className="text-xs text-text-secondary mt-1.5">{sub}</p>}
       </div>
     </div>
   );

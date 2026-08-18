@@ -96,7 +96,7 @@ export function TreatmentsView({
   if (isPending) {
     return (
       <>
-        <p className="text-sm text-[#737A76]">Loading treatments…</p>
+        <p className="text-sm text-text-secondary">Loading treatments…</p>
         <ListTableSkeleton />
       </>
     );
@@ -105,22 +105,22 @@ export function TreatmentsView({
   return (
     <>
       {/* Results count */}
-      <p className="text-sm text-[#737A76]">
+      <p className="text-sm text-text-secondary">
         {total} treatment{total !== 1 ? "s" : ""} found
       </p>
 
       {/* Error */}
       {isError && (
-        <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-md px-3 py-2">
+        <p className="text-sm text-danger bg-danger-bg border border-danger-border rounded-md px-3 py-2">
           {(error as Error)?.message ?? "Failed to load treatments."}
         </p>
       )}
 
       {/* Table */}
       {treatments.length === 0 ? (
-        <div className="bg-white border border-[#E3E9E6] rounded-xl p-12 text-center">
-          <p className="text-[#737A76] text-sm">No treatments match your filters.</p>
-          <p className="text-[#9BA39D] text-xs mt-1">
+        <div className="bg-surface border border-border rounded-xl p-12 text-center">
+          <p className="text-text-secondary text-sm">No treatments match your filters.</p>
+          <p className="text-text-disabled text-xs mt-1">
             Try adjusting the date range or clearing filters.
           </p>
         </div>
@@ -130,11 +130,11 @@ export function TreatmentsView({
             isPlaceholderData && isFetching ? "opacity-60 transition-opacity" : "transition-opacity"
           }
         >
-          <div className="bg-white border border-[#E3E9E6] rounded-xl overflow-hidden">
+          <div className="bg-surface border border-border rounded-xl overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-[#EEF2F0] bg-[#F6F8F6] text-left text-xs font-semibold text-[#737A76] uppercase tracking-wide">
+                  <tr className="border-b border-surface-muted bg-background text-left text-xs font-semibold text-text-secondary uppercase tracking-wide">
                     <th className="px-4 py-3">Patient</th>
                     <th className="px-4 py-3">Treatment Type</th>
                     <th className="px-4 py-3">Date</th>
@@ -143,14 +143,14 @@ export function TreatmentsView({
                     <th className="px-4 py-3 sr-only">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[#EEF2F0]">
+                <tbody className="divide-y divide-surface-muted">
                   {treatments.map((tx) => {
                     const patientRow = (
                       tx as unknown as { patients?: { id: string; name: string; phone?: string } }
                     ).patients;
                     return (
-                      <tr key={tx.id} className="hover:bg-[#F6F8F6] transition-colors">
-                        <td className="px-4 py-3 font-medium text-[#151918]">
+                      <tr key={tx.id} className="hover:bg-background transition-colors">
+                        <td className="px-4 py-3 font-medium text-text-primary">
                           {patientRow ? (
                             <Link
                               href={`/dentist/patients/${tx.patient_id}`}
@@ -159,10 +159,10 @@ export function TreatmentsView({
                               {patientRow.name}
                             </Link>
                           ) : (
-                            <span className="text-[#737A76]">—</span>
+                            <span className="text-text-secondary">—</span>
                           )}
                         </td>
-                        <td className="px-4 py-3 text-[#5B635E]">
+                        <td className="px-4 py-3 text-text-body">
                           <Link
                             href={`/dentist/treatments/${tx.id}`}
                             className="hover:text-accent transition-colors"
@@ -170,12 +170,12 @@ export function TreatmentsView({
                             {tx.treatment_type}
                           </Link>
                         </td>
-                        <td className="px-4 py-3 text-[#5B635E]">
+                        <td className="px-4 py-3 text-text-body">
                           {tx.performed_at
                             ? formatDate(tx.performed_at)
                             : formatDate(tx.created_at)}
                         </td>
-                        <td className="px-4 py-3 text-[#5B635E]">
+                        <td className="px-4 py-3 text-text-body">
                           {formatCurrency(Number(tx.cost))}
                         </td>
                         <td className="px-4 py-3">
@@ -202,13 +202,13 @@ export function TreatmentsView({
 
       {/* Pagination */}
       {totalPages > 1 && (
-        <div className="flex items-center justify-between text-sm text-[#737A76]">
+        <div className="flex items-center justify-between text-sm text-text-secondary">
           <span>Page {page} of {totalPages}</span>
           <div className="flex gap-1">
             {page > 1 && (
               <Link
                 href={pageHref(page - 1)}
-                className="px-3 py-1 border border-[#E3E9E6] rounded-lg hover:bg-[#F6F8F6] text-[#151918]"
+                className="px-3 py-1 border border-border rounded-lg hover:bg-background text-text-primary"
               >
                 ← Prev
               </Link>
@@ -216,7 +216,7 @@ export function TreatmentsView({
             {page < totalPages && (
               <Link
                 href={pageHref(page + 1)}
-                className="px-3 py-1 border border-[#E3E9E6] rounded-lg hover:bg-[#F6F8F6] text-[#151918]"
+                className="px-3 py-1 border border-border rounded-lg hover:bg-background text-text-primary"
               >
                 Next →
               </Link>

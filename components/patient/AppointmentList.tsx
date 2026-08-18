@@ -56,7 +56,7 @@ export async function AppointmentList({ limit, scope = "upcoming" }: Appointment
   return (
     <div>
       {appointments.length === 0 ? (
-        <div className="bg-white border border-[#E3E9E6] rounded-xl">
+        <div className="bg-surface border border-border rounded-xl">
           <EmptyState
             icon={<CalendarDays className="h-5 w-5" aria-hidden />}
             title={scope === "past" ? "No past appointments" : "No upcoming appointments"}
@@ -77,7 +77,7 @@ export async function AppointmentList({ limit, scope = "upcoming" }: Appointment
           />
         </div>
       ) : (
-        <div className="bg-white border border-[#E3E9E6] rounded-xl overflow-hidden divide-y divide-[#EEF2F0]">
+        <div className="bg-surface border border-border rounded-xl overflow-hidden divide-y divide-surface-muted">
           {appointments.map((appointment) => (
             <Link key={appointment.id} href={`/portal/appointments/${appointment.id}`}>
               <AppointmentCard

@@ -26,7 +26,7 @@ export function CheckInButton({ appointmentId, isCheckedIn = false }: CheckInBut
 
   if (isDone) {
     return (
-      <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#F0FDF4] text-[#16A34A] text-xs font-medium rounded-lg border border-[#BBF7D0]">
+      <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-success-bg text-success text-xs font-medium rounded-lg border border-success-border">
         <CheckCircle2 className="h-3.5 w-3.5" aria-hidden />
         Checked In
       </div>
@@ -38,7 +38,7 @@ export function CheckInButton({ appointmentId, isCheckedIn = false }: CheckInBut
       <Button size="sm" onClick={handleCheckIn} disabled={isPending} isLoading={isPending}>
         {isPending ? "Checking in…" : "Check In Patient"}
       </Button>
-      {error && <p className="text-xs text-[#DC2626]" role="alert">{error}</p>}
+      {error && <p className="text-xs text-danger" role="alert">{error}</p>}
     </div>
   );
 }

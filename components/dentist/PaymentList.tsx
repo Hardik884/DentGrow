@@ -26,7 +26,7 @@ export function PaymentList({
 
   if (payments.length === 0) {
     return (
-      <div className="border rounded-lg p-6 text-center text-sm text-gray-500">
+      <div className="border rounded-lg p-6 text-center text-sm text-text-secondary">
         No payment records found.
       </div>
     );
@@ -37,11 +37,11 @@ export function PaymentList({
       {payments.map((payment) => (
         <div
           key={payment.id}
-          className="bg-white border rounded-lg p-4 flex items-center justify-between gap-4"
+          className="bg-surface border rounded-lg p-4 flex items-center justify-between gap-4"
         >
           <div className="min-w-0 flex-1 space-y-0.5">
             <div className="flex items-center gap-2">
-              <span className="text-sm font-medium text-gray-900">
+              <span className="text-sm font-medium text-text-primary">
                 {PAYMENT_METHOD_LABELS[payment.method as PaymentMethod]}
               </span>
               {showPatient && (payment as unknown as { patients?: { name: string; id: string } }).patients && (
@@ -53,13 +53,13 @@ export function PaymentList({
                 </a>
               )}
             </div>
-            <p className="text-xs text-gray-400">{formatDate(payment.payment_date)}</p>
+            <p className="text-xs text-text-disabled">{formatDate(payment.payment_date)}</p>
             {payment.notes && (
-              <p className="text-xs text-gray-500 mt-0.5">{payment.notes}</p>
+              <p className="text-xs text-text-secondary mt-0.5">{payment.notes}</p>
             )}
           </div>
 
-          <span className="text-sm font-semibold text-green-600 shrink-0">
+          <span className="text-sm font-semibold text-success shrink-0">
             +{formatCurrency(Number(payment.amount))}
           </span>
         </div>

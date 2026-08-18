@@ -34,18 +34,18 @@ export async function AppointmentPatientHistorySection({
   return (
     <div className="space-y-4">
       <div>
-        <h3 className="font-semibold text-gray-900">Past Treatment History</h3>
+        <h3 className="font-semibold text-text-primary">Past Treatment History</h3>
         {history.length > 0 && (
-          <p className="text-xs text-gray-500 mt-0.5">
+          <p className="text-xs text-text-secondary mt-0.5">
             {history.length} previous treatment{history.length !== 1 ? "s" : ""}
           </p>
         )}
       </div>
 
-      {result.error && <p className="text-sm text-red-600">{result.error}</p>}
+      {result.error && <p className="text-sm text-danger">{result.error}</p>}
 
       {history.length === 0 ? (
-        <p className="text-sm text-gray-400">No previous treatments for this patient.</p>
+        <p className="text-sm text-text-disabled">No previous treatments for this patient.</p>
       ) : (
         <TreatmentHistoryList items={history} registrationNumber={registrationNumber} />
       )}

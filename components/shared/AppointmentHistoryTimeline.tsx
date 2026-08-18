@@ -16,30 +16,30 @@ const ACTION_LABELS: Record<string, string> = {
 };
 
 const ACTION_DOT: Record<string, string> = {
-  created:       "bg-[#2563EB]",
-  rescheduled:   "bg-[#B45309]",
-  cancelled:     "bg-[#DC2626]",
-  status_changed:"bg-[#16A34A]",
+  created:       "bg-info",
+  rescheduled:   "bg-warning",
+  cancelled:     "bg-danger",
+  status_changed:"bg-success",
 };
 
 export function AppointmentHistoryTimeline({ history, timezone }: AppointmentHistoryTimelineProps) {
   if (history.length === 0) {
     return (
-      <div className="bg-white border border-[#E3E9E6] rounded-xl p-5">
-        <h3 className="text-sm font-semibold text-[#151918] mb-2">History</h3>
-        <p className="text-sm text-[#737A76]">No history recorded.</p>
+      <div className="bg-surface border border-border rounded-xl p-5">
+        <h3 className="text-sm font-semibold text-text-primary mb-2">History</h3>
+        <p className="text-sm text-text-secondary">No history recorded.</p>
       </div>
     );
   }
 
   return (
-    <div className="bg-white border border-[#E3E9E6] rounded-xl p-5">
-      <h3 className="text-sm font-semibold text-[#151918] mb-5">Appointment History</h3>
+    <div className="bg-surface border border-border rounded-xl p-5">
+      <h3 className="text-sm font-semibold text-text-primary mb-5">Appointment History</h3>
 
-      <ol className="relative border-l border-[#E3E9E6] space-y-5 pl-5">
+      <ol className="relative border-l border-border space-y-5 pl-5">
         {history.map((entry) => {
           const label = ACTION_LABELS[entry.action] ?? entry.action.replace("_", " ");
-          const dotColor = ACTION_DOT[entry.action] ?? "bg-[#9BA39D]";
+          const dotColor = ACTION_DOT[entry.action] ?? "bg-text-disabled";
           const changeDescription = buildChangeDescription(entry);
 
           return (
@@ -49,11 +49,11 @@ export function AppointmentHistoryTimeline({ history, timezone }: AppointmentHis
                 aria-hidden
               />
               <div>
-                <p className="text-sm font-medium text-[#151918]">{label}</p>
+                <p className="text-sm font-medium text-text-primary">{label}</p>
                 {changeDescription && (
-                  <p className="text-xs text-[#737A76] mt-0.5">{buildChangeDescription(entry, timezone)}</p>
+                  <p className="text-xs text-text-secondary mt-0.5">{buildChangeDescription(entry, timezone)}</p>
                 )}
-                <p className="text-xs text-[#9BA39D] mt-0.5">
+                <p className="text-xs text-text-disabled mt-0.5">
                   {timezone ? formatDateTimeInTimezone(entry.timestamp, timezone) : formatDateTime(entry.timestamp)}
                 </p>
               </div>

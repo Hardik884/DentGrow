@@ -67,8 +67,8 @@ export function PaymentsView({
 
   if (error) {
     return (
-      <div className="bg-white border border-[#E3E9E6] rounded-xl p-6">
-        <p className="text-sm text-[#DC2626]">Failed to load payments.</p>
+      <div className="bg-surface border border-border rounded-xl p-6">
+        <p className="text-sm text-danger">Failed to load payments.</p>
       </div>
     );
   }
@@ -76,8 +76,8 @@ export function PaymentsView({
   const result = data?.data;
   if (!result) {
     return (
-      <div className="bg-white border border-[#E3E9E6] rounded-xl p-6">
-        <p className="text-sm text-[#DC2626]">Failed to load payments.</p>
+      <div className="bg-surface border border-border rounded-xl p-6">
+        <p className="text-sm text-danger">Failed to load payments.</p>
       </div>
     );
   }
@@ -87,7 +87,7 @@ export function PaymentsView({
 
   if (payments.length === 0) {
     return (
-      <div className="bg-white border border-[#E3E9E6] rounded-xl overflow-hidden">
+      <div className="bg-surface border border-border rounded-xl overflow-hidden">
         <EmptyState
           icon={<CreditCard className="h-5 w-5" aria-hidden />}
           title="No payments found"
@@ -104,11 +104,11 @@ export function PaymentsView({
   return (
     <div className="space-y-4">
       {/* Payment List */}
-      <div className="bg-white border border-[#E3E9E6] rounded-xl overflow-hidden">
-        <div className="px-5 py-4 border-b border-[#E3E9E6] flex items-center justify-between">
+      <div className="bg-surface border border-border rounded-xl overflow-hidden">
+        <div className="px-5 py-4 border-b border-border flex items-center justify-between">
           <div>
-            <h2 className="text-sm font-semibold text-[#151918]">Payment Records</h2>
-            <p className="text-xs text-[#737A76] mt-0.5">
+            <h2 className="text-sm font-semibold text-text-primary">Payment Records</h2>
+            <p className="text-xs text-text-secondary mt-0.5">
               Showing {payments.length} of {total} total
             </p>
           </div>
@@ -116,72 +116,72 @@ export function PaymentsView({
 
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-[#F6F8F6] border-b border-[#E3E9E6]">
+            <thead className="bg-background border-b border-border">
               <tr>
-                <th className="px-5 py-3 text-left text-xs font-medium text-[#737A76] uppercase tracking-wider">
+                <th className="px-5 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">
                   Date
                 </th>
-                <th className="px-5 py-3 text-left text-xs font-medium text-[#737A76] uppercase tracking-wider">
+                <th className="px-5 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">
                   Patient
                 </th>
-                <th className="px-5 py-3 text-left text-xs font-medium text-[#737A76] uppercase tracking-wider">
+                <th className="px-5 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">
                   Amount
                 </th>
-                <th className="px-5 py-3 text-left text-xs font-medium text-[#737A76] uppercase tracking-wider">
+                <th className="px-5 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">
                   Method
                 </th>
-                <th className="px-5 py-3 text-left text-xs font-medium text-[#737A76] uppercase tracking-wider">
+                <th className="px-5 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">
                   Type
                 </th>
-                <th className="px-5 py-3 text-left text-xs font-medium text-[#737A76] uppercase tracking-wider">
+                <th className="px-5 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">
                   Notes
                 </th>
-                <th className="px-5 py-3 text-right text-xs font-medium text-[#737A76] uppercase tracking-wider">
+                <th className="px-5 py-3 text-right text-xs font-medium text-text-secondary uppercase tracking-wider">
                   Actions
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#EEF2F0]">
+            <tbody className="divide-y divide-surface-muted">
               {payments.map((payment) => (
-                <tr key={payment.id} className="hover:bg-[#F6F8F6] transition-colors">
+                <tr key={payment.id} className="hover:bg-background transition-colors">
                   <td className="px-5 py-3 whitespace-nowrap">
-                    <span className="text-sm text-[#151918]">
+                    <span className="text-sm text-text-primary">
                       {formatDate(payment.payment_date)}
                     </span>
                   </td>
                   <td className="px-5 py-3">
                     <Link
                       href={`${basePath}/patients/${payment.patient.id}`}
-                      className="text-sm font-medium text-[#151918] hover:underline underline-offset-4"
+                      className="text-sm font-medium text-text-primary hover:underline underline-offset-4"
                     >
                       {payment.patient.name}
                     </Link>
                     {payment.patient.phone && (
-                      <p className="text-xs text-[#9BA39D]">{payment.patient.phone}</p>
+                      <p className="text-xs text-text-disabled">{payment.patient.phone}</p>
                     )}
                   </td>
                   <td className="px-5 py-3 whitespace-nowrap">
-                    <span className="text-sm font-semibold text-[#16A34A]">
+                    <span className="text-sm font-semibold text-success">
                       {formatCurrency(payment.amount)}
                     </span>
                   </td>
                   <td className="px-5 py-3 whitespace-nowrap">
-                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-[#EEF2F0] text-[#5B635E]">
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-surface-muted text-text-body">
                       {PAYMENT_METHOD_LABELS[payment.method] ?? payment.method}
                     </span>
                   </td>
                   <td className="px-5 py-3 whitespace-nowrap">
-                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-[#EEF2F0] text-[#5B635E]">
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-surface-muted text-text-body">
                       {payment.payment_type === "opd" ? "OPD" : "Treatment"}
                     </span>
                   </td>
                   <td className="px-5 py-3">
                     {payment.notes ? (
-                      <span className="text-sm text-[#737A76] line-clamp-2">
+                      <span className="text-sm text-text-secondary line-clamp-2">
                         {payment.notes}
                       </span>
                     ) : (
-                      <span className="text-sm text-[#9BA39D]">—</span>
+                      <span className="text-sm text-text-disabled">—</span>
                     )}
                   </td>
                   <td className="px-5 py-3 text-right">
@@ -203,7 +203,7 @@ export function PaymentsView({
       {/* Pagination */}
       {totalPages > 1 && (
         <div className="flex items-center justify-between px-4">
-          <p className="text-sm text-[#737A76]">
+          <p className="text-sm text-text-secondary">
             Page {page} of {totalPages}
           </p>
           <div className="flex gap-2">

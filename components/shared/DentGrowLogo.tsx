@@ -94,7 +94,9 @@ export function DentGrowLogo({
             fontSize: Math.round(size * 0.5),
             fontWeight: 600,
             letterSpacing: "-0.025em",
-            color: "#151918",
+            // Follows the theme. The mark beside it is a fixed brand tile, but the
+            // wordmark is plain text on the page and has to be readable on both.
+            color: "var(--text-primary)",
             lineHeight: 1,
             userSelect: "none",
             fontFamily:

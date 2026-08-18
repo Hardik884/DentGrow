@@ -45,11 +45,11 @@ export async function UpcomingAppointments({ timezone: propTimezone }: UpcomingA
   }).format(new Date());
 
   return (
-    <div className="bg-white border border-[#E3E9E6] rounded-xl overflow-hidden">
-      <div className="px-5 py-4 border-b border-[#E3E9E6] flex items-center justify-between">
+    <div className="bg-surface border border-border rounded-xl overflow-hidden">
+      <div className="px-5 py-4 border-b border-border flex items-center justify-between">
         <div>
-          <h2 className="text-sm font-semibold text-[#151918]">Upcoming Today</h2>
-          <p className="text-xs text-[#737A76] mt-0.5">
+          <h2 className="text-sm font-semibold text-text-primary">Upcoming Today</h2>
+          <p className="text-xs text-text-secondary mt-0.5">
             {appointments.length} appointment{appointments.length !== 1 ? "s" : ""} remaining
           </p>
         </div>
@@ -62,18 +62,18 @@ export async function UpcomingAppointments({ timezone: propTimezone }: UpcomingA
           description="No upcoming appointments for today."
         />
       ) : (
-        <div className="divide-y divide-[#EEF2F0]">
+        <div className="divide-y divide-surface-muted">
           {appointments.map((appointment) => (
             <div key={appointment.id} className="px-5 py-3.5 space-y-2.5">
               <div className="flex items-center gap-3">
                 <PatientAvatar name={appointment.patient.name} size="sm" />
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-[#151918] truncate">
+                  <p className="text-sm font-medium text-text-primary truncate">
                     {appointment.patient.name}
                   </p>
                   <div className="flex items-center gap-1.5 mt-0.5">
-                    <Clock className="h-3 w-3 text-[#9BA39D] shrink-0" aria-hidden />
-                    <p className="text-xs text-[#737A76]">
+                    <Clock className="h-3 w-3 text-text-disabled shrink-0" aria-hidden />
+                    <p className="text-xs text-text-secondary">
                       {formatDateTimeInTimezone(appointment.scheduled_at, clinicTimezone)}
                       {" · "}
                       {appointment.duration_minutes} min

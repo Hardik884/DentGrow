@@ -87,8 +87,8 @@ export function QuickFilters({ trackKeys, chips, className }: QuickFiltersProps)
               "inline-flex items-center h-7 px-3 rounded-full text-xs font-medium border transition-colors",
               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-1",
               active
-                ? "bg-accent text-white border-accent"
-                : "bg-white text-text-secondary border-border hover:bg-surface hover:text-text-primary hover:border-border-strong",
+                ? "bg-accent text-accent-foreground border-accent"
+                : "bg-surface text-text-secondary border-border hover:bg-surface hover:text-text-primary hover:border-border-strong",
               isPending && "opacity-70"
             )}
           >

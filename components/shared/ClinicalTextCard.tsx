@@ -65,9 +65,9 @@ export function ClinicalTextCard({
   }
 
   return (
-    <div className="bg-white border border-[#E3E9E6] rounded-xl p-5 space-y-3">
+    <div className="bg-surface border border-border rounded-xl p-5 space-y-3">
       <div className="flex items-center justify-between gap-3">
-        <h3 className="text-sm font-semibold text-[#151918]">{title}</h3>
+        <h3 className="text-sm font-semibold text-text-primary">{title}</h3>
         {canEdit && dirty && (
           <Button size="sm" onClick={save} isLoading={isPending} disabled={isPending}>
             <Check className="h-3.5 w-3.5" aria-hidden />
@@ -75,14 +75,14 @@ export function ClinicalTextCard({
           </Button>
         )}
         {canEdit && !dirty && justSaved && (
-          <span className="inline-flex items-center gap-1 text-xs text-[#16A34A]">
+          <span className="inline-flex items-center gap-1 text-xs text-success">
             <Check className="h-3 w-3" aria-hidden />
             Saved
           </span>
         )}
       </div>
 
-      {helpText && <p className="text-xs text-[#737A76]">{helpText}</p>}
+      {helpText && <p className="text-xs text-text-secondary">{helpText}</p>}
 
       {canEdit ? (
         <Textarea
@@ -96,13 +96,13 @@ export function ClinicalTextCard({
           disabled={isPending}
         />
       ) : (
-        <p className="text-sm text-[#333B36] whitespace-pre-wrap">
-          {saved ? saved : <span className="text-[#9BA39D]">Not recorded</span>}
+        <p className="text-sm text-text-strong whitespace-pre-wrap">
+          {saved ? saved : <span className="text-text-disabled">Not recorded</span>}
         </p>
       )}
 
       {canEdit && !value && examples && examples.length > 0 && (
-        <ul className="space-y-0.5 text-xs text-[#9BA39D]">
+        <ul className="space-y-0.5 text-xs text-text-disabled">
           {examples.map((ex) => (
             <li key={ex}>• {ex}</li>
           ))}
@@ -110,7 +110,7 @@ export function ClinicalTextCard({
       )}
 
       {error && (
-        <p className="text-xs text-[#DC2626]" role="alert">
+        <p className="text-xs text-danger" role="alert">
           {error}
         </p>
       )}

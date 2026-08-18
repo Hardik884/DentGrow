@@ -56,13 +56,13 @@ export function PrescriptionDialog({
     >
       {/* Backdrop */}
       <div
-        className="absolute inset-0 bg-[#0B0F0E]/45 backdrop-blur-[2px]"
+        className="absolute inset-0 bg-scrim/45 backdrop-blur-[2px]"
         onClick={() => onOpenChange(false)}
         aria-hidden="true"
       />
 
       {/* Dialog */}
-      <div className="relative bg-white rounded-xl border border-[#E3E9E6] shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto animate-fade-in-up print-prescription">
+      <div className="relative bg-white rounded-xl border border-[#E3E9E6] shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto animate-fade-in-up print-prescription document-light">
         {/* Header */}
         <div className="sticky top-0 bg-white border-b border-[#E3E9E6] px-6 py-4 flex items-center justify-between no-print">
           <h2 id="prescription-dialog-title" className="text-lg font-semibold text-[#151918]">

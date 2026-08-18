@@ -32,12 +32,12 @@ export default function Error({
   return (
     <div className="min-h-[60vh] flex items-center justify-center px-4">
       <div className="max-w-md w-full text-center space-y-4">
-        <h1 className="text-lg font-semibold text-[#151918]">Something went wrong</h1>
-        <p className="text-sm text-[#5B635E]">
+        <h1 className="text-lg font-semibold text-text-primary">Something went wrong</h1>
+        <p className="text-sm text-text-body">
           We hit an unexpected problem loading this page. Your data has not been changed.
         </p>
         {error.digest && (
-          <p className="text-xs text-[#9BA39D]">
+          <p className="text-xs text-text-disabled">
             Reference: <span className="font-mono">{error.digest}</span>
           </p>
         )}

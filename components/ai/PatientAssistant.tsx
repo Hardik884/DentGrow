@@ -20,11 +20,11 @@ import { isPatientBookingEnabled } from "@/lib/feature-flags";
 function TypingIndicator() {
   return (
     <div className="flex justify-start">
-      <div className="bg-[#EEF2F0] rounded-2xl rounded-bl-sm px-3.5 py-2.5 flex items-center gap-1">
+      <div className="bg-surface-muted rounded-2xl rounded-bl-sm px-3.5 py-2.5 flex items-center gap-1">
         {[0, 150, 300].map((delay) => (
           <span
             key={delay}
-            className="w-1.5 h-1.5 rounded-full bg-[#9BA39D] animate-bounce [animation-duration:1s]"
+            className="w-1.5 h-1.5 rounded-full bg-text-disabled animate-bounce [animation-duration:1s]"
             style={{ animationDelay: `${delay}ms` }}
           />
         ))}
@@ -40,15 +40,15 @@ function MessageBubble({ msg }: { msg: CopilotMessage }) {
   return (
     <div className={`flex ${isUser ? "justify-end" : "justify-start"} group`}>
       {!isUser && (
-        <div className="w-6 h-6 rounded-full bg-[#0D6B5E] flex items-center justify-center mr-2 mt-0.5 shrink-0">
-          <Bot className="h-3 w-3 text-white" aria-hidden />
+        <div className="w-6 h-6 rounded-full bg-accent flex items-center justify-center mr-2 mt-0.5 shrink-0">
+          <Bot className="h-3 w-3 text-accent-foreground" aria-hidden />
         </div>
       )}
       <div
         className={
           isUser
-            ? "max-w-[78%] bg-[#0D6B5E] text-white rounded-2xl rounded-br-sm px-3.5 py-2.5 text-sm leading-relaxed"
-            : "max-w-[82%] bg-[#EEF2F0] text-[#151918] rounded-2xl rounded-bl-sm px-3.5 py-2.5 text-sm leading-relaxed"
+            ? "max-w-[78%] bg-accent text-accent-foreground rounded-2xl rounded-br-sm px-3.5 py-2.5 text-sm leading-relaxed"
+            : "max-w-[82%] bg-surface-muted text-text-primary rounded-2xl rounded-bl-sm px-3.5 py-2.5 text-sm leading-relaxed"
         }
       >
         {msg.content}
@@ -76,7 +76,7 @@ function SuggestedPrompts({ onSelect }: { onSelect: (p: string) => void }) {
           key={p}
           type="button"
           onClick={() => onSelect(p)}
-          className="text-[11px] px-2.5 py-1 rounded-full border border-[#E3E9E6] text-[#5B635E] hover:border-[#0D6B5E] hover:text-[#151918] transition-colors bg-white"
+          className="text-[11px] px-2.5 py-1 rounded-full border border-border text-text-body hover:border-accent hover:text-text-primary transition-colors bg-surface"
         >
           {p}
         </button>
@@ -197,12 +197,12 @@ function PatientAssistantInner({ patientId }: PatientAssistantProps) {
         type="button"
         onClick={handleOpen}
         aria-label="Open AI Assistant"
-        className="fixed bottom-18 right-4 sm:bottom-6 sm:right-6 z-40 w-[52px] h-[52px] bg-[#0D6B5E] text-white rounded-full shadow-xl flex items-center justify-center hover:bg-[#09544B] active:scale-95 transition-all focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0D6B5E]"
+        className="fixed bottom-18 right-4 sm:bottom-6 sm:right-6 z-40 w-[52px] h-[52px] bg-accent text-accent-foreground rounded-full shadow-xl flex items-center justify-center hover:bg-accent-hover active:scale-95 transition-all focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
       >
         <div className="relative">
           <Bot className="h-5 w-5" aria-hidden />
           {unreadCount > 0 && (
-            <span className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center">
+            <span className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-danger text-danger-foreground text-[9px] font-bold rounded-full flex items-center justify-center">
               {unreadCount > 9 ? "9+" : unreadCount}
             </span>
           )}
@@ -218,13 +218,13 @@ function PatientAssistantInner({ patientId }: PatientAssistantProps) {
         <button
           type="button"
           onClick={handleRestore}
-          className="flex items-center gap-2 bg-[#0D6B5E] text-white rounded-full shadow-xl px-4 py-2.5 hover:bg-[#09544B] active:scale-95 transition-all"
+          className="flex items-center gap-2 bg-accent text-accent-foreground rounded-full shadow-xl px-4 py-2.5 hover:bg-accent-hover active:scale-95 transition-all"
           aria-label="Restore AI Assistant"
         >
           <Bot className="h-4 w-4" aria-hidden />
           <span className="text-xs font-medium">DentGrow Assistant</span>
           {unreadCount > 0 && (
-            <span className="w-5 h-5 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+            <span className="w-5 h-5 bg-danger text-danger-foreground text-[10px] font-bold rounded-full flex items-center justify-center">
               {unreadCount}
             </span>
           )}
@@ -246,7 +246,7 @@ function PatientAssistantInner({ patientId }: PatientAssistantProps) {
         aria-label="DentGrow AI Assistant"
         aria-modal="false"
         className={[
-          "fixed z-40 flex flex-col bg-white border border-[#E3E9E6] shadow-2xl overflow-hidden",
+          "fixed z-40 flex flex-col bg-surface border border-border shadow-2xl overflow-hidden",
           // Mobile: full width, above bottom tab bar
           "bottom-[4.5rem] left-2 right-2 rounded-2xl",
           // Desktop: fixed position bottom-right
@@ -256,15 +256,15 @@ function PatientAssistantInner({ patientId }: PatientAssistantProps) {
         ].join(" ")}
       >
         {/* ── Header ─────────────────────────────────────────────────── */}
-        <div className="px-4 py-3 border-b border-[#E3E9E6] flex items-center gap-2.5 shrink-0 bg-[#0D6B5E] rounded-t-2xl">
-          <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center shrink-0">
-            <Sparkles className="h-4 w-4 text-white" aria-hidden />
+        <div className="px-4 py-3 border-b border-border flex items-center gap-2.5 shrink-0 bg-accent rounded-t-2xl">
+          <div className="w-8 h-8 rounded-full bg-accent-foreground/15 flex items-center justify-center shrink-0">
+            <Sparkles className="h-4 w-4 text-accent-foreground" aria-hidden />
           </div>
           <div className="flex-1 min-w-0">
-            <h2 className="text-sm font-semibold text-white leading-none">
+            <h2 className="text-sm font-semibold text-accent-foreground leading-none">
               DentGrow Assistant
             </h2>
-            <p className="text-[11px] text-white/60 mt-0.5">
+            <p className="text-[11px] text-accent-foreground/70 mt-0.5">
               Ask about appointments, hours &amp; more
             </p>
           </div>
@@ -273,7 +273,7 @@ function PatientAssistantInner({ patientId }: PatientAssistantProps) {
               type="button"
               onClick={handleMinimize}
               aria-label="Minimize"
-              className="w-7 h-7 rounded-lg flex items-center justify-center text-white/60 hover:text-white hover:bg-white/10 transition-colors"
+              className="w-7 h-7 rounded-lg flex items-center justify-center text-accent-foreground/70 hover:text-accent-foreground hover:bg-accent-foreground/15 transition-colors"
             >
               <Minimize2 className="h-3.5 w-3.5" aria-hidden />
             </button>
@@ -281,7 +281,7 @@ function PatientAssistantInner({ patientId }: PatientAssistantProps) {
               type="button"
               onClick={handleClose}
               aria-label="Close assistant"
-              className="w-7 h-7 rounded-lg flex items-center justify-center text-white/60 hover:text-white hover:bg-white/10 transition-colors"
+              className="w-7 h-7 rounded-lg flex items-center justify-center text-accent-foreground/70 hover:text-accent-foreground hover:bg-accent-foreground/15 transition-colors"
             >
               <X className="h-4 w-4" aria-hidden />
             </button>
@@ -297,14 +297,14 @@ function PatientAssistantInner({ patientId }: PatientAssistantProps) {
           {/* Welcome state */}
           {messages.length === 0 && (
             <div className="flex flex-col items-center text-center pt-4 pb-2 gap-3">
-              <div className="w-12 h-12 rounded-2xl bg-[#EEF2F0] flex items-center justify-center">
-                <Sparkles className="h-5 w-5 text-[#737A76]" aria-hidden />
+              <div className="w-12 h-12 rounded-2xl bg-surface-muted flex items-center justify-center">
+                <Sparkles className="h-5 w-5 text-text-secondary" aria-hidden />
               </div>
               <div>
-                <p className="text-sm font-medium text-[#151918]">
+                <p className="text-sm font-medium text-text-primary">
                   Hi! I&apos;m your dental assistant.
                 </p>
-                <p className="text-xs text-[#737A76] mt-1 leading-relaxed">
+                <p className="text-xs text-text-secondary mt-1 leading-relaxed">
                   {isPatientBookingEnabled()
                     ? "I can help you book appointments, check clinic hours, view your queue status, and more."
                     : "I can help you check clinic hours, view your queue status, see your appointments, and more."}
@@ -333,7 +333,7 @@ function PatientAssistantInner({ patientId }: PatientAssistantProps) {
         )}
 
         {/* ── Input area ──────────────────────────────────────────────── */}
-        <div className="px-3 py-2.5 border-t border-[#E3E9E6] flex items-end gap-2 shrink-0 bg-white">
+        <div className="px-3 py-2.5 border-t border-border flex items-end gap-2 shrink-0 bg-surface">
           <textarea
             ref={inputRef}
             value={input}
@@ -344,14 +344,14 @@ function PatientAssistantInner({ patientId }: PatientAssistantProps) {
             aria-label="Chat message"
             rows={1}
             maxLength={500}
-            className="flex-1 border border-[#E3E9E6] rounded-xl px-3 py-2 text-sm text-[#151918] placeholder:text-[#9BA39D] outline-none focus:border-[#0D6B5E] focus:ring-2 focus:ring-[#0D6B5E]/10 disabled:opacity-50 resize-none min-h-[38px] max-h-[100px] overflow-y-auto leading-snug"
+            className="flex-1 border border-border rounded-xl px-3 py-2 text-sm text-text-primary placeholder:text-text-disabled outline-none focus:border-accent focus:ring-2 focus:ring-accent/10 disabled:opacity-50 resize-none min-h-[38px] max-h-[100px] overflow-y-auto leading-snug"
           />
           <button
             type="button"
             onClick={() => handleSend()}
             disabled={isLoading || !input.trim()}
             aria-label="Send message"
-            className="w-9 h-9 bg-[#0D6B5E] text-white rounded-xl flex items-center justify-center hover:bg-[#09544B] disabled:opacity-40 active:scale-95 transition-all shrink-0 self-end"
+            className="w-9 h-9 bg-accent text-accent-foreground rounded-xl flex items-center justify-center hover:bg-accent-hover disabled:opacity-40 active:scale-95 transition-all shrink-0 self-end"
           >
             <Send className="h-3.5 w-3.5" aria-hidden />
           </button>

@@ -108,7 +108,7 @@ export function ExternalConsultationDialog({
           {error && (
             <div
               role="alert"
-              className="rounded-lg bg-[#FEF2F2] border border-[#FECACA] px-4 py-3 text-xs text-[#DC2626]"
+              className="rounded-lg bg-danger-bg border border-danger-border px-4 py-3 text-xs text-danger"
             >
               {error}
             </div>
@@ -159,7 +159,7 @@ export function ExternalConsultationDialog({
           </Field>
         </div>
 
-        <div className="px-6 py-4 bg-[#F6F8F6] border-t border-[#E3E9E6] flex items-center justify-end gap-3">
+        <div className="px-6 py-4 bg-background border-t border-border flex items-center justify-end gap-3">
           <Button type="button" variant="outline" size="sm" onClick={close} disabled={isPending}>
             Cancel
           </Button>

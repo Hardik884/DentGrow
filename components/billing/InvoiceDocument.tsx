@@ -50,7 +50,7 @@ export function InvoiceDocument({
   return (
     <div
       id="invoice-document"
-      className={`print-invoice mx-auto w-full max-w-[210mm] bg-white text-[#151918] p-8 sm:p-10 ${className ?? ""}`}
+      className={`print-invoice document-light mx-auto w-full max-w-[210mm] bg-white text-[#151918] p-8 sm:p-10 ${className ?? ""}`}
     >
       {/* ── Letterhead ─────────────────────────────────────────── */}
       <div className="flex items-start justify-between gap-6 pb-6 border-b-2 border-[#0D6B5E]">
