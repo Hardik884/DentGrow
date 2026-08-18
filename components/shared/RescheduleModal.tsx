@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { rescheduleAppointment } from "@/actions/appointments";
 import { getAvailableSlots } from "@/actions/availability";
@@ -26,7 +25,6 @@ export function RescheduleModal({
   onClose,
   clinicToday,
 }: RescheduleModalProps) {
-  const router = useRouter();
   const queryClient = useQueryClient();
   const today = clinicToday ?? new Date().toISOString().split("T")[0];
   // Reschedule is a staff-only flow. Any historical date is allowed so past
@@ -60,7 +58,6 @@ export function RescheduleModal({
     const result = await rescheduleAppointment({ appointment_id: appointmentId, new_scheduled_at: selectedSlot });
     if (result.error) { setError(result.error); setIsSubmitting(false); return; }
     queryClient.invalidateQueries({ queryKey: queryKeys.appointments.all });
-    router.refresh();
     onClose();
   }
 

@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { checkInPatient } from "@/actions/queue";
 import { updateAppointmentStatus, cancelAppointment } from "@/actions/appointments";
@@ -55,7 +54,6 @@ function AppointmentRowWithActions({
   timezone,
   clinicToday,
 }: AppointmentRowWithActionsProps) {
-  const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [isCheckedIn, setIsCheckedIn] = useState(appointment.status === "checked_in");
   const [confirmAction, setConfirmAction] = useState<"cancel" | "no_show" | null>(null);
@@ -76,7 +74,6 @@ function AppointmentRowWithActions({
         return;
       }
       setIsCheckedIn(true);
-      router.refresh();
     });
   }
 
@@ -90,7 +87,6 @@ function AppointmentRowWithActions({
         return;
       }
       setConfirmAction(null);
-      router.refresh();
     });
   }
 
@@ -107,7 +103,6 @@ function AppointmentRowWithActions({
         return;
       }
       setConfirmAction(null);
-      router.refresh();
     });
   }
 

@@ -390,13 +390,11 @@ export function FollowUpForm({
             ? `/dentist/appointments/${linkedApptId}`
             : successRedirect ?? `/dentist/follow-ups/${result.data.id}`;
         router.push(target);
-        router.refresh();
         return;
       }
 
       // Edit mode without a modal host: stay on the page (success message +
       // cache invalidation already applied above).
-      router.refresh();
     });
   }
 
@@ -415,7 +413,6 @@ export function FollowUpForm({
         return;
       }
       queryClient.invalidateQueries({ queryKey: queryKeys.followUps.all });
-      router.refresh();
     });
   }
 

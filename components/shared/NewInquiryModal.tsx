@@ -38,7 +38,6 @@ export function NewInquiryModal({ open, onClose }: NewInquiryModalProps) {
     });
     // Refresh the server-rendered page so the new patient shows up immediately
     // in any patient search or booking flow.
-    router.refresh();
   }
 
   return (

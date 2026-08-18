@@ -39,11 +39,16 @@ export function QueuePositionCard({
   chairCount = 1,
   initialStatus,
 }: QueuePositionCardProps) {
-  const { queue } = useQueue({ clinicId, initialQueue });
+  const { queue, changeToken } = useQueue({ clinicId, initialQueue });
   const [status, setStatus] = useState<QueueStatus>(initialStatus ?? EMPTY_STATUS);
 
   // Track the patient's realtime entry status for effect dependencies
   const myEntryStatus = queue.find((e) => e.patient_id === patientId)?.status ?? null;
+
+  // NOTE: `queue` and `myEntryStatus` only move when THIS patient's own row
+  // changes — RLS hides everyone else's. `changeToken` is what advances when
+  // the queue AHEAD of them moves, which is exactly when patientsAhead and the
+  // wait estimate need re-reading.
 
   useEffect(() => {
     if (!patientId) return;
@@ -53,7 +58,7 @@ export function QueuePositionCard({
       if (!cancelled && result.data) setStatus(result.data);
     })();
     return () => { cancelled = true; };
-  }, [queue.length, myEntryStatus, patientId]);
+  }, [queue.length, myEntryStatus, changeToken, patientId]);
 
   const myEntry = queue.find((e) => e.patient_id === patientId);
 

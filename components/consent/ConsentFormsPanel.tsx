@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { FileSignature, Upload, FileText, ImageIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/shared/StatusBadge";
@@ -39,13 +38,8 @@ export function ConsentFormsPanel({
   templates,
   treatments,
 }: ConsentFormsPanelProps) {
-  const router = useRouter();
   const [openId, setOpenId] = useState<string | null>(null);
   const [uploadOpen, setUploadOpen] = useState(false);
-
-  function refresh() {
-    router.refresh();
-  }
 
   return (
     <div className="space-y-3">
@@ -118,7 +112,6 @@ export function ConsentFormsPanel({
           patientPhone={patientPhone}
           baseHref={baseHref}
           onClose={() => setOpenId(null)}
-          onChanged={refresh}
         />
       )}
 
@@ -130,7 +123,6 @@ export function ConsentFormsPanel({
         treatments={treatments}
         onUploaded={() => {
           setUploadOpen(false);
-          refresh();
         }}
       />
     </div>

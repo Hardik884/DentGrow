@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
 import { updateAppointmentClinical } from "@/actions/appointments";
 import type { UpdateAppointmentClinicalInput } from "@/types";
 import { Textarea } from "@/components/ui/textarea";
@@ -42,7 +41,6 @@ export function ClinicalTextCard({
   canEdit,
   rows = 4,
 }: ClinicalTextCardProps) {
-  const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [saved, setSaved] = useState(initialValue ?? "");
   const [value, setValue] = useState(initialValue ?? "");
@@ -63,7 +61,6 @@ export function ClinicalTextCard({
       }
       setSaved(value);
       setJustSaved(true);
-      router.refresh();
     });
   }
 

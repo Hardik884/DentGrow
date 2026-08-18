@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { updateAppointmentStatus } from "@/actions/appointments";
 import { queryKeys } from "@/lib/query/keys";
@@ -39,7 +38,6 @@ export function AppointmentCompleteControl({
   appointmentId,
   currentStatus = "scheduled",
 }: AppointmentCompleteControlProps) {
-  const router = useRouter();
   const queryClient = useQueryClient();
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -65,7 +63,6 @@ export function AppointmentCompleteControl({
         }
       }
       queryClient.invalidateQueries({ queryKey: queryKeys.appointments.all });
-      router.refresh();
     });
   }
 

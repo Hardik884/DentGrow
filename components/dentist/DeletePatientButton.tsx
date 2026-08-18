@@ -49,7 +49,6 @@ export function DeletePatientButton({
       queryClient.invalidateQueries({ queryKey: queryKeys.treatments.all });
       queryClient.invalidateQueries({ queryKey: queryKeys.followUps.all });
       router.push("/dentist/patients");
-      router.refresh();
     });
   }
 

@@ -32,7 +32,12 @@ interface ConsentDetailDialogProps {
   patientPhone?: string | null;
   baseHref: string;
   onClose: () => void;
-  onChanged: () => void;
+  /**
+   * Optional hook for a parent that keeps its own local copy of the consent.
+   * Not needed just to see the change: every mutating consent action calls
+   * revalidatePath, so the Server Action response already re-renders the page.
+   */
+  onChanged?: () => void;
 }
 
 export function ConsentDetailDialog({
@@ -115,7 +120,7 @@ export function ConsentDetailDialog({
       toast.success("Consent updated.");
       setEditing(false);
       await load();
-      onChanged();
+      onChanged?.();
     });
   }
 
@@ -127,7 +132,7 @@ export function ConsentDetailDialog({
         return;
       }
       await load();
-      onChanged();
+      onChanged?.();
     });
   }
 
@@ -148,7 +153,7 @@ export function ConsentDetailDialog({
       toast.success("Consent signed.");
       setSigning(false);
       await load();
-      onChanged();
+      onChanged?.();
     });
   }
 
@@ -162,7 +167,7 @@ export function ConsentDetailDialog({
       }
       toast.success("Consent cancelled.");
       await load();
-      onChanged();
+      onChanged?.();
     });
   }
 

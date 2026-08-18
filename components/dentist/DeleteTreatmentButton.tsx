@@ -39,7 +39,6 @@ export function DeleteTreatmentButton({
         return;
       }
       router.push(`/dentist/patients/${patientId}/treatments`);
-      router.refresh();
       queryClient.invalidateQueries({ queryKey: queryKeys.treatments.all });
     });
   }

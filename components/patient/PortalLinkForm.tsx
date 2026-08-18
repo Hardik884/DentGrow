@@ -79,7 +79,6 @@ export function PortalLinkForm({
       if (result?.data?.status === "linked") {
         setSuccess(true);
         router.push("/portal");
-        router.refresh();
         return;
       }
 
@@ -115,7 +114,6 @@ export function PortalLinkForm({
       if (result?.data?.status === "linked") {
         setSuccess(true);
         router.push("/portal");
-        router.refresh();
         return;
       }
 
