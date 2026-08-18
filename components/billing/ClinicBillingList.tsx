@@ -52,7 +52,7 @@ export async function ClinicBillingList({ baseHref, search, page = 1 }: ClinicBi
 
   if (bills.length === 0) {
     return (
-      <div className="bg-white border border-[#E4E4E7] rounded-xl">
+      <div className="bg-white border border-[#E3E9E6] rounded-xl">
         <EmptyState
           icon={<FileText className="h-5 w-5" aria-hidden />}
           title="No bills yet"
@@ -64,21 +64,21 @@ export async function ClinicBillingList({ baseHref, search, page = 1 }: ClinicBi
 
   return (
     <div className="space-y-3">
-      <p className="text-xs text-[#71717A]">
+      <p className="text-xs text-[#737A76]">
         {total} {total === 1 ? "bill" : "bills"}
       </p>
 
       {bills.map((bill) => (
         <div
           key={bill.appointmentId}
-          className="bg-white border border-[#E4E4E7] rounded-xl p-4 flex flex-wrap items-center justify-between gap-4"
+          className="bg-white border border-[#E3E9E6] rounded-xl p-4 flex flex-wrap items-center justify-between gap-4"
         >
           <div className="min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
-              <p className="text-sm font-semibold text-[#09090B]">{bill.patientName}</p>
+              <p className="text-sm font-semibold text-[#151918]">{bill.patientName}</p>
               <Badge variant={STATUS_VARIANT[bill.status]}>{STATUS_LABEL[bill.status]}</Badge>
             </div>
-            <p className="text-xs text-[#71717A] mt-0.5">
+            <p className="text-xs text-[#737A76] mt-0.5">
               {formatDate(bill.appointmentDate)} · {bill.treatmentDescription}
             </p>
           </div>
@@ -93,7 +93,7 @@ export async function ClinicBillingList({ baseHref, search, page = 1 }: ClinicBi
             />
             <Link
               href={`${baseHref}/appointments/${bill.appointmentId}/bill?from=billing`}
-              className="text-xs font-medium px-3 py-1.5 rounded-md border border-[#E4E4E7] text-[#09090B] hover:bg-[#F4F4F5] transition-colors shrink-0"
+              className="text-xs font-medium px-3 py-1.5 rounded-md border border-[#E3E9E6] text-[#151918] hover:bg-[#EEF2F0] transition-colors shrink-0"
             >
               View Bill
             </Link>
@@ -115,8 +115,8 @@ function Stat({
 }) {
   return (
     <div className="text-right">
-      <p className="text-[10px] uppercase tracking-wide text-[#A1A1AA]">{label}</p>
-      <p className={`text-sm font-semibold ${valueClass ?? "text-[#09090B]"}`}>{value}</p>
+      <p className="text-[10px] uppercase tracking-wide text-[#9BA39D]">{label}</p>
+      <p className={`text-sm font-semibold ${valueClass ?? "text-[#151918]"}`}>{value}</p>
     </div>
   );
 }

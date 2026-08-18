@@ -32,7 +32,7 @@ export async function PrescriptionList() {
 
   if (prescriptions.length === 0) {
     return (
-      <div className="bg-white border border-[#E4E4E7] rounded-xl">
+      <div className="bg-white border border-[#E3E9E6] rounded-xl">
         <EmptyState
           icon={<Pill className="h-5 w-5" aria-hidden />}
           title="No prescriptions"
@@ -53,17 +53,17 @@ export async function PrescriptionList() {
         return (
           <div
             key={p.id}
-            className="bg-white border border-[#E4E4E7] rounded-xl overflow-hidden"
+            className="bg-white border border-[#E3E9E6] rounded-xl overflow-hidden"
           >
-            <div className="px-5 py-4 flex items-start justify-between gap-3 border-b border-[#F4F4F5]">
+            <div className="px-5 py-4 flex items-start justify-between gap-3 border-b border-[#EEF2F0]">
               <div>
-                <p className="text-sm font-semibold text-[#09090B]">{p.treatment_type}</p>
-                <p className="text-xs text-[#71717A] mt-0.5">{prescribedOn}</p>
+                <p className="text-sm font-semibold text-[#151918]">{p.treatment_type}</p>
+                <p className="text-xs text-[#737A76] mt-0.5">{prescribedOn}</p>
               </div>
             </div>
 
             <div className="px-5 py-4 space-y-2">
-              <div className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-[#71717A]">
+              <div className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-[#737A76]">
                 <Pill className="h-3.5 w-3.5" aria-hidden />
                 Medications
               </div>
@@ -71,23 +71,23 @@ export async function PrescriptionList() {
             </div>
 
             {p.patient_visible_notes && (
-              <div className="px-5 py-4 border-t border-[#F4F4F5] space-y-1">
-                <p className="text-xs font-medium uppercase tracking-wide text-[#71717A]">Notes</p>
-                <p className="text-sm text-[#52525B] whitespace-pre-wrap">{p.patient_visible_notes}</p>
+              <div className="px-5 py-4 border-t border-[#EEF2F0] space-y-1">
+                <p className="text-xs font-medium uppercase tracking-wide text-[#737A76]">Notes</p>
+                <p className="text-sm text-[#5B635E] whitespace-pre-wrap">{p.patient_visible_notes}</p>
               </div>
             )}
 
             {p.signature && (
-              <div className="px-5 py-4 border-t border-[#F4F4F5]">
-                <div className="rounded-lg border border-[#E4E4E7] bg-[#FAFAFA] px-4 py-3">
-                  <div className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wide text-[#71717A]">
+              <div className="px-5 py-4 border-t border-[#EEF2F0]">
+                <div className="rounded-lg border border-[#E3E9E6] bg-[#F6F8F6] px-4 py-3">
+                  <div className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wide text-[#737A76]">
                     <PenLine className="h-3 w-3" aria-hidden />
                     Prescribed By
                   </div>
                   <div className="mt-3 space-y-2">
-                    <p className="text-sm font-medium text-[#09090B]">{p.signature.dentistName}</p>
+                    <p className="text-sm font-medium text-[#151918]">{p.signature.dentistName}</p>
                     {p.signature.registrationNumber && (
-                      <p className="text-xs text-[#71717A]">
+                      <p className="text-xs text-[#737A76]">
                         Registration No: {p.signature.registrationNumber}
                       </p>
                     )}

@@ -34,19 +34,19 @@ export default async function ExternalConsultationsPage() {
       </PageHeader>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div className="bg-white border border-[#E4E4E7] rounded-xl p-4">
-          <p className="text-xs font-medium text-[#71717A] uppercase tracking-wide">
+        <div className="bg-white border border-[#E3E9E6] rounded-xl p-4">
+          <p className="text-xs font-medium text-[#737A76] uppercase tracking-wide">
             Total External Income
           </p>
-          <p className="text-2xl font-semibold text-[#09090B] mt-1">
+          <p className="text-2xl font-semibold text-[#151918] mt-1">
             {formatCurrency(total)}
           </p>
         </div>
-        <div className="bg-white border border-[#E4E4E7] rounded-xl p-4">
-          <p className="text-xs font-medium text-[#71717A] uppercase tracking-wide">
+        <div className="bg-white border border-[#E3E9E6] rounded-xl p-4">
+          <p className="text-xs font-medium text-[#737A76] uppercase tracking-wide">
             Consultations Recorded
           </p>
-          <p className="text-2xl font-semibold text-[#09090B] mt-1">{entries.length}</p>
+          <p className="text-2xl font-semibold text-[#151918] mt-1">{entries.length}</p>
         </div>
       </div>
 
@@ -57,18 +57,18 @@ export default async function ExternalConsultationsPage() {
       )}
 
       {entries.length === 0 ? (
-        <div className="bg-white border border-[#E4E4E7] rounded-xl p-12 text-center">
-          <p className="text-sm text-[#71717A]">No external consultations recorded yet.</p>
-          <p className="text-xs text-[#A1A1AA] mt-1">
+        <div className="bg-white border border-[#E3E9E6] rounded-xl p-12 text-center">
+          <p className="text-sm text-[#737A76]">No external consultations recorded yet.</p>
+          <p className="text-xs text-[#9BA39D] mt-1">
             Use “Add External Consultation” to record income earned at another clinic.
           </p>
         </div>
       ) : (
-        <div className="bg-white border border-[#E4E4E7] rounded-xl overflow-hidden">
+        <div className="bg-white border border-[#E3E9E6] rounded-xl overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-[#F4F4F5] bg-[#FAFAFA] text-left text-xs font-semibold text-[#71717A] uppercase tracking-wide">
+                <tr className="border-b border-[#EEF2F0] bg-[#F6F8F6] text-left text-xs font-semibold text-[#737A76] uppercase tracking-wide">
                   <th className="px-4 py-3">Date</th>
                   <th className="px-4 py-3">Clinic Name</th>
                   <th className="px-4 py-3">Treatment Performed</th>
@@ -76,22 +76,22 @@ export default async function ExternalConsultationsPage() {
                   <th className="px-4 py-3">Notes</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#F4F4F5]">
+              <tbody className="divide-y divide-[#EEF2F0]">
                 {entries.map((e) => (
-                  <tr key={e.id} className="hover:bg-[#FAFAFA] transition-colors">
-                    <td className="px-4 py-3 text-[#52525B] whitespace-nowrap">
+                  <tr key={e.id} className="hover:bg-[#F6F8F6] transition-colors">
+                    <td className="px-4 py-3 text-[#5B635E] whitespace-nowrap">
                       {formatDate(e.date)}
                     </td>
-                    <td className="px-4 py-3 font-medium text-[#09090B]">
+                    <td className="px-4 py-3 font-medium text-[#151918]">
                       {e.external_clinic ? e.external_clinic : "—"}
                     </td>
-                    <td className="px-4 py-3 text-[#52525B]">
+                    <td className="px-4 py-3 text-[#5B635E]">
                       {e.description ? e.description : "—"}
                     </td>
-                    <td className="px-4 py-3 text-right font-medium text-[#09090B] whitespace-nowrap">
+                    <td className="px-4 py-3 text-right font-medium text-[#151918] whitespace-nowrap">
                       {formatCurrency(Number(e.amount ?? 0))}
                     </td>
-                    <td className="px-4 py-3 text-[#52525B]">
+                    <td className="px-4 py-3 text-[#5B635E]">
                       {e.notes ? e.notes : "—"}
                     </td>
                   </tr>

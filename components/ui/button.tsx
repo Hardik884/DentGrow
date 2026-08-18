@@ -15,12 +15,12 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const variantClasses: Record<ButtonVariant, string> = {
-  default:   "bg-[#18181B] text-[#FAFAFA] hover:bg-[#27272A] focus-visible:ring-[#18181B]",
-  secondary: "bg-[#F4F4F5] text-[#09090B] hover:bg-[#E4E4E7] focus-visible:ring-[#18181B]",
-  ghost:     "text-[#09090B] hover:bg-[#F4F4F5] focus-visible:ring-[#18181B]",
-  outline:   "border border-[#E4E4E7] bg-[#FFFFFF] text-[#09090B] hover:bg-[#F4F4F5] focus-visible:ring-[#18181B]",
-  danger:    "bg-[#DC2626] text-white hover:bg-[#B91C1C] focus-visible:ring-[#DC2626]",
-  link:      "text-[#09090B] underline-offset-4 hover:underline p-0 h-auto",
+  default:   "bg-[#0D6B5E] text-white hover:bg-[#09544B] active:bg-[#084A42] shadow-sm focus-visible:ring-[#0D6B5E]",
+  secondary: "bg-[#EEF2F0] text-[#151918] hover:bg-[#E3E9E6] active:bg-[#D8E0DB] focus-visible:ring-[#0D6B5E]",
+  ghost:     "text-[#151918] hover:bg-[#EEF2F0] active:bg-[#E3E9E6] focus-visible:ring-[#0D6B5E]",
+  outline:   "border border-[#E3E9E6] bg-white text-[#151918] hover:border-[#CBD5D0] hover:bg-[#FAFCFA] focus-visible:ring-[#0D6B5E]",
+  danger:    "bg-[#DC2626] text-white hover:bg-[#B91C1C] active:bg-[#9F1414] shadow-sm focus-visible:ring-[#DC2626]",
+  link:      "text-[#0D6B5E] underline-offset-4 hover:underline p-0 h-auto",
 };
 
 const sizeClasses: Record<ButtonSize, string> = {
@@ -49,10 +49,11 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         ref={ref}
         disabled={disabled || isLoading}
         className={cn(
-          "inline-flex items-center justify-center gap-2 font-medium transition-colors",
+          "inline-flex items-center justify-center gap-2 font-medium",
+          "transition-[background-color,border-color,color,box-shadow,transform] duration-150 ease-out",
           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2",
-          "disabled:cursor-not-allowed disabled:opacity-50",
-          "select-none whitespace-nowrap",
+          "disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none",
+          "select-none whitespace-nowrap cursor-pointer active:scale-[0.98]",
           variantClasses[variant],
           sizeClasses[size],
           className

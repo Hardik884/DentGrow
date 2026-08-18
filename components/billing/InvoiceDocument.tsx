@@ -50,34 +50,34 @@ export function InvoiceDocument({
   return (
     <div
       id="invoice-document"
-      className={`print-invoice mx-auto w-full max-w-[210mm] bg-white text-[#09090B] p-8 sm:p-10 ${className ?? ""}`}
+      className={`print-invoice mx-auto w-full max-w-[210mm] bg-white text-[#151918] p-8 sm:p-10 ${className ?? ""}`}
     >
       {/* ── Letterhead ─────────────────────────────────────────── */}
-      <div className="flex items-start justify-between gap-6 pb-6 border-b-2 border-[#18181B]">
+      <div className="flex items-start justify-between gap-6 pb-6 border-b-2 border-[#0D6B5E]">
         <div className="min-w-0">
-          <h1 className="text-xl font-bold tracking-tight text-[#09090B]">
+          <h1 className="text-xl font-bold tracking-tight text-[#151918]">
             {clinic.name}
           </h1>
           {clinic.address && (
-            <p className="text-xs text-[#71717A] mt-1 max-w-xs">{clinic.address}</p>
+            <p className="text-xs text-[#737A76] mt-1 max-w-xs">{clinic.address}</p>
           )}
-          <p className="text-xs text-[#71717A] mt-0.5">
+          <p className="text-xs text-[#737A76] mt-0.5">
             {[clinic.phone, clinic.email].filter(Boolean).join(" · ") || null}
           </p>
-          <p className="text-xs text-[#52525B] mt-2 font-medium">
+          <p className="text-xs text-[#5B635E] mt-2 font-medium">
             Dentist: {dentist.name}
             {clinic.registrationNumber && (
-              <span className="text-[#A1A1AA]"> · Reg. No. {clinic.registrationNumber}</span>
+              <span className="text-[#9BA39D]"> · Reg. No. {clinic.registrationNumber}</span>
             )}
           </p>
         </div>
 
         <div className="text-right shrink-0">
-          <p className="text-lg font-bold tracking-wide text-[#09090B]">INVOICE</p>
-          <p className="text-xs text-[#71717A] mt-1">
-            No. <span className="font-mono font-medium text-[#09090B]">{bill.invoiceNumber}</span>
+          <p className="text-lg font-bold tracking-wide text-[#151918]">INVOICE</p>
+          <p className="text-xs text-[#737A76] mt-1">
+            No. <span className="font-mono font-medium text-[#151918]">{bill.invoiceNumber}</span>
           </p>
-          <p className="text-xs text-[#71717A]">
+          <p className="text-xs text-[#737A76]">
             Date: {formatDateInTimezone(bill.invoiceDate, timezone)}
           </p>
           <div className="mt-2">
@@ -87,19 +87,19 @@ export function InvoiceDocument({
       </div>
 
       {/* ── Patient / appointment ─────────────────────────────── */}
-      <div className="grid grid-cols-2 gap-6 py-6 border-b border-[#E4E4E7]">
+      <div className="grid grid-cols-2 gap-6 py-6 border-b border-[#E3E9E6]">
         <div>
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-[#A1A1AA] mb-1">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-[#9BA39D] mb-1">
             Billed To
           </p>
-          <p className="text-sm font-semibold text-[#09090B]">{patient.name}</p>
-          {patient.phone && <p className="text-xs text-[#71717A] mt-0.5">{patient.phone}</p>}
+          <p className="text-sm font-semibold text-[#151918]">{patient.name}</p>
+          {patient.phone && <p className="text-xs text-[#737A76] mt-0.5">{patient.phone}</p>}
         </div>
         <div className="text-right">
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-[#A1A1AA] mb-1">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-[#9BA39D] mb-1">
             Appointment
           </p>
-          <p className="text-sm text-[#09090B]">
+          <p className="text-sm text-[#151918]">
             {formatDateInTimezone(appointment.scheduledAt, timezone)}
           </p>
         </div>
@@ -109,7 +109,7 @@ export function InvoiceDocument({
       <div className="py-6">
         <table className="w-full text-sm" style={{ pageBreakInside: "auto" }}>
           <thead>
-            <tr className="border-b-2 border-[#18181B] text-left text-[10px] font-semibold uppercase tracking-wider text-[#71717A]">
+            <tr className="border-b-2 border-[#0D6B5E] text-left text-[10px] font-semibold uppercase tracking-wider text-[#737A76]">
               <th className="py-2 pr-2">Description</th>
               <th className="py-2 px-2 text-right w-16">Qty</th>
               <th className="py-2 px-2 text-right w-28">Rate</th>
@@ -119,7 +119,7 @@ export function InvoiceDocument({
           <tbody>
             {bill.lineItems.length === 0 ? (
               <tr>
-                <td colSpan={4} className="py-6 text-center text-sm text-[#A1A1AA]">
+                <td colSpan={4} className="py-6 text-center text-sm text-[#9BA39D]">
                   No billable charges on this visit.
                 </td>
               </tr>
@@ -127,15 +127,15 @@ export function InvoiceDocument({
               bill.lineItems.map((item) => (
                 <tr
                   key={item.key}
-                  className="border-b border-[#F4F4F5]"
+                  className="border-b border-[#EEF2F0]"
                   style={{ pageBreakInside: "avoid" }}
                 >
-                  <td className="py-2.5 pr-2 text-[#09090B]">{item.description}</td>
-                  <td className="py-2.5 px-2 text-right text-[#52525B]">{item.quantity}</td>
-                  <td className="py-2.5 px-2 text-right text-[#52525B]">
+                  <td className="py-2.5 pr-2 text-[#151918]">{item.description}</td>
+                  <td className="py-2.5 px-2 text-right text-[#5B635E]">{item.quantity}</td>
+                  <td className="py-2.5 px-2 text-right text-[#5B635E]">
                     {formatCurrency(item.rate)}
                   </td>
-                  <td className="py-2.5 pl-2 text-right font-medium text-[#09090B]">
+                  <td className="py-2.5 pl-2 text-right font-medium text-[#151918]">
                     {formatCurrency(item.amount)}
                   </td>
                 </tr>
@@ -150,7 +150,7 @@ export function InvoiceDocument({
         <div className="w-full max-w-[280px] space-y-1.5">
           <SummaryRow label="Subtotal" value={bill.subtotal} />
           <SummaryRow label="Discount" value={-bill.discount} />
-          <div className="border-t border-[#E4E4E7] my-1.5" />
+          <div className="border-t border-[#E3E9E6] my-1.5" />
           <SummaryRow label="Total" value={bill.total} bold />
           <SummaryRow label="Amount Paid" value={bill.paid} valueClassName="text-[#16A34A]" />
           {bill.overpayment > 0 && (
@@ -160,9 +160,9 @@ export function InvoiceDocument({
               valueClassName="text-[#16A34A]"
             />
           )}
-          <div className="border-t-2 border-[#18181B] my-1.5" />
+          <div className="border-t-2 border-[#0D6B5E] my-1.5" />
           <div className="flex items-baseline justify-between">
-            <span className="text-sm font-bold text-[#09090B]">Balance Due</span>
+            <span className="text-sm font-bold text-[#151918]">Balance Due</span>
             <span
               className={`text-lg font-bold ${
                 bill.balanceDue > 0 ? "text-[#DC2626]" : "text-[#16A34A]"
@@ -184,7 +184,7 @@ export function InvoiceDocument({
         nudge on the bill itself.
       */}
       {dentist.signatureUrl && (
-        <div className="pt-6 border-t border-[#E4E4E7]">
+        <div className="pt-6 border-t border-[#E3E9E6]">
           <div className="flex flex-col items-end text-right ml-auto w-fit">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
@@ -192,15 +192,15 @@ export function InvoiceDocument({
               alt={`Signature of ${dentist.name}`}
               className="max-h-16 max-w-[200px] object-contain mb-1"
             />
-            <div className="border-t border-[#18181B] pt-1 w-full min-w-[180px]">
-              <p className="text-xs font-semibold text-[#09090B]">{dentist.name}</p>
-              <p className="text-[10px] text-[#71717A]">Authorized Signature</p>
+            <div className="border-t border-[#0D6B5E] pt-1 w-full min-w-[180px]">
+              <p className="text-xs font-semibold text-[#151918]">{dentist.name}</p>
+              <p className="text-[10px] text-[#737A76]">Authorized Signature</p>
             </div>
           </div>
         </div>
       )}
 
-      <p className="text-center text-[10px] text-[#A1A1AA] mt-8">
+      <p className="text-center text-[10px] text-[#9BA39D] mt-8">
         This is a system-generated bill from {clinic.name}.
       </p>
     </div>
@@ -220,11 +220,11 @@ function SummaryRow({
 }) {
   return (
     <div className="flex items-baseline justify-between">
-      <span className={`text-sm ${bold ? "font-semibold text-[#09090B]" : "text-[#71717A]"}`}>
+      <span className={`text-sm ${bold ? "font-semibold text-[#151918]" : "text-[#737A76]"}`}>
         {label}
       </span>
       <span
-        className={`text-sm ${bold ? "font-semibold text-[#09090B]" : "text-[#52525B]"} ${
+        className={`text-sm ${bold ? "font-semibold text-[#151918]" : "text-[#5B635E]"} ${
           valueClassName ?? ""
         }`}
       >

@@ -107,9 +107,9 @@ export function DashboardSidebar({
     .slice(0, 2);
 
   return (
-    <aside className="w-56 shrink-0 h-screen bg-white border-r border-[#E4E4E7] flex flex-col">
+    <aside className="w-56 shrink-0 h-screen bg-white border-r border-[#E3E9E6] flex flex-col">
       {/* Brand */}
-      <div className="h-14 flex items-center px-5 border-b border-[#E4E4E7] shrink-0">
+      <div className="h-14 flex items-center px-5 border-b border-[#E3E9E6] shrink-0">
         <DentGrowLogo size={28} withWordmark />
       </div>
 
@@ -126,15 +126,21 @@ export function DashboardSidebar({
               key={item.href}
               href={item.href}
               className={cn(
-                "sidebar-nav-item flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm",
+                "sidebar-nav-item relative flex items-center gap-2.5 pl-3.5 pr-3 py-2 rounded-lg text-sm",
                 isActive
-                  ? "bg-[#F4F4F5] text-[#09090B] font-medium"
-                  : "text-[#71717A] hover:bg-[#F4F4F5] hover:text-[#09090B] font-normal"
+                  ? "bg-[#E8F4F0] text-[#09544B] font-medium"
+                  : "text-[#737A76] hover:bg-[#EEF2F0] hover:text-[#151918] font-normal"
               )}
               aria-current={isActive ? "page" : undefined}
             >
+              {isActive && (
+                <span
+                  className="absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-full bg-[#0D6B5E]"
+                  aria-hidden
+                />
+              )}
               <item.icon
-                className={cn("h-4 w-4 shrink-0", isActive ? "text-[#09090B]" : "text-[#A1A1AA]")}
+                className={cn("h-4 w-4 shrink-0", isActive ? "text-[#0D6B5E]" : "text-[#9BA39D]")}
                 aria-hidden
               />
               {item.label}
@@ -144,14 +150,14 @@ export function DashboardSidebar({
       </nav>
 
       {/* User footer */}
-      <div className="p-3 border-t border-[#E4E4E7] shrink-0">
+      <div className="p-3 border-t border-[#E3E9E6] shrink-0">
         <div className="flex items-center gap-2.5 px-2 py-1.5 mb-2">
-          <div className="h-7 w-7 rounded-full bg-[#F4F4F5] flex items-center justify-center shrink-0">
-            <span className="text-xs font-semibold text-[#71717A]">{initials}</span>
+          <div className="h-7 w-7 rounded-full bg-[#E8F4F0] flex items-center justify-center shrink-0">
+            <span className="text-xs font-semibold text-[#09544B]">{initials}</span>
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-xs font-medium text-[#09090B] truncate">{fullName}</p>
-            <p className="text-xs text-[#A1A1AA] capitalize">{role}</p>
+            <p className="text-xs font-medium text-[#151918] truncate">{fullName}</p>
+            <p className="text-xs text-[#9BA39D] capitalize">{role}</p>
           </div>
         </div>
         <SignOutButton className="w-full" />

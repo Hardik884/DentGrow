@@ -7,18 +7,20 @@ export type BadgeVariant =
   | "success"
   | "warning"
   | "danger"
-  | "info";
+  | "info"
+  | "accent";
 
 interface BadgeProps extends React.HTMLAttributes<HTMLSpanElement> {
   variant?: BadgeVariant;
 }
 
 const variantClasses: Record<BadgeVariant, string> = {
-  default:   "bg-[#18181B] text-[#FAFAFA]",
-  secondary: "bg-[#F4F4F5] text-[#09090B]",
-  outline:   "border border-[#E4E4E7] text-[#71717A] bg-transparent",
+  default:   "bg-[#151918] text-white",
+  secondary: "bg-[#EEF2F0] text-[#151918]",
+  outline:   "border border-[#E3E9E6] text-[#737A76] bg-transparent",
+  accent:    "bg-[#E8F4F0] text-[#09544B] border border-[#CFE7E0]",
   success:   "bg-[#F0FDF4] text-[#16A34A] border border-[#BBF7D0]",
-  warning:   "bg-[#FEFCE8] text-[#CA8A04] border border-[#FEF08A]",
+  warning:   "bg-[#FFFBEB] text-[#B45309] border border-[#FDE68A]",
   danger:    "bg-[#FEF2F2] text-[#DC2626] border border-[#FECACA]",
   info:      "bg-[#EFF6FF] text-[#2563EB] border border-[#BFDBFE]",
 };

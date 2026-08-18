@@ -10,7 +10,7 @@ export default function PatientProfileLoading() {
       </div>
 
       {/* Profile header card */}
-      <div className="bg-white border border-[#E4E4E7] rounded-xl overflow-hidden">
+      <div className="bg-white border border-[#E3E9E6] rounded-xl overflow-hidden">
         <div className="px-6 py-5 flex items-start gap-4">
           <Skeleton className="h-12 w-12 rounded-full shrink-0" />
           <div className="flex-1 space-y-2">
@@ -26,8 +26,8 @@ export default function PatientProfileLoading() {
             <Skeleton className="h-8 w-20 rounded-lg" />
           </div>
         </div>
-        <div className="border-t border-[#E4E4E7]" />
-        <div className="grid grid-cols-4 divide-x divide-[#F4F4F5]">
+        <div className="border-t border-[#E3E9E6]" />
+        <div className="grid grid-cols-4 divide-x divide-[#EEF2F0]">
           {Array.from({ length: 4 }).map((_, i) => (
             <div key={i} className="px-5 py-4 space-y-1.5">
               <Skeleton className="h-3 w-20" />
@@ -48,14 +48,14 @@ export default function PatientProfileLoading() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-3">
           {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="bg-white border border-[#E4E4E7] rounded-xl p-4 space-y-2">
+            <div key={i} className="bg-white border border-[#E3E9E6] rounded-xl p-4 space-y-2">
               <Skeleton className="h-4 w-32" />
               <Skeleton className="h-3 w-48" />
               <Skeleton className="h-3 w-24" />
             </div>
           ))}
         </div>
-        <div className="bg-white border border-[#E4E4E7] rounded-xl p-4 space-y-3">
+        <div className="bg-white border border-[#E3E9E6] rounded-xl p-4 space-y-3">
           <Skeleton className="h-4 w-28" />
           <Skeleton className="h-24 w-full rounded-lg" />
         </div>

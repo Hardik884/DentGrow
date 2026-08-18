@@ -59,17 +59,17 @@ export function AppointmentStatusControl({
 
   if (isTerminal) {
     return (
-      <div className="bg-white border border-[#E4E4E7] rounded-xl p-5">
-        <p className="text-sm text-[#71717A]">
-          Appointment is <strong className="text-[#09090B]">{APPOINTMENT_STATUS_LABELS[currentStatus]}</strong>.
+      <div className="bg-white border border-[#E3E9E6] rounded-xl p-5">
+        <p className="text-sm text-[#737A76]">
+          Appointment is <strong className="text-[#151918]">{APPOINTMENT_STATUS_LABELS[currentStatus]}</strong>.
         </p>
       </div>
     );
   }
 
   return (
-    <div className="bg-white border border-[#E4E4E7] rounded-xl p-5 space-y-3">
-      <h3 className="text-sm font-semibold text-[#09090B]">Actions</h3>
+    <div className="bg-white border border-[#E3E9E6] rounded-xl p-5 space-y-3">
+      <h3 className="text-sm font-semibold text-[#151918]">Actions</h3>
 
       {error && (
         <p className="text-xs text-[#DC2626]" role="alert">{error}</p>

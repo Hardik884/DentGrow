@@ -41,36 +41,36 @@ export function ConsentDocument({
   return (
     <div
       id="consent-document"
-      className={`print-consent mx-auto w-full max-w-[210mm] bg-white text-[#09090B] p-6 sm:p-8 ${className ?? ""}`}
+      className={`print-consent mx-auto w-full max-w-[210mm] bg-white text-[#151918] p-6 sm:p-8 ${className ?? ""}`}
     >
       {/* ── Letterhead ─────────────────────────────────────────── */}
-      <div className="flex items-start justify-between gap-4 pb-3 border-b-2 border-[#18181B]">
+      <div className="flex items-start justify-between gap-4 pb-3 border-b-2 border-[#0D6B5E]">
         <div className="min-w-0">
-          <h1 className="text-lg font-bold tracking-tight text-[#09090B]">{clinic.name}</h1>
+          <h1 className="text-lg font-bold tracking-tight text-[#151918]">{clinic.name}</h1>
           {clinic.address && (
-            <p className="text-[10px] text-[#71717A] mt-0.5 max-w-xs">{clinic.address}</p>
+            <p className="text-[10px] text-[#737A76] mt-0.5 max-w-xs">{clinic.address}</p>
           )}
-          <p className="text-[10px] text-[#71717A] mt-0.5">
+          <p className="text-[10px] text-[#737A76] mt-0.5">
             {[clinic.phone, clinic.email].filter(Boolean).join(" · ") || null}
           </p>
           {clinic.registrationNumber && (
-            <p className="text-[9px] text-[#A1A1AA] mt-0.5">Reg. No. {clinic.registrationNumber}</p>
+            <p className="text-[9px] text-[#9BA39D] mt-0.5">Reg. No. {clinic.registrationNumber}</p>
           )}
         </div>
         <div className="text-right shrink-0">
-          <p className="text-sm font-bold tracking-wide text-[#09090B]">CONSENT FORM</p>
-          <p className="text-[11px] text-[#71717A] mt-0.5 max-w-[200px]">{snapshot.templateName}</p>
+          <p className="text-sm font-bold tracking-wide text-[#151918]">CONSENT FORM</p>
+          <p className="text-[11px] text-[#737A76] mt-0.5 max-w-[200px]">{snapshot.templateName}</p>
         </div>
       </div>
 
       {/* ── Patient / treatment ─────────────────────────────────── */}
-      <div className="grid grid-cols-2 gap-4 py-3 border-b border-[#E4E4E7]">
+      <div className="grid grid-cols-2 gap-4 py-3 border-b border-[#E3E9E6]">
         <div>
-          <p className="text-[9px] font-semibold uppercase tracking-wider text-[#A1A1AA] mb-0.5">
+          <p className="text-[9px] font-semibold uppercase tracking-wider text-[#9BA39D] mb-0.5">
             Patient
           </p>
-          <p className="text-sm font-semibold text-[#09090B]">{patient.name}</p>
-          <p className="text-[11px] text-[#71717A]">
+          <p className="text-sm font-semibold text-[#151918]">{patient.name}</p>
+          <p className="text-[11px] text-[#737A76]">
             {[
               patient.age != null ? `Age ${patient.age}` : null,
               patient.phone,
@@ -80,10 +80,10 @@ export function ConsentDocument({
           </p>
         </div>
         <div className="text-right">
-          <p className="text-[9px] font-semibold uppercase tracking-wider text-[#A1A1AA] mb-0.5">
+          <p className="text-[9px] font-semibold uppercase tracking-wider text-[#9BA39D] mb-0.5">
             Proposed Treatment
           </p>
-          <p className="text-sm text-[#09090B]">{treatment.type ?? snapshot.templateName}</p>
+          <p className="text-sm text-[#151918]">{treatment.type ?? snapshot.templateName}</p>
         </div>
       </div>
 
@@ -93,10 +93,10 @@ export function ConsentDocument({
           .filter((s) => s.body.trim().length > 0)
           .map((section) => (
             <div key={section.key} style={{ pageBreakInside: "avoid" }}>
-              <h2 className="text-[10px] font-bold uppercase tracking-wider text-[#3F3F46] mb-0.5">
+              <h2 className="text-[10px] font-bold uppercase tracking-wider text-[#333B36] mb-0.5">
                 {section.title}
               </h2>
-              <p className="text-[12px] leading-snug text-[#27272A] whitespace-pre-wrap">
+              <p className="text-[12px] leading-snug text-[#09544B] whitespace-pre-wrap">
                 {section.body}
               </p>
             </div>
@@ -105,8 +105,8 @@ export function ConsentDocument({
 
       {/* ── Disclaimer ──────────────────────────────────────────── */}
       {content.disclaimer && (
-        <div className="my-2 rounded-md border border-[#E4E4E7] bg-[#FAFAFA] px-3 py-2">
-          <p className="text-[10px] leading-snug text-[#52525B]">{content.disclaimer}</p>
+        <div className="my-2 rounded-md border border-[#E3E9E6] bg-[#F6F8F6] px-3 py-2">
+          <p className="text-[10px] leading-snug text-[#5B635E]">{content.disclaimer}</p>
         </div>
       )}
 
@@ -123,15 +123,15 @@ export function ConsentDocument({
                 className="max-h-12 max-w-[200px] object-contain"
               />
             ) : (
-              <span className="text-[9px] text-[#A1A1AA]">Signature</span>
+              <span className="text-[9px] text-[#9BA39D]">Signature</span>
             )}
           </div>
-          <div className="border-t border-[#18181B] pt-1">
-            <p className="text-[11px] font-semibold text-[#09090B]">
+          <div className="border-t border-[#0D6B5E] pt-1">
+            <p className="text-[11px] font-semibold text-[#151918]">
               {patientSignedName || patient.name}
             </p>
-            <p className="text-[9px] text-[#71717A]">Patient Signature</p>
-            <p className="text-[9px] text-[#71717A] mt-0.5">
+            <p className="text-[9px] text-[#737A76]">Patient Signature</p>
+            <p className="text-[9px] text-[#737A76] mt-0.5">
               Date:{" "}
               {isSigned && signedAt ? formatDateInTimezone(signedAt, timezone) : "________________"}
             </p>
@@ -149,13 +149,13 @@ export function ConsentDocument({
                 className="max-h-12 max-w-[200px] object-contain"
               />
             ) : (
-              <span className="text-[9px] text-[#A1A1AA]">Signature</span>
+              <span className="text-[9px] text-[#9BA39D]">Signature</span>
             )}
           </div>
-          <div className="border-t border-[#18181B] pt-1">
-            <p className="text-[11px] font-semibold text-[#09090B]">{dentist.name || "Treating Dentist"}</p>
-            <p className="text-[9px] text-[#71717A]">Dentist Signature</p>
-            <p className="text-[9px] text-[#71717A] mt-0.5">
+          <div className="border-t border-[#0D6B5E] pt-1">
+            <p className="text-[11px] font-semibold text-[#151918]">{dentist.name || "Treating Dentist"}</p>
+            <p className="text-[9px] text-[#737A76]">Dentist Signature</p>
+            <p className="text-[9px] text-[#737A76] mt-0.5">
               Date:{" "}
               {isSigned && signedAt ? formatDateInTimezone(signedAt, timezone) : "________________"}
             </p>
@@ -165,7 +165,7 @@ export function ConsentDocument({
 
       {/* ── Place ───────────────────────────────────────────────── */}
       {clinic.address && (
-        <p className="text-[9px] text-[#A1A1AA] mt-3">Place: {clinic.address}</p>
+        <p className="text-[9px] text-[#9BA39D] mt-3">Place: {clinic.address}</p>
       )}
     </div>
   );

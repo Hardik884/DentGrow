@@ -40,7 +40,7 @@ export function SignaturePad({ onChange, disabled = false, label = "Patient sign
       ctx.lineWidth = 2;
       ctx.lineCap = "round";
       ctx.lineJoin = "round";
-      ctx.strokeStyle = "#09090B";
+      ctx.strokeStyle = "#151918";
     }
   }, []);
 
@@ -92,7 +92,7 @@ export function SignaturePad({ onChange, disabled = false, label = "Patient sign
   return (
     <div className="space-y-1.5">
       <div className="flex items-center justify-between">
-        <span className="text-xs font-medium text-[#52525B]">{label}</span>
+        <span className="text-xs font-medium text-[#5B635E]">{label}</span>
         <Button type="button" variant="ghost" size="xs" onClick={clear} disabled={disabled || empty}>
           <Eraser className="h-3 w-3" aria-hidden />
           Clear
@@ -105,12 +105,12 @@ export function SignaturePad({ onChange, disabled = false, label = "Patient sign
         onPointerUp={end}
         onPointerLeave={end}
         className={`w-full h-40 rounded-md border border-dashed touch-none ${
-          disabled ? "bg-[#F4F4F5] border-[#E4E4E7]" : "bg-white border-[#A1A1AA] cursor-crosshair"
+          disabled ? "bg-[#EEF2F0] border-[#E3E9E6]" : "bg-white border-[#9BA39D] cursor-crosshair"
         }`}
         aria-label={label}
       />
       {empty && (
-        <p className="text-[11px] text-[#A1A1AA]">Sign in the box above using a mouse or finger.</p>
+        <p className="text-[11px] text-[#9BA39D]">Sign in the box above using a mouse or finger.</p>
       )}
     </div>
   );

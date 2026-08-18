@@ -13,10 +13,10 @@ export function PatientSearchBar() {
   }
 
   return (
-    <div className="bg-white border border-[#E4E4E7] rounded-xl p-5">
+    <div className="bg-white border border-[#E3E9E6] rounded-xl p-5">
       <div className="flex items-center gap-2 mb-3">
-        <Search className="h-4 w-4 text-[#71717A]" aria-hidden />
-        <h2 className="text-sm font-semibold text-[#09090B]">Patient Search</h2>
+        <Search className="h-4 w-4 text-[#737A76]" aria-hidden />
+        <h2 className="text-sm font-semibold text-[#151918]">Patient Search</h2>
       </div>
       <PatientSearch
         onSelect={handleSelect}

@@ -20,11 +20,11 @@ import { isPatientBookingEnabled } from "@/lib/feature-flags";
 function TypingIndicator() {
   return (
     <div className="flex justify-start">
-      <div className="bg-[#F4F4F5] rounded-2xl rounded-bl-sm px-3.5 py-2.5 flex items-center gap-1">
+      <div className="bg-[#EEF2F0] rounded-2xl rounded-bl-sm px-3.5 py-2.5 flex items-center gap-1">
         {[0, 150, 300].map((delay) => (
           <span
             key={delay}
-            className="w-1.5 h-1.5 rounded-full bg-[#A1A1AA] animate-bounce [animation-duration:1s]"
+            className="w-1.5 h-1.5 rounded-full bg-[#9BA39D] animate-bounce [animation-duration:1s]"
             style={{ animationDelay: `${delay}ms` }}
           />
         ))}
@@ -40,15 +40,15 @@ function MessageBubble({ msg }: { msg: CopilotMessage }) {
   return (
     <div className={`flex ${isUser ? "justify-end" : "justify-start"} group`}>
       {!isUser && (
-        <div className="w-6 h-6 rounded-full bg-[#18181B] flex items-center justify-center mr-2 mt-0.5 shrink-0">
+        <div className="w-6 h-6 rounded-full bg-[#0D6B5E] flex items-center justify-center mr-2 mt-0.5 shrink-0">
           <Bot className="h-3 w-3 text-white" aria-hidden />
         </div>
       )}
       <div
         className={
           isUser
-            ? "max-w-[78%] bg-[#18181B] text-white rounded-2xl rounded-br-sm px-3.5 py-2.5 text-sm leading-relaxed"
-            : "max-w-[82%] bg-[#F4F4F5] text-[#09090B] rounded-2xl rounded-bl-sm px-3.5 py-2.5 text-sm leading-relaxed"
+            ? "max-w-[78%] bg-[#0D6B5E] text-white rounded-2xl rounded-br-sm px-3.5 py-2.5 text-sm leading-relaxed"
+            : "max-w-[82%] bg-[#EEF2F0] text-[#151918] rounded-2xl rounded-bl-sm px-3.5 py-2.5 text-sm leading-relaxed"
         }
       >
         {msg.content}
@@ -76,7 +76,7 @@ function SuggestedPrompts({ onSelect }: { onSelect: (p: string) => void }) {
           key={p}
           type="button"
           onClick={() => onSelect(p)}
-          className="text-[11px] px-2.5 py-1 rounded-full border border-[#E4E4E7] text-[#52525B] hover:border-[#18181B] hover:text-[#09090B] transition-colors bg-white"
+          className="text-[11px] px-2.5 py-1 rounded-full border border-[#E3E9E6] text-[#5B635E] hover:border-[#0D6B5E] hover:text-[#151918] transition-colors bg-white"
         >
           {p}
         </button>
@@ -197,7 +197,7 @@ function PatientAssistantInner({ patientId }: PatientAssistantProps) {
         type="button"
         onClick={handleOpen}
         aria-label="Open AI Assistant"
-        className="fixed bottom-18 right-4 sm:bottom-6 sm:right-6 z-40 w-[52px] h-[52px] bg-[#18181B] text-white rounded-full shadow-xl flex items-center justify-center hover:bg-[#27272A] active:scale-95 transition-all focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#18181B]"
+        className="fixed bottom-18 right-4 sm:bottom-6 sm:right-6 z-40 w-[52px] h-[52px] bg-[#0D6B5E] text-white rounded-full shadow-xl flex items-center justify-center hover:bg-[#09544B] active:scale-95 transition-all focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0D6B5E]"
       >
         <div className="relative">
           <Bot className="h-5 w-5" aria-hidden />
@@ -218,7 +218,7 @@ function PatientAssistantInner({ patientId }: PatientAssistantProps) {
         <button
           type="button"
           onClick={handleRestore}
-          className="flex items-center gap-2 bg-[#18181B] text-white rounded-full shadow-xl px-4 py-2.5 hover:bg-[#27272A] active:scale-95 transition-all"
+          className="flex items-center gap-2 bg-[#0D6B5E] text-white rounded-full shadow-xl px-4 py-2.5 hover:bg-[#09544B] active:scale-95 transition-all"
           aria-label="Restore AI Assistant"
         >
           <Bot className="h-4 w-4" aria-hidden />
@@ -246,7 +246,7 @@ function PatientAssistantInner({ patientId }: PatientAssistantProps) {
         aria-label="DentGrow AI Assistant"
         aria-modal="false"
         className={[
-          "fixed z-40 flex flex-col bg-white border border-[#E4E4E7] shadow-2xl overflow-hidden",
+          "fixed z-40 flex flex-col bg-white border border-[#E3E9E6] shadow-2xl overflow-hidden",
           // Mobile: full width, above bottom tab bar
           "bottom-[4.5rem] left-2 right-2 rounded-2xl",
           // Desktop: fixed position bottom-right
@@ -256,7 +256,7 @@ function PatientAssistantInner({ patientId }: PatientAssistantProps) {
         ].join(" ")}
       >
         {/* ── Header ─────────────────────────────────────────────────── */}
-        <div className="px-4 py-3 border-b border-[#E4E4E7] flex items-center gap-2.5 shrink-0 bg-[#18181B] rounded-t-2xl">
+        <div className="px-4 py-3 border-b border-[#E3E9E6] flex items-center gap-2.5 shrink-0 bg-[#0D6B5E] rounded-t-2xl">
           <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center shrink-0">
             <Sparkles className="h-4 w-4 text-white" aria-hidden />
           </div>
@@ -297,14 +297,14 @@ function PatientAssistantInner({ patientId }: PatientAssistantProps) {
           {/* Welcome state */}
           {messages.length === 0 && (
             <div className="flex flex-col items-center text-center pt-4 pb-2 gap-3">
-              <div className="w-12 h-12 rounded-2xl bg-[#F4F4F5] flex items-center justify-center">
-                <Sparkles className="h-5 w-5 text-[#71717A]" aria-hidden />
+              <div className="w-12 h-12 rounded-2xl bg-[#EEF2F0] flex items-center justify-center">
+                <Sparkles className="h-5 w-5 text-[#737A76]" aria-hidden />
               </div>
               <div>
-                <p className="text-sm font-medium text-[#09090B]">
+                <p className="text-sm font-medium text-[#151918]">
                   Hi! I&apos;m your dental assistant.
                 </p>
-                <p className="text-xs text-[#71717A] mt-1 leading-relaxed">
+                <p className="text-xs text-[#737A76] mt-1 leading-relaxed">
                   {isPatientBookingEnabled()
                     ? "I can help you book appointments, check clinic hours, view your queue status, and more."
                     : "I can help you check clinic hours, view your queue status, see your appointments, and more."}
@@ -333,7 +333,7 @@ function PatientAssistantInner({ patientId }: PatientAssistantProps) {
         )}
 
         {/* ── Input area ──────────────────────────────────────────────── */}
-        <div className="px-3 py-2.5 border-t border-[#E4E4E7] flex items-end gap-2 shrink-0 bg-white">
+        <div className="px-3 py-2.5 border-t border-[#E3E9E6] flex items-end gap-2 shrink-0 bg-white">
           <textarea
             ref={inputRef}
             value={input}
@@ -344,14 +344,14 @@ function PatientAssistantInner({ patientId }: PatientAssistantProps) {
             aria-label="Chat message"
             rows={1}
             maxLength={500}
-            className="flex-1 border border-[#E4E4E7] rounded-xl px-3 py-2 text-sm text-[#09090B] placeholder:text-[#A1A1AA] outline-none focus:border-[#18181B] focus:ring-2 focus:ring-[#18181B]/10 disabled:opacity-50 resize-none min-h-[38px] max-h-[100px] overflow-y-auto leading-snug"
+            className="flex-1 border border-[#E3E9E6] rounded-xl px-3 py-2 text-sm text-[#151918] placeholder:text-[#9BA39D] outline-none focus:border-[#0D6B5E] focus:ring-2 focus:ring-[#0D6B5E]/10 disabled:opacity-50 resize-none min-h-[38px] max-h-[100px] overflow-y-auto leading-snug"
           />
           <button
             type="button"
             onClick={() => handleSend()}
             disabled={isLoading || !input.trim()}
             aria-label="Send message"
-            className="w-9 h-9 bg-[#18181B] text-white rounded-xl flex items-center justify-center hover:bg-[#27272A] disabled:opacity-40 active:scale-95 transition-all shrink-0 self-end"
+            className="w-9 h-9 bg-[#0D6B5E] text-white rounded-xl flex items-center justify-center hover:bg-[#09544B] disabled:opacity-40 active:scale-95 transition-all shrink-0 self-end"
           >
             <Send className="h-3.5 w-3.5" aria-hidden />
           </button>

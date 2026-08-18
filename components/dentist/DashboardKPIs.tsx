@@ -13,25 +13,38 @@ import {
   Footprints,
 } from "lucide-react";
 
+type KPITone = "neutral" | "mint" | "amber" | "cool";
+
+const TONE_STYLES: Record<KPITone, { card: string; iconBg: string; iconText: string }> = {
+  neutral: { card: "bg-white border-[#E3E9E6]", iconBg: "bg-[#EEF2F0]", iconText: "text-[#737A76]" },
+  mint:    { card: "bg-[#F6FBF9] border-[#DCEEE8]", iconBg: "bg-[#E8F4F0]", iconText: "text-[#0D6B5E]" },
+  amber:   { card: "bg-[#FFFCF6] border-[#F5E6C6]", iconBg: "bg-[#FEF3E2]", iconText: "text-[#B45309]" },
+  cool:    { card: "bg-[#F7F9FB] border-[#E1E7ED]", iconBg: "bg-[#EBF1F7]", iconText: "text-[#3F5872]" },
+};
+
 interface KPICardProps {
   label: string;
   value: string;
   icon: React.ReactNode;
   sub?: string;
+  tone?: KPITone;
 }
 
-function KPICard({ label, value, icon, sub }: KPICardProps) {
+function KPICard({ label, value, icon, sub, tone = "neutral" }: KPICardProps) {
+  const styles = TONE_STYLES[tone];
   return (
-    <div className="bg-white border border-[#E4E4E7] rounded-xl p-5 space-y-3">
+    <div
+      className={`rounded-xl border p-5 space-y-3 shadow-[0_1px_2px_rgba(21,25,24,0.04)] transition-shadow duration-200 hover:shadow-[0_4px_12px_-2px_rgba(21,25,24,0.06)] ${styles.card}`}
+    >
       <div className="flex items-center justify-between">
-        <p className="text-xs font-medium text-[#71717A] tracking-wide">{label}</p>
-        <div className="h-7 w-7 rounded-lg bg-[#F4F4F5] flex items-center justify-center text-[#71717A]">
+        <p className="text-xs font-medium text-[#737A76] tracking-wide">{label}</p>
+        <div className={`h-7 w-7 rounded-lg flex items-center justify-center shrink-0 ${styles.iconBg} ${styles.iconText}`}>
           {icon}
         </div>
       </div>
       <div>
-        <p className="text-2xl font-semibold text-[#09090B] tracking-tight">{value}</p>
-        {sub && <p className="text-xs text-[#71717A] mt-0.5">{sub}</p>}
+        <p className="text-3xl font-bold text-[#151918] tracking-tight leading-none">{value}</p>
+        {sub && <p className="text-xs text-[#737A76] mt-1.5">{sub}</p>}
       </div>
     </div>
   );
@@ -99,36 +112,42 @@ export async function DashboardKPIs({ clinicId: propClinicId, timezone: propTime
         value={kpis.seenPatientsToday.toString()}
         icon={<UserCheck className="h-3.5 w-3.5" aria-hidden />}
         sub="Completed"
+        tone="mint"
       />
       <KPICard
         label="Completion Rate"
         value={`${completionPct}%`}
         icon={<TrendingUp className="h-3.5 w-3.5" aria-hidden />}
         sub={kpis.totalAppointmentsToday > 0 ? `${kpis.seenPatientsToday} of ${kpis.totalAppointmentsToday}` : undefined}
+        tone="cool"
       />
       <KPICard
         label="Waiting Now"
         value={kpis.waitingPatients.toString()}
         icon={<Clock className="h-3.5 w-3.5" aria-hidden />}
         sub="In queue"
+        tone={kpis.waitingPatients > 0 ? "amber" : "neutral"}
       />
       <KPICard
         label="No-Shows"
         value={kpis.noShowsToday.toString()}
         icon={<AlertCircle className="h-3.5 w-3.5" aria-hidden />}
         sub="Today"
+        tone={kpis.noShowsToday > 0 ? "amber" : "neutral"}
       />
       <KPICard
         label="Revenue"
         value={formatCurrency(kpis.revenueToday)}
         icon={<DollarSign className="h-3.5 w-3.5" aria-hidden />}
         sub="Today"
+        tone="mint"
       />
       <KPICard
         label="New Patients"
         value={kpis.newPatientsToday.toString()}
         icon={<UserPlus className="h-3.5 w-3.5" aria-hidden />}
         sub="Registered today"
+        tone="cool"
       />
       <KPICard
         label="Walk-ins"

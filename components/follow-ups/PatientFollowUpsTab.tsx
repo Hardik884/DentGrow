@@ -241,7 +241,7 @@ function FollowUpTimelineRow({
       patientName={patientName}
       role={role}
       title="Follow-up Appointment"
-      triggerClassName="w-full flex items-start justify-between px-4 py-3 hover:bg-[#FAFAFA] transition-colors gap-3 text-left"
+      triggerClassName="w-full flex items-start justify-between px-4 py-3 hover:bg-[#F6F8F6] transition-colors gap-3 text-left"
     >
       <span className="min-w-0 flex-1 space-y-1">
         {/* Type label */}

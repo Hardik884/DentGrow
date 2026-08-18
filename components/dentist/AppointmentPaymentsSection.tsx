@@ -205,10 +205,10 @@ function TreatmentPaymentCard({
 }) {
   const showStats = cost != null;
   return (
-    <div className="rounded-lg border border-[#E4E4E7] p-4 space-y-3">
+    <div className="rounded-lg border border-[#E3E9E6] p-4 space-y-3">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-sm font-semibold text-[#09090B] truncate">{title}</p>
+          <p className="text-sm font-semibold text-[#151918] truncate">{title}</p>
           {subtitle && <p className="text-xs text-gray-500 mt-0.5">{subtitle}</p>}
         </div>
         {statusLabel && statusVariant && (
@@ -247,11 +247,11 @@ function PaymentRows({
     return <p className="text-xs text-gray-400">{emptyLabel}</p>;
   }
   return (
-    <ul className="divide-y divide-[#F4F4F5] rounded-lg bg-[#FAFAFA] px-3">
+    <ul className="divide-y divide-[#EEF2F0] rounded-lg bg-[#F6F8F6] px-3">
       {payments.map((p) => (
         <li key={p.id} className="flex items-center justify-between gap-3 py-2">
           <div className="min-w-0">
-            <p className="text-xs font-medium text-[#09090B]">
+            <p className="text-xs font-medium text-[#151918]">
               {PAYMENT_METHOD_LABELS[p.method as PaymentMethod]}
             </p>
             <p className="text-[11px] text-gray-400">{formatDate(p.payment_date)}</p>
@@ -276,10 +276,10 @@ function Stat({
   accent?: "green" | "red";
 }) {
   const color =
-    accent === "green" ? "text-[#16A34A]" : accent === "red" ? "text-[#DC2626]" : "text-[#09090B]";
+    accent === "green" ? "text-[#16A34A]" : accent === "red" ? "text-[#DC2626]" : "text-[#151918]";
   return (
-    <div className="rounded-lg bg-white border border-[#E4E4E7] px-3 py-2">
-      <p className="text-[10px] uppercase tracking-wide text-[#71717A]">{label}</p>
+    <div className="rounded-lg bg-white border border-[#E3E9E6] px-3 py-2">
+      <p className="text-[10px] uppercase tracking-wide text-[#737A76]">{label}</p>
       <p className={`text-sm font-semibold ${color}`}>{value}</p>
     </div>
   );

@@ -40,7 +40,7 @@ export default async function DashboardLayout({
     profile.role === "dentist" && isBusinessBrainEnabled(profile.clinic_id);
 
   return (
-    <div className="flex h-screen overflow-hidden bg-[#FAFAFA]">
+    <div className="flex h-screen overflow-hidden bg-[#F6F8F6]">
       <DashboardSidebar 
         role={profile.role} 
         fullName={profile.full_name ?? ""} 

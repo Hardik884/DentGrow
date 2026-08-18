@@ -17,8 +17,8 @@ export default function AnalyticsLayout({
     <div className="p-6 space-y-6 max-w-screen-xl">
       <div className="flex items-start justify-between gap-4 mb-6">
         <div>
-          <h1 className="text-xl font-semibold text-[#09090B] tracking-tight">Analytics</h1>
-          <p className="text-sm text-[#71717A] mt-0.5">
+          <h1 className="text-xl font-semibold text-[#151918] tracking-tight">Analytics</h1>
+          <p className="text-sm text-[#737A76] mt-0.5">
             Clinic performance overview
           </p>
         </div>

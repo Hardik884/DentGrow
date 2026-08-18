@@ -43,7 +43,7 @@ export default async function BusinessBrainPage() {
   } catch {
     return (
       <PageShell subtitle="Your daily clinic check-up">
-        <div className="bg-white border border-[#E4E4E7] rounded-xl">
+        <div className="bg-white border border-[#E3E9E6] rounded-xl">
           <EmptyState
             icon={<AlertTriangle className="h-5 w-5" />}
             title="Couldn't check your clinic today"
@@ -108,10 +108,10 @@ function PageShell({
   children: React.ReactNode;
 }) {
   return (
-    <div className="p-6 space-y-6 max-w-screen-xl">
+    <div className="p-6 lg:p-8 space-y-6 max-w-screen-xl">
       <div>
-        <h1 className="text-xl font-semibold text-[#09090B] tracking-tight">Actions</h1>
-        <p className="text-sm text-[#71717A] mt-0.5">{subtitle}</p>
+        <h1 className="text-2xl font-semibold text-[#151918] tracking-tight">Actions</h1>
+        <p className="text-sm text-[#737A76] mt-0.5">{subtitle}</p>
       </div>
       {children}
     </div>

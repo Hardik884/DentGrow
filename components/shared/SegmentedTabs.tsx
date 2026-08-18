@@ -27,7 +27,7 @@ export function SegmentedTabs({ tabs, panels, defaultKey }: SegmentedTabsProps) 
     <div className="space-y-4">
       <div
         role="tablist"
-        className="inline-flex items-center gap-0.5 rounded-lg bg-[#F4F4F5] p-1 no-print"
+        className="inline-flex items-center gap-0.5 rounded-lg bg-[#EEF2F0] p-1 no-print"
       >
         {tabs.map((tab) => (
           <button
@@ -37,10 +37,10 @@ export function SegmentedTabs({ tabs, panels, defaultKey }: SegmentedTabsProps) 
             aria-selected={active === tab.key}
             onClick={() => setActive(tab.key)}
             className={cn(
-              "px-3.5 py-1.5 text-sm font-medium rounded-md transition-colors",
+              "px-3.5 py-1.5 text-sm font-medium rounded-md transition-all duration-150 cursor-pointer",
               active === tab.key
-                ? "bg-white text-[#09090B] shadow-sm"
-                : "text-[#71717A] hover:text-[#09090B]"
+                ? "bg-white text-[#151918] shadow-sm"
+                : "text-[#737A76] hover:text-[#151918]"
             )}
           >
             {tab.label}

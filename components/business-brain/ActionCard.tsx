@@ -24,9 +24,9 @@ const ACTION_ICON: Record<PrimaryActionKind, typeof MessageCircle> = {
 };
 
 const PRIMARY_BTN_CLS =
-  "inline-flex items-center justify-center gap-2 rounded-lg bg-[#09090B] text-white px-4 py-2.5 text-sm font-semibold hover:bg-[#27272A] transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#09090B] focus-visible:ring-offset-2";
+  "inline-flex items-center justify-center gap-2 rounded-lg bg-[#0D6B5E] text-white px-4 py-2.5 text-sm font-semibold shadow-sm hover:bg-[#09544B] transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0D6B5E] focus-visible:ring-offset-2";
 const SECONDARY_BTN_CLS =
-  "inline-flex items-center justify-center gap-2 rounded-lg border border-[#E4E4E7] text-[#18181B] px-3.5 py-2 text-sm font-medium hover:bg-[#FAFAFA] transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#18181B]/20";
+  "inline-flex items-center justify-center gap-2 rounded-lg border border-[#E3E9E6] text-[#0D6B5E] px-3.5 py-2 text-sm font-medium hover:bg-[#F6F8F6] transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0D6B5E]/20";
 
 /**
  * One thing to do, right column.
@@ -77,20 +77,20 @@ export function ActionCard({ action, contactSummary }: ActionCardProps) {
   );
 
   return (
-    <section className="bg-white border border-[#E4E4E7] rounded-xl overflow-hidden flex flex-col h-full">
+    <section className="bg-white border border-[#E3E9E6] rounded-xl overflow-hidden flex flex-col h-full">
       <div className="px-5 py-4 flex-1">
         <div className="flex items-center gap-2 mb-1">
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-[#52525B] bg-[#F4F4F5] rounded px-2 py-0.5">
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-[#5B635E] bg-[#EEF2F0] rounded px-2 py-0.5">
             {action.ownerLabel}
           </span>
-          <span className="text-[11px] text-[#A1A1AA]">{action.timeframeLabel}</span>
+          <span className="text-[11px] text-[#9BA39D]">{action.timeframeLabel}</span>
         </div>
-        <h3 className="text-[15px] font-semibold text-[#09090B] leading-snug">{action.title}</h3>
-        <p className="text-sm text-[#71717A] mt-1 leading-relaxed">{action.reason}</p>
+        <h3 className="text-[15px] font-semibold text-[#151918] leading-snug">{action.title}</h3>
+        <p className="text-sm text-[#737A76] mt-1 leading-relaxed">{action.reason}</p>
 
         {/* Compact supporting info — who's reachable, shown even while collapsed. */}
         {contactSummary && visibleActions.some((a) => a.kind === "contact_patients") && (
-          <p className="text-xs text-[#A1A1AA] mt-2">
+          <p className="text-xs text-[#9BA39D] mt-2">
             {contactSummary.reachableTotal > 0
               ? `${contactSummary.reachableTotal} ${contactSummary.reachableTotal === 1 ? "patient" : "patients"} ready to contact${
                   contactSummary.contacted > 0 ? ` · ${contactSummary.contacted} already contacted` : ""
@@ -164,11 +164,11 @@ export function ActionCard({ action, contactSummary }: ActionCardProps) {
             type="button"
             onClick={() => setStepsOpen((v) => !v)}
             aria-expanded={stepsOpen}
-            className="w-full flex items-center justify-between gap-3 px-5 py-2.5 border-t border-[#F4F4F5] text-left hover:bg-[#FAFAFA] transition-colors cursor-pointer"
+            className="w-full flex items-center justify-between gap-3 px-5 py-2.5 border-t border-[#EEF2F0] text-left hover:bg-[#F6F8F6] transition-colors cursor-pointer"
           >
-            <span className="text-sm text-[#52525B]">{stepsOpen ? "Hide steps" : "Steps"}</span>
+            <span className="text-sm text-[#5B635E]">{stepsOpen ? "Hide steps" : "Steps"}</span>
             <ChevronDown
-              className={cn("h-4 w-4 text-[#A1A1AA] shrink-0 transition-transform", stepsOpen && "rotate-180")}
+              className={cn("h-4 w-4 text-[#9BA39D] shrink-0 transition-transform", stepsOpen && "rotate-180")}
               aria-hidden
             />
           </button>
@@ -190,7 +190,7 @@ export function ActionCard({ action, contactSummary }: ActionCardProps) {
                               "mt-0.5 shrink-0 h-4 w-4 rounded border flex items-center justify-center transition-colors",
                               isChecked
                                 ? "bg-[#16A34A] border-[#16A34A]"
-                                : "border-[#D4D4D8] group-hover:border-[#A1A1AA]",
+                                : "border-[#CBD5D0] group-hover:border-[#9BA39D]",
                             )}
                           >
                             {isChecked && <Check className="h-3 w-3 text-white" strokeWidth={3} />}
@@ -198,7 +198,7 @@ export function ActionCard({ action, contactSummary }: ActionCardProps) {
                           <span
                             className={cn(
                               "text-sm leading-relaxed transition-colors",
-                              isChecked ? "text-[#A1A1AA] line-through" : "text-[#52525B]",
+                              isChecked ? "text-[#9BA39D] line-through" : "text-[#5B635E]",
                             )}
                           >
                             {item.label}
@@ -210,14 +210,14 @@ export function ActionCard({ action, contactSummary }: ActionCardProps) {
                 </ul>
               )}
               {!hasList && (
-                <p className="text-sm text-[#71717A] leading-relaxed">
+                <p className="text-sm text-[#737A76] leading-relaxed">
                   No checklist for this one — use the link below to work through it directly.
                 </p>
               )}
               {action.moreInfoLink && (
                 <Link
                   href={action.moreInfoLink.href}
-                  className="inline-flex items-center gap-1 text-sm font-medium text-[#18181B] underline underline-offset-2 hover:no-underline"
+                  className="inline-flex items-center gap-1 text-sm font-medium text-[#0D6B5E] underline underline-offset-2 hover:no-underline"
                 >
                   {action.moreInfoLink.label} →
                 </Link>

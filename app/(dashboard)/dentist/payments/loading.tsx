@@ -17,11 +17,11 @@ export default function PaymentsLoading() {
       </div>
 
       {/* Outstanding balances table */}
-      <div className="bg-white border border-[#E4E4E7] rounded-xl overflow-hidden">
-        <div className="px-5 py-4 border-b border-[#E4E4E7]">
+      <div className="bg-white border border-[#E3E9E6] rounded-xl overflow-hidden">
+        <div className="px-5 py-4 border-b border-[#E3E9E6]">
           <Skeleton className="h-4 w-40" />
         </div>
-        <div className="divide-y divide-[#F4F4F5]">
+        <div className="divide-y divide-[#EEF2F0]">
           {Array.from({ length: 8 }).map((_, i) => (
             <div key={i} className="px-5 py-3.5 flex items-center justify-between gap-3">
               <div className="flex items-center gap-3">

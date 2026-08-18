@@ -17,17 +17,17 @@ export default async function SignupPage() {
         <div className="mb-6">
           <DentGrowLogo size={32} withWordmark />
         </div>
-        <h1 className="text-2xl font-semibold text-[#09090B] tracking-tight">Create an account</h1>
-        <p className="text-sm text-[#71717A]">Access your patient portal</p>
+        <h1 className="text-2xl font-semibold text-[#151918] tracking-tight">Create an account</h1>
+        <p className="text-sm text-[#737A76]">Access your patient portal</p>
       </div>
 
-      <div className="bg-white border border-[#E4E4E7] rounded-xl p-6 shadow-sm">
+      <div className="bg-white border border-[#E3E9E6] rounded-xl p-6 shadow-sm">
         <SignupForm clinics={clinics ?? []} />
       </div>
 
-      <p className="text-center text-xs text-[#71717A]">
+      <p className="text-center text-xs text-[#737A76]">
         Already have an account?{" "}
-        <a href="/login" className="text-[#09090B] font-medium hover:underline underline-offset-4">
+        <a href="/login" className="text-[#151918] font-medium hover:underline underline-offset-4">
           Sign in
         </a>
       </p>

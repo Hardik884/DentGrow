@@ -15,13 +15,13 @@ export async function OutstandingBalanceBadge({ patientId, balance: precomputed 
   }
 
   return (
-    <div className="bg-white border border-[#E4E4E7] rounded-xl p-5">
-      <p className="text-xs font-medium text-[#71717A] tracking-wide">Remaining Balance</p>
+    <div className="bg-white border border-[#E3E9E6] rounded-xl p-5">
+      <p className="text-xs font-medium text-[#737A76] tracking-wide">Remaining Balance</p>
       <p className={`text-2xl font-semibold mt-2 tracking-tight ${amount > 0 ? "text-[#DC2626]" : "text-[#16A34A]"}`}>
         {formatCurrency(amount)}
       </p>
       {amount > 0 && (
-        <p className="text-xs text-[#71717A] mt-1">Payment required</p>
+        <p className="text-xs text-[#737A76] mt-1">Payment required</p>
       )}
     </div>
   );

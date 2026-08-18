@@ -9,7 +9,7 @@ import type { ClinicHealth, HealthBand } from "@/lib/business-brain/clinic-healt
 const BAND_COLOR: Record<HealthBand, string> = {
   excellent: "#16A34A",
   good: "#16A34A",
-  attention: "#CA8A04",
+  attention: "#B45309",
   urgent: "#DC2626",
 };
 
@@ -38,7 +38,7 @@ export function HealthMeter({ health, delta }: HealthMeterProps) {
   const dash = (health.score / 100) * circumference;
 
   return (
-    <section className="relative bg-white border border-[#E4E4E7] rounded-xl">
+    <section className="relative bg-white border border-[#E3E9E6] rounded-xl">
       <div className="flex items-center gap-5 px-6 py-5">
         {/* Ring */}
         <div className="relative shrink-0" style={{ width: size, height: size }}>
@@ -48,7 +48,7 @@ export function HealthMeter({ health, delta }: HealthMeterProps) {
               cy={size / 2}
               r={r}
               fill="none"
-              stroke="#F1F1F3"
+              stroke="#EEF2F0"
               strokeWidth={stroke}
             />
             <circle
@@ -64,7 +64,7 @@ export function HealthMeter({ health, delta }: HealthMeterProps) {
             />
           </svg>
           <div className="absolute inset-0 flex items-center justify-center">
-            <span className="text-2xl font-semibold text-[#09090B] tabular-nums leading-none">
+            <span className="text-2xl font-semibold text-[#151918] tabular-nums leading-none">
               {health.score}
             </span>
           </div>
@@ -72,11 +72,11 @@ export function HealthMeter({ health, delta }: HealthMeterProps) {
 
         {/* Verdict */}
         <div className="min-w-0">
-          <div className="text-xs font-medium text-[#71717A] uppercase tracking-wide">Clinic Health</div>
-          <div className="text-xl font-semibold text-[#09090B] mt-0.5" style={{ color }}>
+          <div className="text-xs font-medium text-[#737A76] uppercase tracking-wide">Clinic Health</div>
+          <div className="text-xl font-semibold text-[#151918] mt-0.5" style={{ color }}>
             {health.bandLabel}
           </div>
-          <div className="text-sm text-[#71717A] mt-0.5">
+          <div className="text-sm text-[#737A76] mt-0.5">
             {health.deductions.length === 0
               ? "Nothing is holding your score back today."
               : `${health.deductions.length} thing${health.deductions.length === 1 ? "" : "s"} bringing it down.`}
@@ -89,7 +89,7 @@ export function HealthMeter({ health, delta }: HealthMeterProps) {
             <div className="text-sm font-semibold" style={{ color: BAND_COLOR.excellent }}>
               +{delta.points} Health
             </div>
-            <div className="text-xs text-[#71717A]">{delta.reason}</div>
+            <div className="text-xs text-[#737A76]">{delta.reason}</div>
           </div>
         )}
       </div>
@@ -101,11 +101,11 @@ export function HealthMeter({ health, delta }: HealthMeterProps) {
             type="button"
             onClick={() => setOpen((v) => !v)}
             aria-expanded={open}
-            className="w-full flex items-center justify-between gap-3 px-6 py-2.5 border-t border-[#F4F4F5] text-left hover:bg-[#FAFAFA] transition-colors cursor-pointer"
+            className="w-full flex items-center justify-between gap-3 px-6 py-2.5 border-t border-[#EEF2F0] text-left hover:bg-[#F6F8F6] transition-colors cursor-pointer"
           >
-            <span className="text-sm text-[#52525B]">{open ? "Hide breakdown" : "What's affecting this"}</span>
+            <span className="text-sm text-[#5B635E]">{open ? "Hide breakdown" : "What's affecting this"}</span>
             <ChevronDown
-              className={cn("h-4 w-4 text-[#A1A1AA] shrink-0 transition-transform", open && "rotate-180")}
+              className={cn("h-4 w-4 text-[#9BA39D] shrink-0 transition-transform", open && "rotate-180")}
               aria-hidden
             />
           </button>
@@ -113,8 +113,8 @@ export function HealthMeter({ health, delta }: HealthMeterProps) {
             <ul className="px-6 pb-4 pt-1 space-y-2 animate-fade-in">
               {health.deductions.map((d) => (
                 <li key={d.factor} className="flex items-baseline justify-between gap-4">
-                  <span className="text-sm text-[#52525B]">{d.detail}</span>
-                  <span className="text-sm font-medium text-[#71717A] tabular-nums shrink-0">
+                  <span className="text-sm text-[#5B635E]">{d.detail}</span>
+                  <span className="text-sm font-medium text-[#737A76] tabular-nums shrink-0">
                     &minus;{d.points}
                   </span>
                 </li>

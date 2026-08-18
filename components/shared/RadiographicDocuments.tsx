@@ -95,10 +95,10 @@ export function RadiographicDocuments({
   }
 
   return (
-    <div className="bg-white border border-[#E4E4E7] rounded-xl p-5 space-y-4">
+    <div className="bg-white border border-[#E3E9E6] rounded-xl p-5 space-y-4">
       <div>
-        <h3 className="text-sm font-semibold text-[#09090B]">Radiographic Documents</h3>
-        <p className="text-xs text-[#71717A] mt-0.5">
+        <h3 className="text-sm font-semibold text-[#151918]">Radiographic Documents</h3>
+        <p className="text-xs text-[#737A76] mt-0.5">
           Attach IOPA, OPG or CBCT scans (PDF, JPG, JPEG, PNG — max 10 MB each).
         </p>
       </div>
@@ -119,7 +119,7 @@ export function RadiographicDocuments({
             ))}
           </Select>
 
-          <label className="inline-flex items-center gap-2 px-3 py-2 text-sm border border-dashed border-[#D4D4D8] rounded-lg cursor-pointer hover:bg-[#FAFAFA] text-[#52525B]">
+          <label className="inline-flex items-center gap-2 px-3 py-2 text-sm border border-dashed border-[#CBD5D0] rounded-lg cursor-pointer hover:bg-[#F6F8F6] text-[#5B635E]">
             <Upload className="h-3.5 w-3.5" aria-hidden />
             {uploading ? "Uploading…" : "Upload"}
             <input
@@ -141,21 +141,21 @@ export function RadiographicDocuments({
       )}
 
       {documents.length === 0 ? (
-        <p className="text-sm text-[#A1A1AA]">No documents uploaded.</p>
+        <p className="text-sm text-[#9BA39D]">No documents uploaded.</p>
       ) : (
-        <ul className="divide-y divide-[#F4F4F5]">
+        <ul className="divide-y divide-[#EEF2F0]">
           {documents.map((doc) => {
             const isImage = doc.file_type.startsWith("image/");
             return (
               <li key={doc.id} className="flex items-center justify-between gap-3 py-2.5">
                 <div className="flex items-center gap-2 min-w-0">
                   {isImage ? (
-                    <ImageIcon className="h-4 w-4 shrink-0 text-[#A1A1AA]" aria-hidden />
+                    <ImageIcon className="h-4 w-4 shrink-0 text-[#9BA39D]" aria-hidden />
                   ) : (
-                    <FileText className="h-4 w-4 shrink-0 text-[#A1A1AA]" aria-hidden />
+                    <FileText className="h-4 w-4 shrink-0 text-[#9BA39D]" aria-hidden />
                   )}
                   {doc.document_type && (
-                    <span className="shrink-0 rounded-md bg-[#F4F4F5] px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-[#52525B]">
+                    <span className="shrink-0 rounded-md bg-[#EEF2F0] px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-[#5B635E]">
                       {doc.document_type}
                     </span>
                   )}
@@ -163,13 +163,13 @@ export function RadiographicDocuments({
                     href={doc.url ?? "#"}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="truncate text-sm text-[#09090B] hover:underline"
+                    className="truncate text-sm text-[#151918] hover:underline"
                     title={doc.file_name}
                   >
                     {doc.file_name}
                   </a>
                   {doc.file_size != null && (
-                    <span className="shrink-0 text-xs text-[#A1A1AA]">
+                    <span className="shrink-0 text-xs text-[#9BA39D]">
                       {formatSize(doc.file_size)}
                     </span>
                   )}
@@ -179,7 +179,7 @@ export function RadiographicDocuments({
                     <a
                       href={doc.url}
                       download={doc.file_name}
-                      className="text-[#A1A1AA] hover:text-[#09090B]"
+                      className="text-[#9BA39D] hover:text-[#151918]"
                       aria-label={`Download ${doc.file_name}`}
                     >
                       <Download className="h-3.5 w-3.5" />
@@ -190,7 +190,7 @@ export function RadiographicDocuments({
                       type="button"
                       onClick={() => handleDelete(doc.id)}
                       disabled={isPending}
-                      className="text-[#A1A1AA] hover:text-[#DC2626] disabled:opacity-50"
+                      className="text-[#9BA39D] hover:text-[#DC2626] disabled:opacity-50"
                       aria-label={`Remove ${doc.file_name}`}
                     >
                       <Trash2 className="h-3.5 w-3.5" />

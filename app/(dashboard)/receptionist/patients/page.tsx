@@ -26,7 +26,7 @@ export default async function ReceptionistPatientsPage({ searchParams }: Props) 
   const quickFilters = patientsQuickFilters();
 
   return (
-    <div className="p-6 max-w-screen-xl space-y-4">
+    <div className="p-6 lg:p-8 max-w-screen-xl space-y-4">
       <PageHeader title="Patients" description="Patient directory" />
       <Suspense>
         <QuickFilters trackKeys={quickFilters.trackKeys} chips={quickFilters.chips} />

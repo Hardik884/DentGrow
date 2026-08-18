@@ -31,7 +31,7 @@ export async function PatientDentalChartSection({
 
   if (result.error || !result.data) {
     return (
-      <div className="bg-white border border-[#E4E4E7] rounded-xl p-4">
+      <div className="bg-white border border-[#E3E9E6] rounded-xl p-4">
         <h3 className="font-semibold text-gray-900 mb-2">Dental Chart</h3>
         <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-md px-3 py-2">
           {result.error ?? "Failed to load dental chart."}
@@ -41,7 +41,7 @@ export async function PatientDentalChartSection({
   }
 
   return (
-    <div className="bg-white border border-[#E4E4E7] rounded-xl p-4 space-y-4">
+    <div className="bg-white border border-[#E3E9E6] rounded-xl p-4 space-y-4">
       <div>
         <h3 className="font-semibold text-gray-900">Dental Chart</h3>
         <p className="text-xs text-gray-500 mt-0.5">

@@ -65,7 +65,7 @@ export default async function DentistAppointmentsPage({ searchParams }: Props) {
   const quickFilters = appointmentsQuickFilters(today);
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-6 lg:p-8 space-y-6">
       <PageHeader title="Appointments">
         <NewInquiryButton />
         <AppointmentFormDialog

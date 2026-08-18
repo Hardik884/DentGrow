@@ -8,9 +8,9 @@ interface StatusBadgeProps {
 }
 
 const VARIANT_CLASSES: Record<BadgeVariant, string> = {
-  default: "bg-[#F4F4F5] text-[#71717A]",
+  default: "bg-[#EEF2F0] text-[#737A76]",
   success: "bg-[#F0FDF4] text-[#16A34A] border border-[#BBF7D0]",
-  warning: "bg-[#FEFCE8] text-[#CA8A04] border border-[#FEF08A]",
+  warning: "bg-[#FFFBEB] text-[#B45309] border border-[#FDE68A]",
   error:   "bg-[#FEF2F2] text-[#DC2626] border border-[#FECACA]",
   info:    "bg-[#EFF6FF] text-[#2563EB] border border-[#BFDBFE]",
 };

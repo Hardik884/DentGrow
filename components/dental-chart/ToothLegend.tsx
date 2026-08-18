@@ -26,7 +26,7 @@ export function ToothLegend() {
                 border: `1.5px ${status === "missing" ? "dashed" : "solid"} ${swatch.stroke}`,
               }}
             />
-            <span className="text-xs text-[#71717A]">{TOOTH_STATUS_LABELS[status]}</span>
+            <span className="text-xs text-[#737A76]">{TOOTH_STATUS_LABELS[status]}</span>
           </div>
         );
       })}

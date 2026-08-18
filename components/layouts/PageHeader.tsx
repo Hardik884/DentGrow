@@ -31,15 +31,15 @@ export function PageHeader({ title, description, backHref, action, children }: P
         {backHref && (
           <Link
             href={backHref}
-            className="inline-flex items-center gap-1 text-xs text-[#71717A] hover:text-[#09090B] transition-colors mb-1"
+            className="inline-flex items-center gap-1 text-xs text-[#737A76] hover:text-[#151918] transition-colors mb-1"
           >
             <ChevronLeft className="h-3 w-3" aria-hidden />
             Back
           </Link>
         )}
-        <h1 className="text-xl font-semibold text-[#09090B] tracking-tight">{title}</h1>
+        <h1 className="text-2xl font-semibold text-[#151918] tracking-tight">{title}</h1>
         {description && (
-          <p className="text-sm text-[#71717A]">{description}</p>
+          <p className="text-sm text-[#737A76] mt-0.5">{description}</p>
         )}
       </div>
 

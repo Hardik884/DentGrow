@@ -23,7 +23,7 @@ export function Field({ label, required, error, hint, htmlFor, className, childr
       </Label>
       {children}
       {hint && !error && (
-        <p className="text-xs text-[#71717A]">{hint}</p>
+        <p className="text-xs text-[#737A76]">{hint}</p>
       )}
       {error && (
         <p className="text-xs text-[#DC2626] flex items-center gap-1" role="alert">

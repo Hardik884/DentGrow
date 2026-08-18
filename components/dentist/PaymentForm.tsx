@@ -119,18 +119,18 @@ export function PaymentForm({
         </div>
       )}
 
-      <div className="bg-white border border-[#E4E4E7] rounded-xl overflow-hidden divide-y divide-[#F4F4F5]">
+      <div className="bg-white border border-[#E3E9E6] rounded-xl overflow-hidden divide-y divide-[#EEF2F0]">
         <div className="px-6 py-5 space-y-4">
           {/* Patient */}
           <div className="space-y-1.5" ref={patientRef}>
-            <label className="block text-sm font-medium text-[#09090B]">
+            <label className="block text-sm font-medium text-[#151918]">
               Patient <span className="text-[#DC2626]" aria-hidden>*</span>
             </label>
             {selectedPatientId ? (
               <div className="flex items-center gap-3">
-                <div className="flex-1 flex items-center gap-3 px-3 py-2 bg-[#F4F4F5] border border-[#E4E4E7] rounded-lg">
+                <div className="flex-1 flex items-center gap-3 px-3 py-2 bg-[#EEF2F0] border border-[#E3E9E6] rounded-lg">
                   <PatientAvatar name={selectedPatientName || "P"} size="sm" />
-                  <span className="text-sm font-medium text-[#09090B]">
+                  <span className="text-sm font-medium text-[#151918]">
                     {selectedPatientName || selectedPatientId}
                   </span>
                 </div>
@@ -213,7 +213,7 @@ export function PaymentForm({
           )}
         </div>
 
-        <div className="px-6 py-4 bg-[#FAFAFA] flex items-center justify-end gap-3">
+        <div className="px-6 py-4 bg-[#F6F8F6] flex items-center justify-end gap-3">
           <Button variant="outline" size="sm" type="button" onClick={() => (onCancel ? onCancel() : router.back())}>
             Cancel
           </Button>

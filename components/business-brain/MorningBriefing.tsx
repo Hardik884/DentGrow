@@ -56,12 +56,12 @@ export function MorningBriefing({
       <HealthMeter health={health} />
 
       {allClear ? (
-        <div className="bg-white border border-[#E4E4E7] rounded-xl px-6 py-10 text-center">
+        <div className="bg-white border border-[#E3E9E6] rounded-xl px-6 py-10 text-center">
           <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-[#F0FDF4] mb-3">
             <CheckCircle2 className="h-5 w-5 text-[#16A34A]" aria-hidden />
           </div>
-          <h2 className="text-base font-semibold text-[#09090B]">Everything looks good today</h2>
-          <p className="text-sm text-[#71717A] mt-1">
+          <h2 className="text-base font-semibold text-[#151918]">Everything looks good today</h2>
+          <p className="text-sm text-[#737A76] mt-1">
             Nothing needs your attention right now. Your clinic is running as expected.
           </p>
         </div>
@@ -72,12 +72,12 @@ export function MorningBriefing({
               "columns" conceptually even though the rows below are paired. */}
           <div className="grid grid-cols-2 gap-x-4 lg:gap-x-6">
             <div className="flex items-baseline justify-between">
-              <h2 className="text-sm font-semibold text-[#09090B]">Needs attention</h2>
-              <span className="text-xs text-[#A1A1AA]">{problems.length}</span>
+              <h2 className="text-sm font-semibold text-[#151918]">Needs attention</h2>
+              <span className="text-xs text-[#9BA39D]">{problems.length}</span>
             </div>
             <div className="flex items-baseline justify-between">
-              <h2 className="text-sm font-semibold text-[#09090B]">What to do</h2>
-              <span className="text-xs text-[#A1A1AA]">{actions.length}</span>
+              <h2 className="text-sm font-semibold text-[#151918]">What to do</h2>
+              <span className="text-xs text-[#9BA39D]">{actions.length}</span>
             </div>
           </div>
 

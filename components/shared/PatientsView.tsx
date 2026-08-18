@@ -79,7 +79,7 @@ export function PatientsView({ page, limit, search, filter, baseHref }: Patients
       <form onSubmit={submitSearch} className="flex gap-2 mb-5">
         <div className="relative flex-1 max-w-sm">
           <Search
-            className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#A1A1AA]"
+            className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#9BA39D]"
             aria-hidden
           />
           <Input
@@ -105,7 +105,7 @@ export function PatientsView({ page, limit, search, filter, baseHref }: Patients
       </form>
 
       {search && !showSkeleton && (
-        <p className="text-xs text-[#71717A] mb-3">
+        <p className="text-xs text-[#737A76] mb-3">
           {total} result{total !== 1 ? "s" : ""} for &ldquo;{search}&rdquo;
         </p>
       )}

@@ -23,7 +23,7 @@ export default function GlobalError({
 
   return (
     <html lang="en">
-      <body style={{ margin: 0, fontFamily: "system-ui, sans-serif", background: "#FAFAFA" }}>
+      <body style={{ margin: 0, fontFamily: "system-ui, sans-serif", background: "#F6F8F6" }}>
         <div
           style={{
             minHeight: "100vh",
@@ -34,14 +34,14 @@ export default function GlobalError({
           }}
         >
           <div style={{ maxWidth: "28rem", textAlign: "center" }}>
-            <h1 style={{ fontSize: "1.125rem", fontWeight: 600, color: "#09090B" }}>
+            <h1 style={{ fontSize: "1.125rem", fontWeight: 600, color: "#151918" }}>
               Something went wrong
             </h1>
-            <p style={{ fontSize: "0.875rem", color: "#52525B", marginTop: "0.5rem" }}>
+            <p style={{ fontSize: "0.875rem", color: "#5B635E", marginTop: "0.5rem" }}>
               We hit an unexpected problem. Your data has not been changed.
             </p>
             {error.digest && (
-              <p style={{ fontSize: "0.75rem", color: "#A1A1AA", marginTop: "0.5rem" }}>
+              <p style={{ fontSize: "0.75rem", color: "#9BA39D", marginTop: "0.5rem" }}>
                 Reference: <span style={{ fontFamily: "monospace" }}>{error.digest}</span>
               </p>
             )}
@@ -52,8 +52,8 @@ export default function GlobalError({
                 padding: "0.5rem 1rem",
                 fontSize: "0.875rem",
                 fontWeight: 500,
-                color: "#FAFAFA",
-                background: "#18181B",
+                color: "#FFFFFF",
+                background: "#0D6B5E",
                 border: 0,
                 borderRadius: "0.375rem",
                 cursor: "pointer",

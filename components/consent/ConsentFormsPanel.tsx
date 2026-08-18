@@ -57,15 +57,15 @@ export function ConsentFormsPanel({
       </div>
 
       {initialConsents.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-[#E4E4E7] px-4 py-10 text-center">
-          <FileSignature className="mx-auto h-6 w-6 text-[#A1A1AA]" aria-hidden />
-          <p className="mt-2 text-sm text-[#71717A]">No consent forms yet.</p>
-          <p className="text-xs text-[#A1A1AA]">
+        <div className="rounded-lg border border-dashed border-[#E3E9E6] px-4 py-10 text-center">
+          <FileSignature className="mx-auto h-6 w-6 text-[#9BA39D]" aria-hidden />
+          <p className="mt-2 text-sm text-[#737A76]">No consent forms yet.</p>
+          <p className="text-xs text-[#9BA39D]">
             Create one from a treatment, or upload a signed paper consent.
           </p>
         </div>
       ) : (
-        <ul className="divide-y divide-[#F4F4F5] rounded-lg border border-[#E4E4E7]">
+        <ul className="divide-y divide-[#EEF2F0] rounded-lg border border-[#E3E9E6]">
           {initialConsents.map((c) => {
             const source = c.source as ConsentSource;
             const primaryLabel =
@@ -74,20 +74,20 @@ export function ConsentFormsPanel({
               <li key={c.id} className="flex items-center justify-between gap-3 px-4 py-3">
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
-                    <p className="text-sm font-medium text-[#09090B] truncate">
+                    <p className="text-sm font-medium text-[#151918] truncate">
                       {c.treatment_type || c.template_name}
                     </p>
                     {source === "uploaded" ? (
-                      <span className="inline-flex items-center gap-1 text-[10px] text-[#71717A]">
+                      <span className="inline-flex items-center gap-1 text-[10px] text-[#737A76]">
                         <ImageIcon className="h-3 w-3" aria-hidden /> Uploaded
                       </span>
                     ) : (
-                      <span className="inline-flex items-center gap-1 text-[10px] text-[#71717A]">
+                      <span className="inline-flex items-center gap-1 text-[10px] text-[#737A76]">
                         <FileText className="h-3 w-3" aria-hidden /> Digital
                       </span>
                     )}
                   </div>
-                  <p className="text-xs text-[#71717A] mt-0.5">
+                  <p className="text-xs text-[#737A76] mt-0.5">
                     {c.template_name}
                     {" · "}
                     {c.signed_at

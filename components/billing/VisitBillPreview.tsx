@@ -36,7 +36,7 @@ export async function VisitBillPreview({ appointmentId, baseHref }: VisitBillPre
 
   if (result.error || !result.data) {
     return (
-      <p className="text-sm text-[#71717A]">
+      <p className="text-sm text-[#737A76]">
         {result.error ?? "No bill available for this visit."}
       </p>
     );
@@ -49,7 +49,7 @@ export async function VisitBillPreview({ appointmentId, baseHref }: VisitBillPre
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div>
           <div className="flex items-center gap-2">
-            <p className="text-sm font-semibold text-[#09090B]">Bill · {bill.invoiceNumber}</p>
+            <p className="text-sm font-semibold text-[#151918]">Bill · {bill.invoiceNumber}</p>
             <Badge variant={STATUS_VARIANT[bill.status]}>{STATUS_LABEL[bill.status]}</Badge>
           </div>
           <p className="text-xs text-gray-500 mt-0.5">
@@ -58,7 +58,7 @@ export async function VisitBillPreview({ appointmentId, baseHref }: VisitBillPre
         </div>
         <Link
           href={`${baseHref}/appointments/${appointmentId}/bill`}
-          className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-md border border-[#E4E4E7] text-[#09090B] hover:bg-[#F4F4F5] transition-colors"
+          className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-md border border-[#E3E9E6] text-[#151918] hover:bg-[#EEF2F0] transition-colors"
         >
           <FileText className="h-3.5 w-3.5" aria-hidden />
           View Full Bill
@@ -88,10 +88,10 @@ function Stat({
   accent?: "green" | "red";
 }) {
   const color =
-    accent === "green" ? "text-[#16A34A]" : accent === "red" ? "text-[#DC2626]" : "text-[#09090B]";
+    accent === "green" ? "text-[#16A34A]" : accent === "red" ? "text-[#DC2626]" : "text-[#151918]";
   return (
-    <div className="rounded-lg bg-[#FAFAFA] border border-[#E4E4E7] px-3 py-2">
-      <p className="text-[10px] uppercase tracking-wide text-[#71717A]">{label}</p>
+    <div className="rounded-lg bg-[#F6F8F6] border border-[#E3E9E6] px-3 py-2">
+      <p className="text-[10px] uppercase tracking-wide text-[#737A76]">{label}</p>
       <p className={`text-sm font-semibold ${color}`}>{value}</p>
     </div>
   );

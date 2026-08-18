@@ -39,7 +39,7 @@ export function PatientListTable({
 
   if (patients.length === 0) {
     return (
-      <div className="bg-white border border-[#E4E4E7] rounded-xl">
+      <div className="bg-white border border-[#E3E9E6] rounded-xl">
         <EmptyState
           icon={<Users className="h-5 w-5" aria-hidden />}
           title={search ? "No patients found" : "No patients yet"}
@@ -55,7 +55,7 @@ export function PatientListTable({
 
   return (
     <div className="space-y-3">
-      <div className="bg-white border border-[#E4E4E7] rounded-xl overflow-hidden">
+      <div className="bg-white border border-[#E3E9E6] rounded-xl overflow-hidden">
         <Table>
           <TableHeader>
             <TableRow>
@@ -82,33 +82,33 @@ export function PatientListTable({
                       <PatientAvatar name={patient.name} size="sm" />
                       <Link
                         href={`${baseHref}/patients/${patient.id}`}
-                        className="font-medium text-[#09090B] hover:underline underline-offset-4 transition-colors"
+                        className="font-medium text-[#151918] hover:underline underline-offset-4 transition-colors"
                       >
                         {patient.name}
                       </Link>
                     </div>
                   </TableCell>
 
-                  <TableCell className="text-[#71717A]">
-                    {patient.phone ?? <span className="text-[#D4D4D8]">—</span>}
+                  <TableCell className="text-[#737A76]">
+                    {patient.phone ?? <span className="text-[#CBD5D0]">—</span>}
                   </TableCell>
 
-                  <TableCell className="text-[#71717A]">
+                  <TableCell className="text-[#737A76]">
                     {age !== null || gender ? (
                       <span>
                         {age !== null ? `${age}y` : "—"}
                         {gender ? ` · ${gender}` : ""}
                       </span>
                     ) : (
-                      <span className="text-[#D4D4D8]">—</span>
+                      <span className="text-[#CBD5D0]">—</span>
                     )}
                   </TableCell>
 
-                  <TableCell className="text-center text-[#71717A]">
+                  <TableCell className="text-center text-[#737A76]">
                     {patient.total_visits}
                   </TableCell>
 
-                  <TableCell className="text-[#71717A]">
+                  <TableCell className="text-[#737A76]">
                     {formatDate(patient.last_visit)}
                   </TableCell>
 
@@ -130,7 +130,7 @@ export function PatientListTable({
 
       {/* Pagination */}
       {totalPages > 1 && (
-        <div className="flex items-center justify-between text-xs text-[#71717A]">
+        <div className="flex items-center justify-between text-xs text-[#737A76]">
           <span>
             Showing {from}–{to} of {total} patients
           </span>
@@ -138,7 +138,7 @@ export function PatientListTable({
             {page > 1 && (
               <Link
                 href={pageHref(page - 1)}
-                className="px-3 py-1.5 border border-[#E4E4E7] rounded-lg bg-white hover:bg-[#F4F4F5] transition-colors text-[#09090B]"
+                className="px-3 py-1.5 border border-[#E3E9E6] rounded-lg bg-white hover:bg-[#EEF2F0] transition-colors text-[#151918]"
               >
                 ← Prev
               </Link>
@@ -152,8 +152,8 @@ export function PatientListTable({
                   href={pageHref(p)}
                   className={`px-3 py-1.5 border rounded-lg transition-colors ${
                     p === page
-                      ? "bg-[#18181B] text-white border-[#18181B]"
-                      : "border-[#E4E4E7] bg-white hover:bg-[#F4F4F5] text-[#09090B]"
+                      ? "bg-[#0D6B5E] text-white border-[#0D6B5E]"
+                      : "border-[#E3E9E6] bg-white hover:bg-[#EEF2F0] text-[#151918]"
                   }`}
                 >
                   {p}
@@ -163,7 +163,7 @@ export function PatientListTable({
             {page < totalPages && (
               <Link
                 href={pageHref(page + 1)}
-                className="px-3 py-1.5 border border-[#E4E4E7] rounded-lg bg-white hover:bg-[#F4F4F5] transition-colors text-[#09090B]"
+                className="px-3 py-1.5 border border-[#E3E9E6] rounded-lg bg-white hover:bg-[#EEF2F0] transition-colors text-[#151918]"
               >
                 Next →
               </Link>

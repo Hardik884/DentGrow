@@ -40,7 +40,7 @@ export default async function PortalAppointmentsPage({
         )}
       </div>
 
-      <div className="flex gap-1 border-b border-[#E4E4E7]">
+      <div className="flex gap-1 border-b border-[#E3E9E6]">
         <TabLink href="/portal/appointments" active={scope === "upcoming"}>
           Upcoming
         </TabLink>
@@ -69,8 +69,8 @@ function TabLink({
       className={cn(
         "px-3 py-2 text-sm font-medium border-b-2 -mb-px",
         active
-          ? "border-[#09090B] text-[#09090B]"
-          : "border-transparent text-[#71717A] hover:text-[#09090B]",
+          ? "border-[#151918] text-[#151918]"
+          : "border-transparent text-[#737A76] hover:text-[#151918]",
       )}
     >
       {children}

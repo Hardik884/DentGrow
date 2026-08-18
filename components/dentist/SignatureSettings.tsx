@@ -149,14 +149,14 @@ export function SignatureSettings({ initialUrl }: SignatureSettingsProps) {
 
   return (
     <div className="max-w-2xl">
-      <div className="bg-white border border-[#E4E4E7] rounded-xl overflow-hidden divide-y divide-[#F4F4F5]">
+      <div className="bg-white border border-[#E3E9E6] rounded-xl overflow-hidden divide-y divide-[#EEF2F0]">
         {/* ── Header ─────────────────────────────────────────── */}
         <div className="px-6 py-5 space-y-1">
           <div className="flex items-center gap-2">
-            <PenLine className="h-4 w-4 text-[#18181B]" aria-hidden />
-            <h3 className="text-sm font-semibold text-[#09090B]">Digital Signature</h3>
+            <PenLine className="h-4 w-4 text-[#0D6B5E]" aria-hidden />
+            <h3 className="text-sm font-semibold text-[#151918]">Digital Signature</h3>
           </div>
-          <p className="text-xs text-[#71717A]">
+          <p className="text-xs text-[#737A76]">
             Upload your signature once. It is added automatically to every completed
             treatment your patients view — you never have to sign individually.
           </p>
@@ -164,11 +164,11 @@ export function SignatureSettings({ initialUrl }: SignatureSettingsProps) {
 
         {/* ── Preview ────────────────────────────────────────── */}
         <div className="px-6 py-5 space-y-4">
-          <p className="text-xs font-medium text-[#52525B]">Preview</p>
+          <p className="text-xs font-medium text-[#5B635E]">Preview</p>
 
           {displayUrl ? (
             <div className="inline-flex flex-col gap-2">
-              <div className="relative flex items-center justify-center h-32 w-64 rounded-lg border border-[#E4E4E7] bg-[#FAFAFA] p-3">
+              <div className="relative flex items-center justify-center h-32 w-64 rounded-lg border border-[#E3E9E6] bg-[#F6F8F6] p-3">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={displayUrl}
@@ -177,7 +177,7 @@ export function SignatureSettings({ initialUrl }: SignatureSettingsProps) {
                 />
               </div>
               {previewUrl && (
-                <span className="inline-flex items-center gap-1 text-[11px] text-[#A1A1AA]">
+                <span className="inline-flex items-center gap-1 text-[11px] text-[#9BA39D]">
                   Unsaved preview — click Save Signature to apply.
                 </span>
               )}
@@ -188,15 +188,15 @@ export function SignatureSettings({ initialUrl }: SignatureSettingsProps) {
               )}
             </div>
           ) : (
-            <div className="flex items-center justify-center h-32 w-64 rounded-lg border border-dashed border-[#E4E4E7] bg-[#FAFAFA]">
-              <span className="text-xs text-[#A1A1AA]">No signature uploaded</span>
+            <div className="flex items-center justify-center h-32 w-64 rounded-lg border border-dashed border-[#E3E9E6] bg-[#F6F8F6]">
+              <span className="text-xs text-[#9BA39D]">No signature uploaded</span>
             </div>
           )}
         </div>
 
         {/* ── Upload control ─────────────────────────────────── */}
         <div className="px-6 py-5 space-y-3">
-          <p className="text-xs font-medium text-[#52525B]">
+          <p className="text-xs font-medium text-[#5B635E]">
             {hasSignature || pendingFile ? "Replace signature" : "Upload signature"}
           </p>
 
@@ -235,20 +235,20 @@ export function SignatureSettings({ initialUrl }: SignatureSettingsProps) {
             )}
           </div>
 
-          <p className="text-[11px] text-[#A1A1AA]">PNG or JPG, up to 4 MB.</p>
+          <p className="text-[11px] text-[#9BA39D]">PNG or JPG, up to 4 MB.</p>
 
           {/* Upload progress */}
           {isUploading || progress > 0 ? (
             <div className="space-y-1" aria-live="polite">
-              <div className="h-1.5 w-full rounded-full bg-[#F4F4F5] overflow-hidden">
+              <div className="h-1.5 w-full rounded-full bg-[#EEF2F0] overflow-hidden">
                 <div
                   className={cn(
-                    "h-full rounded-full bg-[#18181B] transition-all duration-200"
+                    "h-full rounded-full bg-[#0D6B5E] transition-all duration-200"
                   )}
                   style={{ width: `${progress}%` }}
                 />
               </div>
-              <p className="text-[11px] text-[#71717A]">
+              <p className="text-[11px] text-[#737A76]">
                 {progress >= 100 ? "Upload complete" : `Uploading… ${progress}%`}
               </p>
             </div>
@@ -256,7 +256,7 @@ export function SignatureSettings({ initialUrl }: SignatureSettingsProps) {
         </div>
 
         {/* ── Actions ────────────────────────────────────────── */}
-        <div className="px-6 py-4 bg-[#FAFAFA] flex items-center justify-between gap-3">
+        <div className="px-6 py-4 bg-[#F6F8F6] flex items-center justify-between gap-3">
           <div>
             {hasSignature && (
               <Button

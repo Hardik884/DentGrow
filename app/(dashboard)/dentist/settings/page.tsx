@@ -64,11 +64,11 @@ export default async function ClinicSettingsPage() {
       {settings?.consent_forms_enabled === true && (
         <a
           href="/dentist/settings/consent-templates"
-          className="flex items-center justify-between rounded-xl border border-[#E4E4E7] bg-white px-5 py-4 hover:border-[#D4D4D8] transition-colors"
+          className="flex items-center justify-between rounded-xl border border-[#E3E9E6] bg-white px-5 py-4 hover:border-[#CBD5D0] transition-colors"
         >
           <div>
-            <p className="text-sm font-semibold text-[#09090B]">Consent Templates</p>
-            <p className="text-xs text-[#71717A] mt-0.5">
+            <p className="text-sm font-semibold text-[#151918]">Consent Templates</p>
+            <p className="text-xs text-[#737A76] mt-0.5">
               Review and edit your clinic&apos;s informed-consent templates (versioned).
             </p>
           </div>

@@ -104,7 +104,7 @@ export function LoginForm({ clinics, resetSuccess }: LoginFormProps) {
         <div className="flex justify-end pt-0.5">
           <a
             href="/forgot-password"
-            className="text-xs text-[#71717A] hover:text-[#09090B] hover:underline underline-offset-4"
+            className="text-xs text-[#737A76] hover:text-[#151918] hover:underline underline-offset-4"
           >
             Forgot password?
           </a>

@@ -21,7 +21,7 @@ export function LoadingSpinner({ size = "md", className, label = "Loading…" }:
     >
       <div
         className={cn(
-          "rounded-full border-[#E4E4E7] border-t-[#18181B] animate-spin",
+          "rounded-full border-[#E3E9E6] border-t-[#0D6B5E] animate-spin",
           SIZE_CLASSES[size]
         )}
       />

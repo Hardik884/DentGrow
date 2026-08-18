@@ -14,7 +14,7 @@ const SIZE_CLASSES = {
 
 // Neutral palette — no bright colors, consistent with the design system
 const PALETTES = [
-  "bg-[#F4F4F5] text-[#52525B]",
+  "bg-[#EEF2F0] text-[#5B635E]",
   "bg-[#EFF6FF] text-[#2563EB]",
   "bg-[#F0FDF4] text-[#16A34A]",
   "bg-[#FEFCE8] text-[#A16207]",

@@ -25,11 +25,11 @@ export default function AnalyticsLoading() {
           ))}
         </div>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4">
-          <div className="bg-white border border-[#E4E4E7] rounded-xl p-5">
+          <div className="bg-white border border-[#E3E9E6] rounded-xl p-5">
             <Skeleton className="h-4 w-36 mb-4" />
             <Skeleton className="h-48 w-full rounded-lg" />
           </div>
-          <div className="bg-white border border-[#E4E4E7] rounded-xl p-5">
+          <div className="bg-white border border-[#E3E9E6] rounded-xl p-5">
             <Skeleton className="h-4 w-24 mb-4" />
             <Skeleton className="h-48 w-full rounded-lg" />
           </div>
@@ -45,11 +45,11 @@ export default function AnalyticsLoading() {
           ))}
         </div>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4">
-          <div className="bg-white border border-[#E4E4E7] rounded-xl p-5">
+          <div className="bg-white border border-[#E3E9E6] rounded-xl p-5">
             <Skeleton className="h-4 w-40 mb-4" />
             <Skeleton className="h-48 w-full rounded-lg" />
           </div>
-          <div className="bg-white border border-[#E4E4E7] rounded-xl p-5">
+          <div className="bg-white border border-[#E3E9E6] rounded-xl p-5">
             <Skeleton className="h-4 w-36 mb-4" />
             <Skeleton className="h-48 w-full rounded-lg" />
           </div>
@@ -64,7 +64,7 @@ export default function AnalyticsLoading() {
             <SkeletonCard key={i} />
           ))}
         </div>
-        <div className="bg-white border border-[#E4E4E7] rounded-xl p-5 mt-4">
+        <div className="bg-white border border-[#E3E9E6] rounded-xl p-5 mt-4">
           <Skeleton className="h-4 w-32 mb-4" />
           <Skeleton className="h-56 w-full rounded-lg" />
         </div>

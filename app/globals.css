@@ -5,62 +5,91 @@
   --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, -apple-system, sans-serif;
   --font-mono: var(--font-geist-mono), ui-monospace, "SF Mono", monospace;
 
-  --color-background: #FAFAFA;
+  /* Surface hierarchy — a very subtle warm grey-green tint separates the page
+     from the white content sitting on top of it, instead of pure white on
+     pure white everywhere. */
+  --color-background: #F6F8F6;
   --color-surface: #FFFFFF;
-  --color-border: #E4E4E7;
-  --color-border-strong: #D4D4D8;
+  --color-surface-secondary: #FAFCFA;
+  --color-surface-muted: #EEF2F0;
+  --color-border: #E3E9E6;
+  --color-border-strong: #CBD5D0;
 
-  --color-text-primary: #09090B;
-  --color-text-secondary: #71717A;
-  --color-text-disabled: #A1A1AA;
+  --color-text-primary: #151918;
+  --color-text-secondary: #737A76;
+  --color-text-disabled: #9BA39D;
 
-  --color-accent: #18181B;
-  --color-accent-hover: #27272A;
-  --color-accent-foreground: #FAFAFA;
+  /* Emerald is the brand accent — used sparingly for primary actions, active
+     states, and DentGrow's AI/intelligence features. Never a background wash. */
+  --color-accent: #0D6B5E;
+  --color-accent-hover: #09544B;
+  --color-accent-foreground: #FFFFFF;
+  --color-accent-soft: #E8F4F0;
+  --color-accent-soft-border: #CFE7E0;
 
   --color-success: #16A34A;
   --color-success-bg: #F0FDF4;
-  --color-warning: #CA8A04;
-  --color-warning-bg: #FEFCE8;
+  --color-success-border: #BBF7D0;
+  --color-warning: #B45309;
+  --color-warning-bg: #FFFBEB;
+  --color-warning-border: #FDE68A;
   --color-danger: #DC2626;
   --color-danger-bg: #FEF2F2;
+  --color-danger-border: #FECACA;
+  --color-info: #2563EB;
+  --color-info-bg: #EFF6FF;
+  --color-info-border: #BFDBFE;
 
   --radius-sm: 6px;
   --radius-DEFAULT: 8px;
   --radius-lg: 12px;
   --radius-xl: 16px;
   --radius-full: 9999px;
+
+  /* Restrained elevation — a soft, low-opacity shadow rather than a floating
+     "glowing card" look. Charcoal-tinted, not pure black. */
+  --shadow-xs: 0 1px 2px rgba(21, 25, 24, 0.04);
+  --shadow-sm: 0 1px 2px rgba(21, 25, 24, 0.04), 0 1px 3px rgba(21, 25, 24, 0.03);
+  --shadow-DEFAULT: 0 2px 6px -2px rgba(21, 25, 24, 0.06), 0 1px 2px rgba(21, 25, 24, 0.04);
+  --shadow-md: 0 6px 16px -4px rgba(21, 25, 24, 0.08), 0 2px 6px -2px rgba(21, 25, 24, 0.05);
+  --shadow-lg: 0 12px 28px -8px rgba(21, 25, 24, 0.12), 0 4px 10px -4px rgba(21, 25, 24, 0.06);
+  --shadow-xl: 0 20px 44px -12px rgba(21, 25, 24, 0.16), 0 8px 16px -6px rgba(21, 25, 24, 0.08);
 }
 
-/* ── Design Tokens ─────────────────────────────────────────────────────────── */
+/* ── Design Tokens (legacy var() aliases — kept for components that read
+   custom properties directly instead of Tailwind's generated utilities) ──── */
 :root {
   /* Backgrounds */
-  --background: #FAFAFA;
+  --background: #F6F8F6;
   --surface: #FFFFFF;
   --surface-raised: #FFFFFF;
+  --surface-secondary: #FAFCFA;
+  --surface-muted: #EEF2F0;
 
   /* Text */
-  --text-primary: #09090B;
-  --text-secondary: #71717A;
-  --text-disabled: #A1A1AA;
+  --text-primary: #151918;
+  --text-secondary: #737A76;
+  --text-disabled: #9BA39D;
 
   /* Borders */
-  --border: #E4E4E7;
-  --border-strong: #D4D4D8;
+  --border: #E3E9E6;
+  --border-strong: #CBD5D0;
 
   /* Accents */
-  --accent: #18181B;
-  --accent-hover: #27272A;
-  --accent-foreground: #FAFAFA;
+  --accent: #0D6B5E;
+  --accent-hover: #09544B;
+  --accent-foreground: #FFFFFF;
+  --accent-soft: #E8F4F0;
+  --accent-soft-border: #CFE7E0;
 
   /* Status */
   --success: #16A34A;
   --success-bg: #F0FDF4;
   --success-border: #BBF7D0;
 
-  --warning: #CA8A04;
-  --warning-bg: #FEFCE8;
-  --warning-border: #FEF08A;
+  --warning: #B45309;
+  --warning-bg: #FFFBEB;
+  --warning-border: #FDE68A;
 
   --danger: #DC2626;
   --danger-bg: #FEF2F2;
@@ -75,6 +104,12 @@
   --radius: 8px;
   --radius-lg: 12px;
   --radius-xl: 16px;
+
+  /* Elevation */
+  --shadow-xs: 0 1px 2px rgba(21, 25, 24, 0.04);
+  --shadow-sm: 0 1px 2px rgba(21, 25, 24, 0.04), 0 1px 3px rgba(21, 25, 24, 0.03);
+  --shadow-md: 0 6px 16px -4px rgba(21, 25, 24, 0.08), 0 2px 6px -2px rgba(21, 25, 24, 0.05);
+  --shadow-lg: 0 12px 28px -8px rgba(21, 25, 24, 0.12), 0 4px 10px -4px rgba(21, 25, 24, 0.06);
 }
 
 /* ── Base Reset ─────────────────────────────────────────────────────────────── */
@@ -89,6 +124,20 @@ html {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 body {
@@ -109,12 +158,12 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #D4D4D8;
+  background: #CBD5D0;
   border-radius: 999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #A1A1AA;
+  background: #9BA39D;
 }
 
 /* ── Focus Styles ──────────────────────────────────────────────────────────── */
@@ -125,8 +174,8 @@ body {
 
 /* ── Selection ─────────────────────────────────────────────────────────────── */
 ::selection {
-  background: #E4E4E7;
-  color: var(--text-primary);
+  background: var(--accent-soft);
+  color: var(--accent-hover);
 }
 
 /* ── Typography utilities ──────────────────────────────────────────────────── */
@@ -202,7 +251,7 @@ body {
 }
 
 .skeleton {
-  background: linear-gradient(90deg, #F4F4F5 25%, #E4E4E7 50%, #F4F4F5 75%);
+  background: linear-gradient(90deg, #EEF2F0 25%, #E3E9E6 50%, #EEF2F0 75%);
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite;
   border-radius: var(--radius-sm);

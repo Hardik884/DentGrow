@@ -31,7 +31,7 @@ export async function AppointmentCard({
 
   if (!appointment) {
     return (
-      <div className="px-5 py-4 text-sm text-[#71717A]">
+      <div className="px-5 py-4 text-sm text-[#737A76]">
         Appointment not found.
       </div>
     );
@@ -40,19 +40,19 @@ export async function AppointmentCard({
   const href = baseHref ? `${baseHref}/appointments/${appointment.id}` : undefined;
 
   const content = (
-    <div className="px-5 py-3.5 flex items-center gap-3 hover:bg-[#FAFAFA] transition-colors group">
+    <div className="px-5 py-3.5 flex items-center gap-3 hover:bg-[#F6F8F6] transition-colors group">
       {!portalView && (
         <PatientAvatar name={appointment.patient.name} size="sm" />
       )}
       <div className="flex-1 min-w-0">
         {!portalView && (
-          <p className="text-sm font-medium text-[#09090B] truncate">
+          <p className="text-sm font-medium text-[#151918] truncate">
             {appointment.patient.name}
           </p>
         )}
         <div className="flex items-center gap-1.5 mt-0.5">
-          <Clock className="h-3 w-3 text-[#A1A1AA] shrink-0" aria-hidden />
-          <p className="text-xs text-[#71717A]">
+          <Clock className="h-3 w-3 text-[#9BA39D] shrink-0" aria-hidden />
+          <p className="text-xs text-[#737A76]">
             {formatDateTimeInTimezone(appointment.scheduled_at, timezone)}
             {" · "}
             {appointment.duration_minutes} min
@@ -66,7 +66,7 @@ export async function AppointmentCard({
             fetches it at all, but this guard protects any future caller that
             supplies data another way). */}
         {!portalView && appointment.chief_complaints && (
-          <p className="text-xs text-[#A1A1AA] truncate mt-0.5">{appointment.chief_complaints}</p>
+          <p className="text-xs text-[#9BA39D] truncate mt-0.5">{appointment.chief_complaints}</p>
         )}
       </div>
       <AppointmentStatusBadge status={appointment.status} />

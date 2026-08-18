@@ -112,7 +112,7 @@ export function SignupForm({ clinics }: SignupFormProps) {
         {isPending ? "Creating account…" : "Create account"}
       </Button>
 
-      <p className="text-xs text-[#71717A] text-center">
+      <p className="text-xs text-[#737A76] text-center">
         For clinic staff accounts, contact your administrator.
       </p>
     </form>

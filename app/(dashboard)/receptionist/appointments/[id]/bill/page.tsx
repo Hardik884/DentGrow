@@ -61,7 +61,7 @@ export default async function ReceptionistBillPage({ params, searchParams }: Pro
         addPhoneHref={`/receptionist/patients/${doc.patient.id}/edit`}
       />
 
-      <div className="border border-[#E4E4E7] rounded-xl overflow-hidden shadow-sm">
+      <div className="border border-[#E3E9E6] rounded-xl overflow-hidden shadow-sm">
         <InvoiceDocument document={doc} audience="staff" timezone={doc.timezone} />
       </div>
     </div>

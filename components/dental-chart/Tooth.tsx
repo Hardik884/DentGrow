@@ -30,20 +30,20 @@ export type ToothVisualState = ToothStatus;
 
 const STATUS_FILL: Record<ToothVisualState, string> = {
   normal: "#FFFFFF",
-  recommended: "#FEFCE8",
+  recommended: "#FFFBEB",
   planned: "#EFF6FF",
   in_progress: "#EFF6FF",
   completed: "#F0FDF4",
-  missing: "#F4F4F5",
+  missing: "#EEF2F0",
 };
 
 const STATUS_STROKE: Record<ToothVisualState, string> = {
-  normal: "#D4D4D8",
+  normal: "#CBD5D0",
   recommended: "#EAB308",
   planned: "#93C5FD",
   in_progress: "#2563EB",
   completed: "#4ADE80",
-  missing: "#D4D4D8",
+  missing: "#CBD5D0",
 };
 
 const STATUS_STROKE_WIDTH: Record<ToothVisualState, number> = {
@@ -143,7 +143,7 @@ export function Tooth({ toothType, arch, status, size = 40, className, ariaLabel
         {isMissing && (
           <path
             d={`M${vbWidth * 0.28},${vbHeight * 0.15} L${vbWidth * 0.72},${vbHeight * 0.92} M${vbWidth * 0.72},${vbHeight * 0.15} L${vbWidth * 0.28},${vbHeight * 0.92}`}
-            stroke="#A1A1AA"
+            stroke="#9BA39D"
             strokeWidth={0.6}
             strokeLinecap="round"
           />

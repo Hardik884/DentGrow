@@ -53,12 +53,12 @@ export function CompleteAppointmentButton({
   }
 
   return (
-    <div className="bg-white border border-[#E4E4E7] rounded-xl p-5 flex items-center justify-between gap-3">
+    <div className="bg-white border border-[#E3E9E6] rounded-xl p-5 flex items-center justify-between gap-3">
       <div>
-        <h3 className="text-sm font-semibold text-[#09090B]">
+        <h3 className="text-sm font-semibold text-[#151918]">
           {isCompleted ? "Appointment Complete" : "Mark as Complete"}
         </h3>
-        <p className="text-xs text-[#71717A] mt-0.5">
+        <p className="text-xs text-[#737A76] mt-0.5">
           {isCompleted
             ? "This appointment has been marked complete."
             : canComplete

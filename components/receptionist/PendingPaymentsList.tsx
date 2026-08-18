@@ -27,11 +27,11 @@ export async function PendingPaymentsList({ search, basePath = "/dentist" }: Pen
   }
 
   return (
-    <div className="bg-white border border-[#E4E4E7] rounded-xl overflow-hidden">
-      <div className="px-5 py-4 border-b border-[#E4E4E7] flex items-center justify-between">
+    <div className="bg-white border border-[#E3E9E6] rounded-xl overflow-hidden">
+      <div className="px-5 py-4 border-b border-[#E3E9E6] flex items-center justify-between">
         <div>
-          <h2 className="text-sm font-semibold text-[#09090B]">Remaining Balances</h2>
-          <p className="text-xs text-[#71717A] mt-0.5">Patients with unpaid amounts</p>
+          <h2 className="text-sm font-semibold text-[#151918]">Remaining Balances</h2>
+          <p className="text-xs text-[#737A76] mt-0.5">Patients with unpaid amounts</p>
         </div>
         {pendingPatients.length > 0 && (
           <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-[#FEF2F2] text-[#DC2626] border border-[#FECACA]">
@@ -55,18 +55,18 @@ export async function PendingPaymentsList({ search, basePath = "/dentist" }: Pen
           }
         />
       ) : (
-        <div className="divide-y divide-[#F4F4F5]">
+        <div className="divide-y divide-[#EEF2F0]">
           {pendingPatients.map((patient) => (
-            <div key={patient.id} className="flex items-center justify-between px-5 py-3 hover:bg-[#FAFAFA] transition-colors">
+            <div key={patient.id} className="flex items-center justify-between px-5 py-3 hover:bg-[#F6F8F6] transition-colors">
               <div>
                 <Link
                   href={`${basePath}/patients/${patient.id}`}
-                  className="text-sm font-medium text-[#09090B] hover:underline underline-offset-4"
+                  className="text-sm font-medium text-[#151918] hover:underline underline-offset-4"
                 >
                   {patient.name}
                 </Link>
                 {patient.phone && (
-                  <p className="text-xs text-[#A1A1AA]">{patient.phone}</p>
+                  <p className="text-xs text-[#9BA39D]">{patient.phone}</p>
                 )}
               </div>
               <div className="flex items-center gap-3">

@@ -189,7 +189,7 @@ export function AppointmentsView({
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-[#F4F4F5] bg-surface text-left text-xs font-semibold text-text-secondary uppercase tracking-wide">
+                  <tr className="border-b border-[#EEF2F0] bg-surface text-left text-xs font-semibold text-text-secondary uppercase tracking-wide">
                     <th className="px-4 py-3">Patient</th>
                     <th className="px-4 py-3">Treating Doctor</th>
                     <th className="px-4 py-3">Date &amp; Time</th>
@@ -199,7 +199,7 @@ export function AppointmentsView({
                     <th className="px-4 py-3 text-right">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[#F4F4F5]">
+                <tbody className="divide-y divide-[#EEF2F0]">
                   {appointments.map((appt) => (
                     <tr key={appt.id} className="hover:bg-surface transition-colors">
                       <td className="px-4 py-3 font-medium text-text-primary">
@@ -210,16 +210,16 @@ export function AppointmentsView({
                           {appt.patient.name}
                         </Link>
                       </td>
-                      <td className="px-4 py-3 text-[#52525B]">
+                      <td className="px-4 py-3 text-[#5B635E]">
                         {appt.dentistName ? appt.dentistName : "—"}
                       </td>
-                      <td className="px-4 py-3 text-[#52525B]">
+                      <td className="px-4 py-3 text-[#5B635E]">
                         {formatDateTimeInTimezone(appt.scheduled_at, clinicTimezone)}
                       </td>
                       <td className="px-4 py-3">
                         <PaymentStatusBadge status={paymentStatuses?.[appt.id]} />
                       </td>
-                      <td className="px-4 py-3 text-[#52525B]">
+                      <td className="px-4 py-3 text-[#5B635E]">
                         {APPOINTMENT_SOURCE_LABELS[appt.source] ?? appt.source}
                       </td>
                       <td className="px-4 py-3">

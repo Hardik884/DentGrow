@@ -110,11 +110,11 @@ export function ClinicSettingsForm({ initialSettings }: ClinicSettingsFormProps)
         </div>
       )}
 
-      <div className="bg-white border border-[#E4E4E7] rounded-xl overflow-hidden divide-y divide-[#F4F4F5]">
+      <div className="bg-white border border-[#E3E9E6] rounded-xl overflow-hidden divide-y divide-[#EEF2F0]">
 
         {/* ── Clinic Info ─────────────────────────────────────── */}
         <div className="px-6 py-5 space-y-4">
-          <h3 className="text-sm font-semibold text-[#09090B]">Clinic Information</h3>
+          <h3 className="text-sm font-semibold text-[#151918]">Clinic Information</h3>
 
           <Field label="Clinic Name" htmlFor="clinic_name" required error={errors.clinic_name?.message}>
             <Input id="clinic_name" type="text" {...register("clinic_name")} disabled={isSubmitting} hasError={!!errors.clinic_name} />
@@ -150,7 +150,7 @@ export function ClinicSettingsForm({ initialSettings }: ClinicSettingsFormProps)
 
         {/* ── Operational ─────────────────────────────────────── */}
         <div className="px-6 py-5 space-y-4">
-          <h3 className="text-sm font-semibold text-[#09090B]">Operational Settings</h3>
+          <h3 className="text-sm font-semibold text-[#151918]">Operational Settings</h3>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Field
@@ -202,7 +202,7 @@ export function ClinicSettingsForm({ initialSettings }: ClinicSettingsFormProps)
 
         {/* ── OPD Consultation Settings ───────────────────────── */}
         <div className="px-6 py-5 space-y-4">
-          <h3 className="text-sm font-semibold text-[#09090B]">OPD Consultation Settings</h3>
+          <h3 className="text-sm font-semibold text-[#151918]">OPD Consultation Settings</h3>
 
           <Field
             label="Default OPD Consultation Fee (₹)"
@@ -235,9 +235,9 @@ export function ClinicSettingsForm({ initialSettings }: ClinicSettingsFormProps)
               disabled={isSubmitting}
               className={cn(
                 "relative inline-flex h-5 w-9 shrink-0 rounded-full border-2 border-transparent transition-colors",
-                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#18181B]",
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0D6B5E]",
                 "disabled:cursor-not-allowed",
-                watch("enable_xray_charges") !== false ? "bg-[#18181B]" : "bg-[#E4E4E7]"
+                watch("enable_xray_charges") !== false ? "bg-[#0D6B5E]" : "bg-[#E3E9E6]"
               )}
               aria-pressed={watch("enable_xray_charges") !== false ? "true" : "false"}
               aria-label="Enable X-ray Charges"
@@ -251,10 +251,10 @@ export function ClinicSettingsForm({ initialSettings }: ClinicSettingsFormProps)
             </button>
 
             <div>
-              <label className="text-sm font-medium text-[#09090B]">
+              <label className="text-sm font-medium text-[#151918]">
                 Enable X-ray Charges
               </label>
-              <p className="text-xs text-[#71717A] mt-0.5">
+              <p className="text-xs text-[#737A76] mt-0.5">
                 When enabled, the X-ray section appears inside treatment forms so dentists can record whether an X-ray was taken and its cost. When disabled, the X-ray section is hidden clinic-wide.
               </p>
             </div>
@@ -263,7 +263,7 @@ export function ClinicSettingsForm({ initialSettings }: ClinicSettingsFormProps)
 
         {/* ── Access Control ─────────────────────────────────────── */}
         <div className="px-6 py-5 space-y-4">
-          <h3 className="text-sm font-semibold text-[#09090B]">Access Control</h3>
+          <h3 className="text-sm font-semibold text-[#151918]">Access Control</h3>
 
           <div className="flex items-start gap-3">
             <button
@@ -275,9 +275,9 @@ export function ClinicSettingsForm({ initialSettings }: ClinicSettingsFormProps)
               disabled={isSubmitting}
               className={cn(
                 "relative inline-flex h-5 w-9 shrink-0 rounded-full border-2 border-transparent transition-colors",
-                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#18181B]",
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0D6B5E]",
                 "disabled:cursor-not-allowed",
-                watch("allow_receptionist_payments") ? "bg-[#18181B]" : "bg-[#E4E4E7]"
+                watch("allow_receptionist_payments") ? "bg-[#0D6B5E]" : "bg-[#E3E9E6]"
               )}
               aria-pressed={watch("allow_receptionist_payments") ? "true" : "false"}
               aria-label="Allow Receptionist to Access Payments"
@@ -291,10 +291,10 @@ export function ClinicSettingsForm({ initialSettings }: ClinicSettingsFormProps)
             </button>
 
             <div>
-              <label className="text-sm font-medium text-[#09090B]">
+              <label className="text-sm font-medium text-[#151918]">
                 Allow Receptionist to Access Payments
               </label>
-              <p className="text-xs text-[#71717A] mt-0.5">
+              <p className="text-xs text-[#737A76] mt-0.5">
                 When enabled, receptionists can view and manage payments. When disabled, payment pages and actions are completely hidden from receptionists.
               </p>
             </div>
@@ -310,9 +310,9 @@ export function ClinicSettingsForm({ initialSettings }: ClinicSettingsFormProps)
               disabled={isSubmitting}
               className={cn(
                 "relative inline-flex h-5 w-9 shrink-0 rounded-full border-2 border-transparent transition-colors",
-                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#18181B]",
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0D6B5E]",
                 "disabled:cursor-not-allowed",
-                watch("show_consultancy_on_dashboard") ? "bg-[#18181B]" : "bg-[#E4E4E7]"
+                watch("show_consultancy_on_dashboard") ? "bg-[#0D6B5E]" : "bg-[#E3E9E6]"
               )}
               aria-pressed={watch("show_consultancy_on_dashboard") ? "true" : "false"}
               aria-label="Show External Consultation Income on Dashboard"
@@ -326,10 +326,10 @@ export function ClinicSettingsForm({ initialSettings }: ClinicSettingsFormProps)
             </button>
 
             <div>
-              <label className="text-sm font-medium text-[#09090B]">
+              <label className="text-sm font-medium text-[#151918]">
                 Show External Consultation Income on Dashboard
               </label>
-              <p className="text-xs text-[#71717A] mt-0.5">
+              <p className="text-xs text-[#737A76] mt-0.5">
                 When enabled, the dashboard shows today&apos;s External Consultation Income card. When disabled, every External Consultation widget is hidden from the dashboard. The External Consultations page stays accessible either way.
               </p>
             </div>
@@ -339,8 +339,8 @@ export function ClinicSettingsForm({ initialSettings }: ClinicSettingsFormProps)
         {/* ── Clinic Hours ─────────────────────────────────────── */}
         <div className="px-6 py-5 space-y-4">
           <div>
-            <h3 className="text-sm font-semibold text-[#09090B]">Clinic Hours</h3>
-            <p className="text-xs text-[#71717A] mt-0.5">
+            <h3 className="text-sm font-semibold text-[#151918]">Clinic Hours</h3>
+            <p className="text-xs text-[#737A76] mt-0.5">
               Defines when appointments can be booked. Days marked closed generate no slots.
             </p>
           </div>
@@ -367,9 +367,9 @@ export function ClinicSettingsForm({ initialSettings }: ClinicSettingsFormProps)
                     disabled={isSubmitting}
                     className={cn(
                       "relative inline-flex h-5 w-9 shrink-0 rounded-full border-2 border-transparent transition-colors",
-                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#18181B]",
+                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0D6B5E]",
                       "disabled:cursor-not-allowed",
-                      isOpen ? "bg-[#18181B]" : "bg-[#E4E4E7]"
+                      isOpen ? "bg-[#0D6B5E]" : "bg-[#E3E9E6]"
                     )}
                     aria-pressed={isOpen ? "true" : "false"}
                     aria-label={`${day.label}: ${isOpen ? "open" : "closed"}`}
@@ -382,7 +382,7 @@ export function ClinicSettingsForm({ initialSettings }: ClinicSettingsFormProps)
                     />
                   </button>
 
-                  <span className={cn("w-8 text-xs font-medium", isOpen ? "text-[#09090B]" : "text-[#A1A1AA]")}>
+                  <span className={cn("w-8 text-xs font-medium", isOpen ? "text-[#151918]" : "text-[#9BA39D]")}>
                     {day.label}
                   </span>
 
@@ -394,7 +394,7 @@ export function ClinicSettingsForm({ initialSettings }: ClinicSettingsFormProps)
                         disabled={isSubmitting}
                         className="w-28 text-xs"
                       />
-                      <span className="text-xs text-[#71717A]">–</span>
+                      <span className="text-xs text-[#737A76]">–</span>
                       <Input
                         type="time"
                         {...register(`clinic_hours.${day.key as DayKey}.close`)}
@@ -403,7 +403,7 @@ export function ClinicSettingsForm({ initialSettings }: ClinicSettingsFormProps)
                       />
                     </div>
                   ) : (
-                    <span className="text-xs text-[#A1A1AA]">Closed</span>
+                    <span className="text-xs text-[#9BA39D]">Closed</span>
                   )}
                 </div>
               );
@@ -412,7 +412,7 @@ export function ClinicSettingsForm({ initialSettings }: ClinicSettingsFormProps)
         </div>
 
         {/* ── Actions ─────────────────────────────────────────── */}
-        <div className="px-6 py-4 bg-[#FAFAFA] flex items-center justify-end">
+        <div className="px-6 py-4 bg-[#F6F8F6] flex items-center justify-end">
           <Button type="submit" size="sm" isLoading={isSubmitting}>
             {isSubmitting ? "Saving…" : "Save Settings"}
           </Button>

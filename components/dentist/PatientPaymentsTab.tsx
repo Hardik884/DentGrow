@@ -112,14 +112,14 @@ export async function PatientPaymentsTab({
           No payment records found.
         </div>
       ) : (
-        <div className="bg-white border border-[#E4E4E7] rounded-xl overflow-hidden">
-          <div className="px-5 py-3 border-b border-[#E4E4E7]">
-            <h4 className="text-sm font-semibold text-[#09090B]">Payment History</h4>
+        <div className="bg-white border border-[#E3E9E6] rounded-xl overflow-hidden">
+          <div className="px-5 py-3 border-b border-[#E3E9E6]">
+            <h4 className="text-sm font-semibold text-[#151918]">Payment History</h4>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead className="bg-[#FAFAFA] border-b border-[#E4E4E7]">
-                <tr className="text-left text-xs font-medium text-[#71717A] uppercase tracking-wider">
+              <thead className="bg-[#F6F8F6] border-b border-[#E3E9E6]">
+                <tr className="text-left text-xs font-medium text-[#737A76] uppercase tracking-wider">
                   <th className="px-5 py-3">Date</th>
                   <th className="px-5 py-3">Amount</th>
                   <th className="px-5 py-3">Method</th>
@@ -129,30 +129,30 @@ export async function PatientPaymentsTab({
                   <th className="px-5 py-3">Recorded By</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#F4F4F5]">
+              <tbody className="divide-y divide-[#EEF2F0]">
                 {payments.map((p) => (
-                  <tr key={p.id} className="hover:bg-[#FAFAFA] transition-colors">
-                    <td className="px-5 py-3 whitespace-nowrap text-[#09090B]">
+                  <tr key={p.id} className="hover:bg-[#F6F8F6] transition-colors">
+                    <td className="px-5 py-3 whitespace-nowrap text-[#151918]">
                       {formatDate(p.payment_date)}
                     </td>
                     <td className="px-5 py-3 whitespace-nowrap font-semibold text-[#16A34A]">
                       {formatCurrency(Number(p.amount))}
                     </td>
                     <td className="px-5 py-3 whitespace-nowrap">
-                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-[#F4F4F5] text-[#52525B]">
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-[#EEF2F0] text-[#5B635E]">
                         {PAYMENT_METHOD_LABELS[p.method as PaymentMethod] ?? p.method}
                       </span>
                     </td>
-                    <td className="px-5 py-3 whitespace-nowrap text-[#52525B]">
+                    <td className="px-5 py-3 whitespace-nowrap text-[#5B635E]">
                       {p.payment_type === "opd" ? "OPD" : "Treatment"}
                     </td>
-                    <td className="px-5 py-3 text-[#71717A]">
-                      {p.notes ? <span className="line-clamp-2">{p.notes}</span> : <span className="text-[#A1A1AA]">—</span>}
+                    <td className="px-5 py-3 text-[#737A76]">
+                      {p.notes ? <span className="line-clamp-2">{p.notes}</span> : <span className="text-[#9BA39D]">—</span>}
                     </td>
-                    <td className="px-5 py-3 whitespace-nowrap text-[#09090B]">
+                    <td className="px-5 py-3 whitespace-nowrap text-[#151918]">
                       {formatCurrency(remainingAfter.get(p.id) ?? 0)}
                     </td>
-                    <td className="px-5 py-3 whitespace-nowrap text-[#52525B]">
+                    <td className="px-5 py-3 whitespace-nowrap text-[#5B635E]">
                       {(p.created_by && recorders[p.created_by]) || "—"}
                     </td>
                   </tr>

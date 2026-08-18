@@ -123,7 +123,7 @@ export function Dialog({
     >
       {/* Backdrop */}
       <div
-        className="absolute inset-0 bg-black/40 backdrop-blur-[2px]"
+        className="absolute inset-0 bg-[#0B0F0E]/45 backdrop-blur-[2px]"
         onClick={() => !busy && onClose()}
         aria-hidden="true"
       />
@@ -133,19 +133,19 @@ export function Dialog({
         ref={panelRef}
         tabIndex={-1}
         className={cn(
-          "relative z-10 w-full bg-white rounded-xl border border-[#E4E4E7] shadow-2xl",
+          "relative z-10 w-full bg-white rounded-xl border border-[#E3E9E6] shadow-[0_20px_44px_-12px_rgba(21,25,24,0.20),0_8px_16px_-6px_rgba(21,25,24,0.10)]",
           "max-h-[90vh] flex flex-col overflow-hidden animate-fade-in-up outline-none",
           SIZE_CLASSES[size]
         )}
       >
         {!hideHeader && (
-          <div className="flex items-start justify-between gap-4 px-6 py-4 border-b border-[#E4E4E7] shrink-0">
+          <div className="flex items-start justify-between gap-4 px-6 py-4 border-b border-[#E3E9E6] shrink-0">
             <div className="min-w-0">
               {title && (
-                <h2 className="text-base font-semibold text-[#09090B] truncate">{title}</h2>
+                <h2 className="text-base font-semibold text-[#151918] truncate">{title}</h2>
               )}
               {description && (
-                <p className="text-xs text-[#71717A] mt-0.5">{description}</p>
+                <p className="text-xs text-[#737A76] mt-0.5">{description}</p>
               )}
             </div>
             <button
@@ -153,7 +153,7 @@ export function Dialog({
               onClick={onClose}
               disabled={busy}
               aria-label="Close"
-              className="rounded-lg p-1.5 text-[#71717A] hover:text-[#09090B] hover:bg-[#F4F4F5] transition-colors disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
+              className="rounded-lg p-1.5 text-[#737A76] hover:text-[#151918] hover:bg-[#EEF2F0] transition-colors duration-150 disabled:opacity-40 disabled:cursor-not-allowed shrink-0 cursor-pointer"
             >
               <X className="h-4 w-4" aria-hidden />
             </button>

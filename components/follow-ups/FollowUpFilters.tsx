@@ -38,9 +38,9 @@ const STATUS_OPTIONS = [
 ];
 
 const selectClasses = cn(
-  "w-full h-9 px-3 py-2 text-sm border border-[#E4E4E7] rounded-lg bg-white",
-  "outline-none focus:ring-2 focus:ring-[#18181B] focus:ring-offset-1 focus:border-[#18181B]",
-  "text-[#09090B] cursor-pointer"
+  "w-full h-9 px-3 py-2 text-sm border border-[#E3E9E6] rounded-lg bg-white",
+  "outline-none focus:ring-2 focus:ring-[#0D6B5E] focus:ring-offset-1 focus:border-[#0D6B5E]",
+  "text-[#151918] cursor-pointer"
 );
 
 interface FollowUpFiltersProps {
@@ -101,16 +101,16 @@ export function FollowUpFilters({
   const hasActiveFilters = !!search || !!status || !!treatmentType || !!dateFrom || !!dateTo;
 
   return (
-    <div className="bg-white border border-[#E4E4E7] rounded-xl px-5 py-4 space-y-4">
+    <div className="bg-white border border-[#E3E9E6] rounded-xl px-5 py-4 space-y-4">
       {/* Header row */}
       <div className="flex items-center gap-2">
-        <SlidersHorizontal className="h-4 w-4 text-[#A1A1AA]" aria-hidden />
-        <span className="text-sm font-semibold text-[#09090B]">Filters</span>
+        <SlidersHorizontal className="h-4 w-4 text-[#9BA39D]" aria-hidden />
+        <span className="text-sm font-semibold text-[#151918]">Filters</span>
         {hasActiveFilters && (
           <button
             type="button"
             onClick={handleReset}
-            className="ml-auto flex items-center gap-1 text-xs text-[#71717A] hover:text-[#09090B] transition-colors"
+            className="ml-auto flex items-center gap-1 text-xs text-[#737A76] hover:text-[#151918] transition-colors"
           >
             <X className="h-3 w-3" />
             Reset
@@ -120,7 +120,7 @@ export function FollowUpFilters({
 
       {/* Search */}
       <div className="relative max-w-md">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#A1A1AA]" aria-hidden />
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#9BA39D]" aria-hidden />
         <Input
           type="search"
           value={search}
@@ -136,7 +136,7 @@ export function FollowUpFilters({
       <div className="flex flex-wrap gap-4 items-end">
         {/* Status */}
         <div className="space-y-1.5 min-w-[140px]">
-          <label htmlFor="fu-status" className="text-xs font-medium text-[#71717A] uppercase tracking-wide">
+          <label htmlFor="fu-status" className="text-xs font-medium text-[#737A76] uppercase tracking-wide">
             Status
           </label>
           <select
@@ -153,7 +153,7 @@ export function FollowUpFilters({
 
         {/* Treatment Type */}
         <div className="space-y-1.5 min-w-[180px]">
-          <label htmlFor="fu-treatment-type" className="text-xs font-medium text-[#71717A] uppercase tracking-wide">
+          <label htmlFor="fu-treatment-type" className="text-xs font-medium text-[#737A76] uppercase tracking-wide">
             Treatment Type
           </label>
           <select
@@ -171,7 +171,7 @@ export function FollowUpFilters({
 
         {/* Due Date From */}
         <div className="space-y-1.5">
-          <label className="text-xs font-medium text-[#71717A] uppercase tracking-wide block">
+          <label className="text-xs font-medium text-[#737A76] uppercase tracking-wide block">
             Due From
           </label>
           <CalendarPicker
@@ -185,7 +185,7 @@ export function FollowUpFilters({
 
         {/* Due Date To */}
         <div className="space-y-1.5">
-          <label className="text-xs font-medium text-[#71717A] uppercase tracking-wide block">
+          <label className="text-xs font-medium text-[#737A76] uppercase tracking-wide block">
             Due To
           </label>
           <CalendarPicker

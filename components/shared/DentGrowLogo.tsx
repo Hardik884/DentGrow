@@ -94,7 +94,7 @@ export function DentGrowLogo({
             fontSize: Math.round(size * 0.5),
             fontWeight: 600,
             letterSpacing: "-0.025em",
-            color: "#09090B",
+            color: "#151918",
             lineHeight: 1,
             userSelect: "none",
             fontFamily:

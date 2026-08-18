@@ -208,10 +208,10 @@ export function ToothDetailPanel({
             </div>
           </div>
 
-          <div className="border-t border-[#F4F4F5] pt-4 space-y-2">
+          <div className="border-t border-[#EEF2F0] pt-4 space-y-2">
             <div className="flex items-center justify-between gap-2">
-              <h3 className="text-xs font-semibold text-[#09090B] uppercase tracking-wide flex items-center gap-1.5">
-                <Stethoscope className="h-3.5 w-3.5 text-[#71717A]" aria-hidden />
+              <h3 className="text-xs font-semibold text-[#151918] uppercase tracking-wide flex items-center gap-1.5">
+                <Stethoscope className="h-3.5 w-3.5 text-[#737A76]" aria-hidden />
                 Linked Treatments
               </h3>
               <div className="flex items-center gap-1.5">
@@ -236,14 +236,14 @@ export function ToothDetailPanel({
             </div>
 
             {linkPickerOpen && (
-              <div className="rounded-lg border border-[#E4E4E7] bg-[#FAFAFA] p-3 space-y-2">
+              <div className="rounded-lg border border-[#E3E9E6] bg-[#F6F8F6] p-3 space-y-2">
                 {linkError && (
                   <p className="text-xs text-[#DC2626]">{linkError}</p>
                 )}
                 {loadingTreatments ? (
-                  <p className="text-xs text-[#71717A]">Loading this patient's treatments…</p>
+                  <p className="text-xs text-[#737A76]">Loading this patient's treatments…</p>
                 ) : linkableTreatments.length === 0 ? (
-                  <p className="text-xs text-[#A1A1AA]">
+                  <p className="text-xs text-[#9BA39D]">
                     No other treatments to link — every existing treatment for this patient is already linked here.
                   </p>
                 ) : (
@@ -280,19 +280,19 @@ export function ToothDetailPanel({
             )}
 
             {entry.treatments.length === 0 ? (
-              <p className="text-xs text-[#A1A1AA]">No treatments linked to this tooth yet.</p>
+              <p className="text-xs text-[#9BA39D]">No treatments linked to this tooth yet.</p>
             ) : (
-              <ul className="divide-y divide-[#F4F4F5] border border-[#E4E4E7] rounded-lg overflow-hidden">
+              <ul className="divide-y divide-[#EEF2F0] border border-[#E3E9E6] rounded-lg overflow-hidden">
                 {entry.treatments.map((t) => (
                   <li key={t.id} className="flex items-stretch">
                     <button
                       type="button"
                       onClick={() => setViewingTreatmentId(t.id)}
-                      className="flex-1 min-w-0 flex items-center justify-between gap-3 px-3 py-2 text-left hover:bg-[#FAFAFA] transition-colors"
+                      className="flex-1 min-w-0 flex items-center justify-between gap-3 px-3 py-2 text-left hover:bg-[#F6F8F6] transition-colors"
                     >
                       <span className="min-w-0">
-                        <span className="block text-sm text-[#09090B] truncate">{t.treatment_type}</span>
-                        <span className="block text-[11px] text-[#71717A]">
+                        <span className="block text-sm text-[#151918] truncate">{t.treatment_type}</span>
+                        <span className="block text-[11px] text-[#737A76]">
                           {t.performed_at ? formatDateTime(t.performed_at) : "Not yet performed"}
                           {" · "}
                           {formatCurrency(Number(t.cost))}
@@ -311,7 +311,7 @@ export function ToothDetailPanel({
                       disabled={unlinkingId === t.id}
                       aria-label={`Unlink ${t.treatment_type} from this tooth`}
                       title="Unlink from this tooth"
-                      className="px-2.5 flex items-center justify-center text-[#A1A1AA] hover:text-[#DC2626] hover:bg-[#FEF2F2] transition-colors border-l border-[#F4F4F5] disabled:opacity-40"
+                      className="px-2.5 flex items-center justify-center text-[#9BA39D] hover:text-[#DC2626] hover:bg-[#FEF2F2] transition-colors border-l border-[#EEF2F0] disabled:opacity-40"
                     >
                       <X className="h-3.5 w-3.5" aria-hidden />
                     </button>
@@ -321,13 +321,13 @@ export function ToothDetailPanel({
             )}
           </div>
 
-          <div className="border-t border-[#F4F4F5] pt-4 space-y-2">
-            <h3 className="text-xs font-semibold text-[#09090B] uppercase tracking-wide flex items-center gap-1.5">
-              <HistoryIcon className="h-3.5 w-3.5 text-[#71717A]" aria-hidden />
+          <div className="border-t border-[#EEF2F0] pt-4 space-y-2">
+            <h3 className="text-xs font-semibold text-[#151918] uppercase tracking-wide flex items-center gap-1.5">
+              <HistoryIcon className="h-3.5 w-3.5 text-[#737A76]" aria-hidden />
               History
             </h3>
             {entry.history.length === 0 ? (
-              <p className="text-xs text-[#A1A1AA]">No chart history yet.</p>
+              <p className="text-xs text-[#9BA39D]">No chart history yet.</p>
             ) : (
               <ul className="space-y-2">
                 {entry.history.map((h) => (
@@ -366,8 +366,8 @@ function HistoryRow({ history }: { history: ToothHistory }) {
   }
 
   return (
-    <li className="text-xs text-[#52525B] flex items-start gap-2">
-      <span className="text-[#A1A1AA] tabular-nums shrink-0">{formatDateTime(history.timestamp)}</span>
+    <li className="text-xs text-[#5B635E] flex items-start gap-2">
+      <span className="text-[#9BA39D] tabular-nums shrink-0">{formatDateTime(history.timestamp)}</span>
       <span className="min-w-0">{summary}</span>
     </li>
   );

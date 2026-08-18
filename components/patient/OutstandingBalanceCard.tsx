@@ -8,8 +8,8 @@ export async function OutstandingBalanceCard() {
 
   if (result.error) {
     return (
-      <div className="border border-[#E4E4E7] rounded-xl p-4 bg-[#FAFAFA] text-center">
-        <p className="text-sm text-[#71717A]">Unable to load balance.</p>
+      <div className="border border-[#E3E9E6] rounded-xl p-4 bg-[#F6F8F6] text-center">
+        <p className="text-sm text-[#737A76]">Unable to load balance.</p>
       </div>
     );
   }
@@ -20,7 +20,7 @@ export async function OutstandingBalanceCard() {
         <CheckCircle2 className="h-5 w-5 text-[#16A34A] shrink-0" aria-hidden />
         <div>
           <p className="text-sm font-medium text-[#16A34A]">No remaining balance</p>
-          <p className="text-xs text-[#71717A] mt-0.5">Your account is all clear.</p>
+          <p className="text-xs text-[#737A76] mt-0.5">Your account is all clear.</p>
         </div>
       </div>
     );
@@ -33,9 +33,9 @@ export async function OutstandingBalanceCard() {
           <AlertCircle className="h-4 w-4 text-[#DC2626] shrink-0" aria-hidden />
           <p className="text-sm font-medium text-[#DC2626]">Remaining Balance</p>
         </div>
-        <p className="text-lg font-semibold text-[#09090B]">{formatCurrency(balance)}</p>
+        <p className="text-lg font-semibold text-[#151918]">{formatCurrency(balance)}</p>
       </div>
-      <p className="text-xs text-[#71717A] mt-1.5">Please contact the clinic to arrange payment.</p>
+      <p className="text-xs text-[#737A76] mt-1.5">Please contact the clinic to arrange payment.</p>
     </div>
   );
 }

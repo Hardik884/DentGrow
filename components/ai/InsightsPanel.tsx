@@ -11,16 +11,16 @@ async function InsightsPanelInner() {
   }
 
   return (
-    <div className="bg-white border border-[#E4E4E7] rounded-xl overflow-hidden">
-      <div className="px-5 py-4 border-b border-[#E4E4E7] flex items-center gap-2">
-        <Sparkles className="h-3.5 w-3.5 text-[#71717A]" aria-hidden />
-        <h2 className="text-sm font-semibold text-[#09090B]">AI Insights</h2>
+    <div className="bg-white border border-[#E3E9E6] rounded-xl overflow-hidden">
+      <div className="px-5 py-4 border-b border-[#E3E9E6] flex items-center gap-2">
+        <Sparkles className="h-3.5 w-3.5 text-[#737A76]" aria-hidden />
+        <h2 className="text-sm font-semibold text-[#151918]">AI Insights</h2>
       </div>
       <div className="px-5 py-4">
         <ul className="space-y-2.5">
           {result.data.map((insight, i) => (
-            <li key={i} className="flex gap-2.5 text-sm text-[#09090B] leading-relaxed">
-              <span className="text-[#A1A1AA] shrink-0 mt-0.5">·</span>
+            <li key={i} className="flex gap-2.5 text-sm text-[#151918] leading-relaxed">
+              <span className="text-[#9BA39D] shrink-0 mt-0.5">·</span>
               <span>{insight}</span>
             </li>
           ))}

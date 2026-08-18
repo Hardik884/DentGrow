@@ -59,13 +59,13 @@ export default async function ReceptionistDashboardPage() {
       <div className="space-y-6 mt-4">
         {/* Today's Appointments */}
         <section>
-          <h2 className="text-base font-semibold text-[#09090B] mb-3">Today&apos;s Appointments</h2>
+          <h2 className="text-base font-semibold text-[#151918] mb-3">Today&apos;s Appointments</h2>
           <TodayAppointmentList />
         </section>
 
         {/* Live Queue */}
         <section>
-          <h2 className="text-base font-semibold text-[#09090B] mb-3">Live Queue</h2>
+          <h2 className="text-base font-semibold text-[#151918] mb-3">Live Queue</h2>
           <QueueBoard initialQueue={initialQueue} clinicId={clinicId} metrics={metrics} />
         </section>
       </div>

@@ -174,7 +174,7 @@ function FollowUpTable({
           <Link
             key={f.id}
             href={`/dentist/follow-ups/${f.id}`}
-            className="flex items-start justify-between gap-4 px-4 py-3 hover:bg-[#FAFAFA] transition-colors"
+            className="flex items-start justify-between gap-4 px-4 py-3 hover:bg-[#F6F8F6] transition-colors"
           >
             {/* Left: info */}
             <div className="min-w-0 flex-1 space-y-1">

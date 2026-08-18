@@ -98,11 +98,11 @@ export function AvailabilityRulesManager({ initialRules }: AvailabilityRulesMana
         </div>
       )}
 
-      <div className="bg-white border border-[#E4E4E7] rounded-xl overflow-hidden">
-        <div className="px-5 py-4 border-b border-[#E4E4E7] flex items-center justify-between">
+      <div className="bg-white border border-[#E3E9E6] rounded-xl overflow-hidden">
+        <div className="px-5 py-4 border-b border-[#E3E9E6] flex items-center justify-between">
           <div>
-            <h2 className="text-sm font-semibold text-[#09090B]">Availability Rules</h2>
-            <p className="text-xs text-[#71717A] mt-0.5">{rules.length} rule{rules.length !== 1 ? "s" : ""} configured</p>
+            <h2 className="text-sm font-semibold text-[#151918]">Availability Rules</h2>
+            <p className="text-xs text-[#737A76] mt-0.5">{rules.length} rule{rules.length !== 1 ? "s" : ""} configured</p>
           </div>
           <Button
             size="sm"
@@ -121,7 +121,7 @@ export function AvailabilityRulesManager({ initialRules }: AvailabilityRulesMana
             description="Add rules to define when appointments can be booked."
           />
         ) : (
-          <div className="divide-y divide-[#F4F4F5]">
+          <div className="divide-y divide-[#EEF2F0]">
             {rules.map((rule) => (
               <div key={rule.id}>
                 {editingId === rule.id ? (
@@ -140,9 +140,9 @@ export function AvailabilityRulesManager({ initialRules }: AvailabilityRulesMana
                         disabled={isPending}
                         className={cn(
                           "relative inline-flex h-5 w-9 shrink-0 rounded-full border-2 border-transparent transition-colors",
-                          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#18181B]",
+                          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0D6B5E]",
                           "disabled:cursor-not-allowed",
-                          rule.is_active ? "bg-[#18181B]" : "bg-[#E4E4E7]"
+                          rule.is_active ? "bg-[#0D6B5E]" : "bg-[#E3E9E6]"
                         )}
                         aria-pressed={rule.is_active}
                         aria-label={`${DAY_LABELS[rule.day_of_week]}: ${rule.is_active ? "active" : "inactive"}`}
@@ -154,16 +154,16 @@ export function AvailabilityRulesManager({ initialRules }: AvailabilityRulesMana
                       </button>
 
                       <div>
-                        <p className="text-sm font-medium text-[#09090B]">
+                        <p className="text-sm font-medium text-[#151918]">
                           {DAY_LABELS[rule.day_of_week]}
                           {" "}
-                          <span className="font-normal text-[#71717A]">
+                          <span className="font-normal text-[#737A76]">
                             {formatTime(rule.start_time)} – {formatTime(rule.end_time)}
                           </span>
                         </p>
-                        <p className="text-xs text-[#A1A1AA]">
+                        <p className="text-xs text-[#9BA39D]">
                           {rule.slot_duration_minutes} min slots ·{" "}
-                          <span className={rule.is_active ? "text-[#16A34A]" : "text-[#A1A1AA]"}>
+                          <span className={rule.is_active ? "text-[#16A34A]" : "text-[#9BA39D]"}>
                             {rule.is_active ? "Active" : "Inactive"}
                           </span>
                         </p>
@@ -187,8 +187,8 @@ export function AvailabilityRulesManager({ initialRules }: AvailabilityRulesMana
         )}
 
         {showAddForm && (
-          <div className="px-5 py-4 border-t border-[#E4E4E7] bg-[#FAFAFA]">
-            <p className="text-xs font-semibold text-[#09090B] mb-3">New Rule</p>
+          <div className="px-5 py-4 border-t border-[#E3E9E6] bg-[#F6F8F6]">
+            <p className="text-xs font-semibold text-[#151918] mb-3">New Rule</p>
             <form onSubmit={createForm.handleSubmit(handleCreate)}>
               <RuleFormFields
                 form={createForm}
@@ -200,7 +200,7 @@ export function AvailabilityRulesManager({ initialRules }: AvailabilityRulesMana
         )}
       </div>
 
-      <p className="text-xs text-[#71717A]">
+      <p className="text-xs text-[#737A76]">
         Changes take effect immediately — available booking slots update automatically.
       </p>
     </div>

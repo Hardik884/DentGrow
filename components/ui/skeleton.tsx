@@ -30,7 +30,7 @@ export function SkeletonText({ lines = 3, className }: { lines?: number; classNa
 
 export function SkeletonCard({ className }: { className?: string }) {
   return (
-    <div className={cn("bg-white border border-[#E4E4E7] rounded-xl p-5 space-y-3", className)}>
+    <div className={cn("bg-white border border-[#E3E9E6] rounded-xl p-5 space-y-3", className)}>
       <Skeleton className="h-4 w-1/3" />
       <Skeleton className="h-8 w-1/2" />
       <Skeleton className="h-3 w-1/4" />

@@ -38,7 +38,7 @@ export default async function PortalLayout({
   const consentFormsEnabled = clinicSettings?.consent_forms_enabled === true;
 
   return (
-    <div className="min-h-screen bg-[#FAFAFA]">
+    <div className="min-h-screen bg-[#F6F8F6]">
       <PortalNav patientId={portalLink?.patient_id ?? null} consentFormsEnabled={consentFormsEnabled} />
 
       {/* pb-[4.5rem] on mobile ensures content isn't hidden under the bottom tab bar */}

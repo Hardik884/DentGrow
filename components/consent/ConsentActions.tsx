@@ -268,7 +268,7 @@ export function ConsentActions({
         </div>
       )}
 
-      {status && status !== "missing-phone" && <p className="text-xs text-[#71717A]">{status}</p>}
+      {status && status !== "missing-phone" && <p className="text-xs text-[#737A76]">{status}</p>}
     </div>
   );
 }

@@ -30,12 +30,12 @@ export function ChartCard({
   }
 
   return (
-    <div className={cn("bg-white border border-[#E4E4E7] rounded-xl overflow-hidden", className)}>
-      <div className="px-5 py-4 border-b border-[#E4E4E7] flex items-center justify-between">
+    <div className={cn("bg-white border border-[#E3E9E6] rounded-xl overflow-hidden", className)}>
+      <div className="px-5 py-4 border-b border-[#E3E9E6] flex items-center justify-between">
         <div>
-          <h3 className="text-sm font-semibold text-[#09090B]">{title}</h3>
+          <h3 className="text-sm font-semibold text-[#151918]">{title}</h3>
           {description && (
-            <p className="text-xs text-[#71717A] mt-0.5">{description}</p>
+            <p className="text-xs text-[#737A76] mt-0.5">{description}</p>
           )}
         </div>
         {action && <div>{action}</div>}
@@ -43,7 +43,7 @@ export function ChartCard({
 
       <div className="p-5">
         {error ? (
-          <div className="flex items-center justify-center min-h-[160px] text-sm text-[#A1A1AA]">
+          <div className="flex items-center justify-center min-h-[160px] text-sm text-[#9BA39D]">
             {error}
           </div>
         ) : (

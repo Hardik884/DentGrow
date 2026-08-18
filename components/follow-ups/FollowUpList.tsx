@@ -137,7 +137,7 @@ function FollowUpRow({
   const typeLabel = FOLLOW_UP_TYPE_LABELS[followUpType] ?? followUpType ?? "Follow-up";
 
   return (
-    <li className="hover:bg-[#FAFAFA] transition-colors">
+    <li className="hover:bg-[#F6F8F6] transition-colors">
       <Link
         href={`${baseHref}/follow-ups/${followUp.id}`}
         className="block px-4 py-3"

@@ -40,7 +40,7 @@ export default async function DentistDashboardPage() {
     const today = getTodayInTimezone(timezone);
 
     return (
-      <div className="p-6 max-w-screen-xl">
+      <div className="p-6 lg:p-8 max-w-screen-xl">
         <PageHeader
           title="Today's Dashboard"
           description="Overview of today's clinic activity"
@@ -64,28 +64,28 @@ export default async function DentistDashboardPage() {
 
         {/* Today's External Consultation Income — hidden when disabled in settings */}
         {showConsultancy && (
-          <div className="mt-4">
-            <div className="bg-white border border-[#E4E4E7] rounded-xl p-5 space-y-3 sm:max-w-xs">
+          <div className="mt-5">
+            <div className="bg-[#F6FBF9] border border-[#DCEEE8] rounded-xl p-5 space-y-3 sm:max-w-xs shadow-[0_1px_2px_rgba(21,25,24,0.04)]">
               <div className="flex items-center justify-between">
-                <p className="text-xs font-medium text-[#71717A] tracking-wide">
+                <p className="text-xs font-medium text-[#737A76] tracking-wide">
                   External Consultation Income
                 </p>
-                <div className="h-7 w-7 rounded-lg bg-[#F4F4F5] flex items-center justify-center text-[#71717A]">
+                <div className="h-7 w-7 rounded-lg bg-[#E8F4F0] flex items-center justify-center text-[#0D6B5E]">
                   <Briefcase className="h-3.5 w-3.5" aria-hidden />
                 </div>
               </div>
               <div>
-                <p className="text-2xl font-semibold text-[#09090B] tracking-tight">
+                <p className="text-3xl font-bold text-[#151918] tracking-tight leading-none">
                   {formatCurrency(consultancyRevenueToday)}
                 </p>
-                <p className="text-xs text-[#71717A] mt-0.5">Today</p>
+                <p className="text-xs text-[#737A76] mt-1.5">Today</p>
               </div>
             </div>
           </div>
         )}
 
         {/* Main content */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-4">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 mt-6">
           <div className="lg:col-span-2 space-y-4">
             <UpcomingAppointments timezone={timezone} />
           </div>
@@ -105,7 +105,7 @@ export default async function DentistDashboardPage() {
   // Fallback for unauthenticated (middleware handles redirect, but be defensive)
   const queueResult = queueRes;
   return (
-    <div className="p-6 max-w-screen-xl">
+    <div className="p-6 lg:p-8 max-w-screen-xl">
       <PageHeader
         title="Today's Dashboard"
         description="Overview of today's clinic activity"
@@ -117,7 +117,7 @@ export default async function DentistDashboardPage() {
         </AppointmentFormDialog>
       </PageHeader>
       <DashboardKPIs />
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-4">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 mt-6">
         <div className="lg:col-span-2 space-y-4">
           <UpcomingAppointments />
         </div>

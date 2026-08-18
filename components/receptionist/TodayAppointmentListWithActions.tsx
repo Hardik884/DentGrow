@@ -31,7 +31,7 @@ export function TodayAppointmentListWithActions({
   clinicToday,
 }: TodayAppointmentListWithActionsProps) {
   return (
-    <div className="divide-y divide-[#F4F4F5]">
+    <div className="divide-y divide-[#EEF2F0]">
       {appointments.map((appointment) => (
         <AppointmentRowWithActions
           key={appointment.id}
@@ -123,13 +123,13 @@ function AppointmentRowWithActions({
               <div className="flex-1 min-w-0">
                 <Link
                   href={`/receptionist/patients/${appointment.patient_id}`}
-                  className="text-sm font-medium text-[#09090B] hover:text-blue-600 truncate block"
+                  className="text-sm font-medium text-[#151918] hover:text-blue-600 truncate block"
                 >
                   {appointment.patient.name}
                 </Link>
                 <div className="flex items-center gap-1.5 mt-0.5">
-                  <Clock className="h-3 w-3 text-[#A1A1AA] shrink-0" aria-hidden />
-                  <p className="text-xs text-[#71717A]">
+                  <Clock className="h-3 w-3 text-[#9BA39D] shrink-0" aria-hidden />
+                  <p className="text-xs text-[#737A76]">
                     {formatDateTimeInTimezone(appointment.scheduled_at, timezone)}
                     {" · "}
                     {appointment.duration_minutes} min
@@ -139,7 +139,7 @@ function AppointmentRowWithActions({
                   </p>
                 </div>
                 {appointment.chief_complaints && (
-                  <p className="text-xs text-[#A1A1AA] truncate mt-0.5">{appointment.chief_complaints}</p>
+                  <p className="text-xs text-[#9BA39D] truncate mt-0.5">{appointment.chief_complaints}</p>
                 )}
               </div>
               

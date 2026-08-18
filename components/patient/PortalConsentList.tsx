@@ -33,16 +33,16 @@ export function PortalConsentList({ consents }: { consents: ConsentListItem[] })
 
   if (consents.length === 0) {
     return (
-      <div className="rounded-lg border border-dashed border-[#E4E4E7] px-4 py-12 text-center">
-        <FileSignature className="mx-auto h-6 w-6 text-[#A1A1AA]" aria-hidden />
-        <p className="mt-2 text-sm text-[#71717A]">You have no consent forms yet.</p>
+      <div className="rounded-lg border border-dashed border-[#E3E9E6] px-4 py-12 text-center">
+        <FileSignature className="mx-auto h-6 w-6 text-[#9BA39D]" aria-hidden />
+        <p className="mt-2 text-sm text-[#737A76]">You have no consent forms yet.</p>
       </div>
     );
   }
 
   return (
     <>
-      <ul className="divide-y divide-[#F4F4F5] rounded-lg border border-[#E4E4E7] bg-white">
+      <ul className="divide-y divide-[#EEF2F0] rounded-lg border border-[#E3E9E6] bg-white">
         {consents.map((c) => {
           const source = c.source as ConsentSource;
           const status = c.status as ConsentStatus;
@@ -50,16 +50,16 @@ export function PortalConsentList({ consents }: { consents: ConsentListItem[] })
             <li key={c.id} className="flex items-center justify-between gap-3 px-4 py-3">
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
-                  <p className="text-sm font-medium text-[#09090B] truncate">
+                  <p className="text-sm font-medium text-[#151918] truncate">
                     {c.treatment_type || c.template_name}
                   </p>
                   {source === "uploaded" ? (
-                    <ImageIcon className="h-3 w-3 text-[#A1A1AA]" aria-hidden />
+                    <ImageIcon className="h-3 w-3 text-[#9BA39D]" aria-hidden />
                   ) : (
-                    <FileText className="h-3 w-3 text-[#A1A1AA]" aria-hidden />
+                    <FileText className="h-3 w-3 text-[#9BA39D]" aria-hidden />
                   )}
                 </div>
-                <p className="text-xs text-[#71717A] mt-0.5">
+                <p className="text-xs text-[#737A76] mt-0.5">
                   {c.signed_at ? `Signed ${formatDate(c.signed_at)}` : formatDate(c.created_at)}
                 </p>
               </div>
@@ -127,11 +127,11 @@ function PortalConsentDetail({ consentId, onClose }: { consentId: string; onClos
     <Dialog open onClose={onClose} size="xl" title="Consent Form" description={snapshot?.templateName}>
       <div className="p-5 space-y-4">
         {error && <p className="text-sm text-red-600">{error}</p>}
-        {!snapshot && !error && <p className="text-sm text-[#71717A]">Loading…</p>}
+        {!snapshot && !error && <p className="text-sm text-[#737A76]">Loading…</p>}
 
         {snapshot && isUploaded && (
           <div className="space-y-3">
-            <div className="rounded-md border border-[#FEF08A] bg-[#FEFCE8] px-3 py-2">
+            <div className="rounded-md border border-[#FDE68A] bg-[#FFFBEB] px-3 py-2">
               <p className="text-xs font-medium text-[#854D0E]">Uploaded Signed Consent</p>
               <p className="text-[11px] text-[#A16207]">
                 This was signed on paper and uploaded by the clinic.
@@ -146,9 +146,9 @@ function PortalConsentDetail({ consentId, onClose }: { consentId: string; onClos
               showWhatsApp={false}
               directFileUrl={fileUrl}
             />
-            <div id="portal-consent-file" className="rounded-md border border-[#E4E4E7] p-3">
+            <div id="portal-consent-file" className="rounded-md border border-[#E3E9E6] p-3">
               {!fileUrl ? (
-                <p className="text-sm text-[#71717A]">Loading file…</p>
+                <p className="text-sm text-[#737A76]">Loading file…</p>
               ) : (meta?.file_name ?? "").match(/\.(png|jpe?g)$/i) ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={fileUrl} alt="Signed consent" className="max-w-full mx-auto" />
@@ -189,7 +189,7 @@ function PortalConsentDetail({ consentId, onClose }: { consentId: string; onClos
             )}
 
             {/* The document itself (also the PDF/print capture target) */}
-            <div className="rounded-md border border-[#E4E4E7] overflow-hidden">
+            <div className="rounded-md border border-[#E3E9E6] overflow-hidden">
               <ConsentDocument
                 snapshot={snapshot}
                 status={status}

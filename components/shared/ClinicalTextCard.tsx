@@ -68,9 +68,9 @@ export function ClinicalTextCard({
   }
 
   return (
-    <div className="bg-white border border-[#E4E4E7] rounded-xl p-5 space-y-3">
+    <div className="bg-white border border-[#E3E9E6] rounded-xl p-5 space-y-3">
       <div className="flex items-center justify-between gap-3">
-        <h3 className="text-sm font-semibold text-[#09090B]">{title}</h3>
+        <h3 className="text-sm font-semibold text-[#151918]">{title}</h3>
         {canEdit && dirty && (
           <Button size="sm" onClick={save} isLoading={isPending} disabled={isPending}>
             <Check className="h-3.5 w-3.5" aria-hidden />
@@ -85,7 +85,7 @@ export function ClinicalTextCard({
         )}
       </div>
 
-      {helpText && <p className="text-xs text-[#71717A]">{helpText}</p>}
+      {helpText && <p className="text-xs text-[#737A76]">{helpText}</p>}
 
       {canEdit ? (
         <Textarea
@@ -99,13 +99,13 @@ export function ClinicalTextCard({
           disabled={isPending}
         />
       ) : (
-        <p className="text-sm text-[#3F3F46] whitespace-pre-wrap">
-          {saved ? saved : <span className="text-[#A1A1AA]">Not recorded</span>}
+        <p className="text-sm text-[#333B36] whitespace-pre-wrap">
+          {saved ? saved : <span className="text-[#9BA39D]">Not recorded</span>}
         </p>
       )}
 
       {canEdit && !value && examples && examples.length > 0 && (
-        <ul className="space-y-0.5 text-xs text-[#A1A1AA]">
+        <ul className="space-y-0.5 text-xs text-[#9BA39D]">
           {examples.map((ex) => (
             <li key={ex}>• {ex}</li>
           ))}

@@ -162,7 +162,7 @@ export function ExternalConsultationDialog({
           </Field>
         </div>
 
-        <div className="px-6 py-4 bg-[#FAFAFA] border-t border-[#E4E4E7] flex items-center justify-end gap-3">
+        <div className="px-6 py-4 bg-[#F6F8F6] border-t border-[#E3E9E6] flex items-center justify-end gap-3">
           <Button type="button" variant="outline" size="sm" onClick={close} disabled={isPending}>
             Cancel
           </Button>

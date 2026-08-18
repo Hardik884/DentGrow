@@ -185,7 +185,7 @@ export function ConsentDetailDialog({
           </p>
         )}
 
-        {!consent && !loadError && <p className="text-sm text-[#71717A]">Loading…</p>}
+        {!consent && !loadError && <p className="text-sm text-[#737A76]">Loading…</p>}
 
         {consent && isUploaded && (
           <UploadedConsentView
@@ -215,7 +215,7 @@ export function ConsentDetailDialog({
 
             {/* Dentist controls for an unsigned consent */}
             {editable && !signing && (
-              <div className="no-print flex flex-wrap items-center gap-2 border-y border-[#F4F4F5] py-3">
+              <div className="no-print flex flex-wrap items-center gap-2 border-y border-[#EEF2F0] py-3">
                 {!editing ? (
                   <Button variant="outline" size="sm" onClick={beginEdit}>
                     <PenLine className="h-3.5 w-3.5" aria-hidden /> Edit Details
@@ -254,8 +254,8 @@ export function ConsentDetailDialog({
 
             {/* Inline per-section editor */}
             {editing && (
-              <div className="no-print space-y-3 rounded-md border border-[#E4E4E7] bg-[#FAFAFA] p-4">
-                <p className="text-xs text-[#71717A]">
+              <div className="no-print space-y-3 rounded-md border border-[#E3E9E6] bg-[#F6F8F6] p-4">
+                <p className="text-xs text-[#737A76]">
                   These edits affect <strong>this consent document only</strong>, not the master
                   template.
                 </p>
@@ -278,7 +278,7 @@ export function ConsentDetailDialog({
             {signing && (
               <div className="no-print space-y-3 rounded-md border border-[#BFDBFE] bg-[#EFF6FF] p-4">
                 <p className="text-sm font-medium text-[#1E40AF]">Patient Signature</p>
-                <p className="text-xs text-[#3F3F46]">
+                <p className="text-xs text-[#333B36]">
                   Confirm the patient has read and understood this consent and had the opportunity to
                   ask questions, then capture their signature below.
                 </p>
@@ -303,7 +303,7 @@ export function ConsentDetailDialog({
             )}
 
             {/* The document itself (also the PDF/print capture target) */}
-            <div className="rounded-md border border-[#E4E4E7] overflow-hidden">
+            <div className="rounded-md border border-[#E3E9E6] overflow-hidden">
               <ConsentDocument
                 snapshot={snapshot}
                 status={status}
@@ -341,7 +341,7 @@ function UploadedConsentView({
   const isImg = isImageMime(fileType);
   return (
     <div className="space-y-3">
-      <div className="rounded-md border border-[#FEF08A] bg-[#FEFCE8] px-3 py-2">
+      <div className="rounded-md border border-[#FDE68A] bg-[#FFFBEB] px-3 py-2">
         <p className="text-xs font-medium text-[#854D0E]">Uploaded Signed Consent</p>
         <p className="text-[11px] text-[#A16207]">
           This consent was signed on paper outside DentGrow and uploaded. The original file is shown
@@ -360,17 +360,17 @@ function UploadedConsentView({
         directFileUrl={fileUrl}
       />
 
-      <div id="consent-uploaded-file" className="rounded-md border border-[#E4E4E7] p-3">
+      <div id="consent-uploaded-file" className="rounded-md border border-[#E3E9E6] p-3">
         {!fileUrl ? (
-          <p className="text-sm text-[#71717A]">Loading file…</p>
+          <p className="text-sm text-[#737A76]">Loading file…</p>
         ) : isImg ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={fileUrl} alt={fileName ?? "Signed consent"} className="max-w-full mx-auto" />
         ) : (
           <div className="flex items-center gap-3">
-            <FileText className="h-5 w-5 text-[#71717A]" aria-hidden />
+            <FileText className="h-5 w-5 text-[#737A76]" aria-hidden />
             <div className="min-w-0">
-              <p className="text-sm text-[#09090B] truncate">{fileName}</p>
+              <p className="text-sm text-[#151918] truncate">{fileName}</p>
               <a
                 href={fileUrl}
                 target="_blank"

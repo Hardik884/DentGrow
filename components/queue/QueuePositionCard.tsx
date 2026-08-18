@@ -68,29 +68,29 @@ export function QueuePositionCard({
   ) {
     const isCompleted = effectiveStatus === "completed";
     return (
-      <div className="bg-white border border-[#E4E4E7] rounded-xl p-8 text-center space-y-2">
-        <div className="h-12 w-12 rounded-full bg-[#F4F4F5] flex items-center justify-center mx-auto mb-4">
+      <div className="bg-white border border-[#E3E9E6] rounded-xl p-8 text-center space-y-2">
+        <div className="h-12 w-12 rounded-full bg-[#EEF2F0] flex items-center justify-center mx-auto mb-4">
           {isCompleted ? (
             <svg className="h-5 w-5 text-[#16A34A]" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden>
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M5 13l4 4L19 7" />
             </svg>
           ) : (
-            <svg className="h-5 w-5 text-[#A1A1AA]" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden>
+            <svg className="h-5 w-5 text-[#9BA39D]" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden>
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0" />
             </svg>
           )}
         </div>
         {isCompleted ? (
           <>
-            <p className="text-sm font-medium text-[#09090B]">Appointment complete</p>
-            <p className="text-xs text-[#71717A]">
+            <p className="text-sm font-medium text-[#151918]">Appointment complete</p>
+            <p className="text-xs text-[#737A76]">
               Your visit has been completed. Thank you!
             </p>
           </>
         ) : (
           <>
-            <p className="text-sm font-medium text-[#09090B]">Not in queue</p>
-            <p className="text-xs text-[#71717A]">
+            <p className="text-sm font-medium text-[#151918]">Not in queue</p>
+            <p className="text-xs text-[#737A76]">
               Check in with the receptionist when you arrive.
             </p>
           </>
@@ -128,23 +128,23 @@ export function QueuePositionCard({
           </svg>
         </div>
         <p className="text-xs font-semibold text-[#16A34A] uppercase tracking-wider">It&apos;s Your Turn</p>
-        <p className="text-5xl font-semibold text-[#09090B] tabular-nums">#{position}</p>
-        <p className="text-sm text-[#71717A]">Please proceed to the dental chair.</p>
+        <p className="text-5xl font-semibold text-[#151918] tabular-nums">#{position}</p>
+        <p className="text-sm text-[#737A76]">Please proceed to the dental chair.</p>
       </div>
     );
   }
 
   return (
-    <div className="bg-white border border-[#E4E4E7] rounded-xl overflow-hidden">
-      <div className="px-6 py-8 text-center space-y-3 border-b border-[#E4E4E7]">
-        <p className="text-xs font-semibold text-[#71717A] uppercase tracking-wider">Your Queue Number</p>
-        <p className="text-6xl font-semibold text-[#09090B] tabular-nums">#{position}</p>
+    <div className="bg-white border border-[#E3E9E6] rounded-xl overflow-hidden">
+      <div className="px-6 py-8 text-center space-y-3 border-b border-[#E3E9E6]">
+        <p className="text-xs font-semibold text-[#737A76] uppercase tracking-wider">Your Queue Number</p>
+        <p className="text-6xl font-semibold text-[#151918] tabular-nums">#{position}</p>
         {patientsAhead === 0 && (
           <p className="text-sm font-medium text-[#16A34A]">You&apos;re next — please be ready!</p>
         )}
       </div>
 
-      <div className="grid grid-cols-3 divide-x divide-[#F4F4F5]">
+      <div className="grid grid-cols-3 divide-x divide-[#EEF2F0]">
         <StatCell value={String(patientsAhead)} label="Ahead of you" />
         <StatCell value={`~${estimatedWait}m`} label="Est. wait" />
         <StatCell
@@ -159,8 +159,8 @@ export function QueuePositionCard({
 function StatCell({ value, label }: { value: string; label: string }) {
   return (
     <div className="px-4 py-4 text-center">
-      <p className="text-xl font-semibold text-[#09090B] tabular-nums">{value}</p>
-      <p className="text-xs text-[#71717A] mt-0.5">{label}</p>
+      <p className="text-xl font-semibold text-[#151918] tabular-nums">{value}</p>
+      <p className="text-xs text-[#737A76] mt-0.5">{label}</p>
     </div>
   );
 }

@@ -37,18 +37,18 @@ export function ConfirmDialog({
     >
       {/* Backdrop */}
       <div
-        className="absolute inset-0 bg-black/40 backdrop-blur-[2px]"
+        className="absolute inset-0 bg-[#0B0F0E]/45 backdrop-blur-[2px]"
         onClick={onCancel}
         aria-hidden="true"
       />
 
       {/* Dialog */}
-      <div className="relative bg-white rounded-xl border border-[#E4E4E7] shadow-2xl max-w-sm w-full p-6 space-y-4 animate-fade-in-up">
+      <div className="relative bg-white rounded-xl border border-[#E3E9E6] shadow-2xl max-w-sm w-full p-6 space-y-4 animate-fade-in-up">
         <div className="space-y-1.5">
-          <h2 id="confirm-dialog-title" className="text-base font-semibold text-[#09090B]">
+          <h2 id="confirm-dialog-title" className="text-base font-semibold text-[#151918]">
             {title}
           </h2>
-          <p id="confirm-dialog-desc" className="text-sm text-[#71717A] leading-relaxed">
+          <p id="confirm-dialog-desc" className="text-sm text-[#737A76] leading-relaxed">
             {description}
           </p>
         </div>

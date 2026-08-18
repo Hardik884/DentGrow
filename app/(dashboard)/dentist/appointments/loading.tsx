@@ -20,11 +20,11 @@ export default function AppointmentsLoading() {
       <Skeleton className="h-4 w-28" />
 
       {/* Table */}
-      <div className="bg-white border border-[#E4E4E7] rounded-xl overflow-hidden">
+      <div className="bg-white border border-[#E3E9E6] rounded-xl overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-[#F4F4F5] bg-[#FAFAFA]">
+              <tr className="border-b border-[#EEF2F0] bg-[#F6F8F6]">
                 {["Patient", "Date & Time", "Duration", "Source", "Status", ""].map((h) => (
                   <th key={h} className="px-4 py-3 text-left">
                     <Skeleton className="h-3 w-16" />
@@ -32,7 +32,7 @@ export default function AppointmentsLoading() {
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#F4F4F5]">
+            <tbody className="divide-y divide-[#EEF2F0]">
               {Array.from({ length: 10 }).map((_, i) => (
                 <tr key={i}>
                   <td className="px-4 py-3"><Skeleton className="h-4 w-32" /></td>

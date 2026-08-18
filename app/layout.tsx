@@ -48,7 +48,7 @@ export default function RootLayout({
               fontFamily: "var(--font-geist-sans)",
               fontSize: "13px",
               borderRadius: "8px",
-              border: "1px solid #E4E4E7",
+              border: "1px solid #E3E9E6",
               boxShadow: "0 4px 16px -4px rgba(0,0,0,0.12)",
             },
           }}

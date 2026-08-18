@@ -97,7 +97,7 @@ export default async function DentistPaymentsPage({ searchParams }: Props) {
                   <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">
                     Today&apos;s Total Revenue
                   </p>
-                  <p className="text-2xl font-bold text-[#09090B] mt-1">
+                  <p className="text-2xl font-bold text-[#151918] mt-1">
                     {formatCurrency(totalRevenueToday)}
                   </p>
                 </div>

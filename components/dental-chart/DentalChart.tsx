@@ -94,7 +94,7 @@ export function DentalChart({ patientId, patientName, appointmentId, initialChar
       {/* Controls */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
-          <label htmlFor="dentition-type" className="text-xs font-medium text-[#71717A]">
+          <label htmlFor="dentition-type" className="text-xs font-medium text-[#737A76]">
             Tooth Set
           </label>
           <Select
@@ -126,14 +126,14 @@ export function DentalChart({ patientId, patientName, appointmentId, initialChar
             className={cn(
               "inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-medium transition-colors",
               multiSelectMode
-                ? "bg-[#18181B] text-white border-[#18181B]"
-                : "bg-white text-[#71717A] border-[#E4E4E7] hover:bg-[#F4F4F5]"
+                ? "bg-[#0D6B5E] text-white border-[#0D6B5E]"
+                : "bg-white text-[#737A76] border-[#E3E9E6] hover:bg-[#EEF2F0]"
             )}
           >
             <span
               className={cn(
                 "inline-block h-3.5 w-3.5 rounded-full border transition-colors",
-                multiSelectMode ? "bg-white border-white" : "bg-transparent border-[#D4D4D8]"
+                multiSelectMode ? "bg-white border-white" : "bg-transparent border-[#CBD5D0]"
               )}
               aria-hidden
             />
@@ -149,7 +149,7 @@ export function DentalChart({ patientId, patientName, appointmentId, initialChar
       )}
 
       {/* Chart */}
-      <div className="overflow-x-auto rounded-xl border border-[#E4E4E7] bg-white">
+      <div className="overflow-x-auto rounded-xl border border-[#E3E9E6] bg-white">
         <div className="min-w-[640px] py-6 px-4 space-y-2">
           <DentalArch
             teeth={layout.upper}
@@ -160,9 +160,9 @@ export function DentalChart({ patientId, patientName, appointmentId, initialChar
             activeToothNumber={activeToothNumber}
           />
           <div className="flex items-center gap-2 px-2" aria-hidden>
-            <div className="flex-1 border-t border-dashed border-[#E4E4E7]" />
-            <span className="text-[10px] uppercase tracking-wide text-[#D4D4D8]">Bite line</span>
-            <div className="flex-1 border-t border-dashed border-[#E4E4E7]" />
+            <div className="flex-1 border-t border-dashed border-[#E3E9E6]" />
+            <span className="text-[10px] uppercase tracking-wide text-[#CBD5D0]">Bite line</span>
+            <div className="flex-1 border-t border-dashed border-[#E3E9E6]" />
           </div>
           <DentalArch
             teeth={layout.lower}
@@ -180,9 +180,9 @@ export function DentalChart({ patientId, patientName, appointmentId, initialChar
 
       {/* Multi-select action bar */}
       {multiSelectMode && selectedTeeth.size > 0 && (
-        <div className="flex items-center justify-between gap-3 rounded-lg border border-[#E4E4E7] bg-[#FAFAFA] px-4 py-2.5">
-          <p className="text-xs text-[#52525B]">
-            <span className="font-semibold text-[#09090B]">{selectedTeeth.size}</span> teeth selected
+        <div className="flex items-center justify-between gap-3 rounded-lg border border-[#E3E9E6] bg-[#F6F8F6] px-4 py-2.5">
+          <p className="text-xs text-[#5B635E]">
+            <span className="font-semibold text-[#151918]">{selectedTeeth.size}</span> teeth selected
           </p>
           <Button size="sm" onClick={() => setBulkOpen(true)}>
             Add Treatment to Selected

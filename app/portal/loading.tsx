@@ -12,7 +12,7 @@ export default function PortalLoading() {
       {/* Status cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {Array.from({ length: 4 }).map((_, i) => (
-          <div key={i} className="bg-white border border-[#E4E4E7] rounded-xl p-4 space-y-3">
+          <div key={i} className="bg-white border border-[#E3E9E6] rounded-xl p-4 space-y-3">
             <Skeleton className="h-4 w-28" />
             <Skeleton className="h-8 w-16" />
             <Skeleton className="h-3 w-20" />
@@ -21,7 +21,7 @@ export default function PortalLoading() {
       </div>
 
       {/* Upcoming appointment card */}
-      <div className="bg-white border border-[#E4E4E7] rounded-xl p-5 space-y-3">
+      <div className="bg-white border border-[#E3E9E6] rounded-xl p-5 space-y-3">
         <Skeleton className="h-4 w-36" />
         <div className="flex items-center gap-3">
           <Skeleton className="h-10 w-10 rounded-full shrink-0" />
