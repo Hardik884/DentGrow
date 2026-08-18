@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { Select } from "@/components/ui/select";
 import { useRouter } from "next/navigation";
 import { linkPortalAccount } from "@/actions/portal-link";
 import type { ClinicOption } from "@/actions/clinics";
@@ -142,13 +143,12 @@ export function PortalLinkForm({
           {presetClinicName ?? "Selected clinic"}
         </div>
       ) : (
-        <select
+        <Select
           id="clinic"
           required
           value={clinicId}
           onChange={(e) => setClinicId(e.target.value)}
           disabled={isPending}
-          className="w-full border border-border-strong rounded-lg px-3 py-2 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 disabled:bg-surface-secondary disabled:text-text-disabled"
         >
           <option value="" disabled>
             Select a clinic…
@@ -158,7 +158,7 @@ export function PortalLinkForm({
               {c.name}
             </option>
           ))}
-        </select>
+        </Select>
       )}
     </div>
   );

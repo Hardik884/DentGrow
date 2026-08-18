@@ -232,10 +232,6 @@
   --scrollbar-thumb: var(--color-border-strong);
   --scrollbar-thumb-hover: var(--color-text-disabled);
 
-  /* <select> dropdown chevron. It is a background-image, so it cannot inherit
-     currentColor — the stroke colour is baked into the SVG and the whole image
-     is swapped per theme instead. */
-  --select-chevron: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%23737A76' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3E%3C/svg%3E");
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -411,8 +407,6 @@
   --scrollbar-thumb: #3E4C46;
   --scrollbar-thumb-hover: #5F766C;
 
-  /* Same chevron geometry, restroked for a dark field. */
-  --select-chevron: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%23A5B0AB' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3E%3C/svg%3E");
 
   /* Elevation is carried by the surface ladder above; shadow only grounds it.
      Pure black at roughly four times the light opacity — a charcoal-tinted

@@ -22,6 +22,7 @@
  */
 
 import { useState, useRef, useEffect, useCallback, useId } from "react";
+import { Select } from "@/components/ui/select";
 import { createPortal } from "react-dom";
 import { ChevronLeft, ChevronRight, Calendar, X } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -251,17 +252,18 @@ function CalendarGrid({
           <ChevronLeft className="h-4 w-4" />
         </button>
 
-        {/* Month dropdown — uses native select for accessibility + speed */}
-        <select
+        {/* Month dropdown. Styled down to a borderless label so it reads as
+            part of the calendar header rather than a form control. */}
+        <Select
           value={month}
           onChange={(e) => onMonthChange(Number(e.target.value))}
-          className="flex-1 text-xs font-semibold text-text-primary bg-transparent border-0 cursor-pointer appearance-none text-center outline-none focus:ring-0 hover:text-text-secondary transition-colors"
+          className="flex-1 h-7 px-1.5 text-xs font-semibold border-0 bg-transparent hover:bg-surface hover:border-0 justify-center gap-1"
           aria-label="Select month"
         >
           {MONTH_NAMES.map((name, i) => (
             <option key={name} value={i}>{name}</option>
           ))}
-        </select>
+        </Select>
 
         {/* Year button — opens custom scrollable year selector */}
         <button

@@ -18,15 +18,9 @@ import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { useCallback, useState, useTransition } from "react";
 import { CalendarPicker } from "@/components/ui/calendar-picker";
 import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
 import { SlidersHorizontal, X, Search } from "lucide-react";
-
-const selectClasses = cn(
-  "w-full h-9 px-3 py-2 text-sm border border-border rounded-lg bg-surface",
-  "outline-none focus:ring-2 focus:ring-accent focus:ring-offset-1 focus:border-accent",
-  "text-text-primary cursor-pointer"
-);
 
 interface PrescriptionFiltersProps {
   dentists: Array<{ id: string; name: string }>;
@@ -150,17 +144,16 @@ export function PrescriptionFilters({
           <label htmlFor="rx-dentist" className="text-xs font-medium text-text-secondary uppercase tracking-wide">
             Prescribing Dentist
           </label>
-          <select
+          <Select
             id="rx-dentist"
             value={dentistId}
             onChange={(e) => setDentistId(e.target.value)}
-            className={selectClasses}
           >
             <option value="">All dentists</option>
             {dentists.map((d) => (
               <option key={d.id} value={d.id}>{d.name}</option>
             ))}
-          </select>
+          </Select>
         </div>
 
         {/* Medicine Name */}

@@ -23,8 +23,8 @@ import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { useCallback, useState, useTransition } from "react";
 import { CalendarPicker } from "@/components/ui/calendar-picker";
 import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
 import { SlidersHorizontal, X, Search } from "lucide-react";
 
 const STATUS_OPTIONS = [
@@ -62,12 +62,6 @@ interface AppointmentFiltersProps {
   initialTimeFrom?: string;
   initialTimeTo?: string;
 }
-
-const selectClasses = cn(
-  "w-full h-9 px-3 py-2 text-sm border border-border rounded-lg bg-surface",
-  "outline-none focus:ring-2 focus:ring-accent focus:ring-offset-1 focus:border-accent",
-  "text-text-primary cursor-pointer"
-);
 
 export function AppointmentFilters({
   initialSearch = "",
@@ -168,16 +162,15 @@ export function AppointmentFilters({
           <label htmlFor="appt-status" className="text-xs font-medium text-text-secondary uppercase tracking-wide">
             Status
           </label>
-          <select
+          <Select
             id="appt-status"
             value={status}
             onChange={(e) => setStatus(e.target.value)}
-            className={selectClasses}
           >
             {STATUS_OPTIONS.map((s) => (
               <option key={s.value} value={s.value}>{s.label}</option>
             ))}
-          </select>
+          </Select>
         </div>
 
         {/* Date From — future dates allowed, independent of To */}
@@ -213,16 +206,15 @@ export function AppointmentFilters({
           <label htmlFor="appt-time-from" className="text-xs font-medium text-text-secondary uppercase tracking-wide">
             From Time
           </label>
-          <select
+          <Select
             id="appt-time-from"
             value={timeFrom}
             onChange={(e) => setTimeFrom(e.target.value)}
-            className={selectClasses}
           >
             {TIME_OPTIONS.map((t) => (
               <option key={t.value} value={t.value}>{t.label}</option>
             ))}
-          </select>
+          </Select>
         </div>
 
         {/* Time To */}
@@ -230,16 +222,15 @@ export function AppointmentFilters({
           <label htmlFor="appt-time-to" className="text-xs font-medium text-text-secondary uppercase tracking-wide">
             To Time
           </label>
-          <select
+          <Select
             id="appt-time-to"
             value={timeTo}
             onChange={(e) => setTimeTo(e.target.value)}
-            className={selectClasses}
           >
             {TIME_OPTIONS.map((t) => (
               <option key={t.value} value={t.value}>{t.label}</option>
             ))}
-          </select>
+          </Select>
         </div>
 
         {/* Apply button */}

@@ -22,8 +22,8 @@ import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { useCallback, useState, useTransition } from "react";
 import { CalendarPicker } from "@/components/ui/calendar-picker";
 import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
 import { SlidersHorizontal, X, Search } from "lucide-react";
 
 const STATUS_OPTIONS = [
@@ -33,12 +33,6 @@ const STATUS_OPTIONS = [
   { value: "completed", label: "Completed" },
   { value: "cancelled", label: "Cancelled" },
 ];
-
-const selectClasses = cn(
-  "w-full h-9 px-3 py-2 text-sm border border-border rounded-lg bg-surface",
-  "outline-none focus:ring-2 focus:ring-accent focus:ring-offset-1 focus:border-accent",
-  "text-text-primary cursor-pointer"
-);
 
 interface TreatmentFiltersProps {
   today: string;
@@ -155,16 +149,15 @@ export function TreatmentFilters({
           <label htmlFor="tx-status" className="text-xs font-medium text-text-secondary uppercase tracking-wide">
             Status
           </label>
-          <select
+          <Select
             id="tx-status"
             value={status}
             onChange={(e) => setStatus(e.target.value)}
-            className={selectClasses}
           >
             {STATUS_OPTIONS.map((s) => (
               <option key={s.value} value={s.value}>{s.label}</option>
             ))}
-          </select>
+          </Select>
         </div>
 
         {/* Date From */}

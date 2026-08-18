@@ -8,9 +8,10 @@
  * it. The active segment is marked with the emerald accent plus a label, so the
  * selection is never communicated by colour alone.
  *
- * Rendered inside the dentist/receptionist Clinic Settings page and the patient
- * portal profile page. Both mount the same component — one control, one
- * behaviour, no per-surface variants.
+ * Two sizes. The default shows icon + label and is used on the settings pages,
+ * where there is room. `compact` shows icons only and is used in the dashboard
+ * sidebar: three labelled segments need ~250px and the sidebar's content box is
+ * 200px, so the labelled variant overflowed its container.
  */
 
 import { Monitor, Moon, Sun } from "lucide-react";
@@ -29,7 +30,14 @@ const OPTIONS: {
   { value: "system", label: "System", icon: Monitor, hint: "Match your device setting" },
 ];
 
-export function ThemeToggle({ className }: { className?: string }) {
+export function ThemeToggle({
+  className,
+  compact = false,
+}: {
+  className?: string;
+  /** Icons only — for narrow containers like the sidebar footer. */
+  compact?: boolean;
+}) {
   const { theme, setTheme, mounted } = useTheme();
 
   return (
@@ -37,7 +45,8 @@ export function ThemeToggle({ className }: { className?: string }) {
       role="radiogroup"
       aria-label="Theme"
       className={cn(
-        "inline-flex items-center gap-1 rounded-lg border border-border bg-surface-muted p-1",
+        "inline-flex items-center rounded-lg border border-border bg-surface-muted p-1",
+        compact ? "w-full gap-0.5" : "gap-1",
         className,
       )}
     >
@@ -53,19 +62,25 @@ export function ThemeToggle({ className }: { className?: string }) {
             type="button"
             role="radio"
             aria-checked={isActive}
+            // In compact mode the visible label is gone, so the accessible name
+            // has to come from somewhere.
+            aria-label={compact ? label : undefined}
             title={hint}
             onClick={() => setTheme(value)}
             className={cn(
-              "inline-flex items-center gap-1.5 rounded-[6px] px-3 py-1.5 text-xs font-medium cursor-pointer",
+              "inline-flex items-center justify-center rounded-[6px] font-medium cursor-pointer",
               "transition-colors duration-150",
-              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-surface-muted",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-1 focus-visible:ring-offset-surface-muted",
+              compact
+                ? "flex-1 min-w-0 h-7 px-0"
+                : "gap-1.5 px-3 py-1.5 text-xs",
               isActive
                 ? "bg-surface text-accent shadow-xs"
                 : "text-text-secondary hover:text-text-primary hover:bg-surface/60",
             )}
           >
-            <Icon className="h-3.5 w-3.5" aria-hidden="true" />
-            {label}
+            <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+            {!compact && label}
           </button>
         );
       })}
@@ -85,8 +100,8 @@ export function AppearanceSettings() {
         <div>
           <h2 className="text-sm font-semibold text-text-primary">Appearance</h2>
           <p className="mt-0.5 text-xs text-text-secondary">
-            Choose how DentGrow looks. System follows your device&apos;s light or
-            dark setting automatically.
+            Choose how DentGrow looks. Light is the default; System follows your
+            device&apos;s light or dark setting automatically.
           </p>
         </div>
         <ThemeToggle className="shrink-0" />

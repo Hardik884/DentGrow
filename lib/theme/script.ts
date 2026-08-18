@@ -18,7 +18,7 @@ import { THEME_STORAGE_KEY } from "./constants";
  */
 export const THEME_INIT_SCRIPT = `(function(){try{
 var s=localStorage.getItem(${JSON.stringify(THEME_STORAGE_KEY)});
-if(s!=="light"&&s!=="dark"&&s!=="system"){s="system";}
+if(s!=="light"&&s!=="dark"&&s!=="system"){s="light";}
 var d=s==="dark"||(s==="system"&&window.matchMedia("(prefers-color-scheme: dark)").matches);
 var e=document.documentElement;
 e.classList.toggle("dark",d);

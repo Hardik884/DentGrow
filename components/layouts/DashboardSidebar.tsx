@@ -164,7 +164,7 @@ export function DashboardSidebar({
         {/* Appearance lives here so every role can reach it — the receptionist
             has no Settings page of its own. Nav items, routes and labels above
             are untouched. */}
-        <ThemeToggle className="w-full justify-between mb-2" />
+        <ThemeToggle compact className="mb-2" />
         <SignOutButton className="w-full" />
       </div>
     </aside>

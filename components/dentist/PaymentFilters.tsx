@@ -21,8 +21,8 @@ import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { useCallback, useState, useTransition } from "react";
 import { CalendarPicker } from "@/components/ui/calendar-picker";
 import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
 import { SlidersHorizontal, X, Search } from "lucide-react";
 
 const PAYMENT_METHOD_OPTIONS = [
@@ -32,12 +32,6 @@ const PAYMENT_METHOD_OPTIONS = [
   { value: "card", label: "Card" },
   { value: "bank_transfer", label: "Bank Transfer" },
 ];
-
-const selectClasses = cn(
-  "w-full h-9 px-3 py-2 text-sm border border-border rounded-lg bg-surface",
-  "outline-none focus:ring-2 focus:ring-accent focus:ring-offset-1 focus:border-accent",
-  "text-text-primary cursor-pointer"
-);
 
 interface PaymentFiltersProps {
   initialSearch?: string;
@@ -130,16 +124,15 @@ export function PaymentFilters({
           <label htmlFor="payment-method" className="text-xs font-medium text-text-secondary uppercase tracking-wide">
             Payment Method
           </label>
-          <select
+          <Select
             id="payment-method"
             value={method}
             onChange={(e) => setMethod(e.target.value)}
-            className={selectClasses}
           >
             {PAYMENT_METHOD_OPTIONS.map((m) => (
               <option key={m.value} value={m.value}>{m.label}</option>
             ))}
-          </select>
+          </Select>
         </div>
 
         {/* Date From */}

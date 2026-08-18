@@ -26,9 +26,9 @@ export function isThemePreference(value: unknown): value is ThemePreference {
 }
 
 /**
- * DentGrow shipped light-only for its whole life, so `system` is the default
- * only in the sense that an unset preference follows the OS. A user who has
- * never touched the setting on a light-configured machine sees exactly the
- * light UI they had before.
+ * Light is the default. DentGrow shipped light-only for its whole life, and an
+ * existing user who has never opened the Appearance setting should keep seeing
+ * exactly the app they already know — not have it change because their laptop
+ * happens to be set to dark. Dark and System are opt-in.
  */
-export const DEFAULT_THEME_PREFERENCE: ThemePreference = "system";
+export const DEFAULT_THEME_PREFERENCE: ThemePreference = "light";
