@@ -29,7 +29,6 @@ export function CancelAppointmentButton({ appointmentId, redirectHref }: CancelA
       setOpen(false);
       queryClient.invalidateQueries({ queryKey: queryKeys.appointments.all });
       if (redirectHref) router.push(redirectHref);
-      else router.refresh();
     });
   }
 

@@ -11,7 +11,6 @@
 
 import { useState, useTransition } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { Eye, CalendarClock, X, LogIn, PlayCircle } from "lucide-react";
 import { cancelAppointment, updateAppointmentStatus } from "@/actions/appointments";
@@ -39,7 +38,6 @@ export function AppointmentRowActions({
   clinicToday,
   viewHref,
 }: AppointmentRowActionsProps) {
-  const router = useRouter();
   const queryClient = useQueryClient();
   const [showReschedule, setShowReschedule] = useState(false);
   const [showCancel, setShowCancel] = useState(false);
@@ -62,7 +60,6 @@ export function AppointmentRowActions({
       }
       setShowCancel(false);
       queryClient.invalidateQueries({ queryKey: queryKeys.appointments.all });
-      router.refresh();
     });
   }
 
@@ -78,7 +75,6 @@ export function AppointmentRowActions({
         return;
       }
       queryClient.invalidateQueries({ queryKey: queryKeys.appointments.all });
-      router.refresh();
     });
   }
 

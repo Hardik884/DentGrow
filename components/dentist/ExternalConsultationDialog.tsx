@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useTransition, type ReactNode } from "react";
-import { useRouter } from "next/navigation";
 import { recordConsultancyIncome } from "@/actions/consultants";
 import { Dialog } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -36,7 +35,6 @@ export function ExternalConsultationDialog({
   triggerSize = "sm",
   children,
 }: ExternalConsultationDialogProps) {
-  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -77,7 +75,6 @@ export function ExternalConsultationDialog({
       }
       resetForm();
       setOpen(false);
-      router.refresh();
     });
   }
 

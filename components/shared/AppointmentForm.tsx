@@ -273,7 +273,6 @@ export function AppointmentForm({
       return;
     }
     router.push(successRedirect ?? "/dentist/appointments");
-    router.refresh();
   }
 
   return (

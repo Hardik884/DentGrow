@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { Pencil } from "lucide-react";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Dialog } from "@/components/ui/dialog";
@@ -52,7 +51,6 @@ export function TreatmentList({
   editable = false,
 }: TreatmentListProps) {
   const isDentist = role === "dentist";
-  const router = useRouter();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const canEdit = isDentist && editable;
@@ -162,7 +160,6 @@ export function TreatmentList({
                 onCancel={() => setEditingId(null)}
                 onSuccess={() => {
                   setEditingId(null);
-                  router.refresh();
                 }}
               />
             )}

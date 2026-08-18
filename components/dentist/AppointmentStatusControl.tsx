@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { updateAppointmentStatus, cancelAppointment } from "@/actions/appointments";
 import { queryKeys } from "@/lib/query/keys";
@@ -28,7 +27,6 @@ export function AppointmentStatusControl({
   currentScheduledAt = new Date().toISOString(),
   clinicToday,
 }: AppointmentStatusControlProps) {
-  const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [confirmAction, setConfirmAction] = useState<AppointmentStatus | null>(null);
   const [showReschedule, setShowReschedule] = useState(false);
@@ -49,7 +47,6 @@ export function AppointmentStatusControl({
       if (result.error) setError(result.error);
       else {
         queryClient.invalidateQueries({ queryKey: queryKeys.appointments.all });
-        router.refresh();
       }
       setConfirmAction(null);
     });

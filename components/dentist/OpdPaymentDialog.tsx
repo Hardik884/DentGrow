@@ -11,7 +11,6 @@
  */
 
 import { useEffect, useState, type ReactNode } from "react";
-import { useRouter } from "next/navigation";
 import { Dialog } from "@/components/ui/dialog";
 import { Button, type ButtonVariant, type ButtonSize } from "@/components/ui/button";
 import { PaymentForm } from "@/components/dentist/PaymentForm";
@@ -41,7 +40,6 @@ export function OpdPaymentDialog({
   triggerSize = "sm",
   children,
 }: OpdPaymentDialogProps) {
-  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [recordedBy, setRecordedBy] = useState<string | undefined>(undefined);
   const [defaultFee, setDefaultFee] = useState<number | undefined>(undefined);
@@ -92,7 +90,6 @@ export function OpdPaymentDialog({
               onCancel={() => setOpen(false)}
               onSuccess={() => {
                 setOpen(false);
-                router.refresh();
               }}
             />
           )}

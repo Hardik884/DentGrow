@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
 import { updateAppointmentClinical } from "@/actions/appointments";
 import type { MedicalHistory } from "@/types";
 import { Textarea } from "@/components/ui/textarea";
@@ -55,7 +54,6 @@ function normalize(raw: unknown): MedicalHistory {
  * dentist. Saves via updateAppointmentClinical.
  */
 export function MedicalHistoryCard({ appointmentId, initial, canEdit }: MedicalHistoryCardProps) {
-  const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
   const initialValue = normalize(initial);
@@ -89,7 +87,6 @@ export function MedicalHistoryCard({ appointmentId, initial, canEdit }: MedicalH
       setSaved(payload);
       setValue(payload);
       setJustSaved(true);
-      router.refresh();
     });
   }
 

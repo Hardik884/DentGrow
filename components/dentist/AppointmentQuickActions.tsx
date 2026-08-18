@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { TreatmentFormDialog } from "./TreatmentFormDialog";
@@ -58,7 +57,6 @@ export function AppointmentQuickActions({
   currentScheduledAt,
   clinicToday,
 }: AppointmentQuickActionsProps) {
-  const router = useRouter();
   const queryClient = useQueryClient();
   const [isPending, startTransition] = useTransition();
   const [showReschedule, setShowReschedule] = useState(false);
@@ -79,7 +77,6 @@ export function AppointmentQuickActions({
       });
       if (!result.error) {
         queryClient.invalidateQueries({ queryKey: queryKeys.appointments.all });
-        router.refresh();
       }
     });
   }
@@ -90,7 +87,6 @@ export function AppointmentQuickActions({
       if (!result.error) {
         setShowCancel(false);
         queryClient.invalidateQueries({ queryKey: queryKeys.appointments.all });
-        router.refresh();
       }
     });
   }

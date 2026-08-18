@@ -98,7 +98,6 @@ export function PaymentForm({
         onSuccess();
       } else {
         router.back();
-        router.refresh();
       }
     });
   }

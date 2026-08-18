@@ -1,7 +1,6 @@
 "use client";
 
 import { useTransition } from "react";
-import { useRouter } from "next/navigation";
 import { deleteTreatmentDocument } from "@/actions/treatments";
 import { Trash2 } from "lucide-react";
 
@@ -10,14 +9,12 @@ interface DeleteTreatmentDocumentButtonProps {
 }
 
 export function DeleteTreatmentDocumentButton({ documentId }: DeleteTreatmentDocumentButtonProps) {
-  const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
   function handleDelete() {
     if (!confirm("Delete this document? This cannot be undone.")) return;
     startTransition(async () => {
       const res = await deleteTreatmentDocument(documentId);
-      if (!res.error) router.refresh();
     });
   }
 

@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
 import { checkInPatient } from "@/actions/queue";
 import { Button } from "@/components/ui/button";
 import { CheckCircle2 } from "lucide-react";
@@ -12,7 +11,6 @@ interface CheckInButtonProps {
 }
 
 export function CheckInButton({ appointmentId, isCheckedIn = false }: CheckInButtonProps) {
-  const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [isDone, setIsDone] = useState(isCheckedIn);
   const [error, setError] = useState<string | null>(null);
@@ -23,7 +21,6 @@ export function CheckInButton({ appointmentId, isCheckedIn = false }: CheckInBut
       const result = await checkInPatient(appointmentId);
       if (result.error) { setError(result.error); return; }
       setIsDone(true);
-      router.refresh();
     });
   }
 

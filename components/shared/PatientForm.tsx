@@ -82,7 +82,6 @@ export function PatientForm({ patient, successRedirect, cancelHref, onSuccess, h
     // Default navigation path (existing behaviour, unchanged).
     if (successRedirect) {
       router.push(successRedirect);
-      router.refresh();
     }
   }
 

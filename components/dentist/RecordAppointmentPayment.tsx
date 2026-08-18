@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { PaymentForm } from "@/components/dentist/PaymentForm";
 import { Dialog } from "@/components/ui/dialog";
 import { Plus } from "lucide-react";
@@ -24,7 +23,6 @@ export function RecordAppointmentPayment({
   patientId,
   patientName,
 }: RecordAppointmentPaymentProps) {
-  const router = useRouter();
   const [open, setOpen] = useState(false);
 
   return (
@@ -47,7 +45,6 @@ export function RecordAppointmentPayment({
             onCancel={() => setOpen(false)}
             onSuccess={() => {
               setOpen(false);
-              router.refresh();
             }}
           />
         </div>

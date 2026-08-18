@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
-import { useRouter } from "next/navigation";
 import { Dialog } from "@/components/ui/dialog";
 import { Button, type ButtonVariant, type ButtonSize } from "@/components/ui/button";
 import { AppointmentForm } from "./AppointmentForm";
@@ -39,7 +38,6 @@ export function AppointmentFormDialog({
   triggerSize = "sm",
   children,
 }: AppointmentFormDialogProps) {
-  const router = useRouter();
   const [open, setOpen] = useState(false);
 
   return (
@@ -68,7 +66,6 @@ export function AppointmentFormDialog({
             onCancel={() => setOpen(false)}
             onSuccess={() => {
               setOpen(false);
-              router.refresh();
             }}
           />
         </div>

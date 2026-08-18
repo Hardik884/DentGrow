@@ -355,7 +355,6 @@ export function TreatmentForm({
               ? `/dentist/patients/${patientId}/treatments`
               : "/dentist/treatments";
           router.push(target);
-          router.refresh();
         }
       }
     });

@@ -77,7 +77,6 @@ export function SlotPicker({ patientId }: SlotPickerProps) {
     }
 
     router.push("/portal/appointments");
-    router.refresh();
   }
 
   return (

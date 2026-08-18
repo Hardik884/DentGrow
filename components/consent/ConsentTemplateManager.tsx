@@ -2,7 +2,6 @@
 
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
-import { useRouter } from "next/navigation";
 import { PenLine, FileCheck2 } from "lucide-react";
 import { Dialog } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -24,7 +23,6 @@ interface ConsentTemplateManagerProps {
  * signed consents are never affected.
  */
 export function ConsentTemplateManager({ templates }: ConsentTemplateManagerProps) {
-  const router = useRouter();
   const [editKey, setEditKey] = useState<string | null>(null);
   const editing = templates.find((t) => t.template_key === editKey) ?? null;
 
@@ -65,7 +63,6 @@ export function ConsentTemplateManager({ templates }: ConsentTemplateManagerProp
           onClose={() => setEditKey(null)}
           onSaved={() => {
             setEditKey(null);
-            router.refresh();
           }}
         />
       )}

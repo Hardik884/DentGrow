@@ -1,7 +1,6 @@
 "use client";
 
 import { useRef, useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
 import {
   uploadAppointmentDocument,
   deleteAppointmentDocument,
@@ -43,7 +42,6 @@ export function RadiographicDocuments({
   documents,
   canManage,
 }: RadiographicDocumentsProps) {
-  const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [docType, setDocType] = useState<string>(RADIOGRAPH_DOCUMENT_TYPES[0]);
   const [error, setError] = useState<string | null>(null);
@@ -78,7 +76,6 @@ export function RadiographicDocuments({
         setError(res.error);
         return;
       }
-      router.refresh();
     });
   }
 
@@ -90,7 +87,6 @@ export function RadiographicDocuments({
         setError(res.error);
         return;
       }
-      router.refresh();
     });
   }
 

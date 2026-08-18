@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
-import { useRouter } from "next/navigation";
 import { Dialog } from "@/components/ui/dialog";
 import { Button, type ButtonVariant, type ButtonSize } from "@/components/ui/button";
 import { TreatmentForm } from "./TreatmentForm";
@@ -68,7 +67,6 @@ export function TreatmentFormDialog({
   onClose,
   children,
 }: TreatmentFormDialogProps) {
-  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [promptOpen, setPromptOpen] = useState(false);
   const [followUpOpen, setFollowUpOpen] = useState(false);
@@ -79,7 +77,6 @@ export function TreatmentFormDialog({
   function finish() {
     setPromptOpen(false);
     setFollowUpOpen(false);
-    router.refresh();
   }
 
   return (
@@ -124,7 +121,6 @@ export function TreatmentFormDialog({
               setOpen(false);
               // Refresh regardless, so the saved treatment is on screen behind
               // the prompt rather than appearing only after it is dismissed.
-              router.refresh();
               onClose?.();
               if (shouldPrompt) setPromptOpen(true);
             }}

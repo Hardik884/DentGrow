@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Pencil } from "lucide-react";
 import { Dialog } from "@/components/ui/dialog";
@@ -22,7 +21,6 @@ interface PatientEditDialogProps {
  * closes and refreshes the current page.
  */
 export function PatientEditDialog({ patient }: PatientEditDialogProps) {
-  const router = useRouter();
   const [open, setOpen] = useState(false);
 
   return (
@@ -39,7 +37,6 @@ export function PatientEditDialog({ patient }: PatientEditDialogProps) {
             onSuccess={(updated) => {
               setOpen(false);
               toast.success(`Patient "${updated.name}" updated.`);
-              router.refresh();
             }}
           />
         </div>

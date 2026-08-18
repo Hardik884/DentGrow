@@ -1,6 +1,5 @@
-import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { type NextRequest, NextResponse } from "next/server";
-import type { Database } from "@/types/database.types";
+import { createMiddlewareClient } from "@/lib/supabase/middleware-client";
 
 /**
  * updateSession
@@ -23,28 +22,7 @@ import type { Database } from "@/types/database.types";
  * accidental navigation to wrong-role pages.
  */
 export async function updateSession(request: NextRequest) {
-  let supabaseResponse = NextResponse.next({ request });
-
-  const supabase = createServerClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return request.cookies.getAll();
-        },
-        setAll(cookiesToSet: { name: string; value: string; options?: CookieOptions }[]) {
-          cookiesToSet.forEach(({ name, value }) =>
-            request.cookies.set(name, value)
-          );
-          supabaseResponse = NextResponse.next({ request });
-          cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options)
-          );
-        },
-      },
-    }
-  );
+  const { supabase, response } = createMiddlewareClient(request);
 
   // IMPORTANT: do not remove this call — it refreshes the session cookie
   const {
@@ -52,6 +30,23 @@ export async function updateSession(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   const { pathname } = request.nextUrl;
+
+  // ── Server Action POSTs — skip the role/profile lookups ───────────────────
+  // A Server Action posts to the page's own route, so this middleware runs on
+  // every mutation as well as every navigation. The role lookups below exist
+  // only to REDIRECT a browser that navigated to the wrong dashboard; a Server
+  // Action never navigates, so their result is discarded — but the request
+  // still waited on them. That put one `profiles` query (two on /portal/*, via
+  // patient_portal_links) in the critical path of every button in the app, and
+  // React `cache()` cannot dedupe it because middleware runs in a different
+  // execution context from the action it precedes.
+  //
+  // Authorisation is NOT weakened by skipping them. Every Server Action
+  // re-resolves the caller's profile server-side and re-checks role itself
+  // (CLAUDE.md §13.4), and RLS remains the authoritative boundary (§13.10).
+  // The unauthenticated redirect below is deliberately still applied.
+  const isServerAction =
+    request.method === "POST" && request.headers.has("next-action");
 
   // ── Public auth-recovery routes ────────────────────────────────────────────
   // The patient password-reset flow must be reachable without an existing app
@@ -63,7 +58,7 @@ export async function updateSession(request: NextRequest) {
   // account, never on any clinic selection.
   const PUBLIC_AUTH_PATHS = ["/forgot-password", "/reset-password", "/auth/callback"];
   if (PUBLIC_AUTH_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`))) {
-    return supabaseResponse;
+    return response();
   }
 
   // ── Root redirect ──────────────────────────────────────────────────────────
@@ -93,7 +88,7 @@ export async function updateSession(request: NextRequest) {
       }
       return redirectByKnownRole(role, request);
     }
-    return supabaseResponse;
+    return response();
   }
 
   // ── All protected routes — unauthenticated users go to /login ─────────────
@@ -103,13 +98,20 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
+  // Authenticated Server Action: the session is refreshed and the caller is
+  // known — everything below only computes a redirect this request will never
+  // use. See the note above `isServerAction`.
+  if (isServerAction) {
+    return response();
+  }
+
   // ── /dentist/* — requires role === 'dentist' ───────────────────────────────
   if (pathname.startsWith("/dentist")) {
     const role = await resolveRole(supabase, user.id);
     if (role !== "dentist") {
       return redirectByKnownRole(role, request);
     }
-    return supabaseResponse;
+    return response();
   }
 
   // ── /receptionist/* — requires role === 'receptionist' ────────────────────
@@ -118,7 +120,7 @@ export async function updateSession(request: NextRequest) {
     if (role !== "receptionist") {
       return redirectByKnownRole(role, request);
     }
-    return supabaseResponse;
+    return response();
   }
 
   // ── /portal/* — patient portal; staff are redirected to their dashboard ───
@@ -134,7 +136,7 @@ export async function updateSession(request: NextRequest) {
 
     // /portal/setup is always accessible to authenticated non-staff users
     if (pathname === "/portal/setup") {
-      return supabaseResponse;
+      return response();
     }
 
     const { data: portalLink } = await supabase
@@ -147,10 +149,10 @@ export async function updateSession(request: NextRequest) {
       return NextResponse.redirect(new URL("/portal/setup", request.url));
     }
 
-    return supabaseResponse;
+    return response();
   }
 
-  return supabaseResponse;
+  return response();
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
