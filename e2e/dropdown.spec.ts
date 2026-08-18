@@ -167,6 +167,43 @@ test.describe("designed dropdown", () => {
     expect(inSync.shown).toContain(inSync.chosen!);
   });
 
+  test("the choice survives a failed server action", async ({ page }) => {
+    // Regression: React 19 resets a <form action> once the action resolves.
+    // That reset wiped the hidden <select> back to its first option, and React
+    // does not re-apply the controlled value without a re-render — which a
+    // failed sign-in does not cause. The login page then showed one clinic and
+    // submitted a different one, so the next attempt failed too.
+    await page.goto("/login");
+
+    await page.getByRole("combobox").first().click();
+    await page.getByRole("option", { name: "My Dental Clinic" }).click();
+
+    await page.getByPlaceholder("you@example.com").fill("brain@dentgrow.test");
+    await page.getByPlaceholder("••••••••").fill("definitely-wrong");
+    await page.getByRole("button", { name: "Sign in" }).click();
+    await expect(page.getByRole("alert")).toBeVisible();
+
+    const after = await page.evaluate(() => {
+      const sel = document.querySelector("select") as HTMLSelectElement;
+      const trigger = sel.parentElement!.querySelector('[role="combobox"]')!;
+      return {
+        native: sel.selectedOptions[0]?.text?.trim(),
+        shown: trigger.textContent?.trim(),
+      };
+    });
+
+    // Both the label the user reads and the value that would be posted.
+    expect(after.shown).toContain("My Dental Clinic");
+    expect(after.native).toBe("My Dental Clinic");
+
+    // And a correct retry actually signs in. (The action reset clears the text
+    // inputs — long-standing behaviour of this form, unrelated to the select.)
+    await page.getByPlaceholder("you@example.com").fill("brain@dentgrow.test");
+    await page.getByPlaceholder("••••••••").fill("password123");
+    await page.getByRole("button", { name: "Sign in" }).click();
+    await page.waitForURL("**/dentist**", { timeout: 30_000 });
+  });
+
   test("dropdowns inside a modal are not clipped", async ({ page }) => {
     await forceTheme(page, "dark");
     await login(page);

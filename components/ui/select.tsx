@@ -157,21 +157,85 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
 
     const [open, setOpen] = useState(false);
     const [mounted, setMounted] = useState(false);
-    const [current, setCurrent] = useState<string>("");
     const [activeIndex, setActiveIndex] = useState(0);
+
+    /**
+     * What the trigger displays.
+     *
+     * When the caller passes `value`, that prop IS the answer and the DOM is
+     * never consulted. This matters: React 19 resets a form after a server
+     * action completes, which briefly resets the hidden <select> before React
+     * restores the controlled value. Mirroring the element's value into state
+     * meant the trigger latched onto that reset — the login page showed the
+     * wrong clinic after a failed sign-in while the real value was still
+     * correct, so the label and the submitted data disagreed.
+     *
+     * Uncontrolled callers (react-hook-form writes straight to the node via its
+     * ref) still need the DOM read, but it is driven by events rather than
+     * sampled on every render.
+     */
+    const isControlled = value !== undefined;
+    const [domValue, setDomValue] = useState<string>("");
+    const current = isControlled ? String(value ?? "") : domValue;
     const [rect, setRect] = useState<{ top: number; left: number; width: number; below: boolean } | null>(null);
 
     const listboxId = useId();
 
     useEffect(() => setMounted(true), []);
 
-    // The native element is the source of truth. Re-read it whenever the
-    // controlled value or the option set changes — react-hook-form writes
-    // straight to the node via its ref, without going through React state.
+    // Uncontrolled only: keep the label in step with the node. react-hook-form
+    // writes to it through its ref without going through React, and the form
+    // can be reset out from under us, so subscribe to those events rather than
+    // sampling the value on every render.
     useEffect(() => {
+      if (isControlled) return;
       const el = nativeRef.current;
-      if (el) setCurrent(el.value);
-    }, [value, defaultValue, options]);
+      if (!el) return;
+
+      const sync = () => setDomValue(el.value);
+      sync();
+
+      el.addEventListener("change", sync);
+      // `reset` fires before the controls are actually reset, so read after it
+      // has been applied.
+      const onReset = () => queueMicrotask(sync);
+      el.form?.addEventListener("reset", onReset);
+
+      return () => {
+        el.removeEventListener("change", sync);
+        el.form?.removeEventListener("reset", onReset);
+      };
+    }, [isControlled, defaultValue, options]);
+
+    /**
+     * Controlled only: put the node back after React 19 resets the form.
+     *
+     * A `<form action={...}>` is reset once the action resolves. That wipes the
+     * hidden <select> back to its first option, and React only re-applies the
+     * `value` prop if something causes a re-render — which a failed sign-in
+     * does not. The element then still carries the stale clinic, so the NEXT
+     * submit posts the wrong one and login fails even though the UI shows the
+     * right choice. Restoring it here keeps the submitted data honest.
+     *
+     * Assigning `.value` directly is deliberate: this is a restoration, not a
+     * user edit, and it must not fire a change event.
+     */
+    useEffect(() => {
+      if (!isControlled) return;
+      const el = nativeRef.current;
+      if (!el) return;
+
+      // Self-heal on every render, for anything that reset it quietly.
+      if (el.value !== current) el.value = current;
+
+      const onReset = () => queueMicrotask(() => {
+        if (nativeRef.current && nativeRef.current.value !== current) {
+          nativeRef.current.value = current;
+        }
+      });
+      el.form?.addEventListener("reset", onReset);
+      return () => el.form?.removeEventListener("reset", onReset);
+    });
 
     const selected = options.find((o) => o.value === current);
 
@@ -180,7 +244,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
         nativeRef.current = node;
         if (typeof forwardedRef === "function") forwardedRef(node);
         else if (forwardedRef) forwardedRef.current = node;
-        if (node) setCurrent(node.value);
+        if (node) setDomValue(node.value);
       },
       [forwardedRef],
     );
@@ -245,7 +309,8 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
     const commit = useCallback((next: string) => {
       const el = nativeRef.current;
       if (el && el.value !== next) setNativeValue(el, next);
-      setCurrent(next);
+      // Harmless when controlled — `current` reads the prop in that case.
+      setDomValue(next);
       setOpen(false);
       triggerRef.current?.focus();
     }, []);
@@ -330,7 +395,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
           value={value}
           defaultValue={defaultValue}
           onChange={(e) => {
-            setCurrent(e.target.value);
+            setDomValue(e.target.value);
             onChange?.(e);
           }}
           tabIndex={-1}
