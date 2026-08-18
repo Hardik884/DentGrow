@@ -257,7 +257,7 @@ export function ConsentActions({
       </div>
 
       {status === "missing-phone" && (
-        <div className="flex flex-wrap items-center gap-2 text-xs text-[#DC2626] bg-[#FEF2F2] border border-[#FECACA] rounded-md px-3 py-2">
+        <div className="flex flex-wrap items-center gap-2 text-xs text-danger bg-danger-bg border border-danger-border rounded-md px-3 py-2">
           <AlertCircle className="h-3.5 w-3.5 shrink-0" aria-hidden />
           <span>Patient phone number is missing.</span>
           {addPhoneHref && (
@@ -268,7 +268,7 @@ export function ConsentActions({
         </div>
       )}
 
-      {status && status !== "missing-phone" && <p className="text-xs text-[#737A76]">{status}</p>}
+      {status && status !== "missing-phone" && <p className="text-xs text-text-secondary">{status}</p>}
     </div>
   );
 }
