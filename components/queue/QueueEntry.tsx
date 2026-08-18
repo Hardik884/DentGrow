@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
 import { advanceQueue, skipPatient } from "@/actions/queue";
 import { PatientAvatar } from "@/components/shared/PatientAvatar";
 import { Button } from "@/components/ui/button";
@@ -14,7 +13,6 @@ interface QueueEntryProps {
 }
 
 export function QueueEntry({ entry, showActions = false }: QueueEntryProps) {
-  const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
@@ -23,7 +21,6 @@ export function QueueEntry({ entry, showActions = false }: QueueEntryProps) {
     startTransition(async () => {
       const result = await advanceQueue();
       if (result.error) setError(result.error);
-      else router.refresh();
     });
   }
 
@@ -32,7 +29,6 @@ export function QueueEntry({ entry, showActions = false }: QueueEntryProps) {
     startTransition(async () => {
       const result = await skipPatient(entry.id);
       if (result.error) setError(result.error);
-      else router.refresh();
     });
   }
 

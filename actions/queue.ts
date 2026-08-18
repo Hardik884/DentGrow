@@ -430,22 +430,13 @@ export async function getTodayQueue(): Promise<
   ActionResult<QueueEntryWithPatient[]>
 > {
   try {
-    const supabase = await createServerClient();
-    const db: DbClient = supabase;
-
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    // Use the request-memoised session rather than a private auth.getUser() +
+    // profiles pair. This function is re-invoked on every realtime queue event
+    // and again during the queue page render, so resolving the session here
+    // independently meant paying for an auth round-trip and a profiles query
+    // that the same request had usually already done.
+    const { db, user, profile } = await resolveCachedSession();
     if (!user) return { data: null, error: "Unauthorized" };
-
-    // Try to resolve as staff first
-    const { data: profileData } = await db
-      .from("profiles")
-      .select("id, clinic_id, role")
-      .eq("id", user.id)
-      .maybeSingle();
-
-    const profile = profileData as ResolvedProfile | null;
 
     // Staff path
     if (profile && (profile.role === "dentist" || profile.role === "receptionist")) {

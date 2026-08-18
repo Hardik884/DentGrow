@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
 import { useQueue } from "@/hooks/useQueue";
 import { advanceQueue } from "@/actions/queue";
 import { QueueEntry } from "./QueueEntry";
@@ -30,7 +29,6 @@ interface QueueBoardProps {
 }
 
 export function QueueBoard({ initialQueue, clinicId = "", metrics }: QueueBoardProps) {
-  const router = useRouter();
   const { queue, isLoading, error } = useQueue({ clinicId, initialQueue });
   const [isPending, startTransition] = useTransition();
   const [advanceError, setAdvanceError] = useState<string | null>(null);
@@ -48,7 +46,6 @@ export function QueueBoard({ initialQueue, clinicId = "", metrics }: QueueBoardP
     startTransition(async () => {
       const result = await advanceQueue();
       if (result.error) setAdvanceError(result.error);
-      else router.refresh();
     });
   }
 
