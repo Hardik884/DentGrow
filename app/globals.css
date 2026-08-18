@@ -20,12 +20,18 @@
   --color-text-disabled: #9BA39D;
 
   /* Emerald is the brand accent — used sparingly for primary actions, active
-     states, and DentGrow's AI/intelligence features. Never a background wash. */
+     states, and DentGrow's AI/intelligence features. Never a background wash.
+     `-tint`/`-border`/`-subtle-bg` are aliases of `-soft`/`-soft-border` kept
+     so components written against either naming resolve to the same ramp. */
   --color-accent: #0D6B5E;
   --color-accent-hover: #09544B;
   --color-accent-foreground: #FFFFFF;
   --color-accent-soft: #E8F4F0;
   --color-accent-soft-border: #CFE7E0;
+  --color-accent-tint: #E8F4F0;
+  --color-accent-tint-hover: #DCEEE8;
+  --color-accent-border: #CFE7E0;
+  --color-accent-subtle-bg: #F6FBF9;
 
   --color-success: #16A34A;
   --color-success-bg: #F0FDF4;
@@ -75,12 +81,20 @@
   --border: #E3E9E6;
   --border-strong: #CBD5D0;
 
-  /* Accents */
+  /* Accents — deep emerald brand accent. Primary actions, active nav,
+     selected controls, focus rings, and success-adjacent AI accents draw
+     from this ramp. Keep usage restrained: a small highlight against a
+     near-monochrome UI, never a wash of color. `-tint`/`-border`/`-subtle-bg`
+     alias `-soft`/`-soft-border` for components written against either name. */
   --accent: #0D6B5E;
   --accent-hover: #09544B;
   --accent-foreground: #FFFFFF;
   --accent-soft: #E8F4F0;
   --accent-soft-border: #CFE7E0;
+  --accent-tint: #E8F4F0;
+  --accent-tint-hover: #DCEEE8;
+  --accent-border: #CFE7E0;
+  --accent-subtle-bg: #F6FBF9;
 
   /* Status */
   --success: #16A34A;

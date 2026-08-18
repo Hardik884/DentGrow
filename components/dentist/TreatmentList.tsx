@@ -81,7 +81,7 @@ export function TreatmentList({
                   <button
                     type="button"
                     onClick={() => setSelectedId(treatment.id)}
-                    className="font-medium text-sm text-blue-600 hover:underline truncate block text-left"
+                    className="font-medium text-sm text-accent hover:underline truncate block text-left"
                   >
                     {treatment.treatment_type}
                   </button>

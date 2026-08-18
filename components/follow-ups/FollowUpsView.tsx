@@ -218,7 +218,7 @@ function FollowUpRow({
         {fu.patient ? (
           <Link
             href={`/dentist/patients/${fu.patient_id}`}
-            className="hover:text-blue-600 transition-colors"
+            className="hover:text-accent transition-colors"
           >
             {fu.patient.name}
           </Link>

@@ -33,7 +33,7 @@ export default async function PortalAppointmentsPage({
         {bookingEnabled && (
           <Link
             href="/portal/appointments/new"
-            className="text-sm font-medium text-blue-600"
+            className="text-sm font-medium text-accent"
           >
             Book Appointment
           </Link>

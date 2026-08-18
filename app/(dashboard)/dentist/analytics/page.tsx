@@ -174,7 +174,7 @@ export default async function AnalyticsDashboardPage({
           <ChartCard title="Avg Appointments / Day">
             <div className="flex items-center justify-center h-48">
               <div className="text-center">
-                <p className="text-5xl font-bold text-blue-600">
+                <p className="text-5xl font-bold text-accent">
                   {appointmentAnalytics.averagePerDay}
                 </p>
                 <p className="text-sm text-gray-500 mt-2">appointments per day</p>

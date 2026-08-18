@@ -32,7 +32,7 @@ export function RecordAppointmentPayment({
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="px-3 py-1.5 text-sm font-medium bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors whitespace-nowrap inline-flex items-center gap-1.5"
+        className="px-3 py-1.5 text-sm font-medium bg-accent text-accent-foreground rounded-md hover:bg-accent-hover transition-colors whitespace-nowrap inline-flex items-center gap-1.5"
       >
         <Plus className="h-3.5 w-3.5" aria-hidden />
         Record Payment

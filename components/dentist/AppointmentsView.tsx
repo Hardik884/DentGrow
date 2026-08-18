@@ -205,7 +205,7 @@ export function AppointmentsView({
                       <td className="px-4 py-3 font-medium text-text-primary">
                         <Link
                           href={`/dentist/patients/${appt.patient_id}`}
-                          className="hover:text-blue-600 transition-colors"
+                          className="hover:text-accent transition-colors"
                         >
                           {appt.patient.name}
                         </Link>

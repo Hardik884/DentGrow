@@ -78,8 +78,8 @@ export function PortalProfileView({ profile }: PortalProfileViewProps) {
       <div className="bg-white border rounded-xl p-5 space-y-4">
         <div className="flex items-center gap-4">
           {/* Avatar */}
-          <div className="h-14 w-14 rounded-full bg-blue-100 flex items-center justify-center shrink-0">
-            <span className="text-blue-700 font-bold text-xl">
+          <div className="h-14 w-14 rounded-full bg-accent-tint flex items-center justify-center shrink-0">
+            <span className="text-accent font-bold text-xl">
               {profile.name.charAt(0).toUpperCase()}
             </span>
           </div>
@@ -127,7 +127,7 @@ export function PortalProfileView({ profile }: PortalProfileViewProps) {
             <button
               type="button"
               onClick={() => { setIsEditing(true); setSaved(false); }}
-              className="px-4 py-2 text-sm font-medium text-blue-600 hover:text-blue-700 border border-blue-200 rounded-lg hover:bg-blue-50 transition-colors"
+              className="px-4 py-2 text-sm font-medium text-accent hover:text-accent-hover border border-accent-border rounded-lg hover:bg-accent-tint transition-colors"
             >
               Edit Profile
             </button>
@@ -144,7 +144,7 @@ export function PortalProfileView({ profile }: PortalProfileViewProps) {
               <button
                 type="submit"
                 disabled={isPending}
-                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="px-4 py-2 text-sm font-medium text-accent-foreground bg-accent hover:bg-accent-hover rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 {isPending ? "Saving…" : "Save Changes"}
               </button>
@@ -262,7 +262,7 @@ function EditableField({
             disabled={disabled}
             placeholder={placeholder}
             rows={3}
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 disabled:bg-gray-50 resize-none"
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 disabled:bg-gray-50 resize-none"
           />
         ) : (
           <input
@@ -272,7 +272,7 @@ function EditableField({
             onChange={(e) => onChange(e.target.value)}
             disabled={disabled}
             placeholder={placeholder}
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 disabled:bg-gray-50"
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 disabled:bg-gray-50"
           />
         )
       ) : (

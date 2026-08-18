@@ -57,7 +57,7 @@ export async function TreatmentDocumentsSection({
                   href={doc.url ?? "#"}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center gap-2 min-w-0 text-sm text-blue-600 hover:underline"
+                  className="flex items-center gap-2 min-w-0 text-sm text-accent hover:underline"
                 >
                   {isImage ? (
                     <ImageIcon className="h-4 w-4 shrink-0 text-gray-400" aria-hidden />
