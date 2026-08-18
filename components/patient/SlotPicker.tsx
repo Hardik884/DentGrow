@@ -109,7 +109,7 @@ export function SlotPicker({ patientId }: SlotPickerProps) {
           <button
             type="button"
             onClick={() => fetchSlots(selectedDate)}
-            className="text-sm text-blue-600 hover:underline mt-1 block"
+            className="text-sm text-accent hover:underline mt-1 block"
           >
             Check available slots →
           </button>
@@ -138,8 +138,8 @@ export function SlotPicker({ patientId }: SlotPickerProps) {
                   className={cn(
                     "py-2 text-sm rounded-lg border transition-colors",
                     selectedSlot === slot
-                      ? "border-blue-600 bg-blue-600 text-white font-semibold"
-                      : "border-gray-200 text-gray-700 hover:border-blue-300 hover:bg-blue-50",
+                      ? "border-accent bg-accent text-accent-foreground font-semibold"
+                      : "border-gray-200 text-gray-700 hover:border-accent hover:bg-accent-tint",
                     "disabled:opacity-50 disabled:cursor-not-allowed"
                   )}
                 >
@@ -165,7 +165,7 @@ export function SlotPicker({ patientId }: SlotPickerProps) {
             type="button"
             onClick={handleConfirm}
             disabled={isBooking}
-            className="w-full py-2.5 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 disabled:opacity-60 transition-colors"
+            className="w-full py-2.5 bg-accent text-accent-foreground text-sm font-semibold rounded-lg hover:bg-accent-hover disabled:opacity-60 transition-colors"
           >
             {isBooking ? "Booking…" : "Confirm Appointment"}
           </button>

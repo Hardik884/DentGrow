@@ -124,7 +124,7 @@ export function MedicalHistoryCard({ appointmentId, initial, canEdit }: MedicalH
               checked={value[key]}
               onChange={() => toggle(key)}
               disabled={!canEdit || isPending}
-              className="h-4 w-4 rounded border-[#D4D4D8] accent-[#18181B] focus:ring-1 focus:ring-[#18181B]"
+              className="h-4 w-4 rounded border-[#D4D4D8] accent-accent focus:ring-1 focus:ring-accent"
             />
             {label}
           </label>

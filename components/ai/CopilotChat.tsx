@@ -77,7 +77,7 @@ function CopilotChatInner() {
             <div
               className={
                 msg.role === "user"
-                  ? "max-w-xs bg-blue-600 text-white rounded-lg px-3 py-2 text-sm"
+                  ? "max-w-xs bg-accent text-accent-foreground rounded-lg px-3 py-2 text-sm"
                   : "max-w-xs bg-gray-100 text-gray-900 rounded-lg px-3 py-2 text-sm"
               }
             >
@@ -106,13 +106,13 @@ function CopilotChatInner() {
           onKeyDown={(e) => e.key === "Enter" && handleSend()}
           placeholder="Ask the copilot…"
           disabled={isLoading}
-          className="flex-1 border rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+          className="flex-1 border rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-50"
         />
         <button
           type="button"
           onClick={handleSend}
           disabled={isLoading || !input.trim()}
-          className="px-3 py-1.5 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700 disabled:opacity-50"
+          className="px-3 py-1.5 bg-accent text-accent-foreground text-sm rounded-md hover:bg-accent-hover disabled:opacity-50"
         >
           Send
         </button>

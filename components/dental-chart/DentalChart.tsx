@@ -126,7 +126,7 @@ export function DentalChart({ patientId, patientName, appointmentId, initialChar
             className={cn(
               "inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-medium transition-colors",
               multiSelectMode
-                ? "bg-[#18181B] text-white border-[#18181B]"
+                ? "bg-accent text-accent-foreground border-accent"
                 : "bg-white text-[#71717A] border-[#E4E4E7] hover:bg-[#F4F4F5]"
             )}
           >

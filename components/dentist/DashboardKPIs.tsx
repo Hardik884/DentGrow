@@ -18,14 +18,24 @@ interface KPICardProps {
   value: string;
   icon: React.ReactNode;
   sub?: string;
+  /** Restrained emerald highlight for the single most important metric on the
+   *  row (Revenue). Every other card stays neutral so the accent doesn't wash
+   *  out the whole grid — see CLAUDE.md's design-system guidance. */
+  accent?: boolean;
 }
 
-function KPICard({ label, value, icon, sub }: KPICardProps) {
+function KPICard({ label, value, icon, sub, accent }: KPICardProps) {
   return (
     <div className="bg-white border border-[#E4E4E7] rounded-xl p-5 space-y-3">
       <div className="flex items-center justify-between">
         <p className="text-xs font-medium text-[#71717A] tracking-wide">{label}</p>
-        <div className="h-7 w-7 rounded-lg bg-[#F4F4F5] flex items-center justify-center text-[#71717A]">
+        <div
+          className={
+            accent
+              ? "h-7 w-7 rounded-lg bg-accent-tint flex items-center justify-center text-accent"
+              : "h-7 w-7 rounded-lg bg-[#F4F4F5] flex items-center justify-center text-[#71717A]"
+          }
+        >
           {icon}
         </div>
       </div>
@@ -123,6 +133,7 @@ export async function DashboardKPIs({ clinicId: propClinicId, timezone: propTime
         value={formatCurrency(kpis.revenueToday)}
         icon={<DollarSign className="h-3.5 w-3.5" aria-hidden />}
         sub="Today"
+        accent
       />
       <KPICard
         label="New Patients"

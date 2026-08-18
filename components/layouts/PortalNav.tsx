@@ -85,7 +85,7 @@ export function PortalNav({ patientId, consentFormsEnabled = false }: PortalNavP
                   className={cn(
                     "px-3 py-1.5 rounded-lg text-xs font-medium transition-colors",
                     isActive
-                      ? "bg-[#F4F4F5] text-[#09090B]"
+                      ? "bg-accent-tint text-[#09090B]"
                       : "text-[#71717A] hover:text-[#09090B] hover:bg-[#F4F4F5]"
                   )}
                   aria-current={isActive ? "page" : undefined}
@@ -122,12 +122,19 @@ export function PortalNav({ patientId, consentFormsEnabled = false }: PortalNavP
               key={item.href}
               href={item.href}
               className={cn(
-                "flex-1 flex flex-col items-center gap-0.5 py-2 px-1 text-[9px] font-medium transition-colors",
-                isActive ? "text-[#09090B]" : "text-[#A1A1AA]"
+                "flex-1 flex flex-col items-center gap-0.5 py-1.5 px-1 text-[9px] font-medium transition-colors",
+                isActive ? "text-accent" : "text-[#A1A1AA]"
               )}
               aria-current={isActive ? "page" : undefined}
             >
-              <item.icon className="h-[18px] w-[18px]" aria-hidden />
+              <span
+                className={cn(
+                  "flex items-center justify-center h-6 w-9 rounded-full transition-colors",
+                  isActive && "bg-accent-tint"
+                )}
+              >
+                <item.icon className="h-[18px] w-[18px]" aria-hidden />
+              </span>
               <span className="leading-none mt-0.5">{item.label}</span>
             </Link>
           );

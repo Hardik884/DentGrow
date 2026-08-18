@@ -187,7 +187,7 @@ export function TreatmentConsentSection({
             onClick={() => setRequired(true)}
             className={cn(
               "px-4 py-1 text-sm rounded-md transition-colors",
-              required ? "bg-[#18181B] text-white" : "text-[#71717A] hover:text-[#09090B]"
+              required ? "bg-accent text-accent-foreground" : "text-[#71717A] hover:text-[#09090B]"
             )}
           >
             Yes
@@ -200,7 +200,7 @@ export function TreatmentConsentSection({
             }}
             className={cn(
               "px-4 py-1 text-sm rounded-md transition-colors",
-              required === false ? "bg-[#18181B] text-white" : "text-[#71717A] hover:text-[#09090B]"
+              required === false ? "bg-accent text-accent-foreground" : "text-[#71717A] hover:text-[#09090B]"
             )}
           >
             No

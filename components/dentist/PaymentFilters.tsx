@@ -35,7 +35,7 @@ const PAYMENT_METHOD_OPTIONS = [
 
 const selectClasses = cn(
   "w-full h-9 px-3 py-2 text-sm border border-[#E4E4E7] rounded-lg bg-white",
-  "outline-none focus:ring-2 focus:ring-[#18181B] focus:ring-offset-1 focus:border-[#18181B]",
+  "outline-none focus:ring-2 focus:ring-accent focus:ring-offset-1 focus:border-accent",
   "text-[#09090B] cursor-pointer"
 );
 

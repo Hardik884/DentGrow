@@ -471,7 +471,7 @@ export function FollowUpForm({
                   </div>
                   <Link
                     href={`/dentist/patients/${selectedPatient?.id ?? initialData?.patient_id}`}
-                    className="text-xs text-blue-600 hover:underline shrink-0"
+                    className="text-xs text-accent hover:underline shrink-0"
                     tabIndex={-1}
                   >
                     View
@@ -738,7 +738,7 @@ export function FollowUpForm({
                           className={cn(
                             "flex items-center justify-center gap-1 py-2 px-1 text-xs rounded-lg border transition-all",
                             isSelected
-                              ? "border-[#18181B] bg-[#18181B] text-white font-medium"
+                              ? "border-accent bg-accent text-accent-foreground font-medium"
                               : "border-border text-[#09090B] hover:border-[#D4D4D8] hover:bg-[#FAFAFA]",
                             "disabled:opacity-50 disabled:cursor-not-allowed"
                           )}
@@ -828,7 +828,7 @@ export function FollowUpForm({
                             <button
                               type="button"
                               onClick={() => loadRelatedOptions(selectedPatient.id)}
-                              className="text-xs text-blue-600 hover:underline"
+                              className="text-xs text-accent hover:underline"
                             >
                               Retry
                             </button>

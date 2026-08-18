@@ -123,7 +123,7 @@ function AppointmentRowWithActions({
               <div className="flex-1 min-w-0">
                 <Link
                   href={`/receptionist/patients/${appointment.patient_id}`}
-                  className="text-sm font-medium text-[#09090B] hover:text-blue-600 truncate block"
+                  className="text-sm font-medium text-[#09090B] hover:text-accent truncate block"
                 >
                   {appointment.patient.name}
                 </Link>

@@ -153,7 +153,7 @@ export function SignatureSettings({ initialUrl }: SignatureSettingsProps) {
         {/* ── Header ─────────────────────────────────────────── */}
         <div className="px-6 py-5 space-y-1">
           <div className="flex items-center gap-2">
-            <PenLine className="h-4 w-4 text-[#18181B]" aria-hidden />
+            <PenLine className="h-4 w-4 text-accent" aria-hidden />
             <h3 className="text-sm font-semibold text-[#09090B]">Digital Signature</h3>
           </div>
           <p className="text-xs text-[#71717A]">
@@ -243,7 +243,7 @@ export function SignatureSettings({ initialUrl }: SignatureSettingsProps) {
               <div className="h-1.5 w-full rounded-full bg-[#F4F4F5] overflow-hidden">
                 <div
                   className={cn(
-                    "h-full rounded-full bg-[#18181B] transition-all duration-200"
+                    "h-full rounded-full bg-accent transition-all duration-200"
                   )}
                   style={{ width: `${progress}%` }}
                 />

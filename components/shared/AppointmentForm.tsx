@@ -518,7 +518,7 @@ export function AppointmentForm({
                       className={cn(
                         "flex items-center justify-center gap-1 py-2 px-1 text-xs rounded-lg border transition-all",
                         selectedSlot === slot
-                          ? "border-[#18181B] bg-[#18181B] text-white font-medium"
+                          ? "border-accent bg-accent text-accent-foreground font-medium"
                           : "border-[#E4E4E7] text-[#09090B] hover:border-[#D4D4D8] hover:bg-[#FAFAFA]",
                         "disabled:opacity-50 disabled:cursor-not-allowed"
                       )}

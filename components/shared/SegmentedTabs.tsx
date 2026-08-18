@@ -39,7 +39,7 @@ export function SegmentedTabs({ tabs, panels, defaultKey }: SegmentedTabsProps) 
             className={cn(
               "px-3.5 py-1.5 text-sm font-medium rounded-md transition-colors",
               active === tab.key
-                ? "bg-white text-[#09090B] shadow-sm"
+                ? "bg-white text-accent shadow-sm"
                 : "text-[#71717A] hover:text-[#09090B]"
             )}
           >

@@ -141,7 +141,7 @@ function Section({
           )}
         </h2>
         {href && (
-          <Link href={href} className="text-xs text-blue-600 hover:underline underline-offset-4">
+          <Link href={href} className="text-xs text-accent hover:underline underline-offset-4">
             View all
           </Link>
         )}
@@ -184,7 +184,7 @@ function FollowUpTable({
                 {f.patient && (
                   <>
                     <span className="text-text-secondary text-xs">·</span>
-                    <span className="text-xs font-medium text-blue-700">{f.patient.name}</span>
+                    <span className="text-xs font-medium text-accent">{f.patient.name}</span>
                     {f.patient.phone && (
                       <span className="text-xs text-text-secondary hidden sm:inline">
                         {f.patient.phone}

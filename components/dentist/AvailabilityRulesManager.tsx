@@ -140,9 +140,9 @@ export function AvailabilityRulesManager({ initialRules }: AvailabilityRulesMana
                         disabled={isPending}
                         className={cn(
                           "relative inline-flex h-5 w-9 shrink-0 rounded-full border-2 border-transparent transition-colors",
-                          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#18181B]",
+                          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent",
                           "disabled:cursor-not-allowed",
-                          rule.is_active ? "bg-[#18181B]" : "bg-[#E4E4E7]"
+                          rule.is_active ? "bg-accent" : "bg-[#E4E4E7]"
                         )}
                         aria-pressed={rule.is_active}
                         aria-label={`${DAY_LABELS[rule.day_of_week]}: ${rule.is_active ? "active" : "inactive"}`}

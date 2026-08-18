@@ -14,7 +14,7 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
           "flex min-h-[80px] w-full rounded-lg border bg-white px-3 py-2 text-sm",
           "text-[#09090B] placeholder:text-[#A1A1AA]",
           "resize-none transition-colors duration-150",
-          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#18181B]/20 focus-visible:border-[#18181B]",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/20 focus-visible:border-accent",
           "disabled:cursor-not-allowed disabled:bg-[#F4F4F5] disabled:text-[#A1A1AA]",
           hasError
             ? "border-[#DC2626] focus-visible:ring-[#DC2626]/20"

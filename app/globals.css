@@ -14,9 +14,16 @@
   --color-text-secondary: #71717A;
   --color-text-disabled: #A1A1AA;
 
-  --color-accent: #18181B;
-  --color-accent-hover: #27272A;
-  --color-accent-foreground: #FAFAFA;
+  /* Brand accent — deep emerald. Used sparingly (primary actions, active
+     navigation, focus states, selected controls) against an otherwise
+     near-monochrome palette. See "Accents" below for the full ramp. */
+  --color-accent: #0F766E;
+  --color-accent-hover: #115E59;
+  --color-accent-foreground: #FFFFFF;
+  --color-accent-tint: #ECFDF5;
+  --color-accent-tint-hover: #D1FAE5;
+  --color-accent-border: #99F6E4;
+  --color-accent-subtle-bg: #F7FAF8;
 
   --color-success: #16A34A;
   --color-success-bg: #F0FDF4;
@@ -48,10 +55,17 @@
   --border: #E4E4E7;
   --border-strong: #D4D4D8;
 
-  /* Accents */
-  --accent: #18181B;
-  --accent-hover: #27272A;
-  --accent-foreground: #FAFAFA;
+  /* Accents — deep emerald brand accent. Primary actions, active nav,
+     selected controls, focus rings, and success-adjacent AI accents draw
+     from this ramp. Keep usage restrained: a small highlight against a
+     near-monochrome UI, never a wash of color. */
+  --accent: #0F766E;
+  --accent-hover: #115E59;
+  --accent-foreground: #FFFFFF;
+  --accent-tint: #ECFDF5;
+  --accent-tint-hover: #D1FAE5;
+  --accent-border: #99F6E4;
+  --accent-subtle-bg: #F7FAF8;
 
   /* Status */
   --success: #16A34A;

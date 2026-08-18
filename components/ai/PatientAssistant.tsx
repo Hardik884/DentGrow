@@ -40,14 +40,14 @@ function MessageBubble({ msg }: { msg: CopilotMessage }) {
   return (
     <div className={`flex ${isUser ? "justify-end" : "justify-start"} group`}>
       {!isUser && (
-        <div className="w-6 h-6 rounded-full bg-[#18181B] flex items-center justify-center mr-2 mt-0.5 shrink-0">
+        <div className="w-6 h-6 rounded-full bg-accent flex items-center justify-center mr-2 mt-0.5 shrink-0">
           <Bot className="h-3 w-3 text-white" aria-hidden />
         </div>
       )}
       <div
         className={
           isUser
-            ? "max-w-[78%] bg-[#18181B] text-white rounded-2xl rounded-br-sm px-3.5 py-2.5 text-sm leading-relaxed"
+            ? "max-w-[78%] bg-accent text-accent-foreground rounded-2xl rounded-br-sm px-3.5 py-2.5 text-sm leading-relaxed"
             : "max-w-[82%] bg-[#F4F4F5] text-[#09090B] rounded-2xl rounded-bl-sm px-3.5 py-2.5 text-sm leading-relaxed"
         }
       >
@@ -76,7 +76,7 @@ function SuggestedPrompts({ onSelect }: { onSelect: (p: string) => void }) {
           key={p}
           type="button"
           onClick={() => onSelect(p)}
-          className="text-[11px] px-2.5 py-1 rounded-full border border-[#E4E4E7] text-[#52525B] hover:border-[#18181B] hover:text-[#09090B] transition-colors bg-white"
+          className="text-[11px] px-2.5 py-1 rounded-full border border-[#E4E4E7] text-[#52525B] hover:border-accent hover:text-[#09090B] transition-colors bg-white"
         >
           {p}
         </button>
@@ -197,7 +197,7 @@ function PatientAssistantInner({ patientId }: PatientAssistantProps) {
         type="button"
         onClick={handleOpen}
         aria-label="Open AI Assistant"
-        className="fixed bottom-18 right-4 sm:bottom-6 sm:right-6 z-40 w-[52px] h-[52px] bg-[#18181B] text-white rounded-full shadow-xl flex items-center justify-center hover:bg-[#27272A] active:scale-95 transition-all focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#18181B]"
+        className="fixed bottom-18 right-4 sm:bottom-6 sm:right-6 z-40 w-[52px] h-[52px] bg-accent text-accent-foreground rounded-full shadow-xl flex items-center justify-center hover:bg-accent-hover active:scale-95 transition-all focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
       >
         <div className="relative">
           <Bot className="h-5 w-5" aria-hidden />
@@ -218,7 +218,7 @@ function PatientAssistantInner({ patientId }: PatientAssistantProps) {
         <button
           type="button"
           onClick={handleRestore}
-          className="flex items-center gap-2 bg-[#18181B] text-white rounded-full shadow-xl px-4 py-2.5 hover:bg-[#27272A] active:scale-95 transition-all"
+          className="flex items-center gap-2 bg-accent text-accent-foreground rounded-full shadow-xl px-4 py-2.5 hover:bg-accent-hover active:scale-95 transition-all"
           aria-label="Restore AI Assistant"
         >
           <Bot className="h-4 w-4" aria-hidden />
@@ -256,7 +256,7 @@ function PatientAssistantInner({ patientId }: PatientAssistantProps) {
         ].join(" ")}
       >
         {/* ── Header ─────────────────────────────────────────────────── */}
-        <div className="px-4 py-3 border-b border-[#E4E4E7] flex items-center gap-2.5 shrink-0 bg-[#18181B] rounded-t-2xl">
+        <div className="px-4 py-3 border-b border-[#E4E4E7] flex items-center gap-2.5 shrink-0 bg-accent rounded-t-2xl">
           <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center shrink-0">
             <Sparkles className="h-4 w-4 text-white" aria-hidden />
           </div>
@@ -344,14 +344,14 @@ function PatientAssistantInner({ patientId }: PatientAssistantProps) {
             aria-label="Chat message"
             rows={1}
             maxLength={500}
-            className="flex-1 border border-[#E4E4E7] rounded-xl px-3 py-2 text-sm text-[#09090B] placeholder:text-[#A1A1AA] outline-none focus:border-[#18181B] focus:ring-2 focus:ring-[#18181B]/10 disabled:opacity-50 resize-none min-h-[38px] max-h-[100px] overflow-y-auto leading-snug"
+            className="flex-1 border border-[#E4E4E7] rounded-xl px-3 py-2 text-sm text-[#09090B] placeholder:text-[#A1A1AA] outline-none focus:border-accent focus:ring-2 focus:ring-accent/10 disabled:opacity-50 resize-none min-h-[38px] max-h-[100px] overflow-y-auto leading-snug"
           />
           <button
             type="button"
             onClick={() => handleSend()}
             disabled={isLoading || !input.trim()}
             aria-label="Send message"
-            className="w-9 h-9 bg-[#18181B] text-white rounded-xl flex items-center justify-center hover:bg-[#27272A] disabled:opacity-40 active:scale-95 transition-all shrink-0 self-end"
+            className="w-9 h-9 bg-accent text-accent-foreground rounded-xl flex items-center justify-center hover:bg-accent-hover disabled:opacity-40 active:scale-95 transition-all shrink-0 self-end"
           >
             <Send className="h-3.5 w-3.5" aria-hidden />
           </button>

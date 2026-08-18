@@ -95,7 +95,7 @@ export default async function ReceptionistAppointmentDetailPage({ params }: Prop
           <div>
             <Link
               href={`/receptionist/patients/${appt.patient_id}`}
-              className="text-lg font-semibold text-gray-900 hover:text-blue-600"
+              className="text-lg font-semibold text-gray-900 hover:text-accent"
             >
               {appt.patient.name}
             </Link>

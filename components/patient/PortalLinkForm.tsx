@@ -150,7 +150,7 @@ export function PortalLinkForm({
           value={clinicId}
           onChange={(e) => setClinicId(e.target.value)}
           disabled={isPending}
-          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 disabled:bg-gray-50 disabled:text-gray-400"
+          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 disabled:bg-gray-50 disabled:text-gray-400"
         >
           <option value="" disabled>
             Select a clinic…
@@ -189,7 +189,7 @@ export function PortalLinkForm({
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
             disabled={isPending}
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 disabled:bg-gray-50 disabled:text-gray-400"
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 disabled:bg-gray-50 disabled:text-gray-400"
           />
         </div>
 
@@ -205,7 +205,7 @@ export function PortalLinkForm({
         <button
           type="submit"
           disabled={isPending || !phone.trim() || !clinicId}
-          className="w-full py-2.5 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          className="w-full py-2.5 bg-accent text-accent-foreground text-sm font-semibold rounded-lg hover:bg-accent-hover disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
           {isPending ? "Checking…" : "Continue"}
         </button>
@@ -242,7 +242,7 @@ export function PortalLinkForm({
           value={name}
           onChange={(e) => setName(e.target.value)}
           disabled={isPending}
-          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 disabled:bg-gray-50 disabled:text-gray-400"
+          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 disabled:bg-gray-50 disabled:text-gray-400"
         />
       </div>
 
@@ -258,7 +258,7 @@ export function PortalLinkForm({
       <button
         type="submit"
         disabled={isPending || !name.trim()}
-        className="w-full py-2.5 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+        className="w-full py-2.5 bg-accent text-accent-foreground text-sm font-semibold rounded-lg hover:bg-accent-hover disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
       >
         {isPending ? "Creating account…" : "Create My Account"}
       </button>

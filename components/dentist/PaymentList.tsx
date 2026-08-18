@@ -47,7 +47,7 @@ export function PaymentList({
               {showPatient && (payment as unknown as { patients?: { name: string; id: string } }).patients && (
                 <a
                   href={`${base}/patients/${(payment as unknown as { patients: { id: string } }).patients.id}`}
-                  className="text-xs text-blue-600 hover:underline"
+                  className="text-xs text-accent hover:underline"
                 >
                   {(payment as unknown as { patients: { name: string } }).patients.name}
                 </a>

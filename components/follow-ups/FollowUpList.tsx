@@ -152,7 +152,7 @@ function FollowUpRow({
               {showPatientLink && followUp.patient && (
                 <>
                   <span className="text-text-secondary text-xs">·</span>
-                  <span className="text-xs font-medium text-blue-700">
+                  <span className="text-xs font-medium text-accent">
                     {followUp.patient.name}
                   </span>
                   {followUp.patient.phone && (

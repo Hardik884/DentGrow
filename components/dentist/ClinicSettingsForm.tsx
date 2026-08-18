@@ -235,9 +235,9 @@ export function ClinicSettingsForm({ initialSettings }: ClinicSettingsFormProps)
               disabled={isSubmitting}
               className={cn(
                 "relative inline-flex h-5 w-9 shrink-0 rounded-full border-2 border-transparent transition-colors",
-                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#18181B]",
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent",
                 "disabled:cursor-not-allowed",
-                watch("enable_xray_charges") !== false ? "bg-[#18181B]" : "bg-[#E4E4E7]"
+                watch("enable_xray_charges") !== false ? "bg-accent" : "bg-[#E4E4E7]"
               )}
               aria-pressed={watch("enable_xray_charges") !== false ? "true" : "false"}
               aria-label="Enable X-ray Charges"
@@ -275,9 +275,9 @@ export function ClinicSettingsForm({ initialSettings }: ClinicSettingsFormProps)
               disabled={isSubmitting}
               className={cn(
                 "relative inline-flex h-5 w-9 shrink-0 rounded-full border-2 border-transparent transition-colors",
-                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#18181B]",
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent",
                 "disabled:cursor-not-allowed",
-                watch("allow_receptionist_payments") ? "bg-[#18181B]" : "bg-[#E4E4E7]"
+                watch("allow_receptionist_payments") ? "bg-accent" : "bg-[#E4E4E7]"
               )}
               aria-pressed={watch("allow_receptionist_payments") ? "true" : "false"}
               aria-label="Allow Receptionist to Access Payments"
@@ -310,9 +310,9 @@ export function ClinicSettingsForm({ initialSettings }: ClinicSettingsFormProps)
               disabled={isSubmitting}
               className={cn(
                 "relative inline-flex h-5 w-9 shrink-0 rounded-full border-2 border-transparent transition-colors",
-                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#18181B]",
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent",
                 "disabled:cursor-not-allowed",
-                watch("show_consultancy_on_dashboard") ? "bg-[#18181B]" : "bg-[#E4E4E7]"
+                watch("show_consultancy_on_dashboard") ? "bg-accent" : "bg-[#E4E4E7]"
               )}
               aria-pressed={watch("show_consultancy_on_dashboard") ? "true" : "false"}
               aria-label="Show External Consultation Income on Dashboard"
@@ -367,9 +367,9 @@ export function ClinicSettingsForm({ initialSettings }: ClinicSettingsFormProps)
                     disabled={isSubmitting}
                     className={cn(
                       "relative inline-flex h-5 w-9 shrink-0 rounded-full border-2 border-transparent transition-colors",
-                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#18181B]",
+                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent",
                       "disabled:cursor-not-allowed",
-                      isOpen ? "bg-[#18181B]" : "bg-[#E4E4E7]"
+                      isOpen ? "bg-accent" : "bg-[#E4E4E7]"
                     )}
                     aria-pressed={isOpen ? "true" : "false"}
                     aria-label={`${day.label}: ${isOpen ? "open" : "closed"}`}

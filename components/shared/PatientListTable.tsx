@@ -152,7 +152,7 @@ export function PatientListTable({
                   href={pageHref(p)}
                   className={`px-3 py-1.5 border rounded-lg transition-colors ${
                     p === page
-                      ? "bg-[#18181B] text-white border-[#18181B]"
+                      ? "bg-accent text-accent-foreground border-accent"
                       : "border-[#E4E4E7] bg-white hover:bg-[#F4F4F5] text-[#09090B]"
                   }`}
                 >

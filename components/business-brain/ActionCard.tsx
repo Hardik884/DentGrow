@@ -24,9 +24,9 @@ const ACTION_ICON: Record<PrimaryActionKind, typeof MessageCircle> = {
 };
 
 const PRIMARY_BTN_CLS =
-  "inline-flex items-center justify-center gap-2 rounded-lg bg-[#09090B] text-white px-4 py-2.5 text-sm font-semibold hover:bg-[#27272A] transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#09090B] focus-visible:ring-offset-2";
+  "inline-flex items-center justify-center gap-2 rounded-lg bg-accent text-accent-foreground px-4 py-2.5 text-sm font-semibold hover:bg-accent-hover transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2";
 const SECONDARY_BTN_CLS =
-  "inline-flex items-center justify-center gap-2 rounded-lg border border-[#E4E4E7] text-[#18181B] px-3.5 py-2 text-sm font-medium hover:bg-[#FAFAFA] transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#18181B]/20";
+  "inline-flex items-center justify-center gap-2 rounded-lg border border-[#E4E4E7] text-[#18181B] px-3.5 py-2 text-sm font-medium hover:bg-[#FAFAFA] transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/20";
 
 /**
  * One thing to do, right column.
@@ -217,7 +217,7 @@ export function ActionCard({ action, contactSummary }: ActionCardProps) {
               {action.moreInfoLink && (
                 <Link
                   href={action.moreInfoLink.href}
-                  className="inline-flex items-center gap-1 text-sm font-medium text-[#18181B] underline underline-offset-2 hover:no-underline"
+                  className="inline-flex items-center gap-1 text-sm font-medium text-accent underline underline-offset-2 hover:no-underline"
                 >
                   {action.moreInfoLink.label} →
                 </Link>

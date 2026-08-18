@@ -13,7 +13,7 @@ async function InsightsPanelInner() {
   return (
     <div className="bg-white border border-[#E4E4E7] rounded-xl overflow-hidden">
       <div className="px-5 py-4 border-b border-[#E4E4E7] flex items-center gap-2">
-        <Sparkles className="h-3.5 w-3.5 text-[#71717A]" aria-hidden />
+        <Sparkles className="h-3.5 w-3.5 text-accent" aria-hidden />
         <h2 className="text-sm font-semibold text-[#09090B]">AI Insights</h2>
       </div>
       <div className="px-5 py-4">

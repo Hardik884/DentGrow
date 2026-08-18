@@ -15,12 +15,12 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const variantClasses: Record<ButtonVariant, string> = {
-  default:   "bg-[#18181B] text-[#FAFAFA] hover:bg-[#27272A] focus-visible:ring-[#18181B]",
-  secondary: "bg-[#F4F4F5] text-[#09090B] hover:bg-[#E4E4E7] focus-visible:ring-[#18181B]",
-  ghost:     "text-[#09090B] hover:bg-[#F4F4F5] focus-visible:ring-[#18181B]",
-  outline:   "border border-[#E4E4E7] bg-[#FFFFFF] text-[#09090B] hover:bg-[#F4F4F5] focus-visible:ring-[#18181B]",
+  default:   "bg-accent text-accent-foreground hover:bg-accent-hover focus-visible:ring-accent",
+  secondary: "bg-[#F4F4F5] text-[#09090B] hover:bg-[#E4E4E7] focus-visible:ring-accent",
+  ghost:     "text-[#09090B] hover:bg-[#F4F4F5] focus-visible:ring-accent",
+  outline:   "border border-[#E4E4E7] bg-[#FFFFFF] text-[#09090B] hover:bg-[#F4F4F5] focus-visible:ring-accent",
   danger:    "bg-[#DC2626] text-white hover:bg-[#B91C1C] focus-visible:ring-[#DC2626]",
-  link:      "text-[#09090B] underline-offset-4 hover:underline p-0 h-auto",
+  link:      "text-accent underline-offset-4 hover:underline p-0 h-auto",
 };
 
 const sizeClasses: Record<ButtonSize, string> = {

@@ -192,7 +192,7 @@ function TreatmentDetail({
                     href={doc.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center gap-2 text-sm text-blue-600 hover:underline"
+                    className="flex items-center gap-2 text-sm text-accent hover:underline"
                   >
                     <FileText className="h-3.5 w-3.5 shrink-0" aria-hidden />
                     <span className="truncate">{doc.file_name}</span>

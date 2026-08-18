@@ -555,7 +555,7 @@ export function TreatmentForm({
                 className={cn(
                   "px-4 py-1.5 text-xs font-semibold rounded-md transition-colors cursor-pointer",
                   opdChargedValue
-                    ? "bg-[#18181B] text-white shadow-sm"
+                    ? "bg-accent text-accent-foreground shadow-sm"
                     : "text-[#71717A] hover:text-[#09090B]"
                 )}
               >
@@ -605,7 +605,7 @@ export function TreatmentForm({
                     className={cn(
                       "px-4 py-1.5 text-xs font-semibold rounded-md transition-colors cursor-pointer",
                       xrayTakenValue
-                        ? "bg-[#18181B] text-white shadow-sm"
+                        ? "bg-accent text-accent-foreground shadow-sm"
                         : "text-[#71717A] hover:text-[#09090B]"
                     )}
                   >
@@ -946,7 +946,7 @@ function DaysCounter({
         value={value}
         onChange={(e) => commit(parseInt(e.target.value, 10) || 1)}
         onWheel={(e) => (e.target as HTMLElement).blur()}
-        className="h-9 w-12 text-center text-sm border-y border-[#E4E4E7] outline-none focus:ring-1 focus:ring-[#18181B] text-[#09090B] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+        className="h-9 w-12 text-center text-sm border-y border-[#E4E4E7] outline-none focus:ring-1 focus:ring-accent text-[#09090B] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
         aria-label="Days"
       />
       <button

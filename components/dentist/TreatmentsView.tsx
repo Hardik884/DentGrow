@@ -154,7 +154,7 @@ export function TreatmentsView({
                           {patientRow ? (
                             <Link
                               href={`/dentist/patients/${tx.patient_id}`}
-                              className="hover:text-blue-600 transition-colors"
+                              className="hover:text-accent transition-colors"
                             >
                               {patientRow.name}
                             </Link>
@@ -165,7 +165,7 @@ export function TreatmentsView({
                         <td className="px-4 py-3 text-[#52525B]">
                           <Link
                             href={`/dentist/treatments/${tx.id}`}
-                            className="hover:text-blue-600 transition-colors"
+                            className="hover:text-accent transition-colors"
                           >
                             {tx.treatment_type}
                           </Link>

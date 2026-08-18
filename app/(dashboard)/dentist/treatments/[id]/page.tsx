@@ -75,7 +75,7 @@ export default async function DentistTreatmentDetailPage({ params }: Props) {
             </h2>
             <Link
               href={`/dentist/patients/${treatment.patient_id}`}
-              className="text-sm text-blue-600 hover:underline"
+              className="text-sm text-accent hover:underline"
             >
               View Patient
             </Link>

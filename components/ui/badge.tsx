@@ -14,7 +14,7 @@ interface BadgeProps extends React.HTMLAttributes<HTMLSpanElement> {
 }
 
 const variantClasses: Record<BadgeVariant, string> = {
-  default:   "bg-[#18181B] text-[#FAFAFA]",
+  default:   "bg-accent text-accent-foreground",
   secondary: "bg-[#F4F4F5] text-[#09090B]",
   outline:   "border border-[#E4E4E7] text-[#71717A] bg-transparent",
   success:   "bg-[#F0FDF4] text-[#16A34A] border border-[#BBF7D0]",

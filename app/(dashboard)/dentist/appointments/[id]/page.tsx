@@ -89,7 +89,7 @@ export default async function DentistAppointmentDetailPage({ params }: Props) {
           <div>
             <Link
               href={`/dentist/patients/${appt.patient_id}`}
-              className="text-lg font-semibold text-gray-900 hover:text-blue-600 transition-colors"
+              className="text-lg font-semibold text-gray-900 hover:text-accent transition-colors"
             >
               {appt.patient.name}
             </Link>

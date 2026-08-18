@@ -128,13 +128,13 @@ export function DashboardSidebar({
               className={cn(
                 "sidebar-nav-item flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm",
                 isActive
-                  ? "bg-[#F4F4F5] text-[#09090B] font-medium"
+                  ? "bg-accent-tint text-[#09090B] font-medium"
                   : "text-[#71717A] hover:bg-[#F4F4F5] hover:text-[#09090B] font-normal"
               )}
               aria-current={isActive ? "page" : undefined}
             >
               <item.icon
-                className={cn("h-4 w-4 shrink-0", isActive ? "text-[#09090B]" : "text-[#A1A1AA]")}
+                className={cn("h-4 w-4 shrink-0", isActive ? "text-accent" : "text-[#A1A1AA]")}
                 aria-hidden
               />
               {item.label}

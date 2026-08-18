@@ -125,7 +125,7 @@ export function WhatsAppContactWorkflow({
             <button
               type="button"
               onClick={onClose}
-              className="mt-5 inline-flex items-center rounded-lg bg-[#09090B] text-white px-4 py-2 text-sm font-medium hover:bg-[#27272A] transition-colors cursor-pointer"
+              className="mt-5 inline-flex items-center rounded-lg bg-accent text-accent-foreground px-4 py-2 text-sm font-medium hover:bg-accent-hover transition-colors cursor-pointer"
             >
               Done
             </button>
@@ -261,7 +261,7 @@ function PatientStep({
             onChange={(e) => onMessageChange(e.target.value)}
             rows={6}
             autoFocus
-            className="mt-1.5 w-full resize-none rounded-lg border border-[#E4E4E7] bg-white px-3 py-2.5 text-sm leading-relaxed text-[#3F3F46] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#18181B]/15"
+            className="mt-1.5 w-full resize-none rounded-lg border border-[#E4E4E7] bg-white px-3 py-2.5 text-sm leading-relaxed text-[#3F3F46] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/15"
           />
         ) : (
           <p className="mt-1.5 rounded-lg border border-[#E4E4E7] bg-[#FAFAFA] px-3 py-2.5 text-sm leading-relaxed text-[#3F3F46] whitespace-pre-wrap">

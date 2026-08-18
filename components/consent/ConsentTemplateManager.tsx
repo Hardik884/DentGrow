@@ -134,7 +134,7 @@ function TemplateEditDialog({
             </Field>
 
             <label className="flex items-center gap-2 text-sm text-[#3F3F46]">
-              <input type="checkbox" checked={required} onChange={(e) => setRequired(e.target.checked)} />
+              <input type="checkbox" checked={required} onChange={(e) => setRequired(e.target.checked)} className="accent-accent" />
               Recommend consent by default for matching treatments
             </label>
 
