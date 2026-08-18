@@ -181,7 +181,7 @@ export function PrescriptionFilters({
             value={dateFrom}
             onChange={(d) => setDateFrom(d ?? "")}
             placeholder="From date"
-            className="w-40"
+            className="w-32 sm:w-40"
             clearable
           />
         </div>
@@ -195,7 +195,7 @@ export function PrescriptionFilters({
             value={dateTo}
             onChange={(d) => setDateTo(d ?? "")}
             placeholder="To date"
-            className="w-40"
+            className="w-32 sm:w-40"
             clearable
           />
         </div>

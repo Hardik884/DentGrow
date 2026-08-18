@@ -130,7 +130,7 @@ function TemplateEditDialog({
               <Input id="tpl-name" value={name} onChange={(e) => setName(e.target.value)} />
             </Field>
 
-            <label className="flex items-center gap-2 text-sm text-text-strong">
+            <label className="flex items-center gap-2 py-1.5 text-sm text-text-strong">
               <input type="checkbox" checked={required} onChange={(e) => setRequired(e.target.checked)} />
               Recommend consent by default for matching treatments
             </label>

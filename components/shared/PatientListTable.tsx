@@ -130,11 +130,11 @@ export function PatientListTable({
 
       {/* Pagination */}
       {totalPages > 1 && (
-        <div className="flex items-center justify-between text-xs text-text-secondary">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-xs text-text-secondary">
           <span>
             Showing {from}–{to} of {total} patients
           </span>
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1 flex-wrap">
             {page > 1 && (
               <Link
                 href={pageHref(page - 1)}

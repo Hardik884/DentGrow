@@ -47,7 +47,11 @@ export default async function DashboardLayout({
         allowReceptionistPayments={allowReceptionistPayments}
         showBusinessBrain={showBusinessBrain}
       />
-      <main className="flex-1 overflow-y-auto">
+      {/* pt-14 clears the fixed mobile top bar rendered by DashboardSidebar
+          below md; the desktop sidebar sits in normal flow so no offset is
+          needed at md and up. min-w-0 stops flex children (tables, charts)
+          from forcing the column wider than the viewport. */}
+      <main className="flex-1 min-w-0 overflow-y-auto pt-14 md:pt-0">
         {children}
       </main>
     </div>

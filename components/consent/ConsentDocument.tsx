@@ -41,7 +41,7 @@ export function ConsentDocument({
   return (
     <div
       id="consent-document"
-      className={`print-consent document-light mx-auto w-full max-w-[210mm] bg-white text-[#151918] p-6 sm:p-8 ${className ?? ""}`}
+      className={`print-consent document-light mx-auto w-full max-w-[210mm] bg-white text-[#151918] p-4 sm:p-6 md:p-8 ${className ?? ""}`}
     >
       {/* ── Letterhead ─────────────────────────────────────────── */}
       <div className="flex items-start justify-between gap-4 pb-3 border-b-2 border-[#0D6B5E]">

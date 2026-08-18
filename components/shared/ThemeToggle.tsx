@@ -72,7 +72,7 @@ export function ThemeToggle({
               "transition-colors duration-150",
               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-1 focus-visible:ring-offset-surface-muted",
               compact
-                ? "flex-1 min-w-0 h-7 px-0"
+                ? "flex-1 min-w-0 h-9 px-0"
                 : "gap-1.5 px-3 py-1.5 text-xs",
               isActive
                 ? "bg-surface text-accent shadow-xs"

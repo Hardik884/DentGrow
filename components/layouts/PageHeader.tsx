@@ -26,8 +26,8 @@ interface PageHeaderProps {
  */
 export function PageHeader({ title, description, backHref, action, children }: PageHeaderProps) {
   return (
-    <div className="flex items-start justify-between gap-4 mb-6">
-      <div className="space-y-0.5">
+    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4 mb-5 sm:mb-6">
+      <div className="space-y-0.5 min-w-0">
         {backHref && (
           <Link
             href={backHref}
@@ -37,14 +37,14 @@ export function PageHeader({ title, description, backHref, action, children }: P
             Back
           </Link>
         )}
-        <h1 className="text-2xl font-semibold text-text-primary tracking-tight">{title}</h1>
+        <h1 className="text-xl sm:text-2xl font-semibold text-text-primary tracking-tight break-words">{title}</h1>
         {description && (
           <p className="text-sm text-text-secondary mt-0.5">{description}</p>
         )}
       </div>
 
       {(action || children) && (
-        <div className="flex items-center gap-2 shrink-0 mt-0.5">
+        <div className="flex items-center gap-2 flex-wrap sm:shrink-0 sm:mt-0.5">
           {children}
           {action && (
             <Button asChild size="sm">

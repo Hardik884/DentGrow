@@ -58,10 +58,10 @@ export async function PendingPaymentsList({ search, basePath = "/dentist" }: Pen
         <div className="divide-y divide-surface-muted">
           {pendingPatients.map((patient) => (
             <div key={patient.id} className="flex items-center justify-between px-5 py-3 hover:bg-background transition-colors">
-              <div>
+              <div className="min-w-0 flex-1">
                 <Link
                   href={`${basePath}/patients/${patient.id}`}
-                  className="text-sm font-medium text-text-primary hover:underline underline-offset-4"
+                  className="text-sm font-medium text-text-primary hover:underline underline-offset-4 truncate block"
                 >
                   {patient.name}
                 </Link>
@@ -69,7 +69,7 @@ export async function PendingPaymentsList({ search, basePath = "/dentist" }: Pen
                   <p className="text-xs text-text-disabled">{patient.phone}</p>
                 )}
               </div>
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 shrink-0">
                 <span className="text-sm font-semibold text-danger">
                   {formatCurrency(patient.balance)}
                 </span>

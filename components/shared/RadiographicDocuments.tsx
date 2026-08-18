@@ -175,7 +175,7 @@ export function RadiographicDocuments({
                     <a
                       href={doc.url}
                       download={doc.file_name}
-                      className="text-text-disabled hover:text-text-primary"
+                      className="p-1.5 -m-1.5 text-text-disabled hover:text-text-primary"
                       aria-label={`Download ${doc.file_name}`}
                     >
                       <Download className="h-3.5 w-3.5" />
@@ -186,7 +186,7 @@ export function RadiographicDocuments({
                       type="button"
                       onClick={() => handleDelete(doc.id)}
                       disabled={isPending}
-                      className="text-text-disabled hover:text-danger disabled:opacity-50"
+                      className="p-1.5 -m-1.5 text-text-disabled hover:text-danger disabled:opacity-50"
                       aria-label={`Remove ${doc.file_name}`}
                     >
                       <Trash2 className="h-3.5 w-3.5" />

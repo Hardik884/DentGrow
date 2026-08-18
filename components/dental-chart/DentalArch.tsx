@@ -89,7 +89,7 @@ function ArchHalf({
   activeToothNumber?: number | null;
 }) {
   return (
-    <div className="flex items-start gap-1 sm:gap-1.5">
+    <div className="flex items-start gap-1.5 sm:gap-2">
       {teeth.map((identity) => {
         const tooth = toothByNumber.get(identity.toothNumber) ?? null;
         const status = tooth?.status ?? "normal";

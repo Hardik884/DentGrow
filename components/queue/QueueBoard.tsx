@@ -98,6 +98,7 @@ export function QueueBoard({ initialQueue, clinicId = "", metrics }: QueueBoardP
               disabled={isPending}
               isLoading={isPending}
               size="sm"
+              className="w-full sm:w-auto h-10 sm:h-8"
             >
               Mark Done & Call Next
             </Button>
@@ -114,6 +115,7 @@ export function QueueBoard({ initialQueue, clinicId = "", metrics }: QueueBoardP
             disabled={isPending}
             isLoading={isPending}
             size="sm"
+            className="w-full sm:w-auto h-10 sm:h-8"
           >
             Call First Patient
           </Button>

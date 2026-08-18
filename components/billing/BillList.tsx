@@ -79,7 +79,7 @@ export function BillList({
               <p className="text-xs text-text-secondary mt-0.5">{formatDate(bill.treatmentDate)}</p>
             </div>
 
-            <div className="flex items-center gap-5 shrink-0">
+            <div className="flex flex-wrap items-center gap-3 sm:gap-5">
               <Stat label="Total" value={formatCurrency(bill.total)} />
               <Stat label="Paid" value={formatCurrency(bill.paid)} valueClass="text-success" />
               <Stat

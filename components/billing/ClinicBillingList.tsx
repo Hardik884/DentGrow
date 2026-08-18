@@ -83,7 +83,7 @@ export async function ClinicBillingList({ baseHref, search, page = 1 }: ClinicBi
             </p>
           </div>
 
-          <div className="flex items-center gap-5 shrink-0">
+          <div className="flex flex-wrap items-center gap-3 sm:gap-5">
             <Stat label="Total" value={formatCurrency(bill.total)} />
             <Stat label="Paid" value={formatCurrency(bill.paid)} valueClass="text-success" />
             <Stat

@@ -69,7 +69,7 @@ export function RescheduleModal({
       aria-labelledby="reschedule-title"
     >
       <div className="absolute inset-0 bg-scrim/45 backdrop-blur-[2px]" onClick={onClose} aria-hidden />
-      <div className="relative bg-surface rounded-xl border border-border shadow-2xl w-full max-w-md p-6 space-y-5 animate-fade-in-up">
+      <div className="relative bg-surface rounded-xl border border-border shadow-2xl w-full max-w-md p-6 space-y-5 animate-fade-in-up max-h-[90vh] max-h-[90dvh] overflow-y-auto">
         <h2 id="reschedule-title" className="text-base font-semibold text-text-primary">
           Reschedule Appointment
         </h2>

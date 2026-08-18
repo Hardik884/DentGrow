@@ -95,7 +95,7 @@ export function PrescriptionDialog({
             <h3 className="text-sm font-semibold text-[#151918] uppercase tracking-wide mb-3">
               Patient Information
             </h3>
-            <div className="grid grid-cols-2 gap-4 text-sm">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
               <div>
                 <p className="text-[#737A76] text-xs uppercase tracking-wide mb-1">Name</p>
                 <p className="text-[#151918] font-medium">{prescription.patient_name}</p>
@@ -116,7 +116,7 @@ export function PrescriptionDialog({
             <h3 className="text-sm font-semibold text-[#151918] uppercase tracking-wide mb-3">
               Prescription Information
             </h3>
-            <div className="grid grid-cols-2 gap-4 text-sm">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
               <div>
                 <p className="text-[#737A76] text-xs uppercase tracking-wide mb-1">Treatment Type</p>
                 <p className="text-[#151918] font-medium">{prescription.treatment_type}</p>
@@ -157,7 +157,7 @@ export function PrescriptionDialog({
                       )}
                     </div>
                   </div>
-                  <div className="grid grid-cols-3 gap-3 text-sm">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
                     <div>
                       <p className="text-[#737A76] text-xs">Dosage</p>
                       <p className="text-[#151918] font-medium">

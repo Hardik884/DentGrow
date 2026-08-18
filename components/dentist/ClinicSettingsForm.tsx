@@ -351,7 +351,7 @@ export function ClinicSettingsForm({ initialSettings }: ClinicSettingsFormProps)
               const isOpen = dayHours?.is_open ?? false;
 
               return (
-                <div key={day.key} className="flex items-center gap-3 py-1.5">
+                <div key={day.key} className="flex flex-wrap items-center gap-3 py-1.5">
                   {/* Toggle */}
                   <button
                     type="button"
@@ -392,14 +392,14 @@ export function ClinicSettingsForm({ initialSettings }: ClinicSettingsFormProps)
                         type="time"
                         {...register(`clinic_hours.${day.key as DayKey}.open`)}
                         disabled={isSubmitting}
-                        className="w-28 text-xs"
+                        className="w-24 sm:w-28 text-xs"
                       />
                       <span className="text-xs text-text-secondary">–</span>
                       <Input
                         type="time"
                         {...register(`clinic_hours.${day.key as DayKey}.close`)}
                         disabled={isSubmitting}
-                        className="w-28 text-xs"
+                        className="w-24 sm:w-28 text-xs"
                       />
                     </div>
                   ) : (

@@ -112,7 +112,7 @@ export function MedicalHistoryCard({ appointmentId, initial, canEdit }: MedicalH
         {CHECKS.map(({ key, label }) => (
           <label
             key={key}
-            className={`inline-flex items-center gap-2 text-sm ${
+            className={`inline-flex items-center gap-2 py-1.5 text-sm ${
               canEdit ? "cursor-pointer text-text-primary" : "text-text-strong"
             }`}
           >

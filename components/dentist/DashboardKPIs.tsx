@@ -38,7 +38,7 @@ function KPICard({ label, value, icon, sub, tone = "neutral" }: KPICardProps) {
   const styles = TONE_STYLES[tone];
   return (
     <div
-      className={`rounded-xl border p-5 space-y-3 shadow-[0_1px_2px_rgba(21,25,24,0.04)] transition-shadow duration-200 hover:shadow-[0_4px_12px_-2px_rgba(21,25,24,0.06)] ${styles.card}`}
+      className={`rounded-xl border p-4 sm:p-5 space-y-3 shadow-[0_1px_2px_rgba(21,25,24,0.04)] transition-shadow duration-200 hover:shadow-[0_4px_12px_-2px_rgba(21,25,24,0.06)] ${styles.card}`}
     >
       <div className="flex items-center justify-between">
         <p className="text-xs font-medium text-text-secondary tracking-wide">{label}</p>
@@ -47,7 +47,7 @@ function KPICard({ label, value, icon, sub, tone = "neutral" }: KPICardProps) {
         </div>
       </div>
       <div>
-        <p className="text-3xl font-bold text-text-primary tracking-tight leading-none">{value}</p>
+        <p className="text-2xl sm:text-3xl font-bold text-text-primary tracking-tight leading-none">{value}</p>
         {sub && <p className="text-xs text-text-secondary mt-1.5">{sub}</p>}
       </div>
     </div>

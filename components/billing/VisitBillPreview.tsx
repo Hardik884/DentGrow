@@ -65,7 +65,7 @@ export async function VisitBillPreview({ appointmentId, baseHref }: VisitBillPre
         </Link>
       </div>
 
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
         <Stat label="Total" value={formatCurrency(bill.total)} />
         <Stat label="Paid" value={formatCurrency(bill.paid)} accent="green" />
         <Stat

@@ -115,7 +115,7 @@ export function Dialog({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4"
       role="dialog"
       aria-modal="true"
       aria-label={title ?? "Dialog"}
@@ -134,12 +134,12 @@ export function Dialog({
         tabIndex={-1}
         className={cn(
           "relative z-10 w-full bg-surface rounded-xl border border-border shadow-[0_20px_44px_-12px_rgba(21,25,24,0.20),0_8px_16px_-6px_rgba(21,25,24,0.10)]",
-          "max-h-[90vh] flex flex-col overflow-hidden animate-fade-in-up outline-none",
+          "max-h-[90vh] max-h-[90dvh] flex flex-col overflow-hidden animate-fade-in-up outline-none",
           SIZE_CLASSES[size]
         )}
       >
         {!hideHeader && (
-          <div className="flex items-start justify-between gap-4 px-6 py-4 border-b border-border shrink-0">
+          <div className="flex items-start justify-between gap-4 px-4 sm:px-6 py-3.5 sm:py-4 border-b border-border shrink-0">
             <div className="min-w-0">
               {title && (
                 <h2 className="text-base font-semibold text-text-primary truncate">{title}</h2>
@@ -153,7 +153,7 @@ export function Dialog({
               onClick={onClose}
               disabled={busy}
               aria-label="Close"
-              className="rounded-lg p-1.5 text-text-secondary hover:text-text-primary hover:bg-surface-muted transition-colors duration-150 disabled:opacity-40 disabled:cursor-not-allowed shrink-0 cursor-pointer"
+              className="rounded-lg p-2.5 text-text-secondary hover:text-text-primary hover:bg-surface-muted transition-colors duration-150 disabled:opacity-40 disabled:cursor-not-allowed shrink-0 cursor-pointer"
             >
               <X className="h-4 w-4" aria-hidden />
             </button>
@@ -161,7 +161,7 @@ export function Dialog({
         )}
 
         {/* Body */}
-        <div className="flex-1 overflow-y-auto">{children}</div>
+        <div className="flex-1 overflow-y-auto overscroll-contain">{children}</div>
       </div>
     </div>
   );

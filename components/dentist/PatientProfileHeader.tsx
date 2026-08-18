@@ -28,7 +28,7 @@ export async function PatientProfileHeader({ patientId, role, baseHref }: Patien
   return (
     <div className="bg-surface border border-border rounded-xl overflow-hidden">
       {/* Header row */}
-      <div className="px-6 py-5 flex items-start gap-4">
+      <div className="px-4 sm:px-6 py-5 flex flex-col sm:flex-row sm:items-start gap-4">
         <PatientAvatar name={patient.name} size="lg" />
 
         <div className="flex-1 min-w-0 space-y-1">
@@ -57,7 +57,7 @@ export async function PatientProfileHeader({ patientId, role, baseHref }: Patien
         </div>
 
         {/* Actions */}
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap sm:shrink-0">
           {isDentist && (
             <Button asChild variant="outline" size="sm">
               <a href={`${baseHref}/patients/${patientId}?tab=dental-chart`}>

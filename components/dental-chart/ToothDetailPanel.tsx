@@ -311,7 +311,7 @@ export function ToothDetailPanel({
                       disabled={unlinkingId === t.id}
                       aria-label={`Unlink ${t.treatment_type} from this tooth`}
                       title="Unlink from this tooth"
-                      className="px-2.5 flex items-center justify-center text-text-disabled hover:text-danger hover:bg-danger-bg transition-colors border-l border-surface-muted disabled:opacity-40"
+                      className="px-2.5 min-w-10 flex items-center justify-center text-text-disabled hover:text-danger hover:bg-danger-bg transition-colors border-l border-surface-muted disabled:opacity-40"
                     >
                       <X className="h-3.5 w-3.5" aria-hidden />
                     </button>

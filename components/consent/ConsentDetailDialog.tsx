@@ -308,7 +308,7 @@ export function ConsentDetailDialog({
             )}
 
             {/* The document itself (also the PDF/print capture target) */}
-            <div className="rounded-md border border-border overflow-hidden">
+            <div className="rounded-md border border-border overflow-x-auto">
               <ConsentDocument
                 snapshot={snapshot}
                 status={status}

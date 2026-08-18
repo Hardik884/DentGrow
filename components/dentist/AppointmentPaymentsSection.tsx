@@ -217,7 +217,7 @@ function TreatmentPaymentCard({
       </div>
 
       {showStats && (
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
           <Stat label="Cost" value={formatCurrency(cost ?? 0)} />
           <Stat label="Paid" value={formatCurrency(paid ?? 0)} accent="green" />
           <Stat

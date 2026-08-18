@@ -22,7 +22,7 @@
   --color-text-strong: #333B36;
   --color-text-body: #5B635E;
   --color-text-secondary: #737A76;
-  --color-text-disabled: #9BA39D;
+  --color-text-disabled: #6E766F;
 
   /* Pressed state for neutral (secondary) buttons, and the modal scrim. */
   --color-surface-pressed: #D8E0DB;
@@ -552,6 +552,17 @@ body {
   background: var(--scrollbar-thumb-hover);
 }
 
+/* Hides the scrollbar while keeping the element scrollable — used for
+   horizontally-scrolling tab strips on mobile so a scroll affordance
+   doesn't look like a stray rule under the tabs. */
+.no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
 /* ── Focus Styles ──────────────────────────────────────────────────────────── */
 :focus-visible {
   outline: 2px solid var(--accent);
@@ -655,6 +666,20 @@ body {
   }
 }
 
+
+/* ── Touch target floor ────────────────────────────────────────────────────
+ * On a coarse (touch) pointer, guarantee inputs/selects/buttons are at least
+ * ~40px tall so they're comfortable to tap, without changing the compact
+ * desktop density these components were tuned for (mouse/trackpad pointers
+ * are unaffected — this rule only applies under `pointer: coarse`).
+ */
+@media (pointer: coarse) {
+  input,
+  select,
+  button {
+    min-height: 2.5rem;
+  }
+}
 
 /* ── Full-page Print Styles (prescriptions, invoices) ──────────────────────
  * The classic "hide everything, show only the target" approach. Works for

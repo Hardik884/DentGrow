@@ -246,7 +246,7 @@ function CalendarGrid({
         <button
           type="button"
           onClick={onPrevMonth}
-          className="h-7 w-7 flex items-center justify-center rounded-md text-text-secondary hover:bg-surface hover:text-text-primary transition-colors"
+          className="h-8 w-8 flex items-center justify-center rounded-md text-text-secondary hover:bg-surface hover:text-text-primary transition-colors"
           aria-label="Previous month"
         >
           <ChevronLeft className="h-4 w-4" />
@@ -279,7 +279,7 @@ function CalendarGrid({
         <button
           type="button"
           onClick={onNextMonth}
-          className="h-7 w-7 flex items-center justify-center rounded-md text-text-secondary hover:bg-surface hover:text-text-primary transition-colors"
+          className="h-8 w-8 flex items-center justify-center rounded-md text-text-secondary hover:bg-surface hover:text-text-primary transition-colors"
           aria-label="Next month"
         >
           <ChevronRight className="h-4 w-4" />
@@ -319,7 +319,7 @@ function CalendarGrid({
       <div className="grid grid-cols-7">
         {cells.map((cell, idx) => {
           if (!cell.day || !cell.dateStr) {
-            return <div key={`blank-${idx}`} className="h-8 w-full" />;
+            return <div key={`blank-${idx}`} className="h-9 w-full" />;
           }
 
           const isSelected = cell.dateStr === selected;
@@ -335,7 +335,7 @@ function CalendarGrid({
               disabled={isDisabled}
               onClick={() => !isDisabled && onSelect(cell.dateStr!)}
               className={cn(
-                "h-8 w-full flex items-center justify-center text-xs rounded-md transition-colors",
+                "h-9 w-full flex items-center justify-center text-xs rounded-md transition-colors",
                 isSelected
                   ? "bg-accent text-accent-foreground font-semibold"
                   : isToday && !isSelected
@@ -489,9 +489,13 @@ export function CalendarPicker({
                 const top = rect.bottom + window.scrollY + 6;
                 // Prefer left-aligned; flip right if it would overflow viewport.
                 const fitsRight = rect.left + CALENDAR_WIDTH <= window.innerWidth - 8;
-                const left = fitsRight
+                let left = fitsRight
                   ? rect.left + window.scrollX
                   : rect.right + window.scrollX - CALENDAR_WIDTH;
+                // Clamp so the popover never renders past the viewport edges on
+                // narrow screens (e.g. a 320px-wide phone), regardless of where
+                // the trigger sits.
+                left = Math.max(8, Math.min(left, window.innerWidth - CALENDAR_WIDTH - 8));
                 setPopoverPos({ top, left, minWidth: rect.width });
               } else if (o) {
                 setPopoverPos(null);

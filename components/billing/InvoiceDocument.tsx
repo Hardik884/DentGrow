@@ -50,7 +50,7 @@ export function InvoiceDocument({
   return (
     <div
       id="invoice-document"
-      className={`print-invoice document-light mx-auto w-full max-w-[210mm] bg-white text-[#151918] p-8 sm:p-10 ${className ?? ""}`}
+      className={`print-invoice document-light mx-auto w-full max-w-[210mm] bg-white text-[#151918] p-5 sm:p-8 md:p-10 ${className ?? ""}`}
     >
       {/* ── Letterhead ─────────────────────────────────────────── */}
       <div className="flex items-start justify-between gap-6 pb-6 border-b-2 border-[#0D6B5E]">
@@ -107,42 +107,44 @@ export function InvoiceDocument({
 
       {/* ── Itemized charges ──────────────────────────────────── */}
       <div className="py-6">
-        <table className="w-full text-sm" style={{ pageBreakInside: "auto" }}>
-          <thead>
-            <tr className="border-b-2 border-[#0D6B5E] text-left text-[10px] font-semibold uppercase tracking-wider text-[#737A76]">
-              <th className="py-2 pr-2">Description</th>
-              <th className="py-2 px-2 text-right w-16">Qty</th>
-              <th className="py-2 px-2 text-right w-28">Rate</th>
-              <th className="py-2 pl-2 text-right w-32">Amount</th>
-            </tr>
-          </thead>
-          <tbody>
-            {bill.lineItems.length === 0 ? (
-              <tr>
-                <td colSpan={4} className="py-6 text-center text-sm text-[#9BA39D]">
-                  No billable charges on this visit.
-                </td>
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[480px] text-sm" style={{ pageBreakInside: "auto" }}>
+            <thead>
+              <tr className="border-b-2 border-[#0D6B5E] text-left text-[10px] font-semibold uppercase tracking-wider text-[#737A76]">
+                <th className="py-2 pr-2">Description</th>
+                <th className="py-2 px-2 text-right w-16">Qty</th>
+                <th className="py-2 px-2 text-right w-28">Rate</th>
+                <th className="py-2 pl-2 text-right w-32">Amount</th>
               </tr>
-            ) : (
-              bill.lineItems.map((item) => (
-                <tr
-                  key={item.key}
-                  className="border-b border-[#EEF2F0]"
-                  style={{ pageBreakInside: "avoid" }}
-                >
-                  <td className="py-2.5 pr-2 text-[#151918]">{item.description}</td>
-                  <td className="py-2.5 px-2 text-right text-[#5B635E]">{item.quantity}</td>
-                  <td className="py-2.5 px-2 text-right text-[#5B635E]">
-                    {formatCurrency(item.rate)}
-                  </td>
-                  <td className="py-2.5 pl-2 text-right font-medium text-[#151918]">
-                    {formatCurrency(item.amount)}
+            </thead>
+            <tbody>
+              {bill.lineItems.length === 0 ? (
+                <tr>
+                  <td colSpan={4} className="py-6 text-center text-sm text-[#9BA39D]">
+                    No billable charges on this visit.
                   </td>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+              ) : (
+                bill.lineItems.map((item) => (
+                  <tr
+                    key={item.key}
+                    className="border-b border-[#EEF2F0]"
+                    style={{ pageBreakInside: "avoid" }}
+                  >
+                    <td className="py-2.5 pr-2 text-[#151918]">{item.description}</td>
+                    <td className="py-2.5 px-2 text-right text-[#5B635E]">{item.quantity}</td>
+                    <td className="py-2.5 px-2 text-right text-[#5B635E]">
+                      {formatCurrency(item.rate)}
+                    </td>
+                    <td className="py-2.5 pl-2 text-right font-medium text-[#151918]">
+                      {formatCurrency(item.amount)}
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {/* ── Summary ────────────────────────────────────────────── */}

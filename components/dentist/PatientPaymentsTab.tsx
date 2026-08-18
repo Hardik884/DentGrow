@@ -90,7 +90,7 @@ export async function PatientPaymentsTab({
       </div>
 
       {/* Summary cards */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
         <SummaryCard label="Total Cost" value={formatCurrency(totalCost)} valueClass="text-text-primary" />
         <SummaryCard label="Total Paid" value={formatCurrency(totalPaid)} valueClass="text-success" />
         <SummaryCard

@@ -183,7 +183,7 @@ export function ActionCard({ action, contactSummary }: ActionCardProps) {
                         <button
                           type="button"
                           onClick={() => toggle(item.id)}
-                          className="w-full flex items-start gap-2.5 text-left group cursor-pointer"
+                          className="w-full flex items-start gap-2.5 py-1.5 text-left group cursor-pointer"
                         >
                           <span
                             className={cn(

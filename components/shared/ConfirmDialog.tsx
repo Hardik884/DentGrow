@@ -43,7 +43,7 @@ export function ConfirmDialog({
       />
 
       {/* Dialog */}
-      <div className="relative bg-surface rounded-xl border border-border shadow-2xl max-w-sm w-full p-6 space-y-4 animate-fade-in-up">
+      <div className="relative bg-surface rounded-xl border border-border shadow-2xl max-w-sm w-full p-6 space-y-4 animate-fade-in-up max-h-[90vh] max-h-[90dvh] overflow-y-auto">
         <div className="space-y-1.5">
           <h2 id="confirm-dialog-title" className="text-base font-semibold text-text-primary">
             {title}

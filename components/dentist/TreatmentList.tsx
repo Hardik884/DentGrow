@@ -125,7 +125,7 @@ export function TreatmentList({
                   <button
                     type="button"
                     onClick={() => setEditingId(treatment.id)}
-                    className="inline-flex items-center gap-1 text-xs font-medium text-text-secondary hover:text-text-primary transition-colors cursor-pointer"
+                    className="inline-flex items-center gap-1 px-2 py-1.5 -mx-2 -my-1.5 text-xs font-medium text-text-secondary hover:text-text-primary transition-colors cursor-pointer"
                     aria-label={`Edit ${full.treatment_type ?? "treatment"}`}
                   >
                     <Pencil className="h-3 w-3" aria-hidden />

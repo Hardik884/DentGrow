@@ -720,7 +720,7 @@ export function TreatmentForm({
               </div>
 
               {/* Live preview */}
-              <div className="grid grid-cols-3 gap-3 pt-1">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 pt-1">
                 <PreviewStat label="Treatment" value={formatCurrency(Number(costValue ?? 0))} />
                 <PreviewStat label="Consultant Share" value={formatCurrency(split.consultantShare)} accent="amber" />
                 <PreviewStat label="Clinic Share" value={formatCurrency(split.clinicShare)} accent="green" />
