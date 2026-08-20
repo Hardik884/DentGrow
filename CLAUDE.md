@@ -1230,6 +1230,10 @@ dentgrow/
 │   │   └── patient-tools.ts        # Patient AI Assistant tool definitions
 │   ├── scheduling/
 │   │   └── slots.ts                # getAvailableSlots() slot generation logic
+│   ├── auth/
+│   │   └── session.ts              # resolveSession(), requireAdmin()
+│   ├── brand/
+│   │   └── mark.ts                 # TOOTH_PATH — the logo AND the auth arch
 │   └── utils.ts                    # Shared utility functions
 ├── actions/
 │   ├── patients.ts                 # Patient server actions

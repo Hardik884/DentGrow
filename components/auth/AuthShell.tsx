@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { cn } from "@/lib/utils";
+import { DentGrowLogo } from "@/components/shared/DentGrowLogo";
 import { AuthArtwork } from "./AuthArtwork";
 import { AuthThemeToggle } from "./AuthThemeToggle";
 
@@ -153,10 +154,12 @@ export function AuthShell({
           aria-hidden="true"
         />
 
-        {/* Brand lockup */}
-        <div className="relative flex items-center gap-3">
-          <BrandMark tone={tone} />
-          <span className={cn("text-[17px] font-semibold tracking-tight", t.wordmark)}>
+        {/* Brand lockup. `mono` rather than the tiled mark: the panel is already
+            a painted brand surface, and a second emerald tile on top of it either
+            fights the panel (admin, patient-light) or sinks into it (staff). */}
+        <div className={cn("relative flex items-center gap-3", t.wordmark)}>
+          <DentGrowLogo size={28} variant="mono" />
+          <span className="text-[17px] font-semibold tracking-tight">
             DentGrow
           </span>
         </div>
@@ -215,10 +218,7 @@ export function AuthShell({
             className="flex items-center gap-2.5 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-surface lg:invisible"
             aria-label="DentGrow home"
           >
-            <BrandMark tone="mono" />
-            <span className="text-[15px] font-semibold tracking-tight text-text-primary">
-              DentGrow
-            </span>
+            <DentGrowLogo size={28} withWordmark />
           </Link>
 
           <AuthThemeToggle />
@@ -248,57 +248,6 @@ export function AuthShell({
         </div>
       </main>
     </div>
-  );
-}
-
-/**
- * BrandMark — the DG tile.
- *
- * The shared DentGrowLogo hard-codes a near-black tile, which disappears on the
- * admin panel and fights the emerald one. This draws the same geometry but
- * takes its tile colour from the tone, so the mark reads as intentional on
- * every panel instead of looking pasted on.
- */
-function BrandMark({ tone }: { tone: AuthTone | "mono" }) {
-  const tile =
-    tone === "staff"
-      ? "#062A25"
-      : tone === "patient"
-        ? "#0D6B5E"
-        : tone === "admin"
-          ? "#242C2A"
-          : "#111827";
-
-  const glyph = tone === "patient" || tone === "mono" ? "#FFFFFF" : "#FFFFFF";
-
-  return (
-    <svg
-      width="30"
-      height="30"
-      viewBox="0 0 32 32"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      role="img"
-      aria-label="DentGrow"
-      className="shrink-0"
-    >
-      <rect width="32" height="32" rx="7" fill={tile} />
-      <path
-        fillRule="evenodd"
-        clipRule="evenodd"
-        d="M4.5 5h8C18 5 20.5 9.2 20.5 16S18 27 12.5 27H4.5V5z"
-        fill={glyph}
-      />
-      <path d="M7.5 8h5C15.5 8 17.5 11 17.5 16S15.5 24 12.5 24H7.5V8z" fill={tile} />
-      <path
-        d="M27.9 11.5 A5.5 5.5 0 1 0 27.9 20.5"
-        stroke={glyph}
-        strokeWidth="2.6"
-        strokeLinecap="round"
-        fill="none"
-      />
-      <rect x="23" y="14.7" width="5.5" height="2.5" rx="0.6" fill={glyph} />
-    </svg>
   );
 }
 

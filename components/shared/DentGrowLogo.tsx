@@ -1,91 +1,118 @@
+"use client";
+
+import { useId } from "react";
+import { LOGO_TOOTH_INSET, TOOTH_PATH, toothInset } from "@/lib/brand/mark";
+
 /**
- * DentGrow Logo — DG monogram in a rounded square container.
+ * DentGrowLogo — the DentGrow mark.
  *
- * Design language: Linear / Vercel / Notion style.
- *   - Background: #111827 (off-black, not pure black)
- *   - Letterforms: white
- *   - Shape: rounded square with rx proportional to size
- *   - No gradients, no tooth/dental icons, no complex illustration
+ * WHAT IT IS
+ *   A single tooth, drawn wide and solid, sitting on a rounded emerald tile.
+ *   The tooth is the same path the sign-in artwork repeats into a dental arch
+ *   (lib/brand/mark.ts), so the mark reads as one tooth lifted out of that arch
+ *   rather than as unrelated decoration.
  *
- * The DG mark uses the exact same geometry as /app/icon.svg,
- * scaled via the `size` prop.
+ * WHY IT REPLACED THE "DG" MONOGRAM
+ *   The previous mark was a letter D beside a stroked letter G on a near-black
+ *   tile. Two problems: at the 24–28px the sidebar actually renders it, the G's
+ *   arc and spur closed up and the pair read as "DE"; and nothing about it said
+ *   dentistry — it would have suited any product whose name began with those
+ *   letters. A tooth is legible at 16px and unmistakable at every size.
+ *
+ * WHY THE TOOTH IS SOLID AND UNDECORATED
+ *   Interior detail was tried — a growth chevron, rising bars, an enamel
+ *   gradient — and every one of them survived at 96px and turned to mush at 24.
+ *   The sidebar size is the design constraint, so the mark carries exactly one
+ *   idea.
+ *
+ * VARIANTS
+ *   `tile` (default) — gradient tile + white tooth. The primary mark: sidebar,
+ *     portal nav, favicon.
+ *   `mono` — the tooth alone in `currentColor`, no tile. For placement on a
+ *     painted brand surface (the sign-in panels), where a second coloured tile
+ *     would either fight the panel or sink into it.
  *
  * @example
- *   // Mark only (sidebar, header)
- *   <DentGrowLogo size={28} />
- *
- *   // Mark + wordmark (auth pages, larger contexts)
- *   <DentGrowLogo size={32} withWordmark />
+ *   <DentGrowLogo size={28} withWordmark />          // sidebar
+ *   <DentGrowLogo size={30} variant="mono" />        // on a brand panel
  */
 
 interface DentGrowLogoProps {
-  /** Width and height of the mark container in px. Default: 28. */
+  /** Width and height of the mark in px. Default: 28. */
   size?: number;
-  /** Render "DentGrow" wordmark text beside the mark. Default: false. */
+  /** Render the "DentGrow" wordmark beside the mark. Default: false. */
   withWordmark?: boolean;
+  /** `tile` for the standard mark, `mono` for currentColor on a brand surface. */
+  variant?: "tile" | "mono";
   className?: string;
 }
 
 export function DentGrowLogo({
   size = 28,
   withWordmark = false,
+  variant = "tile",
   className,
 }: DentGrowLogoProps) {
+  // The gradient needs a document-unique id: the sidebar renders a logo in both
+  // the desktop rail and the mobile header, and two <defs> sharing an id is
+  // invalid HTML that breaks the moment one of them unmounts.
+  //
+  // useId's output is stripped to alphanumerics first. React generates ids
+  // containing guillemets (React 19) or colons (React 18), and neither is safe
+  // inside an SVG `url(#…)` reference.
+  const gradientId = `dg-tile-${useId().replace(/[^a-zA-Z0-9]/g, "")}`;
+
   return (
     <div
       className={className}
       style={{
         display: "inline-flex",
         alignItems: "center",
-        gap: Math.round(size * 0.35),
+        gap: Math.round(size * 0.34),
       }}
     >
-      {/*
-        32×32 viewBox — matches icon.svg exactly.
-        The `size` prop scales it uniformly via width/height attrs.
-
-        D (left half):
-          Outer shape: solid white D, inner punch: #111827 bowl hollow.
-
-        G (right half):
-          Stroked arc ~300° with horizontal spur at mid-right.
-      */}
       <svg
         width={size}
         height={size}
         viewBox="0 0 32 32"
         fill="none"
         xmlns="http://www.w3.org/2000/svg"
-        aria-label="DentGrow"
         role="img"
+        aria-label="DentGrow"
         style={{ flexShrink: 0, display: "block" }}
       >
-        {/* Container */}
-        <rect width="32" height="32" rx="7" fill="#111827" />
+        {variant === "tile" ? (
+          <>
+            <defs>
+              {/*
+                A three-stop diagonal, not a flat fill. The tile is the largest
+                area of the mark, and a single flat emerald at 24px looks like a
+                sticker; the light-to-deep run gives it a little dimension
+                without adding anything that has to be "read".
+              */}
+              <linearGradient
+                id={gradientId}
+                x1="0.05"
+                y1="0"
+                x2="0.95"
+                y2="1"
+              >
+                <stop offset="0%" stopColor="#1AA08C" />
+                <stop offset="55%" stopColor="#0D6B5E" />
+                <stop offset="100%" stopColor="#063B34" />
+              </linearGradient>
+            </defs>
 
-        {/* D — outer fill */}
-        <path
-          fillRule="evenodd"
-          clipRule="evenodd"
-          d="M4.5 5h8C18 5 20.5 9.2 20.5 16S18 27 12.5 27H4.5V5z"
-          fill="white"
-        />
-        {/* D — inner punch (creates the bowl) */}
-        <path
-          d="M7.5 8h5C15.5 8 17.5 11 17.5 16S15.5 24 12.5 24H7.5V8z"
-          fill="#111827"
-        />
-
-        {/* G — arc (~300°, gap at bottom-right) */}
-        <path
-          d="M27.9 11.5 A5.5 5.5 0 1 0 27.9 20.5"
-          stroke="white"
-          strokeWidth="2.6"
-          strokeLinecap="round"
-          fill="none"
-        />
-        {/* G — horizontal spur */}
-        <rect x="23" y="14.7" width="5.5" height="2.5" rx="0.6" fill="white" />
+            <rect width="32" height="32" rx="8" fill={`url(#${gradientId})`} />
+            <path
+              d={TOOTH_PATH}
+              fill="#FFFFFF"
+              transform={toothInset(LOGO_TOOTH_INSET)}
+            />
+          </>
+        ) : (
+          <path d={TOOTH_PATH} fill="currentColor" />
+        )}
       </svg>
 
       {withWordmark && (
@@ -94,9 +121,10 @@ export function DentGrowLogo({
             fontSize: Math.round(size * 0.5),
             fontWeight: 600,
             letterSpacing: "-0.025em",
-            // Follows the theme. The mark beside it is a fixed brand tile, but the
-            // wordmark is plain text on the page and has to be readable on both.
-            color: "var(--text-primary)",
+            // Follows the theme. In `tile` mode the mark beside it is a fixed
+            // brand tile, but the wordmark is plain text on the page and has to
+            // be readable on both. In `mono` mode both inherit together.
+            color: variant === "mono" ? "currentColor" : "var(--text-primary)",
             lineHeight: 1,
             userSelect: "none",
             fontFamily:

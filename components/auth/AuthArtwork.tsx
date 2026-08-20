@@ -1,23 +1,39 @@
+import { TOOTH_PATH, toothTransform } from "@/lib/brand/mark";
+
 /**
- * AuthArtwork — the decorative canvas behind the sign-in panel.
+ * AuthArtwork — the canvas behind the sign-in panel.
  *
- * The brief for this was "premium, not generic SaaS" with restraint, so the
- * whole thing is line-work: a dental arch drawn as fourteen rounded segments
- * following an ellipse, a couple of concentric arch outlines behind it, a soft
- * off-centre glow, and a barely-there grain. No photographs, no cartoon teeth,
- * no glassmorphism.
+ * WHAT IT DRAWS
+ *   A full dental arch, built from the same tooth the logo is (lib/brand/mark),
+ *   repeated fourteen times along an ellipse with each copy rotated to stand
+ *   normal to the curve and scaled so the molars at the ends are broader than
+ *   the incisors at the apex. Behind it: nested contour arcs echoing the arch,
+ *   an off-centre aurora of soft emerald light, and a fine grain.
  *
- * Everything is stroked in `currentColor` at low opacity, so the artwork simply
- * inherits whatever ink the panel sets. That is what makes one component work
- * on the staff panel (white on deep emerald), the patient panel (emerald on
- * mint) and the admin panel (grey on graphite) without a single conditional.
+ *   The point of reusing the logo's path is that the identity holds together —
+ *   the mark in the corner is visibly one tooth lifted out of the arch behind
+ *   the form, not a separate drawing that happens to be dental.
+ *
+ * WHY IT LOOKS THE WAY IT DOES
+ *   The first version used plain rounded capsules for the segments, which read
+ *   as pills rather than teeth, and a single flat glow that left the panel
+ *   feeling like a coloured rectangle. Real tooth silhouettes plus a layered
+ *   aurora give the panel depth without adding anything loud: everything is
+ *   line-work and soft light, no photography, no glassmorphism.
+ *
+ * HOW IT THEMES ITSELF
+ *   Every stroke is `currentColor` at low opacity, so the artwork inherits
+ *   whatever ink the panel sets. That is what lets one component serve the
+ *   staff panel (white on deep emerald), the patient panel (emerald on mint or
+ *   pale ink on deep green) and the admin panel (grey on graphite) without a
+ *   single conditional. Only the aurora takes an explicit colour.
  *
  * Purely decorative: aria-hidden, and it never carries information that isn't
  * also in the text beside it.
  */
 
 interface AuthArtworkProps {
-  /** Glow colour. Defaults to the emerald accent. */
+  /** Aurora colour. Defaults to the emerald accent. */
   glow?: string;
   className?: string;
 }
@@ -33,32 +49,59 @@ interface AuthArtworkProps {
  */
 const ARCH = {
   cx: 300,
-  cy: 340,
-  rx: 208,
-  ry: 168,
-  teeth: 14,
+  cy: 305,
+  rx: 195,
+  ry: 158,
+  // Twelve rather than a full adult sixteen: at this radius sixteen silhouettes
+  // sit shoulder to shoulder and the arch reads as a comb. Twelve leaves air
+  // between them, which is what makes them legible as individual teeth.
+  teeth: 12,
 };
 
-/** Positions for the arch segments, spaced evenly over the upper half-ellipse. */
-function archSegments() {
+/** Base size of an arch tooth, relative to the 32-unit box it is drawn in. */
+const TOOTH_SCALE = 1.3;
+
+/**
+ * How much of the curve's normal each tooth actually follows, 0–1.
+ *
+ * Rotating each tooth fully normal to the ellipse is geometrically "correct"
+ * and looks wrong: the molars end up lying on their sides, and a tooth on its
+ * side stops reading as a tooth and starts reading as a hook. Damping the
+ * rotation keeps the fan — the arch still curves — while every silhouette
+ * stays upright enough to be recognisable. This is a drawing of a smile, not
+ * an occlusal diagram.
+ */
+const FAN_DAMPING = 0.4;
+
+/** Positions for the arch teeth, spaced evenly over the upper half-ellipse. */
+function archTeeth() {
   const { cx, cy, rx, ry, teeth } = ARCH;
+  const mid = (teeth - 1) / 2;
+
   return Array.from({ length: teeth }, (_, i) => {
     // π → 2π sweeps left-to-right over the top of the ellipse.
     const a = Math.PI + ((i + 0.5) / teeth) * Math.PI;
+    // Distance from the centre of the arch, 0 at the incisors → 1 at the molars.
+    const outward = Math.abs(i - mid) / mid;
+
+    // Normal to the curve, re-centred so the apex is 0° and the ends are ±90°,
+    // then damped. Without the re-centring the damping would pull every tooth
+    // toward 0° of the raw sweep, which is the right-hand molar, not the apex.
+    let normal = (a * 180) / Math.PI + 90;
+    if (normal > 180) normal -= 360;
+
     return {
       x: cx + rx * Math.cos(a),
       y: cy + ry * Math.sin(a),
-      // +90° so each segment stands normal to the curve: upright at the apex,
-      // laid over at the ends, the way a real arch reads.
-      rotate: (a * 180) / Math.PI + 90,
-      // The molars at the ends are wider than the incisors at the apex.
-      scale: 0.78 + Math.abs(i - (teeth - 1) / 2) / (teeth - 1) * 0.6,
+      rotate: normal * FAN_DAMPING,
+      // Molars are broader than incisors.
+      scale: TOOTH_SCALE * (0.84 + outward * 0.38),
     };
   });
 }
 
 export function AuthArtwork({ glow = "#35A18F", className }: AuthArtworkProps) {
-  const segments = archSegments();
+  const teeth = archTeeth();
 
   return (
     <svg
@@ -71,19 +114,39 @@ export function AuthArtwork({ glow = "#35A18F", className }: AuthArtworkProps) {
       focusable="false"
     >
       <defs>
-        <radialGradient id="dg-auth-glow" cx="50%" cy="50%" r="50%">
-          <stop offset="0%" stopColor={glow} stopOpacity="0.55" />
-          <stop offset="55%" stopColor={glow} stopOpacity="0.14" />
+        {/* Aurora — three lights at different sizes and strengths, so the
+            panel has a direction to it instead of one centred halo. */}
+        <radialGradient id="dg-auth-aurora-1" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stopColor={glow} stopOpacity="0.5" />
+          <stop offset="45%" stopColor={glow} stopOpacity="0.16" />
           <stop offset="100%" stopColor={glow} stopOpacity="0" />
+        </radialGradient>
+        <radialGradient id="dg-auth-aurora-2" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stopColor={glow} stopOpacity="0.28" />
+          <stop offset="100%" stopColor={glow} stopOpacity="0" />
+        </radialGradient>
+        <radialGradient id="dg-auth-aurora-3" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stopColor="currentColor" stopOpacity="0.07" />
+          <stop offset="100%" stopColor="currentColor" stopOpacity="0" />
         </radialGradient>
 
-        <radialGradient id="dg-auth-glow-2" cx="50%" cy="50%" r="50%">
-          <stop offset="0%" stopColor={glow} stopOpacity="0.26" />
-          <stop offset="100%" stopColor={glow} stopOpacity="0" />
-        </radialGradient>
+        {/* Contour arcs fade at both ends so they read as light catching a
+            curve rather than as drawn lines that stop. */}
+        <linearGradient id="dg-auth-contour" x1="0" y1="0.2" x2="1" y2="0.8">
+          <stop offset="0%" stopColor="currentColor" stopOpacity="0" />
+          <stop offset="42%" stopColor="currentColor" stopOpacity="0.15" />
+          <stop offset="100%" stopColor="currentColor" stopOpacity="0" />
+        </linearGradient>
+
+        {/* The arch itself, brighter at the apex than at the molars. */}
+        <linearGradient id="dg-auth-arch" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stopColor="currentColor" stopOpacity="0.12" />
+          <stop offset="50%" stopColor="currentColor" stopOpacity="0.34" />
+          <stop offset="100%" stopColor="currentColor" stopOpacity="0.12" />
+        </linearGradient>
 
         {/* Fine grain. baseFrequency is high so it reads as paper texture
-            rather than visible noise, and the whole layer sits at 0.16. */}
+            rather than visible noise. */}
         <filter id="dg-auth-grain" x="0" y="0" width="100%" height="100%">
           <feTurbulence
             type="fractalNoise"
@@ -93,59 +156,49 @@ export function AuthArtwork({ glow = "#35A18F", className }: AuthArtworkProps) {
           />
           <feColorMatrix type="saturate" values="0" />
         </filter>
-
-        {/* Softens the arch outlines so they sit behind the segments rather
-            than competing with them. */}
-        <linearGradient id="dg-auth-arc" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stopColor="currentColor" stopOpacity="0.02" />
-          <stop offset="45%" stopColor="currentColor" stopOpacity="0.16" />
-          <stop offset="100%" stopColor="currentColor" stopOpacity="0.02" />
-        </linearGradient>
       </defs>
 
-      {/* Glows — off-centre so the composition is asymmetric. */}
-      <circle cx="430" cy="200" r="300" fill="url(#dg-auth-glow)" />
-      <circle cx="90" cy="720" r="260" fill="url(#dg-auth-glow-2)" />
+      {/* Aurora, painted first and off-centre so the composition leans. */}
+      <circle cx="452" cy="150" r="330" fill="url(#dg-auth-aurora-1)" />
+      <circle cx="70" cy="640" r="300" fill="url(#dg-auth-aurora-2)" />
+      <circle cx="300" cy="330" r="260" fill="url(#dg-auth-aurora-3)" />
 
-      {/* Horizon lines: a very quiet rhythm behind everything. */}
-      <g stroke="currentColor" strokeOpacity="0.05" strokeWidth="1">
-        {[120, 260, 400, 540, 680, 820].map((y) => (
-          <line key={y} x1="-40" y1={y} x2="640" y2={y} />
-        ))}
-      </g>
-
-      {/* Concentric arch outlines. */}
-      <g stroke="url(#dg-auth-arc)" strokeWidth="1.25" strokeLinecap="round">
-        {[0, 34, 68].map((offset) => (
+      {/* Contour arcs — five nested curves following the arch. */}
+      <g stroke="url(#dg-auth-contour)" strokeWidth="1.2" strokeLinecap="round">
+        {[52, 96, 148, 208, 276].map((offset) => (
           <path
             key={offset}
-            d={`M ${ARCH.cx - ARCH.rx - offset} ${ARCH.cy}
-                A ${ARCH.rx + offset} ${ARCH.ry + offset} 0 0 1 ${ARCH.cx + ARCH.rx + offset} ${ARCH.cy}`}
+            d={`M ${ARCH.cx - ARCH.rx - offset} ${ARCH.cy + offset * 0.34}
+                A ${ARCH.rx + offset} ${ARCH.ry + offset * 0.9} 0 0 1 ${ARCH.cx + ARCH.rx + offset} ${ARCH.cy + offset * 0.34}`}
           />
         ))}
       </g>
 
-      {/* The arch itself. */}
-      <g stroke="currentColor" strokeOpacity="0.28" strokeWidth="1.4">
-        {segments.map((s, i) => (
-          <g
+      {/* The arch, drawn as outlines. */}
+      <g
+        stroke="url(#dg-auth-arch)"
+        strokeWidth="1"
+        strokeLinejoin="round"
+        fill="none"
+      >
+        {teeth.map((t, i) => (
+          <path
             key={i}
-            transform={`translate(${s.x.toFixed(2)} ${s.y.toFixed(2)}) rotate(${s.rotate.toFixed(2)}) scale(${s.scale.toFixed(3)})`}
-          >
-            <rect x="-15" y="-19" width="30" height="38" rx="13" />
-          </g>
+            d={TOOTH_PATH}
+            transform={toothTransform(t.x, t.y, t.rotate, t.scale)}
+          />
         ))}
       </g>
 
-      {/* Two filled accents mark the arch without lighting the whole thing up. */}
-      <g fill={glow} fillOpacity="0.5">
-        {[segments[6], segments[7]].map((s, i) => (
-          <g
+      {/* The two central incisors are filled, so the eye has one place to land
+          and the arch is anchored without lighting the whole thing up. */}
+      <g fill={glow} fillOpacity="0.42">
+        {[teeth[5], teeth[6]].map((t, i) => (
+          <path
             key={i}
-            transform={`translate(${s.x.toFixed(2)} ${s.y.toFixed(2)}) rotate(${s.rotate.toFixed(2)}) scale(${s.scale.toFixed(3)})`}
-          >
-            <rect x="-15" y="-19" width="30" height="38" rx="13" />
-          </g>
+            d={TOOTH_PATH}
+            transform={toothTransform(t.x, t.y, t.rotate, t.scale)}
+          />
         ))}
       </g>
 
@@ -154,7 +207,7 @@ export function AuthArtwork({ glow = "#35A18F", className }: AuthArtworkProps) {
         width="600"
         height="900"
         filter="url(#dg-auth-grain)"
-        opacity="0.16"
+        opacity="0.15"
         style={{ mixBlendMode: "overlay" }}
       />
     </svg>
