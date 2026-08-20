@@ -4,9 +4,7 @@ import { useActionState, useEffect, useRef } from "react";
 import { toast } from "sonner";
 import { requestPasswordReset } from "@/actions/auth";
 import type { ActionResult } from "@/types";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Field } from "@/components/ui/field";
+import { AuthAlert, AuthField, AuthSubmit } from "@/components/auth/AuthFields";
 
 const initialState: ActionResult<{ sent: true }> = { data: null, error: null };
 
@@ -45,51 +43,38 @@ export function ForgotPasswordForm() {
     return (
       <div
         role="status"
-        className="rounded-lg bg-success-bg border border-success-border px-3.5 py-3 text-sm text-success-strong flex items-start gap-2"
+        className="flex items-start gap-2.5 rounded-[10px] border border-success-border bg-success-bg px-4 py-3.5 text-sm leading-relaxed text-success-strong"
       >
-        <svg className="h-4 w-4 shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20" aria-hidden>
+        <svg className="mt-0.5 h-4 w-4 shrink-0" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
           <path fillRule="evenodd" d="M16.704 5.29a1 1 0 0 1 .006 1.414l-7.5 7.555a1 1 0 0 1-1.42.001L3.29 10.36a1 1 0 1 1 1.42-1.41l3.29 3.31 6.79-6.84a1 1 0 0 1 1.414-.13Z" clipRule="evenodd" />
         </svg>
-        If an account exists with this email, a password reset link has been sent.
+        If an account exists with this email, a password reset link has been
+        sent. Check your inbox — and your spam folder.
       </div>
     );
   }
 
   return (
-    <form action={formAction} className="space-y-4" noValidate>
-      {state.error && (
-        <div
-          role="alert"
-          className="rounded-lg bg-danger-bg border border-danger-border px-3.5 py-3 text-xs text-danger flex items-start gap-2"
-        >
-          <svg className="h-4 w-4 shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20" aria-hidden>
-            <path fillRule="evenodd" d="M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0Zm-8-5a.75.75 0 0 1 .75.75v4.5a.75.75 0 0 1-1.5 0v-4.5A.75.75 0 0 1 10 5Zm0 10a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z" clipRule="evenodd" />
-          </svg>
-          {state.error}
-        </div>
-      )}
+    <form action={formAction} className="space-y-5" noValidate>
+      {state.error && <AuthAlert>{state.error}</AuthAlert>}
 
-      <Field label="Email address" htmlFor="email">
-        <Input
-          id="email"
-          name="email"
-          type="email"
-          autoComplete="email"
-          required
-          disabled={isPending}
-          placeholder="you@example.com"
-        />
-      </Field>
-
-      <Button
-        type="submit"
-        className="w-full mt-2"
-        isLoading={isPending}
-        size="md"
+      <AuthField
+        label="Email address"
+        id="email"
+        name="email"
+        type="email"
+        autoComplete="email"
+        autoFocus
+        required
         disabled={isPending}
-      >
-        {isPending ? "Sending…" : "Send reset link"}
-      </Button>
+        placeholder="you@example.com"
+      />
+
+      <AuthSubmit
+        isPending={isPending}
+        idleLabel="Send reset link"
+        pendingLabel="Sending…"
+      />
     </form>
   );
 }

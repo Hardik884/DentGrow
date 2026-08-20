@@ -1324,6 +1324,7 @@ export type Database = {
           created_at: string
           full_name: string
           id: string
+          is_admin: boolean
           role: Database["public"]["Enums"]["user_role"]
           signature_url: string | null
           updated_at: string
@@ -1333,6 +1334,7 @@ export type Database = {
           created_at?: string
           full_name: string
           id: string
+          is_admin?: boolean
           role: Database["public"]["Enums"]["user_role"]
           signature_url?: string | null
           updated_at?: string
@@ -1342,6 +1344,7 @@ export type Database = {
           created_at?: string
           full_name?: string
           id?: string
+          is_admin?: boolean
           role?: Database["public"]["Enums"]["user_role"]
           signature_url?: string | null
           updated_at?: string
@@ -1427,6 +1430,32 @@ export type Database = {
             columns: ["patient_id"]
             isOneToOne: false
             referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      queue_signals: {
+        Row: {
+          clinic_id: string
+          queue_version: number
+          updated_at: string
+        }
+        Insert: {
+          clinic_id: string
+          queue_version?: number
+          updated_at?: string
+        }
+        Update: {
+          clinic_id?: string
+          queue_version?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "queue_signals_clinic_id_fkey"
+            columns: ["clinic_id"]
+            isOneToOne: true
+            referencedRelation: "clinics"
             referencedColumns: ["id"]
           },
         ]
@@ -2723,6 +2752,8 @@ export type Database = {
     }
     Functions: {
       auth_clinic_id: { Args: never; Returns: string }
+      auth_is_admin: { Args: never; Returns: boolean }
+      auth_patient_clinic_id: { Args: never; Returns: string }
       auth_patient_id: { Args: never; Returns: string }
       auth_role: {
         Args: never

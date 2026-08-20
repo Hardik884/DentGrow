@@ -1,4 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
+import { ACCOUNTS, signInStaff } from "./helpers/auth";
 
 /**
  * Dark mode visual QA.
@@ -47,12 +48,8 @@ async function forceTheme(page: Page, theme: "light" | "dark" | "system") {
 }
 
 async function login(page: Page) {
-  await page.goto("/login");
-  await page.locator("select").selectOption({ label: "My Dental Clinic" });
-  await page.getByPlaceholder("you@example.com").fill("brain@dentgrow.test");
-  await page.getByPlaceholder("••••••••").fill("password123");
-  await page.getByRole("button", { name: "Sign in" }).click();
-  await page.waitForURL("**/dentist**", { timeout: 30_000 });
+  // Staff sign-in no longer asks for a clinic — see e2e/helpers/auth.ts.
+  await signInStaff(page, ACCOUNTS.demoDentist);
 }
 
 /** WCAG 2.1 relative luminance. */
@@ -166,7 +163,13 @@ const RECEPTIONIST_ROUTES = [
   "/receptionist/prescriptions",
 ];
 
-const PUBLIC_ROUTES = ["/login", "/signup", "/forgot-password"];
+const PUBLIC_ROUTES = [
+  "/login",
+  "/patient/login",
+  "/patient/signup",
+  "/admin/login",
+  "/forgot-password",
+];
 
 const DENTIST_ROUTES = [
   "/dentist",
@@ -318,12 +321,7 @@ test.describe("dark mode", () => {
       test.setTimeout(240_000);
       await forceTheme(page, theme);
 
-      await page.goto("/login");
-      await page.locator("select").selectOption({ label: "Dr. Liying's Dental Care" });
-      await page.getByPlaceholder("you@example.com").fill("receptionist@dentgrow.test");
-      await page.getByPlaceholder("••••••••").fill("password123");
-      await page.getByRole("button", { name: "Sign in" }).click();
-      await page.waitForURL("**/receptionist**", { timeout: 30_000 });
+      await signInStaff(page, ACCOUNTS.receptionist, "receptionist");
 
       const report: Record<string, Finding[]> = {};
 

@@ -15,50 +15,105 @@ import {
 } from "@/lib/clinic-session";
 import type { ActionResult } from "@/types";
 
-// ── Sign In ────────────────────────────────────────────────────────────────────
+/**
+ * actions/auth.ts — DentGrow authentication.
+ *
+ * DentGrow has THREE separate sign-in entry points, one per audience. They are
+ * separate on purpose: each one knows exactly who it is for, so none of them
+ * has to ask the visitor to describe themselves with a role picker or a clinic
+ * dropdown.
+ *
+ *   /login          → signInStaff    → dentists and receptionists
+ *   /patient/login  → signInPatient  → patients (portal)
+ *   /admin/login    → signInAdmin    → platform admin / developer only
+ *
+ * The single rule that makes this safe: NOTHING about who you are comes from
+ * the browser. The form posts an email and a password, nothing else. Role,
+ * clinic and admin capability are all read from the `profiles` row that belongs
+ * to the authenticated user, server-side, after the password check. A visitor
+ * cannot pick their clinic, cannot claim a role, and cannot reach the admin
+ * portal by typing its URL.
+ *
+ * A clinic is chosen in exactly one place in the whole product — the NEW
+ * patient signup form — and even there the chosen id is validated against the
+ * clinics table before it is used for anything (see signUpPatient).
+ *
+ * Each entry point also refuses accounts that belong to a different audience,
+ * so a patient cannot sign in "into" the staff app and an admin cannot quietly
+ * sign in through the staff door.
+ */
+
+// ── Audiences ─────────────────────────────────────────────────────────────────
+
+/** Where a signed-in account belongs, resolved entirely server-side. */
+type Audience = "admin" | "staff" | "patient" | "unlinked";
+
+type AuthedProfile = {
+  role: "dentist" | "receptionist" | "patient";
+  clinic_id: string;
+  is_admin: boolean;
+};
+
+/** Home route for an audience, used after a successful sign-in. */
+function homeFor(profile: AuthedProfile | null): string {
+  if (!profile) return "/portal/setup";
+  if (profile.is_admin) return "/admin";
+  switch (profile.role) {
+    case "dentist":
+      return "/dentist";
+    case "receptionist":
+      return "/receptionist";
+    default:
+      return "/portal";
+  }
+}
+
+function audienceOf(profile: AuthedProfile | null): Audience {
+  if (!profile) return "unlinked";
+  // Admin wins over role: owner@dentgrow.local is a dentist AND an admin, and
+  // the admin door is the only one it is allowed through.
+  if (profile.is_admin) return "admin";
+  if (profile.role === "dentist" || profile.role === "receptionist") return "staff";
+  return "patient";
+}
 
 /**
- * signIn
+ * Human-readable message for a Supabase Auth failure.
  *
- * Authenticates a user with email + password via Supabase Auth, scoped to the
- * clinic the user selected in the required Clinic dropdown.
- *
- * Cross-clinic protection:
- *   After authentication we resolve the user's profile and verify that
- *   profile.clinic_id matches the clinic they selected. If it does not match,
- *   we immediately sign them back out and return a friendly error. A dentist or
- *   receptionist from one clinic can therefore never sign in "into" another
- *   clinic, even with valid credentials.
- *
- * On success, resolves their role from the profiles table and redirects
- * to the appropriate dashboard:
- *   dentist       → /dentist
- *   receptionist  → /receptionist
- *   patient       → /portal
- *
- * Returns an error string if authentication fails so the form can display it.
- * Never returns on success — redirect() throws internally.
+ * Raw Supabase errors are never surfaced (CLAUDE.md §13.1) — they leak
+ * implementation detail and read as gibberish to a receptionist. Every unknown
+ * failure collapses to the same generic line, which also keeps the response
+ * uniform for anyone probing which addresses exist.
  */
-export async function signIn(
-  _prevState: ActionResult<null>,
-  formData: FormData
-): Promise<ActionResult<null>> {
-  const email = formData.get("email") as string;
-  const password = formData.get("password") as string;
-  const clinicId = (formData.get("clinic_id") as string) || "";
-
-  if (!clinicId) {
-    return { data: null, error: "Please select a clinic." };
+function friendlyAuthError(message: string | undefined): string {
+  const m = (message ?? "").toLowerCase();
+  if (m.includes("invalid login credentials")) {
+    return "That email and password don't match an account.";
   }
+  if (m.includes("email not confirmed")) {
+    return "Please confirm your email address, then sign in.";
+  }
+  if (m.includes("rate limit") || m.includes("too many")) {
+    return "Too many attempts. Please wait a minute and try again.";
+  }
+  return "We couldn't sign you in. Please check your details and try again.";
+}
+
+/**
+ * authenticate — password check + server-side profile resolution.
+ *
+ * Shared by all three sign-in actions. Returns either a friendly error string
+ * or the caller's real profile. Never trusts anything from the form beyond the
+ * email and password themselves.
+ */
+async function authenticate(
+  formData: FormData
+): Promise<{ error: string } | { profile: AuthedProfile | null }> {
+  const email = ((formData.get("email") as string) ?? "").trim();
+  const password = (formData.get("password") as string) ?? "";
 
   if (!email || !password) {
-    return { data: null, error: "Email and password are required." };
-  }
-
-  // Validate the selected clinic actually exists before authenticating.
-  const clinicResult = await getClinicById(clinicId);
-  if (!clinicResult.data) {
-    return { data: null, error: clinicResult.error ?? "Invalid clinic." };
+    return { error: "Email and password are required." };
   }
 
   const supabase = await createServerClient();
@@ -67,94 +122,170 @@ export async function signIn(
     await supabase.auth.signInWithPassword({ email, password });
 
   if (authError || !authData.user) {
-    return {
-      data: null,
-      error: authError?.message ?? "Invalid email or password.",
-    };
+    return { error: friendlyAuthError(authError?.message) };
   }
 
-  // Resolve role + clinic for the cross-clinic check and redirect.
-  const { data: profileData } = await supabase
+  const { data } = await supabase
     .from("profiles")
-    .select("role, clinic_id")
+    .select("role, clinic_id, is_admin")
     .eq("id", authData.user.id)
     .single();
 
-  const profileRow = profileData as
-    | { role: "dentist" | "receptionist" | "patient"; clinic_id: string }
-    | null;
-
-  // ── Cross-clinic guard ──────────────────────────────────────────────────
-  // If the user has a profile and its clinic_id does not match the selected
-  // clinic, deny the login and clear the session. Patients mid-onboarding have
-  // no profile yet (profileRow === null) and are handled by the redirect below.
-  if (profileRow && profileRow.clinic_id !== clinicId) {
-    await supabase.auth.signOut();
-    return {
-      data: null,
-      error: "This account belongs to a different clinic.",
-    };
-  }
-
-  const role = profileRow?.role ?? null;
-
-  // Persist the selected clinic for the session (display/UX only — data access
-  // remains authorised by profiles.clinic_id + RLS).
-  await setSelectedClinic(clinicId);
-
-  switch (role) {
-    case "dentist":
-      redirect("/dentist");
-    case "receptionist":
-      redirect("/receptionist");
-    case "patient":
-      redirect("/portal");
-    default: {
-      // No profile row found. For patient self-registrations this means the
-      // user created an auth account but hasn't completed portal setup yet
-      // (linkPortalAccount creates the profile). Send them to /portal/setup
-      // so they can finish linking. Do NOT sign them out — the setup page
-      // requires an active session.
-      //
-      // For staff accounts this state should never occur in production
-      // (staff are created via the invite flow which always inserts a profile).
-      // If it does, the setup page will surface a clear message.
-      redirect("/portal/setup");
-    }
-  }
+  return { profile: (data as AuthedProfile | null) ?? null };
 }
 
-// ── Sign Up ────────────────────────────────────────────────────────────────────
+/** Sign the just-authenticated session back out after an audience mismatch. */
+async function rejectAndSignOut(error: string): Promise<ActionResult<null>> {
+  const supabase = await createServerClient();
+  await supabase.auth.signOut();
+  await clearSelectedClinic();
+  return { data: null, error };
+}
+
+// ── Staff sign-in — /login ────────────────────────────────────────────────────
 
 /**
- * signUp
+ * signInStaff
  *
- * Creates a new Supabase Auth account for patient portal self-registration,
- * scoped to the clinic chosen in the required Clinic dropdown.
+ * The clinic sign-in, for dentists and receptionists only.
  *
- * The selected clinic is carried through the rest of the signup flow via the
- * signup-clinic cookie: /portal/setup and linkPortalAccount use it so the
- * patient lookup, linking, and (if needed) creation all happen inside the
- * chosen clinic only. The same phone number in a different clinic is never
- * matched.
+ * There is no clinic dropdown and no role picker. After the password check we
+ * read the caller's profile and send them to the portal their role entitles
+ * them to; their clinic comes from profiles.clinic_id and is enforced from
+ * there on by RLS (auth_clinic_id()), so cross-clinic access is impossible
+ * regardless of what the browser sends.
  *
- * Staff accounts are created out-of-band (invite flow in production).
- *
- * After signup, redirects to /portal/setup for the patient→account linking flow.
- * Returns an error string on failure.
+ * Accounts that belong to another door are refused and signed straight back
+ * out — a patient is pointed at the patient portal, and the platform admin is
+ * told only that this is not its entry point.
  */
-export async function signUp(
+export async function signInStaff(
   _prevState: ActionResult<null>,
   formData: FormData
 ): Promise<ActionResult<null>> {
-  const email = formData.get("email") as string;
-  const password = formData.get("password") as string;
-  const confirmPassword = formData.get("confirmPassword") as string;
-  const clinicId = (formData.get("clinic_id") as string) || "";
+  const result = await authenticate(formData);
+  if ("error" in result) return { data: null, error: result.error };
+
+  const { profile } = result;
+
+  switch (audienceOf(profile)) {
+    case "staff":
+      break;
+    case "admin":
+      return rejectAndSignOut(
+        "This account doesn't have clinic access. Use its own sign-in page."
+      );
+    default:
+      return rejectAndSignOut(
+        "This is the staff sign-in. Patients can sign in at the patient portal."
+      );
+  }
+
+  // Display-only convenience so clinic chrome renders immediately. Never an
+  // access decision — RLS reads the clinic from the profile, not this cookie.
+  await setSelectedClinic(profile!.clinic_id);
+
+  redirect(homeFor(profile));
+}
+
+// ── Patient sign-in — /patient/login ──────────────────────────────────────────
+
+/**
+ * signInPatient
+ *
+ * The patient portal sign-in. No clinic dropdown: an existing patient's clinic
+ * is already recorded on their patient record, and is resolved through
+ * patient_portal_links → patients.clinic_id.
+ *
+ * A patient who signed up but never finished linking their record has no
+ * profile row yet; they are sent to /portal/setup to finish, exactly as before.
+ * Staff and admin accounts are refused here.
+ */
+export async function signInPatient(
+  _prevState: ActionResult<null>,
+  formData: FormData
+): Promise<ActionResult<null>> {
+  const result = await authenticate(formData);
+  if ("error" in result) return { data: null, error: result.error };
+
+  const { profile } = result;
+  const audience = audienceOf(profile);
+
+  if (audience === "staff" || audience === "admin") {
+    return rejectAndSignOut(
+      "This is the patient portal. Clinic staff sign in on the staff page."
+    );
+  }
+
+  if (profile) await setSelectedClinic(profile.clinic_id);
+
+  // "unlinked" → /portal/setup, "patient" → /portal.
+  redirect(homeFor(profile));
+}
+
+// ── Admin sign-in — /admin/login ──────────────────────────────────────────────
+
+/**
+ * signInAdmin
+ *
+ * The platform admin / developer entry point.
+ *
+ * The URL is not the security boundary — this action is. Any account can
+ * submit this form; only one whose profile carries is_admin = true is let
+ * through, and everyone else is signed straight back out with the same
+ * message, whether or not their password was correct in the first place. The
+ * flag itself cannot be granted from the browser: the profiles UPDATE policy
+ * pins is_admin to its previous value (migration 20260821000000).
+ */
+export async function signInAdmin(
+  _prevState: ActionResult<null>,
+  formData: FormData
+): Promise<ActionResult<null>> {
+  const result = await authenticate(formData);
+  if ("error" in result) return { data: null, error: result.error };
+
+  const { profile } = result;
+
+  if (!profile?.is_admin) {
+    return rejectAndSignOut("This account is not authorized for admin access.");
+  }
+
+  await setSelectedClinic(profile.clinic_id);
+
+  redirect("/admin");
+}
+
+// ── New patient signup — /patient/signup ──────────────────────────────────────
+
+/**
+ * signUpPatient
+ *
+ * Creates a Supabase Auth account for a patient registering themselves, at the
+ * clinic they picked on the form.
+ *
+ * This is the ONLY place in DentGrow where a clinic is chosen in the browser,
+ * and the id is verified against the clinics table before it is used — a
+ * tampered value is rejected outright rather than silently scoping the new
+ * patient into a clinic that does not exist. From here the choice travels in an
+ * httpOnly cookie to /portal/setup, so the record lookup and (if needed)
+ * creation happen inside that clinic only; the same phone number at a different
+ * clinic is never matched.
+ *
+ * Staff accounts are never created here — they are provisioned by the clinic.
+ */
+export async function signUpPatient(
+  _prevState: ActionResult<null>,
+  formData: FormData
+): Promise<ActionResult<null>> {
+  const email = ((formData.get("email") as string) ?? "").trim();
+  const password = (formData.get("password") as string) ?? "";
+  const confirmPassword = (formData.get("confirmPassword") as string) ?? "";
+  const clinicId = ((formData.get("clinic_id") as string) || "").trim();
   const phone = ((formData.get("phone") as string) || "").trim();
+  const fullName = ((formData.get("full_name") as string) || "").trim();
 
   if (!clinicId) {
-    return { data: null, error: "Please select a clinic." };
+    return { data: null, error: "Please choose the clinic you attend." };
   }
 
   if (!email || !password || !confirmPassword) {
@@ -169,7 +300,7 @@ export async function signUp(
     return { data: null, error: "Password must be at least 8 characters." };
   }
 
-  // Validate the selected clinic before creating the account.
+  // Never trust a clinic id from the browser — verify it exists first.
   const clinicResult = await getClinicById(clinicId);
   if (!clinicResult.data) {
     return { data: null, error: clinicResult.error ?? "Invalid clinic." };
@@ -181,6 +312,7 @@ export async function signUp(
     email,
     password,
     options: {
+      data: fullName ? { full_name: fullName } : undefined,
       // Redirect after email confirmation — handled by Supabase Auth.
       // Origin is resolved from the live request so the link is correct per
       // environment (never a build-time-baked localhost URL in production).
@@ -189,10 +321,17 @@ export async function signUp(
   });
 
   if (signUpError) {
-    return { data: null, error: signUpError.message };
+    const m = signUpError.message.toLowerCase();
+    if (m.includes("already registered") || m.includes("already been registered")) {
+      return {
+        data: null,
+        error: "An account with this email already exists. Try signing in instead.",
+      };
+    }
+    return { data: null, error: friendlyAuthError(signUpError.message) };
   }
 
-  // Carry the chosen clinic (and selection) through to /portal/setup so the
+  // Carry the chosen clinic (and phone) through to /portal/setup so the
   // patient link/create step is scoped to this clinic only.
   await setSignupClinic(clinicId);
   await setSelectedClinic(clinicId);
@@ -208,17 +347,42 @@ export async function signUp(
 /**
  * signOut
  *
- * Signs the current user out of Supabase Auth and redirects to /login.
- * Safe to call from any role context.
+ * Signs the current user out and returns them to THEIR sign-in page, so a
+ * patient is never dropped onto the staff form (or vice versa). Safe to call
+ * from any role context.
  */
 export async function signOut(): Promise<void> {
   const supabase = await createServerClient();
+
+  // Resolve where to land BEFORE destroying the session.
+  let destination = "/login";
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (user) {
+    const { data } = await supabase
+      .from("profiles")
+      .select("role, clinic_id, is_admin")
+      .eq("id", user.id)
+      .single();
+
+    const profile = (data as AuthedProfile | null) ?? null;
+    const audience = audienceOf(profile);
+    destination =
+      audience === "admin"
+        ? "/admin/login"
+        : audience === "staff"
+          ? "/login"
+          : "/patient/login";
+  }
+
   await supabase.auth.signOut();
-  // Clear the selected-clinic UX cookies so a fresh login must re-select.
+  // Clear the selected-clinic UX cookies so a fresh login re-resolves them.
   await clearSelectedClinic();
   await clearSignupClinic();
   await clearSignupPhone();
-  redirect("/login");
+  redirect(destination);
 }
 
 // ── Password Reset (patients only) ───────────────────────────────────────────
@@ -228,10 +392,9 @@ export async function signOut(): Promise<void> {
  *
  * Patient-only gate for self-service password reset.
  *
- * DentGrow uses a single shared sign-in page. Self-service password reset must
- * be available to PATIENTS ONLY — dentist and receptionist accounts are managed
- * by the clinic owner / platform administrator and must never receive a
- * self-service reset email.
+ * Self-service reset is available to PATIENTS ONLY — dentist, receptionist and
+ * admin accounts are managed by the clinic owner / platform administrator and
+ * must never receive a self-service reset email.
  *
  * Because the email→role mapping lives in auth.users (email) + profiles (role),
  * we resolve the auth user by email via the service-role admin client, then read
@@ -240,7 +403,7 @@ export async function signOut(): Promise<void> {
  *   - role === null       → eligible (a patient mid-onboarding has an auth
  *                           account but no profile yet; staff always have a
  *                           profile, created by the invite flow)
- *   - dentist / receptionist → NOT eligible (silently skipped)
+ *   - dentist / receptionist / any admin → NOT eligible (silently skipped)
  *
  * Returns false for unknown emails too. The caller always reports the same
  * generic success message regardless, so this never reveals whether an account
@@ -265,11 +428,13 @@ async function isPasswordResetEligible(email: string): Promise<boolean> {
     if (user) {
       const { data: profile } = await admin
         .from("profiles")
-        .select("role")
+        .select("role, is_admin")
         .eq("id", user.id)
         .maybeSingle();
 
-      const role = (profile as { role?: string } | null)?.role ?? null;
+      const row = (profile as { role?: string; is_admin?: boolean } | null) ?? null;
+      if (row?.is_admin) return false;
+      const role = row?.role ?? null;
       return role === "patient" || role === null;
     }
 
@@ -291,7 +456,7 @@ async function isPasswordResetEligible(email: string): Promise<boolean> {
  * forwards to /reset-password.
  *
  * Security:
- *   - Patient-only: staff accounts never receive a reset email.
+ *   - Patient-only: staff and admin accounts never receive a reset email.
  *   - Enumeration-safe: the response is ALWAYS a generic success, so the caller
  *     cannot tell whether the email exists or what role it has.
  *   - Clinic-independent: reset relies on the authenticated Supabase account,
@@ -351,7 +516,7 @@ export async function requestPasswordReset(
  * patient must sign in again with their new credentials.
  *
  * Returns an error string on failure; on success returns { updated: true } and
- * the client redirects to /login?reset=1.
+ * the client redirects to /patient/login?reset=1.
  */
 export async function updatePassword(
   _prevState: ActionResult<{ updated: true }>,
@@ -368,7 +533,7 @@ export async function updatePassword(
     return { data: null, error: "Passwords do not match." };
   }
 
-  // Existing password policy (mirrors signUp): minimum 8 characters.
+  // Existing password policy (mirrors signup): minimum 8 characters.
   if (password.length < 8) {
     return { data: null, error: "Password must be at least 8 characters." };
   }
@@ -391,7 +556,7 @@ export async function updatePassword(
   const { error } = await supabase.auth.updateUser({ password });
 
   if (error) {
-    return { data: null, error: error.message };
+    return { data: null, error: friendlyAuthError(error.message) };
   }
 
   // Sign the recovery session out so the patient re-authenticates with the new

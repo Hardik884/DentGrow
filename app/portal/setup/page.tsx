@@ -34,7 +34,7 @@ export default async function PortalSetupPage() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user) redirect("/login");
+  if (!user) redirect("/patient/login");
 
   // If already linked, skip setup
   const { data: existingLink } = await db

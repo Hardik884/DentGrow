@@ -1,5 +1,6 @@
 import { test, expect, type Page } from "@playwright/test";
 import path from "node:path";
+import { ACCOUNTS, signInStaff } from "./helpers/auth";
 
 /**
  * e2e/billing.spec.ts
@@ -231,13 +232,9 @@ test.afterAll(async () => {
 });
 
 async function loginAsDemoClinic(page: Page) {
-  await page.goto("/login");
-  await page.locator("select").waitFor({ state: "visible", timeout: 15_000 });
-  await page.locator("select").selectOption({ label: "My Dental Clinic" });
-  await page.getByPlaceholder("you@example.com").fill("brain@dentgrow.test");
-  await page.getByPlaceholder("••••••••").fill("password123");
-  await page.getByRole("button", { name: "Sign in" }).click();
-  await page.waitForURL(/\/dentist(\/|$)/, { timeout: 20_000 });
+  // Staff sign-in no longer asks for a clinic — it is resolved from the
+  // authenticated profile. See e2e/helpers/auth.ts.
+  await signInStaff(page, ACCOUNTS.demoDentist);
 }
 
 test.describe("Dentist Billing & Payments — /dentist/payments", () => {
@@ -418,12 +415,7 @@ test.describe("Patient portal Billing & Payments authorization", () => {
     // manual verification pass (registered against 9990000003). If that
     // account doesn't exist in a fresh reset, this test documents the flow
     // rather than asserting on brittle pre-seeded portal state.
-    await page.goto("/login");
-    await page.locator("select").selectOption({ label: "My Dental Clinic" });
-    await page.getByPlaceholder("you@example.com").fill("brain@dentgrow.test");
-    await page.getByPlaceholder("••••••••").fill("password123");
-    await page.getByRole("button", { name: "Sign in" }).click();
-    await page.waitForURL(/\/dentist(\/|$)/);
+    await signInStaff(page, ACCOUNTS.demoDentist);
 
     // Sanity: staff cannot reach the patient portal billing route with their
     // own session — middleware bounces staff away from /portal/*.

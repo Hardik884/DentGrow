@@ -1,12 +1,18 @@
 import type { Metadata } from "next";
 import { ResetPasswordForm } from "./ResetPasswordForm";
-import { DentGrowLogo } from "@/components/shared/DentGrowLogo";
+import { AuthShell } from "@/components/auth/AuthShell";
 
 export const metadata: Metadata = {
   title: "Set New Password",
   description: "Choose a new password for your DentGrow patient account.",
 };
 
+/**
+ * /reset-password
+ *
+ * Renders inside the short-lived recovery session established by
+ * /auth/callback. Same patient tone as the rest of the recovery flow.
+ */
 export default async function ResetPasswordPage({
   searchParams,
 }: {
@@ -15,26 +21,23 @@ export default async function ResetPasswordPage({
   const { error } = await searchParams;
 
   return (
-    <div className="space-y-8">
-      {/* Brand */}
-      <div className="space-y-1.5">
-        <div className="mb-6">
-          <DentGrowLogo size={32} withWordmark />
-        </div>
-        <h1 className="text-2xl font-semibold text-text-primary tracking-tight">Set a new password</h1>
-        <p className="text-sm text-text-secondary">Choose a strong password you don&apos;t use elsewhere.</p>
-      </div>
-
-      {/* Card */}
-      <div className="bg-surface border border-border rounded-xl p-6 shadow-sm">
-        <ResetPasswordForm linkError={error === "link"} />
-      </div>
-
-      <p className="text-center text-xs text-text-secondary">
-        <a href="/login" className="text-text-primary font-medium hover:underline underline-offset-4">
+    <AuthShell
+      tone="patient"
+      eyebrow="Account recovery"
+      headline="Almost there."
+      subhead="Choose a password you don't use anywhere else, then sign in with it."
+      formTitle="Set a new password"
+      formSubtitle="This replaces your old password immediately."
+      footer={
+        <a
+          href="/patient/login"
+          className="rounded font-medium text-accent underline-offset-4 transition-colors duration-150 hover:text-accent-hover hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
+        >
           Back to sign in
         </a>
-      </p>
-    </div>
+      }
+    >
+      <ResetPasswordForm linkError={error === "link"} />
+    </AuthShell>
   );
 }

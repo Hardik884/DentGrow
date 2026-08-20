@@ -32,7 +32,7 @@ export default async function PortalNewAppointmentPage() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user) redirect("/login");
+  if (!user) redirect("/patient/login");
 
   // Resolve patient_id from portal link
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

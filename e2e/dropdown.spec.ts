@@ -1,4 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
+import { ACCOUNTS, signInStaff } from "./helpers/auth";
 
 /**
  * The designed dropdown, in both themes.
@@ -8,7 +9,15 @@ import { test, expect, type Page } from "@playwright/test";
  * check the two things that actually matter: the list is legible against the
  * dark surface, and replacing the control did not break the form contract that
  * two dozen call sites depend on.
+ *
+ * The unauthenticated specimen used to be the clinic picker on /login. Staff
+ * sign-in no longer has one — the clinic is resolved from the authenticated
+ * profile — so these tests now use the clinic picker on /patient/signup, which
+ * is the same component and the one remaining place a clinic is chosen at all.
  */
+
+/** The only unauthenticated page with a dropdown on it. */
+const DROPDOWN_PAGE = "/patient/signup";
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "http://127.0.0.1:55321";
 const THEME_KEY = "dentgrow-theme";
@@ -27,13 +36,7 @@ async function forceTheme(page: Page, theme: "light" | "dark") {
 }
 
 async function login(page: Page) {
-  await page.goto("/login");
-  await page.getByRole("combobox").first().click();
-  await page.getByRole("option", { name: "My Dental Clinic" }).click();
-  await page.getByPlaceholder("you@example.com").fill("brain@dentgrow.test");
-  await page.getByPlaceholder("••••••••").fill("password123");
-  await page.getByRole("button", { name: "Sign in" }).click();
-  await page.waitForURL("**/dentist**", { timeout: 30_000 });
+  await signInStaff(page, ACCOUNTS.demoDentist);
 }
 
 /** Contrast of the option list's text against the surface it is painted on. */
@@ -69,9 +72,9 @@ test.describe("designed dropdown", () => {
   for (const theme of ["light", "dark"] as const) {
     test(`${theme}: the option list is legible`, async ({ page }) => {
       await forceTheme(page, theme);
-      await page.goto("/login");
+      await page.goto(DROPDOWN_PAGE);
 
-      // The clinic picker on the login page is the same component as every
+      // The clinic picker on the signup page is the same component as every
       // other dropdown in the app.
       await page.getByRole("combobox").first().click();
       await expect(page.getByRole("listbox")).toBeVisible();
@@ -107,7 +110,7 @@ test.describe("designed dropdown", () => {
 
   test("dark: the list is a themed surface, not a white box", async ({ page }) => {
     await forceTheme(page, "dark");
-    await page.goto("/login");
+    await page.goto(DROPDOWN_PAGE);
     await page.getByRole("combobox").first().click();
 
     const bg = await page.evaluate(() => {
@@ -121,7 +124,7 @@ test.describe("designed dropdown", () => {
 
   test("keyboard: arrow keys and Enter select an option", async ({ page }) => {
     await forceTheme(page, "dark");
-    await page.goto("/login");
+    await page.goto(DROPDOWN_PAGE);
 
     const trigger = page.getByRole("combobox").first();
     await trigger.focus();
@@ -171,16 +174,21 @@ test.describe("designed dropdown", () => {
     // Regression: React 19 resets a <form action> once the action resolves.
     // That reset wiped the hidden <select> back to its first option, and React
     // does not re-apply the controlled value without a re-render — which a
-    // failed sign-in does not cause. The login page then showed one clinic and
-    // submitted a different one, so the next attempt failed too.
-    await page.goto("/login");
+    // failed submit does not cause. The page then showed one clinic and would
+    // have submitted a different one.
+    await page.goto(DROPDOWN_PAGE);
 
     await page.getByRole("combobox").first().click();
     await page.getByRole("option", { name: "My Dental Clinic" }).click();
 
-    await page.getByPlaceholder("you@example.com").fill("brain@dentgrow.test");
-    await page.getByPlaceholder("••••••••").fill("definitely-wrong");
-    await page.getByRole("button", { name: "Sign in" }).click();
+    // Mismatched passwords fail server-side, which is what makes the action
+    // resolve — and reset the form — without navigating away.
+    await page.getByLabel("Full name").fill("Dropdown Regression");
+    await page.getByLabel("Phone number").fill("9990001234");
+    await page.getByLabel("Email address").fill("dropdown-regression@dentgrow.test");
+    await page.getByLabel("Password", { exact: true }).fill("password123");
+    await page.getByLabel("Confirm password").fill("different-password");
+    await page.getByRole("button", { name: "Create account" }).click();
     await expect(page.getByRole("alert")).toBeVisible();
 
     const after = await page.evaluate(() => {
@@ -196,12 +204,9 @@ test.describe("designed dropdown", () => {
     expect(after.shown).toContain("My Dental Clinic");
     expect(after.native).toBe("My Dental Clinic");
 
-    // And a correct retry actually signs in. (The action reset clears the text
-    // inputs — long-standing behaviour of this form, unrelated to the select.)
-    await page.getByPlaceholder("you@example.com").fill("brain@dentgrow.test");
-    await page.getByPlaceholder("••••••••").fill("password123");
-    await page.getByRole("button", { name: "Sign in" }).click();
-    await page.waitForURL("**/dentist**", { timeout: 30_000 });
+    // The submit button is also still enabled, which it only is while a
+    // clinic is selected — proof the retained value reached React state too.
+    await expect(page.getByRole("button", { name: "Create account" })).toBeEnabled();
   });
 
   test("dropdowns inside a modal are not clipped", async ({ page }) => {

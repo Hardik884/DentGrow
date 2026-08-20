@@ -1,37 +1,41 @@
 import type { Metadata } from "next";
 import { ForgotPasswordForm } from "./ForgotPasswordForm";
-import { DentGrowLogo } from "@/components/shared/DentGrowLogo";
+import { AuthShell } from "@/components/auth/AuthShell";
 
 export const metadata: Metadata = {
   title: "Reset Password",
   description: "Request a password reset link for your DentGrow patient account.",
 };
 
+/**
+ * /forgot-password
+ *
+ * Part of the PATIENT auth experience — self-service reset is patient-only
+ * (actions/auth.ts:isPasswordResetEligible), so this page wears the patient
+ * tone and links back to the patient sign-in, not the staff one.
+ */
 export default function ForgotPasswordPage() {
   return (
-    <div className="space-y-8">
-      {/* Brand */}
-      <div className="space-y-1.5">
-        <div className="mb-6">
-          <DentGrowLogo size={32} withWordmark />
-        </div>
-        <h1 className="text-2xl font-semibold text-text-primary tracking-tight">Reset your password</h1>
-        <p className="text-sm text-text-secondary">
-          Enter your email and we&apos;ll send you a link to reset it.
-        </p>
-      </div>
-
-      {/* Card */}
-      <div className="bg-surface border border-border rounded-xl p-6 shadow-sm">
-        <ForgotPasswordForm />
-      </div>
-
-      <p className="text-center text-xs text-text-secondary">
-        Remember your password?{" "}
-        <a href="/login" className="text-text-primary font-medium hover:underline underline-offset-4">
-          Back to sign in
-        </a>
-      </p>
-    </div>
+    <AuthShell
+      tone="patient"
+      eyebrow="Account recovery"
+      headline="Let's get you back in."
+      subhead="We'll email you a secure link. It expires shortly after it's sent, so use it soon."
+      formTitle="Reset your password"
+      formSubtitle="Enter the email address you use for the patient portal."
+      footer={
+        <>
+          Remembered it?{" "}
+          <a
+            href="/patient/login"
+            className="rounded font-medium text-accent underline-offset-4 transition-colors duration-150 hover:text-accent-hover hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
+          >
+            Back to sign in
+          </a>
+        </>
+      }
+    >
+      <ForgotPasswordForm />
+    </AuthShell>
   );
 }

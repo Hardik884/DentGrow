@@ -30,7 +30,7 @@ export default async function PortalQueuePage() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user) redirect("/login");
+  if (!user) redirect("/patient/login");
 
   // Resolve portal link → patient_id + clinic_id
   const { data: linkData } = await db

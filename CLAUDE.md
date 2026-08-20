@@ -80,6 +80,51 @@ DentGrow is an AI-powered dental practice management system designed specificall
 
 Roles are stored in the `profiles` table and enforced via Supabase RLS policies and middleware route guards.
 
+### Authentication entry points
+
+DentGrow has **three separate sign-in pages, one per audience**. They are separate so
+that no page has to ask a visitor to describe themselves:
+
+| Route | For | Notes |
+|---|---|---|
+| `/login` | dentists + receptionists | No clinic dropdown, no role picker |
+| `/patient/login` | existing patients | No clinic dropdown |
+| `/patient/signup` | new patients | The **only** place a clinic is chosen |
+| `/admin/login` | the platform admin | Not linked from anywhere; not indexed |
+
+The rule that makes this safe: **nothing about identity comes from the browser.** Each
+form posts an email and a password and nothing else. Role, `clinic_id` and admin
+capability are all read from the caller's `profiles` row server-side, after the password
+check (`actions/auth.ts`). Each entry point then refuses accounts belonging to a
+different audience and signs the rejected session straight back out.
+
+The clinic id chosen on `/patient/signup` is validated against the `clinics` table before
+it scopes anything — a brand-new patient has no record for the server to read a clinic
+from, which is the only reason the field exists at all.
+
+### The `is_admin` capability
+
+`profiles.is_admin` is an **additive** flag, not a fourth role. An admin keeps its normal
+`role` and `clinic_id` and behaves like any other staff member inside the app; the flag
+only gates `/admin` and `/admin/login`.
+
+It was deliberately not modelled as a `user_role` enum value: the DentGrow owner account
+(`owner@dentgrow.local`) is also the dentist of "My Dental Clinic", the development clinic
+the Business Brain dashboard is allow-listed to, and changing its role would strip that
+access and break every RLS policy expressed in terms of `auth_role()`.
+
+Guarantees (migration `20260821000000_platform_admin_flag.sql`):
+
+- The `profiles` UPDATE policy pins `is_admin` to its pre-update value, so no client can
+  grant itself the flag — the same protection `role` and `clinic_id` already had.
+- `auth_is_admin()` is the `stable security definer` companion to `auth_role()` /
+  `auth_clinic_id()`, safe to call from inside a `profiles` policy.
+- **Admin is a door, not an RLS bypass.** The admin account reads clinic data exactly as
+  the dentist of its own clinic does. `/admin` reads cross-clinic *aggregate counts only*,
+  through the service-role client, and shows no patient rows.
+- The `/admin` URL is not a secret and is not the security boundary. `requireAdmin()`
+  (`lib/auth/session.ts`) re-checks the flag server-side on every render.
+
 ### Role: `dentist`
 
 Full access to all modules and data within their clinic.
@@ -421,10 +466,18 @@ Patient records and Supabase Auth accounts are **intentionally decoupled**. A cl
 
 **Registration workflow:**
 1. Receptionist creates a patient record in the system (no auth involved).
-2. Patient visits the portal signup page and creates an auth account.
-3. After signup, the system matches the auth account to an existing patient record by phone number (or clinic-defined matching criteria).
+2. Patient visits `/patient/signup`, **chooses their clinic**, and creates an auth account.
+   The chosen `clinic_id` is validated server-side and carried to step 3 in an httpOnly
+   cookie, so the lookup below is scoped to that clinic only — the same phone number at a
+   different clinic is never matched.
+3. `/portal/setup` matches the auth account to an existing patient record by phone number
+   (or clinic-defined matching criteria).
 4. If a match is found, a `patient_portal_links` row is created and the patient gains portal access.
-5. If no match is found, the patient is prompted to contact the clinic to link their account.
+5. If no match is found, a new patient record is created in the chosen clinic and linked.
+
+An **existing** patient never repeats this. They sign in at `/patient/login` with email and
+password only; their clinic is resolved through `patient_portal_links` → `patients.clinic_id`.
+Clinic selection appears on the signup form and nowhere else.
 
 **RLS implication:**
 - Patient portal RLS policies must use `patient_portal_links.user_id = auth.uid()` to resolve the patient's `patient_id`, then scope all queries to that `patient_id`.
@@ -1096,9 +1149,19 @@ create table webhook_logs (
 ```
 dentgrow/
 ├── app/
-│   ├── (auth)/                     # Auth pages (login, signup)
-│   │   ├── login/
-│   │   └── signup/
+│   ├── (auth)/                     # Unauthenticated pages — all render in <AuthShell>
+│   │   ├── layout.tsx              # Passthrough; AuthShell owns the full-bleed layout
+│   │   ├── login/                  # Staff sign-in (dentist + receptionist)
+│   │   ├── patient/
+│   │   │   ├── login/              # Patient sign-in
+│   │   │   └── signup/             # New patient registration (clinic selection)
+│   │   ├── admin/
+│   │   │   └── login/              # Platform admin sign-in
+│   │   ├── signup/                 # Legacy alias → redirects to /patient/signup
+│   │   ├── forgot-password/
+│   │   └── reset-password/
+│   ├── admin/                      # Platform admin console (requireAdmin())
+│   │   └── page.tsx
 │   ├── (dashboard)/                # Protected app shell
 │   │   ├── layout.tsx              # Shared layout with sidebar
 │   │   ├── dentist/
@@ -1131,6 +1194,11 @@ dentgrow/
 │               └── route.ts
 ├── components/
 │   ├── ui/                         # shadcn/ui primitives (auto-generated)
+│   ├── auth/                       # Sign-in shell, artwork, and form primitives
+│   │   ├── AuthShell.tsx           # Split composition + the three tones
+│   │   ├── AuthArtwork.tsx         # Abstract dental-arch canvas
+│   │   ├── AuthFields.tsx          # Field, PasswordField, alerts, submit
+│   │   └── AuthThemeToggle.tsx
 │   ├── shared/                     # Shared cross-role components
 │   │   ├── AppointmentCard.tsx
 │   │   ├── PatientSearch.tsx

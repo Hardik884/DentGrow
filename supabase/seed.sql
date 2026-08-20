@@ -14,11 +14,15 @@
 -- profiles needed to actually sign in locally.
 --
 -- Local sign-in credentials (all passwords: `password123`):
---   dentist@dentgrow.test       — dentist,      Dr. Liying's Dental Care
---   receptionist@dentgrow.test  — receptionist, Dr. Liying's Dental Care
+--   dentist@dentgrow.test       — dentist,      Dr. Liying's Dental Care   → /login
+--   receptionist@dentgrow.test  — receptionist, Dr. Liying's Dental Care   → /login
+--   brain@dentgrow.test         — dentist,      My Dental Clinic           → /login
+--   patient@dentgrow.test       — patient,      Dr. Liying's Dental Care   → /patient/login
+--   owner@dentgrow.local        — admin,        My Dental Clinic           → /admin/login
 --
--- The login form requires a clinic selection; choose "Dr. Liying's Dental Care".
--- actions/auth.ts:signIn enforces that the chosen clinic matches profiles.clinic_id.
+-- No sign-in page asks for a clinic any more. The clinic is resolved server-side
+-- from profiles.clinic_id (actions/auth.ts). A clinic is chosen ONLY on the new
+-- patient signup form (/patient/signup), and validated server-side there.
 -- =============================================================================
 
 -- Refuse to run against a database that already holds real data. `db reset`
@@ -226,6 +230,132 @@ values
   ('b4000000-0000-4000-8000-000000000001', '00000000-0000-0000-0000-000000000001', 'b0000000-0000-4000-8000-000000000001', current_date - 40, 'pending', 'Six-month recall'),
   ('b4000000-0000-4000-8000-000000000002', '00000000-0000-0000-0000-000000000001', 'b0000000-0000-4000-8000-000000000002', current_date - 12, 'pending', 'Crown review')
 on conflict (id) do nothing;
+
+-- =============================================================================
+-- Platform admin account — owner@dentgrow.local
+--
+-- On the hosted project this account already exists and migration
+-- 20260821000000 grants it the admin flag. A fresh local database has no such
+-- row (the migration's grant is a no-op here), so it is seeded below with the
+-- SAME shape: dentist of "My Dental Clinic", plus is_admin = true.
+--
+-- Keeping role = 'dentist' is deliberate. Admin is an additive capability, not
+-- a replacement role: the account must keep its dev-clinic access (Business
+-- Brain is allow-listed to this clinic) while ALSO being the only account that
+-- can reach the /admin portal.
+--
+-- Local sign-in: owner@dentgrow.local / password123  →  /admin/login only.
+-- (The hosted account keeps its own real password; nothing here touches it.)
+-- =============================================================================
+
+insert into auth.users (
+  instance_id, id, aud, role, email, encrypted_password,
+  email_confirmed_at, created_at, updated_at,
+  raw_app_meta_data, raw_user_meta_data, is_sso_user, is_anonymous
+)
+values (
+  '00000000-0000-0000-0000-000000000000',
+  'aaaaaaaa-0000-0000-0000-000000000001',
+  'authenticated', 'authenticated',
+  'owner@dentgrow.local',
+  extensions.crypt('password123', extensions.gen_salt('bf')),
+  now(), now(), now(),
+  '{"provider":"email","providers":["email"]}'::jsonb,
+  '{"full_name":"DentGrow Owner"}'::jsonb,
+  false, false
+)
+on conflict (id) do nothing;
+
+insert into auth.identities (
+  id, user_id, identity_data, provider, provider_id,
+  last_sign_in_at, created_at, updated_at
+)
+select
+  u.id, u.id,
+  jsonb_build_object('sub', u.id::text, 'email', u.email, 'email_verified', true),
+  'email', u.email, now(), now(), now()
+from auth.users u
+where u.email = 'owner@dentgrow.local'
+on conflict (provider, provider_id) do nothing;
+
+insert into profiles (id, clinic_id, full_name, role, is_admin)
+values (
+  'aaaaaaaa-0000-0000-0000-000000000001',
+  '00000000-0000-0000-0000-000000000001',
+  'DentGrow Owner',
+  'dentist',
+  true
+)
+on conflict (id) do update set is_admin = true;
+
+-- =============================================================================
+-- Existing patient portal account — patient@dentgrow.test
+--
+-- Models the "already registered" patient: a patients row created by the clinic
+-- PLUS a patient_portal_links row joining it to an auth account. This is the
+-- account the patient-login regression test signs in with — it must reach
+-- /portal directly, never /portal/setup, and never be asked for a clinic.
+--
+-- Local sign-in: patient@dentgrow.test / password123  (Dr. Liying's Dental Care)
+-- =============================================================================
+
+insert into auth.users (
+  instance_id, id, aud, role, email, encrypted_password,
+  email_confirmed_at, created_at, updated_at,
+  raw_app_meta_data, raw_user_meta_data, is_sso_user, is_anonymous
+)
+values (
+  '00000000-0000-0000-0000-000000000000',
+  'cccccccc-0000-0000-0000-000000000001',
+  'authenticated', 'authenticated',
+  'patient@dentgrow.test',
+  extensions.crypt('password123', extensions.gen_salt('bf')),
+  now(), now(), now(),
+  '{"provider":"email","providers":["email"]}'::jsonb,
+  '{"full_name":"Meera Patel"}'::jsonb,
+  false, false
+)
+on conflict (id) do nothing;
+
+insert into auth.identities (
+  id, user_id, identity_data, provider, provider_id,
+  last_sign_in_at, created_at, updated_at
+)
+select
+  u.id, u.id,
+  jsonb_build_object('sub', u.id::text, 'email', u.email, 'email_verified', true),
+  'email', u.email, now(), now(), now()
+from auth.users u
+where u.email = 'patient@dentgrow.test'
+on conflict (provider, provider_id) do nothing;
+
+insert into profiles (id, clinic_id, full_name, role)
+values (
+  'cccccccc-0000-0000-0000-000000000001',
+  '11111111-1111-1111-1111-111111111111',
+  'Meera Patel',
+  'patient'
+)
+on conflict (id) do nothing;
+
+insert into patients (id, clinic_id, name, phone, date_of_birth, gender, total_visits)
+values (
+  'cccccccc-0000-4000-8000-000000000001',
+  '11111111-1111-1111-1111-111111111111',
+  'Meera Patel',
+  '9812345670',
+  '1991-03-14',
+  'female',
+  2
+)
+on conflict (id) do nothing;
+
+insert into patient_portal_links (patient_id, user_id)
+values (
+  'cccccccc-0000-4000-8000-000000000001',
+  'cccccccc-0000-0000-0000-000000000001'
+)
+on conflict (patient_id) do nothing;
 
 -- GoTrue reads several auth.users varchar columns into Go strings and cannot
 -- scan NULL into one: leaving them unset makes every sign-in fail with

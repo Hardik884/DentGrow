@@ -1,16 +1,15 @@
 /**
- * Auth layout — unauthenticated pages.
- * Clean centered layout, no sidebar.
+ * Auth layout — the unauthenticated pages.
+ *
+ * Deliberately a passthrough. Every page in this group renders inside
+ * <AuthShell>, which owns the full-bleed split composition and needs the whole
+ * viewport; the old centred `max-w-[380px]` wrapper here would have clamped it
+ * back into a narrow column.
  */
 export default function AuthLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-background px-4">
-      <div className="w-full max-w-[380px]">{children}</div>
-    </div>
-  );
+  return <>{children}</>;
 }
-
