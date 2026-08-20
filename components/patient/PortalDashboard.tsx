@@ -117,7 +117,7 @@ export async function PortalDashboard({ bookingEnabled }: PortalDashboardProps) 
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+  if (!user) redirect("/patient/login");
 
   const { data: linkData } = await db
     .from("patient_portal_links")

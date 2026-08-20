@@ -5,9 +5,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { updatePassword } from "@/actions/auth";
 import type { ActionResult } from "@/types";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Field } from "@/components/ui/field";
+import { AuthAlert, AuthSubmit, PasswordField } from "@/components/auth/AuthFields";
 
 const initialState: ActionResult<{ updated: true }> = { data: null, error: null };
 
@@ -24,8 +22,8 @@ interface ResetPasswordFormProps {
  * and submits to the updatePassword Server Action (which re-validates against
  * the existing policy and updates the Supabase account).
  *
- * On success it toasts and redirects to /login?reset=1, where the patient signs
- * in with the new password. The button is disabled while pending to prevent
+ * On success it toasts and redirects to /patient/login?reset=1, where the
+ * patient signs in with the new password. The button is disabled while pending to prevent
  * duplicate submissions.
  */
 export function ResetPasswordForm({ linkError }: ResetPasswordFormProps) {
@@ -62,7 +60,7 @@ export function ResetPasswordForm({ linkError }: ResetPasswordFormProps) {
 
     if (state.data?.updated) {
       toast.success("Password updated successfully.");
-      router.push("/login?reset=1");
+      router.push("/patient/login?reset=1");
     } else if (state.error) {
       toast.error(state.error);
     }
@@ -71,64 +69,43 @@ export function ResetPasswordForm({ linkError }: ResetPasswordFormProps) {
   const error = clientError ?? state.error;
 
   return (
-    <form action={formAction} onSubmit={handleSubmit} className="space-y-4" noValidate>
+    <form action={formAction} onSubmit={handleSubmit} className="space-y-5" noValidate>
       {linkError && !state.data?.updated && (
-        <div
-          role="alert"
-          className="rounded-lg bg-danger-bg border border-danger-border px-3.5 py-3 text-xs text-danger flex items-start gap-2"
-        >
-          <svg className="h-4 w-4 shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20" aria-hidden>
-            <path fillRule="evenodd" d="M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0Zm-8-5a.75.75 0 0 1 .75.75v4.5a.75.75 0 0 1-1.5 0v-4.5A.75.75 0 0 1 10 5Zm0 10a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z" clipRule="evenodd" />
-          </svg>
+        <AuthAlert>
           This reset link is invalid or has expired. Please request a new one.
-        </div>
+        </AuthAlert>
       )}
 
-      {error && (
-        <div
-          role="alert"
-          className="rounded-lg bg-danger-bg border border-danger-border px-3.5 py-3 text-xs text-danger flex items-start gap-2"
-        >
-          <svg className="h-4 w-4 shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20" aria-hidden>
-            <path fillRule="evenodd" d="M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0Zm-8-5a.75.75 0 0 1 .75.75v4.5a.75.75 0 0 1-1.5 0v-4.5A.75.75 0 0 1 10 5Zm0 10a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z" clipRule="evenodd" />
-          </svg>
-          {error}
-        </div>
-      )}
+      {error && <AuthAlert>{error}</AuthAlert>}
 
-      <Field label="New password" htmlFor="password" hint="Minimum 8 characters">
-        <Input
-          id="password"
-          name="password"
-          type="password"
-          autoComplete="new-password"
-          required
-          disabled={isPending}
-          placeholder="Min. 8 characters"
-        />
-      </Field>
-
-      <Field label="Confirm password" htmlFor="confirmPassword">
-        <Input
-          id="confirmPassword"
-          name="confirmPassword"
-          type="password"
-          autoComplete="new-password"
-          required
-          disabled={isPending}
-          placeholder="••••••••"
-        />
-      </Field>
-
-      <Button
-        type="submit"
-        className="w-full mt-2"
-        isLoading={isPending}
-        size="md"
+      <PasswordField
+        label="New password"
+        id="password"
+        name="password"
+        autoComplete="new-password"
+        required
+        minLength={8}
         disabled={isPending}
-      >
-        {isPending ? "Updating…" : "Reset password"}
-      </Button>
+        placeholder="At least 8 characters"
+        hint="Use at least 8 characters."
+      />
+
+      <PasswordField
+        label="Confirm password"
+        id="confirmPassword"
+        name="confirmPassword"
+        autoComplete="new-password"
+        required
+        minLength={8}
+        disabled={isPending}
+        placeholder="Re-enter your new password"
+      />
+
+      <AuthSubmit
+        isPending={isPending}
+        idleLabel="Reset password"
+        pendingLabel="Updating…"
+      />
     </form>
   );
 }

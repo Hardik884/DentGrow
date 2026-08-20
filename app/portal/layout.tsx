@@ -20,7 +20,7 @@ export default async function PortalLayout({
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user) redirect("/login");
+  if (!user) redirect("/patient/login");
 
   const { data: portalLinkData } = await supabase
     .from("patient_portal_links")

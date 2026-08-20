@@ -1,43 +1,49 @@
 import type { Metadata } from "next";
-import { LoginForm } from "./LoginForm";
-import { DentGrowLogo } from "@/components/shared/DentGrowLogo";
-import { getClinics } from "@/actions/clinics";
+import { StaffLoginForm } from "./StaffLoginForm";
+import { AuthShell } from "@/components/auth/AuthShell";
 
 export const metadata: Metadata = {
-  title: "Sign In",
-  description: "Sign in to your DentGrow account.",
+  title: "Clinic Sign In",
+  description: "Sign in to DentGrow to manage your clinic.",
 };
 
-export default async function LoginPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ reset?: string }>;
-}) {
-  const { reset } = await searchParams;
-  const { data: clinics } = await getClinics();
-
+/**
+ * /login — the clinic sign-in.
+ *
+ * For dentists and receptionists only. Patients have their own door at
+ * /patient/login, and the platform admin has its own at /admin/login; neither
+ * is advertised here. There is deliberately no link to the admin page anywhere
+ * in the product — and its absence is a UI decision, not the security control.
+ * signInAdmin verifies the admin flag on the server regardless of how the page
+ * was reached.
+ */
+export default function LoginPage() {
   return (
-    <div className="space-y-8">
-      {/* Brand */}
-      <div className="space-y-1.5">
-        <div className="mb-6">
-          <DentGrowLogo size={32} withWordmark />
-        </div>
-        <h1 className="text-2xl font-semibold text-text-primary tracking-tight">Welcome back</h1>
-      </div>
-
-      {/* Card */}
-      <div className="bg-surface border border-border rounded-xl p-6 shadow-sm">
-        <LoginForm clinics={clinics ?? []} resetSuccess={reset === "1"} />
-      </div>
-
-      <p className="text-center text-xs text-text-secondary">
-        New patient?{" "}
-        <a href="/signup" className="text-text-primary font-medium hover:underline underline-offset-4">
-          Create an account
-        </a>
-      </p>
-    </div>
+    <AuthShell
+      tone="staff"
+      eyebrow="Clinic sign-in"
+      headline="Dental care, intelligently managed."
+      subhead="Appointments, the waiting room, treatments and payments — one place, updating live for everyone on shift."
+      points={[
+        "Today's schedule and live queue at a glance",
+        "Patient history, treatments and balances together",
+        "Insights drawn from your own clinic's data",
+      ]}
+      formTitle="Welcome back"
+      formSubtitle="Sign in to your clinic workspace."
+      footer={
+        <>
+          Are you a patient?{" "}
+          <a
+            href="/patient/login"
+            className="rounded font-medium text-accent underline-offset-4 transition-colors duration-150 hover:text-accent-hover hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
+          >
+            Go to the patient portal
+          </a>
+        </>
+      }
+    >
+      <StaffLoginForm />
+    </AuthShell>
   );
 }
-

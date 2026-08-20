@@ -1,4 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
+import { ACCOUNTS, signInStaff } from "./helpers/auth";
 
 /**
  * e2e/business-brain.spec.ts
@@ -44,13 +45,9 @@ test.beforeAll(async () => {
 });
 
 async function loginAsDemoClinic(page: Page) {
-  await page.goto("/login");
-  await page.locator("select").waitFor({ state: "visible", timeout: 15_000 });
-  await page.locator("select").selectOption({ label: "My Dental Clinic" });
-  await page.getByPlaceholder("you@example.com").fill("brain@dentgrow.test");
-  await page.getByPlaceholder("••••••••").fill("password123");
-  await page.getByRole("button", { name: "Sign in" }).click();
-  await page.waitForURL(/\/dentist(\/|$)/, { timeout: 20_000 });
+  // Staff sign-in no longer asks for a clinic — it is resolved from the
+  // authenticated profile. See e2e/helpers/auth.ts.
+  await signInStaff(page, ACCOUNTS.demoDentist);
 }
 
 test.describe("Actions page — Needs Attention / What To Do", () => {

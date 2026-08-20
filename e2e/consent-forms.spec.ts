@@ -1,4 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
+import { ACCOUNTS, signInStaff } from "./helpers/auth";
 
 /**
  * e2e/consent-forms.spec.ts
@@ -126,13 +127,9 @@ test.afterAll(async () => {
 });
 
 async function loginAsDemoClinic(page: Page) {
-  await page.goto("/login");
-  await page.locator("select").waitFor({ state: "visible", timeout: 15_000 });
-  await page.locator("select").selectOption({ label: "My Dental Clinic" });
-  await page.getByPlaceholder("you@example.com").fill("brain@dentgrow.test");
-  await page.getByPlaceholder("••••••••").fill("password123");
-  await page.getByRole("button", { name: "Sign in" }).click();
-  await page.waitForURL(/\/dentist(\/|$)/, { timeout: 20_000 });
+  // Staff sign-in no longer asks for a clinic — it is resolved from the
+  // authenticated profile. See e2e/helpers/auth.ts.
+  await signInStaff(page, ACCOUNTS.demoDentist);
 }
 
 test.describe("Patient Consent Forms", () => {
@@ -236,13 +233,8 @@ test.describe("Patient Consent Forms", () => {
  */
 test.describe("Patient Consent Forms — disabled for a non-pilot clinic", () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto("/login");
-    await page.locator("select").waitFor({ state: "visible", timeout: 15_000 });
-    await page.locator("select").selectOption({ label: "Dr. Liying's Dental Care" });
-    await page.getByPlaceholder("you@example.com").fill("dentist@dentgrow.test");
-    await page.getByPlaceholder("••••••••").fill("password123");
-    await page.getByRole("button", { name: "Sign in" }).click();
-    await page.waitForURL(/\/dentist(\/|$)/, { timeout: 20_000 });
+    // Dr. Liying's dentist account — its clinic comes from the profile.
+    await signInStaff(page, ACCOUNTS.dentist);
   });
 
   test("5. Settings has no Consent Templates entry point", async ({ page }) => {

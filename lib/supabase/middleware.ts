@@ -8,18 +8,22 @@ import { createMiddlewareClient } from "@/lib/supabase/middleware-client";
  *
  * Responsibilities:
  * 1. Refresh the Supabase session cookie.
- * 2. Resolve the authenticated user's role from profiles table.
- * 3. Enforce route-to-role access rules:
+ * 2. Resolve the authenticated user's role + admin capability from `profiles`.
+ * 3. Enforce route-to-audience access rules:
+ *    - /admin/*         → requires profiles.is_admin
  *    - /dentist/*       → requires role === 'dentist'
  *    - /receptionist/*  → requires role === 'receptionist'
- *    - /portal/*        → requires any authenticated user
- *    - / (root)         → redirect based on role
- *    - /login, /signup  → redirect to dashboard if already authenticated
+ *    - /portal/*        → patients only (staff are bounced to their dashboard)
+ *    - / (root)         → redirect based on audience
+ *    - sign-in pages    → redirect to home if already authenticated
  * 4. For /portal/*: redirect to /portal/setup if no portal link exists.
+ * 5. Send unauthenticated visitors to the sign-in page for the area they asked
+ *    for, so a patient deep link never dumps them on the staff form.
  *
  * Security note: this is a UX redirect layer. Supabase RLS is the
- * authoritative security boundary — middleware guards only prevent
- * accidental navigation to wrong-role pages.
+ * authoritative security boundary, and every /admin page additionally calls
+ * requireAdmin() server-side — visiting /admin/login or /admin directly can
+ * never bypass authorisation, because nothing here is what grants access.
  */
 export async function updateSession(request: NextRequest) {
   const { supabase, response } = createMiddlewareClient(request);
@@ -53,7 +57,7 @@ export async function updateSession(request: NextRequest) {
   // session: /forgot-password (logged-out patient requesting a link),
   // /auth/callback (exchanges the recovery code → sets the recovery session),
   // and /reset-password (renders within that recovery session). Skipping the
-  // auth gate here prevents the "unauthenticated → /login" redirect from
+  // auth gate here prevents the "unauthenticated → sign-in" redirect from
   // breaking the flow. Reset itself still relies on the authenticated Supabase
   // account, never on any clinic selection.
   const PUBLIC_AUTH_PATHS = ["/forgot-password", "/reset-password", "/auth/callback"];
@@ -66,34 +70,38 @@ export async function updateSession(request: NextRequest) {
     if (!user) {
       return NextResponse.redirect(new URL("/login", request.url));
     }
-    const role = await resolveRole(supabase, user.id);
-    if (role === null) {
-      // Authenticated but no profile row — mid-onboarding new user.
-      // redirectByKnownRole(null) would send to /login → infinite loop.
+    const profile = await resolveProfile(supabase, user.id);
+    if (profile === null) {
+      // Authenticated but no profile row — mid-onboarding new patient.
+      // redirectHome(null) would send to a sign-in page → infinite loop.
       return NextResponse.redirect(new URL("/portal/setup", request.url));
     }
-    return redirectByKnownRole(role, request);
+    return redirectHome(profile, request);
   }
 
-  // ── Auth pages — bounce authenticated users to their dashboard ─────────────
-  if (pathname === "/login" || pathname === "/signup") {
+  // ── Sign-in / sign-up pages ───────────────────────────────────────────────
+  // Three separate doors, plus the legacy /signup alias. An already
+  // authenticated visitor is sent to their own home rather than being shown a
+  // form they don't need — including on /admin/login, where a non-admin is
+  // bounced to their dashboard instead of being invited to try.
+  if (SIGN_IN_PATHS.has(pathname)) {
     if (user) {
-      const role = await resolveRole(supabase, user.id);
-      if (role === null) {
+      const profile = await resolveProfile(supabase, user.id);
+      if (profile === null) {
         // Authenticated but no profile yet (new signup, mid-onboarding).
-        // Redirecting to /login here would create an infinite loop because
-        // the next visit to /login would hit this same branch again.
+        // Redirecting to a sign-in page here would create an infinite loop
+        // because the next visit would hit this same branch again.
         // Send them to /portal/setup to complete account linking instead.
         return NextResponse.redirect(new URL("/portal/setup", request.url));
       }
-      return redirectByKnownRole(role, request);
+      return redirectHome(profile, request);
     }
     return response();
   }
 
-  // ── All protected routes — unauthenticated users go to /login ─────────────
+  // ── All protected routes — unauthenticated visitors go to the right door ──
   if (!user) {
-    const loginUrl = new URL("/login", request.url);
+    const loginUrl = new URL(signInPathFor(pathname), request.url);
     loginUrl.searchParams.set("redirect", pathname);
     return NextResponse.redirect(loginUrl);
   }
@@ -105,33 +113,49 @@ export async function updateSession(request: NextRequest) {
     return response();
   }
 
+  // ── /admin/* — requires the platform admin capability ─────────────────────
+  // Checked before the role routes because an admin also holds an ordinary
+  // role, and because a non-admin must never fall through into this area.
+  if (pathname.startsWith("/admin")) {
+    const profile = await resolveProfile(supabase, user.id);
+    if (!profile?.is_admin) {
+      return redirectHome(profile, request);
+    }
+    return response();
+  }
+
   // ── /dentist/* — requires role === 'dentist' ───────────────────────────────
   if (pathname.startsWith("/dentist")) {
-    const role = await resolveRole(supabase, user.id);
-    if (role !== "dentist") {
-      return redirectByKnownRole(role, request);
+    const profile = await resolveProfile(supabase, user.id);
+    if (profile?.role !== "dentist") {
+      return redirectHome(profile, request);
     }
     return response();
   }
 
   // ── /receptionist/* — requires role === 'receptionist' ────────────────────
   if (pathname.startsWith("/receptionist")) {
-    const role = await resolveRole(supabase, user.id);
-    if (role !== "receptionist") {
-      return redirectByKnownRole(role, request);
+    const profile = await resolveProfile(supabase, user.id);
+    if (profile?.role !== "receptionist") {
+      return redirectHome(profile, request);
     }
     return response();
   }
 
   // ── /portal/* — patient portal; staff are redirected to their dashboard ───
   if (pathname.startsWith("/portal")) {
-    // Staff (dentist/receptionist) must not enter the portal flow — sending
-    // them to /portal/setup would invite them to overwrite their own profile
-    // (the linking action upserts role = 'patient'). Bounce them to their
-    // dashboard instead.
-    const role = await resolveRole(supabase, user.id);
-    if (role === "dentist" || role === "receptionist") {
-      return redirectByKnownRole(role, request);
+    // Staff (dentist/receptionist, admin included) must not enter the portal
+    // flow — sending them to /portal/setup would invite them to overwrite their
+    // own profile (the linking action upserts role = 'patient'). Bounce them to
+    // their dashboard instead.
+    const profile = await resolveProfile(supabase, user.id);
+    if (
+      profile &&
+      (profile.is_admin ||
+        profile.role === "dentist" ||
+        profile.role === "receptionist")
+    ) {
+      return redirectHome(profile, request);
     }
 
     // /portal/setup is always accessible to authenticated non-staff users
@@ -157,31 +181,65 @@ export async function updateSession(request: NextRequest) {
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
+/**
+ * The three sign-in doors, plus /signup which redirects to /patient/signup.
+ * Listed as a Set so the check stays a single exact-match lookup.
+ */
+const SIGN_IN_PATHS = new Set([
+  "/login",
+  "/patient/login",
+  "/patient/signup",
+  "/signup",
+  "/admin/login",
+]);
+
 // The middleware supabase client is synchronous (not async)
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type SupabaseClient = any;
 
-/** Resolve the user's role from the profiles table. Returns null if not found. */
-async function resolveRole(
+type MiddlewareProfile = {
+  role: "dentist" | "receptionist" | "patient";
+  is_admin: boolean;
+};
+
+/** Resolve role + admin capability from profiles. Null if there is no row. */
+async function resolveProfile(
   supabase: SupabaseClient,
   userId: string
-): Promise<"dentist" | "receptionist" | "patient" | null> {
+): Promise<MiddlewareProfile | null> {
   const { data } = await supabase
     .from("profiles")
-    .select("role")
+    .select("role, is_admin")
     .eq("id", userId)
     .single();
 
-  const row = data as { role: "dentist" | "receptionist" | "patient" } | null;
-  return row?.role ?? null;
+  const row = data as MiddlewareProfile | null;
+  if (!row) return null;
+  return { role: row.role, is_admin: row.is_admin === true };
 }
 
-/** Map a known role value to its home route and return a redirect. */
-function redirectByKnownRole(
-  role: "dentist" | "receptionist" | "patient" | null,
+/**
+ * Which sign-in page a logged-out visitor should land on, based on where they
+ * were trying to go. Keeps a bookmarked portal link out of the staff form.
+ */
+function signInPathFor(pathname: string): string {
+  if (pathname.startsWith("/admin")) return "/admin/login";
+  if (pathname.startsWith("/portal") || pathname.startsWith("/patient")) {
+    return "/patient/login";
+  }
+  return "/login";
+}
+
+/** Send a known profile to its home route. */
+function redirectHome(
+  profile: MiddlewareProfile | null,
   request: NextRequest
 ): NextResponse {
-  switch (role) {
+  if (profile?.is_admin) {
+    return NextResponse.redirect(new URL("/admin", request.url));
+  }
+
+  switch (profile?.role) {
     case "dentist":
       return NextResponse.redirect(new URL("/dentist", request.url));
     case "receptionist":
@@ -190,8 +248,8 @@ function redirectByKnownRole(
       return NextResponse.redirect(new URL("/portal", request.url));
     default:
       // No profile row yet — user is mid-onboarding (signed up but hasn't
-      // completed portal linking). Send to /portal/setup rather than /login
-      // to avoid a redirect loop: /login → redirectByRole → null → /login → ∞
+      // completed portal linking). Send to /portal/setup rather than a sign-in
+      // page to avoid a redirect loop: /login → redirectHome(null) → /login → ∞
       return NextResponse.redirect(new URL("/portal/setup", request.url));
   }
 }

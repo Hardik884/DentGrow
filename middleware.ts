@@ -6,13 +6,15 @@ import { updateSession } from "@/lib/supabase/middleware";
  *
  * Responsibilities:
  * 1. Refresh the Supabase session cookie (updateSession).
- * 2. Redirect unauthenticated users to /login.
- * 3. Enforce role-based route access:
+ * 2. Redirect unauthenticated users to the sign-in page for the area they
+ *    asked for (/login, /patient/login or /admin/login).
+ * 3. Enforce audience-based route access:
+ *    - /admin/*         → requires profiles.is_admin
  *    - /dentist/*       → requires role === 'dentist'
  *    - /receptionist/*  → requires role === 'receptionist'
- *    - /portal/*        → requires any authenticated user;
+ *    - /portal/*        → patients only;
  *                         redirects to /portal/setup if no portal link exists
- * 4. Redirect already-authenticated staff away from /login and /signup.
+ * 4. Redirect already-authenticated users away from every sign-in page.
  *
  * Security note: middleware is a UX redirect layer only.
  * RLS policies in Supabase are the authoritative security boundary.
