@@ -1,25 +1,24 @@
 <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
   <!--
-    DentGrow favicon — must stay in sync with components/shared/DentGrowLogo.tsx
-    (tile variant) and lib/brand/mark.ts (TOOTH_PATH).
+    DentGrow favicon.
 
-    A browser tab renders this at 16px, which is the whole reason the tooth is
-    drawn wide and left undecorated: at that size a silhouette is all that
-    survives, so the silhouette has to do the work.
+    This is the `simple` reading of the mark (see components/shared/DentGrowLogo
+    and lib/brand/mark.ts): the tooth silhouette filled, without the growth bars
+    or the arrow. A browser tab renders a favicon at 16px, where three
+    overlapping strokes collapse into a smudge — the same reason the component
+    drops to this form below 34px. Same silhouette, same gradient, so it still
+    reads as the DentGrow mark.
   -->
   <defs>
-    <linearGradient id="dg-favicon-tile" x1="0.05" y1="0" x2="0.95" y2="1">
-      <stop offset="0%" stop-color="#1AA08C"/>
-      <stop offset="55%" stop-color="#0D6B5E"/>
-      <stop offset="100%" stop-color="#063B34"/>
+    <linearGradient id="dg-favicon" x1="0" y1="1" x2="1" y2="0">
+      <stop offset="0%" stop-color="#0A5347"/>
+      <stop offset="45%" stop-color="#0D6B5E"/>
+      <stop offset="100%" stop-color="#35A18F"/>
     </linearGradient>
   </defs>
 
-  <rect width="32" height="32" rx="8" fill="url(#dg-favicon-tile)"/>
-
-  <!-- TOOTH_PATH, inset 0.86 about the tile centre (LOGO_TOOTH_INSET). -->
+  <!-- TOOTH_PATH -->
   <path
     d="M16 4.6C10.2 4.6 6 8.2 6 13.4C6 17.2 7 20.2 8.2 23.4C9.1 25.9 9.8 28 11.6 28C13.5 28 14 24.6 14.6 22.2C14.9 21 15.4 20.4 16 20.4C16.6 20.4 17.1 21 17.4 22.2C18 24.6 18.5 28 20.4 28C22.2 28 22.9 25.9 23.8 23.4C25 20.2 26 17.2 26 13.4C26 8.2 21.8 4.6 16 4.6Z"
-    fill="#FFFFFF"
-    transform="translate(2.24 2.24) scale(0.86)"/>
+    fill="url(#dg-favicon)"/>
 </svg>

@@ -192,7 +192,7 @@ export function DashboardSidebar({
           no longer renders (and can't crush content) on narrow viewports. */}
       <aside className="hidden md:flex w-56 shrink-0 h-screen bg-surface border-r border-border flex-col">
         <div className="h-14 flex items-center px-5 border-b border-border shrink-0">
-          <DentGrowLogo size={28} withWordmark />
+          <DentGrowLogo size={32} withWordmark />
         </div>
         <nav className="flex-1 overflow-y-auto py-3 px-2 space-y-0.5" aria-label="Main navigation">
           {renderNavLinks()}
@@ -217,7 +217,7 @@ export function DashboardSidebar({
           <Menu className="h-5 w-5" aria-hidden />
         </button>
         <div className="flex-1 min-w-0 flex justify-center">
-          <DentGrowLogo size={24} withWordmark />
+          <DentGrowLogo size={32} withWordmark />
         </div>
         {/* Balances the hamburger button so the logo stays visually centered. */}
         <div className="h-11 w-11 shrink-0" aria-hidden />
@@ -260,7 +260,7 @@ export function DashboardSidebar({
           }}
         >
           <div className="h-14 flex items-center justify-between px-4 border-b border-border shrink-0">
-            <DentGrowLogo size={26} withWordmark />
+            <DentGrowLogo size={32} withWordmark />
             <button
               type="button"
               onClick={() => setMobileOpen(false)}

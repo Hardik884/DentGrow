@@ -62,3 +62,51 @@ export function toothInset(k: number): string {
 
 /** How much the tooth is inset inside the logo tile. */
 export const LOGO_TOOTH_INSET = 0.86;
+
+// ── The full mark: tooth outline + growth bars + momentum arrow ────────────
+
+/**
+ * The viewBox the full mark is drawn in.
+ *
+ * Wider than the tooth's own 32-unit box on every side, because the arrow has
+ * to sweep OUTSIDE the tooth to read as an arrow at all. A first attempt kept
+ * everything inside 0 0 32 32 and the tail disappeared behind the silhouette —
+ * only the head poked out, so the mark read as a circle with a spur.
+ */
+export const MARK_VIEWBOX = "-3 -2 38 38";
+
+/**
+ * The three ascending bars inside the tooth's crown — the "Grow" half of the
+ * name, drawn as the smallest possible chart.
+ *
+ * Bottom-aligned at y=19.5 rather than lower down because TOOTH_PATH starts
+ * splitting into roots at y=20.4; a bar crossing that line would poke through
+ * the notch between the roots.
+ */
+export const GROWTH_BARS: ReadonlyArray<{
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}> = [
+  { x: 11.0, y: 15.5, width: 2.8, height: 4.0 },
+  { x: 14.6, y: 12.7, width: 2.8, height: 6.8 },
+  { x: 18.2, y: 9.9, width: 2.8, height: 9.6 },
+];
+
+/** Corner radius on the growth bars. */
+export const GROWTH_BAR_RADIUS = 1.4;
+
+/**
+ * The arrow's tail: enters at the left below the crown, sweeps under and across
+ * both root tips, then climbs away through the tooth's right flank.
+ *
+ * The crossings are the point. An arc that merely passed beneath the tooth read
+ * as a detached swoosh sitting under a logo; cutting across the silhouette is
+ * what ties the two shapes into one mark.
+ */
+export const ARROW_TAIL =
+  "M-1.8 13C-2.4 23.5 4.6 30.4 15.4 30C23.6 29.7 29.6 25.4 31.4 17.6";
+
+/** The arrowhead, a solid triangle aligned with the tail's exit tangent. */
+export const ARROW_HEAD = "M32.4 13.1L33.8 18.2L29 17Z";
