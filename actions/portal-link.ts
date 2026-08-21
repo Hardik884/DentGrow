@@ -65,7 +65,13 @@ function isNextRedirectError(err: unknown): boolean {
  * Two onboarding paths:
  *
  * A — Existing patient:
- *   Phone matches an active patients row → link user_id to that record.
+ *   Phone matches an active patients row → link user_id to that record. If
+ *   more than one active patient in the clinic shares the phone (households,
+ *   a parent booking for children — phone numbers are NOT required to be
+ *   unique per clinic, see 20260822000000_drop_patient_phone_uniqueness.sql),
+ *   the first match is used; a clinic in that position should encourage the
+ *   patient to register a number of their own so they land on their own
+ *   record next time.
  *   Preserves all existing clinical data.
  *
  * B — New patient (self-registration):
@@ -76,8 +82,13 @@ function isNextRedirectError(err: unknown): boolean {
  * Key invariants preserved:
  *   - patient_portal_links.user_id UNIQUE  (one portal account per patient)
  *   - patient_portal_links.patient_id UNIQUE (one account per patient record)
- *   - patients phone uniqueness per clinic (partial unique index)
  *   - clinic_id never stored in portal_links — always derived via patients.clinic_id
+ *
+ * NOT an invariant: patients.phone is not unique, even within a clinic — see
+ * 20260822000000_drop_patient_phone_uniqueness.sql for why the earlier
+ * uniqueness constraint was actively wrong (it blocked legitimate distinct
+ * patients from sharing a household number). Every phone lookup in this file
+ * is written to tolerate more than one match.
  */
 
 /**
@@ -221,8 +232,12 @@ export async function linkPortalAccount(
     }
 
     // ── PATH A continued: existing record found ───────────────────────────────
-    // Guard: if multiple matches somehow slip through (phone not unique in schema),
-    // use the first match. The clinic maintains phone uniqueness via partial index.
+    // Phone is not unique per clinic (20260822000000_drop_patient_phone_
+    // uniqueness.sql) — households and parent/child patients can legitimately
+    // share a number — so more than one active patient can genuinely match
+    // here. There is no signal in a phone number alone that picks the right
+    // one, so the first match is used; a patient linked to the wrong shared-
+    // phone record can be corrected by clinic staff from the patient profile.
     const patient = patients[0];
 
     // Check the patient isn't already linked to another auth account.
@@ -364,13 +379,24 @@ async function _createAndLinkNewPatient({
   // clinic (race condition between two concurrent signups with the same number).
   // phone is already the 10-digit normalized form, so the suffix search matches
   // any stored format (with or without a country code prefix).
-  const { data: raceCheck } = await admin
+  //
+  // limit(1) rather than maybeSingle(): phone is no longer unique per clinic
+  // (20260822000000_drop_patient_phone_uniqueness.sql — households and
+  // parent/child patients legitimately share a number), so this lookup can
+  // now match more than one row. maybeSingle() treats >1 row as an error and
+  // returns { data: null }, which silently disabled this guard for any phone
+  // already shared by two patients — the function would fall through and
+  // create a third, duplicate record instead of linking to one of the
+  // existing two. limit(1) picks a match deterministically either way.
+  const { data: raceMatches } = await admin
     .from("patients")
     .select("id")
     .eq("clinic_id", clinicId)
     .ilike("phone", `%${phone}`)
     .is("deleted_at", null)
-    .maybeSingle();
+    .limit(1);
+
+  const raceCheck = raceMatches?.[0] as { id: string } | undefined;
 
   if (raceCheck) {
     // A record appeared between the first lookup and now — link to it instead.

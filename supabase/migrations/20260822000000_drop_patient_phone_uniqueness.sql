@@ -1,0 +1,46 @@
+-- =============================================================================
+-- Drop the per-clinic uniqueness constraint on patient phone numbers
+-- Migration: 20260822000000_drop_patient_phone_uniqueness.sql
+--
+-- Removes: uq_patients_clinic_phone_active
+--   create unique index uq_patients_clinic_phone_active
+--     on patients (clinic_id, phone)
+--     where deleted_at is null and phone is not null;
+-- Added by: 20260619000001_dentgrow_schema_patches.sql ("FIX-3 PATIENT
+-- DEDUPLICATION PREVENTION"), referenced again in
+-- 20260621000001_patient_self_registration.sql.
+--
+-- Why the original constraint existed:
+--   Prevented two active patient records in the same clinic from sharing a
+--   phone number, on the theory that a duplicate phone signalled a duplicate
+--   patient record — a data-quality problem worth blocking at the database.
+--
+-- Why it is wrong:
+--   A phone number identifies a LINE, not a PATIENT. Real clinics routinely
+--   have distinct patients sharing one number on purpose: a parent's phone
+--   used for their children, one household number for a couple, an elderly
+--   patient's number shared with a caregiver. The constraint made every one
+--   of those completely legitimate receptionist-facing patient creations fail
+--   outright with a raw, uncaught unique-violation — actions/patients.ts
+--   createPatient() has no handling for Postgres error 23505 and simply
+--   returned the generic "Failed to create patient." for every one of them,
+--   with no indication of why.
+--
+-- What this does NOT change:
+--   - Phone FORMAT validation (types/index.ts: phoneRegex) is untouched —
+--     the field still has to look like a phone number.
+--   - Patient search (actions/patients.ts:searchPatients / getPatients) and
+--     the portal-link phone lookup (actions/portal-link.ts) both already
+--     tolerate multiple matches — they use ilike + limit()/array results, not
+--     a query that assumes exactly one row. Nothing downstream assumed
+--     uniqueness except the guard in _createAndLinkNewPatient, fixed
+--     alongside this migration to stop relying on the constraint's absence
+--     of duplicates (see that file's diff: maybeSingle() -> limit(1)).
+--   - Search performance: idx_patients_phone_trgm (GIN trigram,
+--     20260619000000_dentgrow_initial_schema.sql) is what actually serves the
+--     ilike '%digits' lookups everywhere in the app. It is untouched — this
+--     migration drops a UNIQUENESS constraint, not a lookup index.
+--   - Cross-clinic isolation: unaffected, this was never a cross-clinic rule.
+-- =============================================================================
+
+drop index if exists uq_patients_clinic_phone_active;

@@ -75,7 +75,13 @@ export function PortalNav({ patientId, consentFormsEnabled = false }: PortalNavP
 
   return (
     <header className="bg-surface border-b border-border sticky top-0 z-10">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6">
+      {/* max-w-screen-xl matches <main> in app/portal/layout.tsx — the two
+          containers must share a width or the nav and the page content below
+          it drift apart on any screen wider than ~896px, which is exactly what
+          happened when this was max-w-4xl: on a laptop the nav visibly narrowed
+          into a centred strip while the page content spanned the full width
+          beneath it. */}
+      <div className="max-w-screen-xl mx-auto px-4 sm:px-6">
         <div className="flex items-center justify-between h-14">
           {/* Brand */}
           <DentGrowLogo size={24} withWordmark />
