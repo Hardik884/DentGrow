@@ -58,8 +58,13 @@ const ARCH = {
   teeth: 12,
 };
 
-/** Base size of an arch tooth, relative to the 32-unit box it is drawn in. */
-const TOOTH_SCALE = 1.3;
+/**
+ * Base size of an arch tooth.
+ *
+ * TOOTH_PATH is authored in a 128-unit box (lib/brand/mark.ts), so this is
+ * roughly a quarter — an arch tooth is ~44 units wide in this 600-unit canvas.
+ */
+const TOOTH_SCALE = 0.34;
 
 /**
  * How much of the curve's normal each tooth actually follows, 0–1.
@@ -177,7 +182,7 @@ export function AuthArtwork({ glow = "#35A18F", className }: AuthArtworkProps) {
       {/* The arch, drawn as outlines. */}
       <g
         stroke="url(#dg-auth-arch)"
-        strokeWidth="1"
+        strokeWidth={1 / TOOTH_SCALE}
         strokeLinejoin="round"
         fill="none"
       >

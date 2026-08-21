@@ -1,87 +1,57 @@
 /**
  * lib/brand/mark.ts — DentGrow's one piece of brand geometry.
  *
- * The logo is a single tooth. The sign-in artwork is a full dental arch built
- * from that same tooth, repeated and rotated along an ellipse. They are the
- * same path, exported once, so the mark in the sidebar and the shapes behind
- * the sign-in form are provably the same drawing rather than two silhouettes
- * that merely resemble each other.
+ * The logo is a tooth with a growth chart inside it and an arrow sweeping
+ * through: "Dent" and "Grow" in one drawing. The sign-in artwork is a full
+ * dental arch built from that same tooth, repeated and rotated along an
+ * ellipse. Everything is exported from here so the mark in the sidebar and the
+ * shapes behind the sign-in form are provably the same drawing rather than two
+ * silhouettes that merely resemble each other.
  *
- * The path is authored in a 32×32 box with the crown at the top, which is also
- * the logo's viewBox — so the logo uses it untransformed, and the artwork
- * places copies with the helper below.
+ * Authored in a 128 x 100 box. Wider than tall because the arrow travels well
+ * past the tooth on the right — the mark is a landscape lockup, not a square
+ * icon, and MARK_ASPECT below is how callers size it.
  */
 
+/** The viewBox every part of the mark is authored in. */
+export const MARK_VIEWBOX = "0 0 128 100";
+
+/** The box the mark is drawn in. */
+export const MARK_BOX = { width: 128, height: 100 } as const;
+
+/** Width divided by height. Callers multiply their height by this. */
+export const MARK_ASPECT = MARK_BOX.width / MARK_BOX.height;
+
 /**
- * The tooth: a broad crown, a slight shoulder flare, and two splayed roots
- * separated by a notch.
+ * The tooth, as a CENTRELINE to be stroked — not as a pre-offset ring.
  *
- * Deliberately drawn wide. An anatomically narrow tooth collapses into a
- * featureless capsule below about 24px, and the sidebar renders this at 24–28px
- * — so the silhouette is stylised toward width, which is what keeps it legible
- * as a TOOTH at the sizes it is actually used.
+ * A ring means authoring an inner path parallel to the outer one by hand, and
+ * every attempt drifted: the band came out fat at the shoulders and thin at the
+ * roots, which pulled the crown's two lobes into something that read as a
+ * heart. Stroking a single centreline makes the band width exact by
+ * construction, and `stroke-linejoin: round` gives the root tips and the notch
+ * their soft ends for free.
+ *
+ * The shape: a broad crown with two lobes and a shallow central dip, near
+ * vertical flanks, then two splayed roots separated by a deep notch.
  */
 export const TOOTH_PATH =
-  "M16 4.6C10.2 4.6 6 8.2 6 13.4C6 17.2 7 20.2 8.2 23.4C9.1 25.9 9.8 28 11.6 28" +
-  "C13.5 28 14 24.6 14.6 22.2C14.9 21 15.4 20.4 16 20.4C16.6 20.4 17.1 21 17.4 22.2" +
-  "C18 24.6 18.5 28 20.4 28C22.2 28 22.9 25.9 23.8 23.4C25 20.2 26 17.2 26 13.4" +
-  "C26 8.2 21.8 4.6 16 4.6Z";
+  "M18 42C18 22 27 10 38 10C47 10 53 15 58 19C63 15 70 10 79 10C90 10 98 22 98 42" +
+  "C98 56 94 70 89 81C86 87 83 90 80 90C77 90 75 83 73 71C70 55 66 43 58 43" +
+  "C50 43 46 55 43 71C41 83 39 90 36 90C33 90 30 87 27 81C22 70 18 56 18 42Z";
 
-/** The box TOOTH_PATH is drawn in. */
-export const TOOTH_BOX = 32;
-
-/**
- * An SVG transform that places the tooth at (x, y), rotated and scaled about
- * its own centre rather than the origin — which is what lets the arch rotate
- * each tooth to stand normal to the curve without also flinging it across the
- * canvas.
- */
-export function toothTransform(
-  x: number,
-  y: number,
-  rotateDeg: number,
-  scale: number
-): string {
-  const half = TOOTH_BOX / 2;
-  return (
-    `translate(${x.toFixed(2)} ${y.toFixed(2)}) ` +
-    `rotate(${rotateDeg.toFixed(2)}) ` +
-    `scale(${scale.toFixed(3)}) ` +
-    `translate(${-half} ${-half})`
-  );
-}
+/** Band width for TOOTH_PATH, in viewBox units. */
+export const TOOTH_STROKE = 11;
 
 /**
- * Inset transform for the logo tile: shrinks the tooth about the tile centre so
- * it sits with real padding instead of touching the rounded corners.
- */
-export function toothInset(k: number): string {
-  const half = TOOTH_BOX / 2;
-  return `translate(${half * (1 - k)} ${half * (1 - k)}) scale(${k})`;
-}
-
-/** How much the tooth is inset inside the logo tile. */
-export const LOGO_TOOTH_INSET = 0.86;
-
-// ── The full mark: tooth outline + growth bars + momentum arrow ────────────
-
-/**
- * The viewBox the full mark is drawn in.
+ * Three ascending bars inside the crown — the "Grow" half of the name, drawn as
+ * the smallest possible chart.
  *
- * Wider than the tooth's own 32-unit box on every side, because the arrow has
- * to sweep OUTSIDE the tooth to read as an arrow at all. A first attempt kept
- * everything inside 0 0 32 32 and the tail disappeared behind the silhouette —
- * only the head poked out, so the mark read as a circle with a spur.
- */
-export const MARK_VIEWBOX = "-3 -2 38 38";
-
-/**
- * The three ascending bars inside the tooth's crown — the "Grow" half of the
- * name, drawn as the smallest possible chart.
- *
- * Bottom-aligned at y=19.5 rather than lower down because TOOTH_PATH starts
- * splitting into roots at y=20.4; a bar crossing that line would poke through
- * the notch between the roots.
+ * They run all the way down to y~92 on purpose. The arrow crosses over their
+ * lower half and, being the same colour, merges with them; only the rounded
+ * tops read as separate columns. That is exactly how the reference behaves, and
+ * it is why the bars sit 5 units apart — any tighter and the three tops close
+ * into one mass above the band.
  */
 export const GROWTH_BARS: ReadonlyArray<{
   x: number;
@@ -89,24 +59,46 @@ export const GROWTH_BARS: ReadonlyArray<{
   width: number;
   height: number;
 }> = [
-  { x: 11.0, y: 15.5, width: 2.8, height: 4.0 },
-  { x: 14.6, y: 12.7, width: 2.8, height: 6.8 },
-  { x: 18.2, y: 9.9, width: 2.8, height: 9.6 },
+  { x: 41, y: 52, width: 10, height: 40 },
+  { x: 56.5, y: 41, width: 10, height: 51 },
+  { x: 72, y: 31, width: 10, height: 61 },
 ];
 
-/** Corner radius on the growth bars. */
-export const GROWTH_BAR_RADIUS = 1.4;
+/** Corner radius on the growth bars — half their width, so the tops are domes. */
+export const GROWTH_BAR_RADIUS = 5.5;
 
 /**
- * The arrow's tail: enters at the left below the crown, sweeps under and across
- * both root tips, then climbs away through the tooth's right flank.
+ * The arrow: one filled ribbon, tail and head in a single path.
+ *
+ * A tapering ribbon rather than a uniform stroke, because the reference's arrow
+ * narrows to a point where it enters at the left and widens through the sweep.
+ * It enters left of the tooth, passes under and across both roots, then climbs
+ * away through the tooth's right flank to a full triangular head.
  *
  * The crossings are the point. An arc that merely passed beneath the tooth read
- * as a detached swoosh sitting under a logo; cutting across the silhouette is
- * what ties the two shapes into one mark.
+ * as a detached swoosh parked under a logo; cutting across the silhouette is
+ * what fuses the two shapes into one mark.
  */
-export const ARROW_TAIL =
-  "M-1.8 13C-2.4 23.5 4.6 30.4 15.4 30C23.6 29.7 29.6 25.4 31.4 17.6";
+export const ARROW_PATH =
+  "M7 58C3 78 20 93 42 92C68 91 92 70 111 38L118.4 44L126 15L97 24L103.5 30.5" +
+  "C88 55 66 81 42 81C22 80 10 70 7 58Z";
 
-/** The arrowhead, a solid triangle aligned with the tail's exit tangent. */
-export const ARROW_HEAD = "M32.4 13.1L33.8 18.2L29 17Z";
+/**
+ * An SVG transform that places the tooth at (x, y), rotated and scaled about
+ * its own centre rather than the origin — which is what lets the sign-in arch
+ * rotate each tooth to stand normal to the curve without also flinging it
+ * across the canvas.
+ */
+export function toothTransform(
+  x: number,
+  y: number,
+  rotateDeg: number,
+  scale: number
+): string {
+  return (
+    `translate(${x.toFixed(2)} ${y.toFixed(2)}) ` +
+    `rotate(${rotateDeg.toFixed(2)}) ` +
+    `scale(${scale.toFixed(3)}) ` +
+    `translate(${-MARK_BOX.width / 2} ${-MARK_BOX.height / 2})`
+  );
+}
