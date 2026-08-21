@@ -28,9 +28,27 @@ import { MARK_ASPECT, MARK_PATH, MARK_VIEWBOX } from "@/lib/brand/mark";
  *     where a second gradient would fight the panel.
  *
  * @example
- *   <DentGrowLogo size={32} withWordmark />       // sidebar
- *   <DentGrowLogo size={44} variant="mono" />     // on a brand panel
+ *   <DentGrowLogo size={24} withWordmark />       // sidebar
+ *   <DentGrowLogo size={25} variant="mono" withWordmark />   // brand panel
  */
+
+/**
+ * Wordmark font-size as a fraction of the mark's height.
+ *
+ * NOT 0.5, which is the intuitive "mark is twice the text" and is what this
+ * started as. The mark is a landscape drawing — a tooth, a chart and an arrow —
+ * and its optical mass is far greater than a run of glyphs at the same height,
+ * so a 2:1 relationship makes it loom over the wordmark instead of sitting
+ * beside it.
+ *
+ * Chosen by rendering the lockup at mark:font ratios from 2.1 down to 1.2 in
+ * both the panel and sidebar contexts. Balance lands at ~1.5, which is what
+ * this fraction produces (1 / 0.66).
+ */
+const WORDMARK_RATIO = 0.66;
+
+/** Gap between mark and wordmark, as a fraction of the wordmark's font size. */
+const LOCKUP_GAP_RATIO = 0.55;
 
 interface DentGrowLogoProps {
   /** HEIGHT of the mark in px; width follows from MARK_ASPECT. Default: 28. */
@@ -58,13 +76,15 @@ export function DentGrowLogo({
   const gradientId = `dg-mark-${useId().replace(/[^a-zA-Z0-9]/g, "")}`;
   const paint = variant === "mono" ? "currentColor" : `url(#${gradientId})`;
 
+  const fontSize = Math.round(size * WORDMARK_RATIO);
+
   return (
     <div
       className={className}
       style={{
         display: "inline-flex",
         alignItems: "center",
-        gap: Math.round(size * 0.28),
+        gap: Math.round(fontSize * LOCKUP_GAP_RATIO),
       }}
     >
       <svg
@@ -97,7 +117,7 @@ export function DentGrowLogo({
       {withWordmark && (
         <span
           style={{
-            fontSize: Math.round(size * 0.5),
+            fontSize,
             fontWeight: 600,
             letterSpacing: "-0.025em",
             // In `mono` the mark and wordmark inherit together. In `gradient`

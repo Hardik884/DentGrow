@@ -78,7 +78,7 @@ export function PortalNav({ patientId, consentFormsEnabled = false }: PortalNavP
       <div className="max-w-4xl mx-auto px-4 sm:px-6">
         <div className="flex items-center justify-between h-14">
           {/* Brand */}
-          <DentGrowLogo size={32} withWordmark />
+          <DentGrowLogo size={24} withWordmark />
 
           {/* Desktop nav */}
           <nav className="hidden sm:flex items-center gap-1" aria-label="Portal navigation">

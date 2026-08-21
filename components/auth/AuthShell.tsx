@@ -154,14 +154,16 @@ export function AuthShell({
           aria-hidden="true"
         />
 
-        {/* Brand lockup. `mono` rather than the tiled mark: the panel is already
-            a painted brand surface, and a second emerald tile on top of it either
-            fights the panel (admin, patient-light) or sinks into it (staff). */}
-        <div className={cn("relative flex items-center gap-3", t.wordmark)}>
-          <DentGrowLogo size={36} variant="mono" />
-          <span className="text-[17px] font-semibold tracking-tight">
-            DentGrow
-          </span>
+        {/* Brand lockup. `mono` because the panel is already a painted brand
+            surface, and the mark's own gradient would either fight it (admin,
+            patient-light) or sink into it (staff) — currentColor inherits the
+            panel's ink instead.
+
+            The wordmark comes from the component rather than a local <span>, so
+            the mark-to-text proportion is the one rule in DentGrowLogo instead
+            of something this file sets independently and lets drift. */}
+        <div className={cn("relative flex items-center", t.wordmark)}>
+          <DentGrowLogo size={25} variant="mono" withWordmark />
         </div>
 
         {/* Message */}
@@ -218,7 +220,7 @@ export function AuthShell({
             className="flex items-center gap-2.5 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-surface lg:invisible"
             aria-label="DentGrow home"
           >
-            <DentGrowLogo size={27} withWordmark />
+            <DentGrowLogo size={21} withWordmark />
           </Link>
 
           <AuthThemeToggle />
