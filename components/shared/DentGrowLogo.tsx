@@ -1,50 +1,31 @@
 "use client";
 
 import { useId } from "react";
-import {
-  ARROW_PATH,
-  GROWTH_BARS,
-  GROWTH_BAR_RADIUS,
-  MARK_ASPECT,
-  MARK_VIEWBOX,
-  TOOTH_PATH,
-  TOOTH_STROKE,
-} from "@/lib/brand/mark";
+import { MARK_ASPECT, MARK_PATH, MARK_VIEWBOX } from "@/lib/brand/mark";
 
 /**
  * DentGrowLogo — the DentGrow mark.
  *
- * WHAT IT IS
- *   An outlined tooth with three ascending bars inside it and an arrow sweeping
- *   under the roots and away to the upper right. Both halves of the name in one
- *   drawing: the tooth is "Dent", the bars and the arrow are "Grow".
- *
- *   The tooth is the same TOOTH_PATH the sign-in artwork repeats into a dental
- *   arch (lib/brand/mark.ts) — stroked here, filled there — so the mark and the
- *   canvas behind the sign-in form are the same silhouette.
+ * The mark is the supplied logo artwork, traced to vector (see
+ * lib/brand/mark.ts): a tooth outline with a growth chart inside it and an
+ * arrow sweeping through and away to the upper right.
  *
  * SHAPE
- *   The mark is LANDSCAPE, not square: the arrow travels well past the tooth on
- *   the right. `size` is its height and the width follows from MARK_ASPECT, so
- *   callers keep controlling the dimension that matters for a row of nav items.
+ *   Landscape, not square — the arrow travels well past the tooth on the right.
+ *   `size` is the mark's HEIGHT and the width follows from MARK_ASPECT, so call
+ *   sites keep controlling the dimension that matters in a row of nav items.
  *
  * COLOUR
- *   One diagonal gradient runs across the whole mark, deep emerald at the
- *   bottom-left to bright mint at the arrowhead, so the arrow reads as
- *   accelerating into the light. The stops are DentGrow's own accent ramp
- *   (#0D6B5E and the lighter #35A18F that dark mode already uses), not a
- *   separate brand palette.
- *
- * DETAIL VS. SIZE
- *   Tooth + bars + arrow is a lot to hold in a sidebar. Below FULL_DETAIL_MIN
- *   the component drops to the tooth silhouette alone, filled — the same
- *   outline reading as a confident solid shape rather than as overlapping
- *   strokes turning to mush. `auto` picks by size and is what call sites use.
+ *   The artwork is a single flat silhouette, so the mark takes one fill. In
+ *   `gradient` that fill is one diagonal ramp across the whole mark — deep
+ *   emerald at the bottom-left to bright mint at the arrowhead, so it brightens
+ *   along the arrow. The stops are DentGrow's own accent ramp (#0D6B5E and the
+ *   lighter #35A18F dark mode already uses), not a separate brand palette.
  *
  * VARIANTS
- *   `gradient` (default) — the full-colour mark, for a neutral surface.
- *   `mono` — every part in `currentColor`, for a painted brand surface (the
- *     sign-in panels) where a second gradient would fight the panel.
+ *   `gradient` (default) — for a neutral surface: sidebar, nav, forms.
+ *   `mono` — `currentColor`, for a painted brand surface (the sign-in panels)
+ *     where a second gradient would fight the panel.
  *
  * @example
  *   <DentGrowLogo size={32} withWordmark />       // sidebar
@@ -58,26 +39,13 @@ interface DentGrowLogoProps {
   withWordmark?: boolean;
   /** `gradient` for a neutral surface, `mono` for a painted brand surface. */
   variant?: "gradient" | "mono";
-  /**
-   * `full` draws tooth + bars + arrow. `simple` draws the solid tooth alone.
-   * `auto` (default) chooses by size.
-   */
-  detail?: "auto" | "full" | "simple";
   className?: string;
 }
-
-/**
- * Below this height the bars close up and the arrow's tail merges with the
- * tooth band, so the mark reads as a smudge. Measured against renders at 28,
- * 32, 40, 56, 80, 140 and 220px, not guessed.
- */
-const FULL_DETAIL_MIN = 32;
 
 export function DentGrowLogo({
   size = 28,
   withWordmark = false,
   variant = "gradient",
-  detail = "auto",
   className,
 }: DentGrowLogoProps) {
   // The gradient needs a document-unique id: the sidebar renders a logo in both
@@ -88,8 +56,6 @@ export function DentGrowLogo({
   // containing guillemets (React 19) or colons (React 18), and neither is safe
   // inside an SVG `url(#...)` reference.
   const gradientId = `dg-mark-${useId().replace(/[^a-zA-Z0-9]/g, "")}`;
-
-  const full = detail === "full" || (detail === "auto" && size >= FULL_DETAIL_MIN);
   const paint = variant === "mono" ? "currentColor" : `url(#${gradientId})`;
 
   return (
@@ -122,38 +88,10 @@ export function DentGrowLogo({
           </defs>
         )}
 
-        {full ? (
-          <>
-            {/* Tooth — stroked, so the bars inside it stay visible. */}
-            <path
-              d={TOOTH_PATH}
-              fill="none"
-              stroke={paint}
-              strokeWidth={TOOTH_STROKE}
-              strokeLinejoin="round"
-              strokeLinecap="round"
-            />
-
-            {/* Growth bars. */}
-            {GROWTH_BARS.map((bar) => (
-              <rect
-                key={bar.x}
-                x={bar.x}
-                y={bar.y}
-                width={bar.width}
-                height={bar.height}
-                rx={GROWTH_BAR_RADIUS}
-                fill={paint}
-              />
-            ))}
-
-            {/* Arrow, last so it reads as passing in front. */}
-            <path d={ARROW_PATH} fill={paint} />
-          </>
-        ) : (
-          // Small sizes: the silhouette alone.
-          <path d={TOOTH_PATH} fill={paint} />
-        )}
+        {/* evenodd: the trace yields outer boundaries plus holes, and the
+            source artwork's overlapping parts mean winding order is not
+            reliable. See lib/brand/mark.ts. */}
+        <path fillRule="evenodd" clipRule="evenodd" d={MARK_PATH} fill={paint} />
       </svg>
 
       {withWordmark && (

@@ -158,7 +158,7 @@ export function AuthShell({
             a painted brand surface, and a second emerald tile on top of it either
             fights the panel (admin, patient-light) or sinks into it (staff). */}
         <div className={cn("relative flex items-center gap-3", t.wordmark)}>
-          <DentGrowLogo size={44} variant="mono" detail="full" />
+          <DentGrowLogo size={44} variant="mono" />
           <span className="text-[17px] font-semibold tracking-tight">
             DentGrow
           </span>

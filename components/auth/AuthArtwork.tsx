@@ -1,4 +1,4 @@
-import { TOOTH_PATH, toothTransform } from "@/lib/brand/mark";
+import { ARCH_TOOTH_PATH, toothTransform } from "@/lib/brand/mark";
 
 /**
  * AuthArtwork — the canvas behind the sign-in panel.
@@ -189,7 +189,7 @@ export function AuthArtwork({ glow = "#35A18F", className }: AuthArtworkProps) {
         {teeth.map((t, i) => (
           <path
             key={i}
-            d={TOOTH_PATH}
+            d={ARCH_TOOTH_PATH}
             transform={toothTransform(t.x, t.y, t.rotate, t.scale)}
           />
         ))}
@@ -201,7 +201,7 @@ export function AuthArtwork({ glow = "#35A18F", className }: AuthArtworkProps) {
         {[teeth[5], teeth[6]].map((t, i) => (
           <path
             key={i}
-            d={TOOTH_PATH}
+            d={ARCH_TOOTH_PATH}
             transform={toothTransform(t.x, t.y, t.rotate, t.scale)}
           />
         ))}

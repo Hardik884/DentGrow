@@ -1,93 +1,175 @@
 /**
- * lib/brand/mark.ts — DentGrow's one piece of brand geometry.
+ * lib/brand/mark.ts — DentGrow's brand geometry.
  *
- * The logo is a tooth with a growth chart inside it and an arrow sweeping
- * through: "Dent" and "Grow" in one drawing. The sign-in artwork is a full
- * dental arch built from that same tooth, repeated and rotated along an
- * ellipse. Everything is exported from here so the mark in the sidebar and the
- * shapes behind the sign-in form are provably the same drawing rather than two
- * silhouettes that merely resemble each other.
+ * MARK_PATH is the DentGrow logo: a tooth outline with a growth chart inside it
+ * and an arrow sweeping through, "Dent" and "Grow" in one drawing.
  *
- * Authored in a 128 x 100 box. Wider than tall because the arrow travels well
- * past the tooth on the right — the mark is a landscape lockup, not a square
- * icon, and MARK_ASPECT below is how callers size it.
+ * IT IS A TRACE, NOT A REDRAWING.
+ *   The path below was produced mechanically from the supplied logo artwork —
+ *   marching squares with sub-pixel interpolation over an antialiased
+ *   downsample, then Ramer-Douglas-Peucker simplification, then
+ *   Catmull-Rom-to-Bezier smoothing with corner preservation so the arrowhead
+ *   keeps its point. It is the artwork, not an approximation of it.
+ *
+ *   Earlier attempts hand-authored these curves from the reference by eye and
+ *   were not close enough. Do not hand-edit MARK_PATH: if the artwork changes,
+ *   re-run the tracer against the new file rather than nudging control points.
+ *
+ * The whole mark is ONE path with `fill-rule: evenodd`. In the source artwork
+ * the tooth, bars and arrow overlap into a single flat silhouette, so the trace
+ * yields outer boundaries plus holes, and evenodd renders them correctly
+ * regardless of winding. That also means the parts cannot be coloured
+ * separately — the mark takes one fill, which is what the artwork does too.
  */
 
-/** The viewBox every part of the mark is authored in. */
-export const MARK_VIEWBOX = "0 0 128 100";
-
-/** The box the mark is drawn in. */
-export const MARK_BOX = { width: 128, height: 100 } as const;
+/** The viewBox MARK_PATH is drawn in. */
+export const MARK_VIEWBOX = "0 0 128 103.62";
 
 /** Width divided by height. Callers multiply their height by this. */
-export const MARK_ASPECT = MARK_BOX.width / MARK_BOX.height;
+export const MARK_ASPECT = 128 / 103.62;
+
+/** The complete mark. Traced from the source artwork — see the note above. */
+export const MARK_PATH =
+  "M22.85 0.72C21.46 0.88 18.88 1.34 17.69 1.6C16.51 1.85 16.39 1.99 15.74 2.25C15.08 2.5 1" +
+  "4.46 2.77 13.78 3.13C13.1 3.49 12.33 3.95 11.65 4.4C10.96 4.85 10.23 5.4 9.69 5.83C9.15 " +
+  "6.25 8.94 6.4 8.4 6.95C7.85 7.49 7.17 8.07 6.4 9.08C5.62 10.09 4.39 11.9 3.75 13C3.12 14" +
+  ".09 2.89 14.83 2.57 15.66C2.25 16.49 2.1 16.85 1.83 17.98C1.56 19.1 1.12 21.27 0.94 22.4" +
+  "2C0.76 23.58 0.78 23.88 0.75 24.91C0.71 25.95 0.73 27.73 0.75 28.65C0.77 29.57 0.72 29.3" +
+  "3 0.87 30.43C1.02 31.52 1.38 33.84 1.66 35.23C1.93 36.62 2.17 37.51 2.52 38.79C2.87 40.0" +
+  "6 3.17 41.13 3.76 42.88C4.36 44.63 4.77 45.81 6.09 49.28C7.41 52.75 10.44 60.34 11.7 63." +
+  "69C12.96 67.04 12.87 66.92 13.65 69.38C14.42 71.84 15.8 76.91 16.36 78.46C16.92 80 16.4 " +
+  "78.59 16.98 78.68C17.56 78.77 18.58 78.92 19.83 78.99C21.07 79.06 23.65 79.11 24.45 79.0" +
+  "8C25.26 79.05 24.73 79.6 24.65 78.81C24.57 78.02 24.44 76.88 23.97 74.36C23.49 71.84 22." +
+  "42 66.42 21.82 63.69C21.23 60.96 20.88 59.75 20.4 58C19.93 56.25 19.61 55.15 18.97 53.2C" +
+  "18.33 51.24 17.25 48.36 16.56 46.26C15.86 44.15 15.25 42.29 14.81 40.57C14.37 38.85 14.1" +
+  "1 37.6 13.92 35.94C13.72 34.28 13.64 32.12 13.64 30.61C13.64 29.09 13.67 28.26 13.92 26." +
+  "87C14.17 25.48 14.73 23.46 15.14 22.24C15.55 21.03 15.96 20.35 16.38 19.58C16.8 18.81 17" +
+  ".09 18.32 17.67 17.62C18.24 16.92 19.2 15.97 19.83 15.4C20.46 14.83 20.9 14.55 21.43 14." +
+  "2C21.96 13.84 22.29 13.61 23.03 13.29C23.77 12.96 24.84 12.49 25.88 12.24C26.91 11.98 28" +
+  ".07 11.79 29.26 11.75C30.44 11.7 31.66 11.75 32.99 11.95C34.33 12.15 35.99 12.55 37.26 1" +
+  "2.93C38.54 13.31 39.07 13.54 40.64 14.21C42.21 14.89 44.94 16.23 46.69 16.98C48.44 17.74" +
+  " 49.8 18.28 51.14 18.75C52.47 19.21 53.6 19.53 54.69 19.78C55.79 20.04 56.47 20.18 57.72" +
+  " 20.28C58.96 20.37 61.1 20.38 62.16 20.37C63.23 20.35 63.5 20.28 64.12 20.18C64.74 20.09" +
+  " 65.25 19.98 65.9 19.8C66.55 19.63 67.41 19.35 68.03 19.11C68.66 18.88 69.1 18.66 69.63 " +
+  "18.39C70.17 18.12 70.63 17.89 71.24 17.49C71.84 17.1 73.27 16.02 73.27 16.02C73.27 16.02" +
+  " 70.51 16.64 69.63 16.8C68.76 16.96 68.8 16.95 68.03 16.98C67.26 17.01 66.05 17.05 65.01" +
+  " 16.99C63.97 16.92 62.79 16.78 61.81 16.6C60.83 16.42 59.93 16.14 59.14 15.9C58.35 15.65" +
+  " 57.93 15.52 57.05 15.13C56.16 14.74 55.03 14.24 53.8 13.56C52.58 12.89 51.19 12.06 49.7" +
+  "1 11.09C48.23 10.13 46.51 8.85 44.91 7.79C43.31 6.74 41.56 5.6 40.11 4.77C38.65 3.94 37." +
+  "44 3.34 36.19 2.81C34.95 2.28 33.79 1.89 32.64 1.57C31.48 1.25 30.35 1.04 29.26 0.89C28." +
+  "16 0.74 27.12 0.68 26.05 0.66C24.99 0.63 24.25 0.56 22.85 0.72ZM127.98 18.84C124.92 20.1" +
+  "3 112.73 26.48 109.66 28.03C106.59 29.57 109.52 28.04 109.56 28.12C109.6 28.19 109.13 27" +
+  ".85 109.9 28.47C110.66 29.09 113.84 30.69 114.16 31.85C114.49 33.01 112.63 34.28 111.85 " +
+  "35.41C111.08 36.53 110.53 37.31 109.51 38.61C108.49 39.91 106.85 41.91 105.74 43.18C104." +
+  "64 44.46 104.17 44.96 102.9 46.25C101.62 47.55 99.58 49.57 98.1 50.95C96.61 52.33 96.26 " +
+  "52.75 94 54.52C91.75 56.3 87.45 59.62 84.58 61.6C81.7 63.59 79.12 65.06 76.75 66.43C74.3" +
+  "8 67.8 71.98 68.98 70.35 69.81C68.72 70.64 68.72 70.64 66.97 71.41C65.22 72.17 61.93 73." +
+  "59 59.85 74.42C57.78 75.24 56.74 75.65 54.51 76.36C52.29 77.08 49 78.05 46.51 78.7C44.02" +
+  " 79.35 41.62 79.85 39.57 80.26C37.53 80.67 36.16 80.89 34.24 81.13C32.31 81.38 30.17 81." +
+  "62 28.01 81.72C25.85 81.82 23.21 81.83 21.25 81.73C19.29 81.63 17.69 81.37 16.27 81.13C1" +
+  "4.85 80.88 13.69 80.56 12.71 80.27C11.73 79.99 11.02 79.67 10.4 79.4C9.78 79.14 9.69 79." +
+  "14 8.98 78.68C8.27 78.22 6.75 77.16 6.13 76.64C5.51 76.13 5.52 76.01 5.24 75.6C4.96 75.1" +
+  "9 4.7 74.78 4.46 74.19C4.22 73.59 3.92 72.97 3.8 72.05C3.69 71.13 3.65 69.8 3.79 68.67C3" +
+  ".93 67.55 4.38 66.18 4.65 65.29C4.92 64.4 5.05 64.08 5.39 63.34C5.73 62.59 6.48 61.3 6.7" +
+  " 60.85C6.91 60.39 6.97 60.34 6.66 60.61C6.36 60.87 5.49 61.69 4.86 62.45C4.23 63.2 3.43 " +
+  "64.28 2.89 65.11C2.35 65.94 1.97 66.69 1.62 67.43C1.26 68.17 1.02 68.73 0.76 69.56C0.5 7" +
+  "0.39 0.19 71.52 0.07 72.41C-0.06 73.3 -0.05 74.13 0 74.9C0.05 75.67 0.2 76.38 0.38 77.03" +
+  "C0.56 77.68 0.73 78.17 1.07 78.81C1.4 79.45 1.76 80.17 2.4 80.89C3.03 81.61 4.12 82.55 4" +
+  ".89 83.14C5.66 83.72 6.04 83.94 7.02 84.41C8 84.88 9.6 85.55 10.76 85.96C11.91 86.37 12." +
+  "74 86.59 13.96 86.86C15.17 87.14 16.86 87.42 18.05 87.6C19.24 87.78 19.59 87.84 21.07 87" +
+  ".93C22.56 88.01 25.19 88.1 26.94 88.09C28.69 88.09 29.76 88.05 31.57 87.91C33.38 87.76 3" +
+  "5.51 87.55 37.79 87.23C40.08 86.91 43.13 86.38 45.27 85.96C47.4 85.55 48.94 85.13 50.6 8" +
+  "4.72C52.26 84.3 53.42 84.01 55.23 83.47C57.03 82.94 59.47 82.19 61.45 81.51C63.44 80.83 " +
+  "65.25 80.15 67.14 79.38C69.04 78.6 70.58 77.94 72.84 76.88C75.09 75.81 78.08 74.37 80.66" +
+  " 72.98C83.24 71.59 86.18 69.85 88.31 68.54C90.45 67.24 91.45 66.6 93.47 65.15C95.49 63.7" +
+  "1 98.45 61.41 100.41 59.85C102.36 58.29 103.36 57.48 105.21 55.77C107.06 54.07 109.69 51" +
+  ".52 111.51 49.64C113.32 47.76 114.5 46.42 116.09 44.48C117.68 42.54 119.48 38.4 121.04 3" +
+  "7.97C122.61 37.55 124.71 41.38 125.49 41.9C126.26 42.42 125.28 44.7 125.7 41.1C126.11 37" +
+  ".5 127.62 24 128 20.29C128.38 16.58 131.04 17.55 127.98 18.84ZM84.04 0.01C82.59 0.12 81." +
+  "02 0.42 79.77 0.68C78.53 0.94 77.49 1.29 76.57 1.58C75.65 1.88 75.42 1.91 74.26 2.44C73." +
+  "1 2.97 71.62 3.68 69.63 4.77C67.65 5.86 64.06 8.02 62.34 8.96C60.62 9.9 60.28 9.99 59.32" +
+  " 10.39C58.35 10.8 56.67 11.04 56.55 11.39C56.43 11.75 57.97 12.21 58.61 12.51C59.24 12.8" +
+  "2 59.76 13.02 60.38 13.23C61.01 13.44 61.57 13.63 62.34 13.77C63.11 13.92 63.88 14.07 65" +
+  ".01 14.1C66.14 14.13 67.38 14.21 69.1 13.96C70.82 13.71 73.84 12.9 75.33 12.61C76.81 12." +
+  "32 76.99 12.29 78 12.21C79 12.14 80.4 12.12 81.37 12.16C82.35 12.19 83.04 12.26 83.87 12" +
+  ".42C84.7 12.58 85.61 12.85 86.36 13.12C87.1 13.39 87.69 13.69 88.31 14.05C88.93 14.41 89" +
+  ".53 14.81 90.09 15.27C90.65 15.73 91.18 16.24 91.69 16.81C92.21 17.37 92.63 17.81 93.17 " +
+  "18.69C93.71 19.56 94.44 20.85 94.92 22.07C95.39 23.28 95.77 24.74 96.02 25.98C96.27 27.2" +
+  "3 96.35 28.14 96.4 29.54C96.45 30.93 96.39 33.1 96.33 34.34C96.27 35.59 96.27 35.53 96.0" +
+  "4 37.01C95.81 38.49 95.51 40.69 94.96 43.23C94.41 45.78 93.09 50.69 92.73 52.31C92.36 53" +
+  ".92 92.18 53.37 92.76 52.92C93.34 52.48 94.98 50.96 96.2 49.64C97.43 48.32 99.07 46.38 1" +
+  "00.1 45.01C101.13 43.65 101.64 42.85 102.41 41.46C103.18 40.06 104.07 38.19 104.72 36.65" +
+  "C105.36 35.11 105.84 33.75 106.29 32.21C106.74 30.66 107.16 28.74 107.4 27.4C107.65 26.0" +
+  "7 107.71 25.12 107.77 24.2C107.83 23.28 107.85 23.05 107.79 21.89C107.73 20.73 107.67 18" +
+  ".72 107.41 17.26C107.14 15.81 106.69 14.45 106.18 13.17C105.67 11.9 105.09 10.76 104.36 " +
+  "9.62C103.64 8.47 102.7 7.26 101.83 6.32C100.96 5.37 100.17 4.66 99.16 3.92C98.15 3.19 96" +
+  ".91 2.43 95.78 1.9C94.66 1.36 93.62 1.02 92.4 0.71C91.19 0.39 89.88 0.12 88.49 0C87.1 -0" +
+  ".12 85.5 -0.11 84.04 0.01ZM98.45 65.95C96.4 67.28 88.55 71.69 86.34 73.83C84.13 75.97 85" +
+  ".65 77.06 85.18 78.81C84.72 80.56 84.28 82.22 83.57 84.33C82.86 86.43 81.48 89.99 80.91 " +
+  "91.44C80.35 92.89 80.55 92.36 80.19 93.04C79.83 93.72 79.19 94.86 78.73 95.53C78.28 96.2" +
+  " 77.88 96.66 77.46 97.08C77.04 97.5 76.63 97.82 76.22 98.06C75.8 98.29 75.32 98.43 74.97" +
+  " 98.48C74.62 98.54 74.47 98.51 74.12 98.38C73.76 98.24 73.24 97.99 72.84 97.67C72.43 97." +
+  "34 72.06 96.95 71.7 96.42C71.33 95.89 71.28 95.89 70.64 94.46C70 93.04 68.56 89.42 67.86" +
+  " 87.88C67.17 86.34 66.92 85.96 66.48 85.21C66.03 84.47 66.32 83.4 65.19 83.43C64.05 83.4" +
+  "5 60.32 84.73 59.67 85.38C59.03 86.04 60.82 86.7 61.31 87.35C61.8 88 61.55 87.41 62.6 89" +
+  ".31C63.65 91.2 66.6 96.9 67.61 98.73C68.62 100.57 68.2 99.77 68.66 100.33C69.13 100.9 69" +
+  ".84 101.66 70.39 102.11C70.94 102.57 71.36 102.8 71.95 103.05C72.53 103.3 73.04 103.52 7" +
+  "3.9 103.61C74.76 103.71 76.39 103.65 77.11 103.62C77.82 103.58 77.73 103.55 78.17 103.42" +
+  "C78.62 103.28 79.21 103.09 79.77 102.82C80.33 102.55 81 102.18 81.55 101.8C82.11 101.41 " +
+  "82.48 101.11 83.09 100.51C83.69 99.91 84.51 99.03 85.15 98.2C85.8 97.37 86.33 96.54 86.9" +
+  "5 95.53C87.57 94.52 88.08 93.72 88.88 92.15C89.68 90.58 90.93 87.91 91.73 86.1C92.54 84." +
+  "3 92.95 83.26 93.69 81.3C94.43 79.34 95.38 76.77 96.18 74.36C96.97 71.96 98.06 68.29 98." +
+  "49 66.89C98.91 65.5 98.7 66.18 98.72 66C98.75 65.83 98.67 65.87 98.63 65.86C98.58 65.85 " +
+  "100.5 64.62 98.45 65.95ZM76.39 42.12C75.24 42.63 71.87 44.4 70.7 45.12C69.53 45.84 69.71" +
+  " 45.98 69.38 46.44C69.05 46.89 68.83 44.36 68.71 47.86C68.58 51.36 68.62 64.15 68.62 67." +
+  "43C68.63 70.71 66.87 68.58 68.75 67.55C70.62 66.51 78.05 65.1 79.89 61.2C81.74 57.3 79.9" +
+  "2 47.18 79.81 44.12C79.71 41.07 79.47 43.19 79.25 42.88C79.04 42.57 78.8 42.43 78.53 42." +
+  "28C78.26 42.14 78 42.06 77.64 42.03C77.28 42 77.55 41.6 76.39 42.12ZM60.03 54.06C58.84 5" +
+  "4.58 55.45 56.45 54.34 57.11C53.23 57.77 53.64 57.67 53.37 58C53.1 58.33 52.88 58.68 52." +
+  "72 59.07C52.57 59.45 52.47 57.82 52.42 60.31C52.37 62.8 52.41 71.69 52.43 74.01C52.45 76" +
+  ".32 51.32 74.6 52.56 74.2C53.79 73.8 58.01 72.26 59.85 71.58C61.69 70.9 62.94 70.39 63.5" +
+  "9 70.12C64.23 69.84 63.7 72.29 63.71 69.92C63.73 67.54 63.77 58.38 63.67 55.86C63.57 53." +
+  "34 63.33 55.07 63.11 54.8C62.89 54.52 62.62 54.35 62.34 54.21C62.07 54.07 61.84 53.98 61" +
+  ".45 53.95C61.07 53.93 61.22 53.53 60.03 54.06ZM46.15 88.76C45.29 88.81 41.96 89.03 40.82" +
+  " 89.77C39.67 90.52 39.77 92.23 39.27 93.22C38.77 94.21 38.3 95.05 37.82 95.71C37.33 96.3" +
+  "7 36.85 96.83 36.37 97.17C35.89 97.5 35.3 97.63 34.95 97.72C34.59 97.81 34.53 97.77 34.2" +
+  "4 97.72C33.94 97.66 33.59 97.63 33.17 97.38C32.75 97.14 32.15 96.7 31.72 96.24C31.29 95." +
+  "79 31.1 95.55 30.6 94.64C30.1 93.73 29.66 91.45 28.72 90.79C27.79 90.14 26.29 90.8 24.99" +
+  " 90.73C23.68 90.65 21.61 90.38 20.9 90.35C20.18 90.32 20.39 89.87 20.7 90.55C21.02 91.24" +
+  " 22.21 93.46 22.8 94.46C23.38 95.47 23.68 95.87 24.23 96.6C24.77 97.33 25.51 98.23 26.05" +
+  " 98.82C26.6 99.41 26.92 99.72 27.48 100.16C28.04 100.6 28.84 101.12 29.43 101.46C30.03 1" +
+  "01.79 30.47 101.96 31.03 102.15C31.6 102.33 32.16 102.49 32.81 102.56C33.47 102.64 34.36" +
+  " 102.64 34.95 102.6C35.54 102.57 35.81 102.54 36.37 102.35C36.93 102.16 37.79 101.76 38." +
+  "33 101.46C38.86 101.16 39.19 100.88 39.57 100.54C39.96 100.21 40.19 100 40.64 99.43C41.0" +
+  "9 98.87 41.77 97.93 42.28 97.13C42.79 96.33 43.08 95.92 43.7 94.64C44.32 93.37 45.6 90.4" +
+  "6 46.01 89.48C46.42 88.5 47.02 88.72 46.15 88.76ZM44.02 62.61C42.8 63.16 39.13 65.13 37." +
+  "97 65.79C36.82 66.46 37.33 66.3 37.08 66.58C36.83 66.85 36.62 67.17 36.47 67.43C36.32 67" +
+  ".69 36.25 67.81 36.16 68.14C36.07 68.46 35.96 67.69 35.93 69.38C35.91 71.08 35.08 77 36." +
+  "02 78.31C36.95 79.62 39.62 77.68 41.53 77.25C43.44 76.83 46.51 77.96 47.5 75.79C48.48 73" +
+  ".62 47.54 66.3 47.44 64.22C47.35 62.15 47.13 63.57 46.92 63.34C46.7 63.1 46.43 62.93 46." +
+  "15 62.79C45.88 62.66 45.62 62.54 45.27 62.51C44.91 62.48 45.24 62.06 44.02 62.61Z";
 
 /**
- * The tooth, as a CENTRELINE to be stroked — not as a pre-offset ring.
+ * A plain tooth silhouette, for the sign-in artwork's dental arch.
  *
- * A ring means authoring an inner path parallel to the outer one by hand, and
- * every attempt drifted: the band came out fat at the shoulders and thin at the
- * roots, which pulled the crown's two lobes into something that read as a
- * heart. Stroking a single centreline makes the band width exact by
- * construction, and `stroke-linejoin: round` gives the root tips and the notch
- * their soft ends for free.
- *
- * The shape: a broad crown with two lobes and a shallow central dip, near
- * vertical flanks, then two splayed roots separated by a deep notch.
+ * Deliberately NOT MARK_PATH. The arch repeats its tooth a dozen times at low
+ * opacity as a background texture; repeating the full logo — bars, arrow and
+ * all — would be both illegible at that scale and far too busy behind a form.
+ * This is the tooth alone, as a centreline meant to be stroked.
  */
-export const TOOTH_PATH =
+export const ARCH_TOOTH_PATH =
   "M18 42C18 22 27 10 38 10C47 10 53 15 58 19C63 15 70 10 79 10C90 10 98 22 98 42" +
   "C98 56 94 70 89 81C86 87 83 90 80 90C77 90 75 83 73 71C70 55 66 43 58 43" +
   "C50 43 46 55 43 71C41 83 39 90 36 90C33 90 30 87 27 81C22 70 18 56 18 42Z";
 
-/** Band width for TOOTH_PATH, in viewBox units. */
-export const TOOTH_STROKE = 11;
+/** The box ARCH_TOOTH_PATH is drawn in. */
+export const ARCH_TOOTH_BOX = { width: 128, height: 100 } as const;
 
 /**
- * Three ascending bars inside the crown — the "Grow" half of the name, drawn as
- * the smallest possible chart.
- *
- * They run all the way down to y~92 on purpose. The arrow crosses over their
- * lower half and, being the same colour, merges with them; only the rounded
- * tops read as separate columns. That is exactly how the reference behaves, and
- * it is why the bars sit 5 units apart — any tighter and the three tops close
- * into one mass above the band.
- */
-export const GROWTH_BARS: ReadonlyArray<{
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-}> = [
-  { x: 41, y: 52, width: 10, height: 40 },
-  { x: 56.5, y: 41, width: 10, height: 51 },
-  { x: 72, y: 31, width: 10, height: 61 },
-];
-
-/** Corner radius on the growth bars — half their width, so the tops are domes. */
-export const GROWTH_BAR_RADIUS = 5.5;
-
-/**
- * The arrow: one filled ribbon, tail and head in a single path.
- *
- * A tapering ribbon rather than a uniform stroke, because the reference's arrow
- * narrows to a point where it enters at the left and widens through the sweep.
- * It enters left of the tooth, passes under and across both roots, then climbs
- * away through the tooth's right flank to a full triangular head.
- *
- * The crossings are the point. An arc that merely passed beneath the tooth read
- * as a detached swoosh parked under a logo; cutting across the silhouette is
- * what fuses the two shapes into one mark.
- */
-export const ARROW_PATH =
-  "M7 58C3 78 20 93 42 92C68 91 92 70 111 38L118.4 44L126 15L97 24L103.5 30.5" +
-  "C88 55 66 81 42 81C22 80 10 70 7 58Z";
-
-/**
- * An SVG transform that places the tooth at (x, y), rotated and scaled about
- * its own centre rather than the origin — which is what lets the sign-in arch
- * rotate each tooth to stand normal to the curve without also flinging it
- * across the canvas.
+ * An SVG transform that places an arch tooth at (x, y), rotated and scaled
+ * about its own centre rather than the origin — which is what lets the arch
+ * rotate each tooth to follow the curve without also flinging it across the
+ * canvas.
  */
 export function toothTransform(
   x: number,
@@ -99,6 +181,6 @@ export function toothTransform(
     `translate(${x.toFixed(2)} ${y.toFixed(2)}) ` +
     `rotate(${rotateDeg.toFixed(2)}) ` +
     `scale(${scale.toFixed(3)}) ` +
-    `translate(${-MARK_BOX.width / 2} ${-MARK_BOX.height / 2})`
+    `translate(${-ARCH_TOOTH_BOX.width / 2} ${-ARCH_TOOTH_BOX.height / 2})`
   );
 }
