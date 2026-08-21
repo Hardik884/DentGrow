@@ -205,16 +205,29 @@ export function AuthNotice({ children }: { children: React.ReactNode }) {
  *
  * WHY IT IS STYLED HERE RATHER THAN IN THE BUTTON PRIMITIVE
  *   This is the one button on the page and the last thing between someone and
- *   their clinic, so it earns more presence than a flat fill: a light sheen over
- *   the top half, a hairline highlight along the top edge, and a lifted shadow
- *   that grows on hover and collapses on press. Pushing that into
- *   `components/ui/button`'s default variant would restyle every primary button
- *   in the product, which is a separate decision from this one.
+ *   their clinic, so it gets its own treatment — a glass pane rather than a
+ *   flat fill — instead of restyling every primary button in the product,
+ *   which is a separate decision from this one.
  *
- *   The sheen is white-over-token rather than a hardcoded gradient. `bg-accent`
- *   is a different colour in each theme (deep emerald in light, a lighter one in
- *   dark, so it can carry dark ink), and a literal gradient would have pinned
- *   one of them and broken the other's text contrast.
+ * THE GLASS
+ *   Real translucency (`bg-accent/90`) plus `backdrop-blur` and
+ *   `backdrop-saturate`, not just a glossy fill dressed up to look glass. The
+ *   panel behind genuinely shows through and blurs, which a sheen-on-a-solid-
+ *   colour trick can't produce.
+ *
+ *   The opacity floor is deliberately 90%, not something more dramatically
+ *   see-through. `accent-foreground` flips between white (light theme) and
+ *   near-black ink (dark theme) specifically so the label can sit on the solid
+ *   accent fill at full contrast, and every point of transparency below ~85%
+ *   eats into that WCAG AA margin. 90% is where the glass is still genuine —
+ *   the page tints visibly through the edges and blurs whatever is behind —
+ *   without gambling with the one thing that must never fail on a sign-in
+ *   button: being readable.
+ *
+ *   `cn()` here is `tailwind-merge` under the hood (lib/utils.ts), and
+ *   `className` is the last argument in Button's own `cn()` call — so these
+ *   utilities deterministically replace the primitive's default-variant
+ *   background and shadow rather than fighting them for cascade order.
  */
 export function AuthSubmit({
   isPending,
@@ -236,20 +249,30 @@ export function AuthSubmit({
       className={cn(
         "relative isolate h-11 w-full overflow-hidden rounded-[11px]",
         "text-[15px] font-semibold tracking-[-0.01em]",
-        // Sheen across the top half — light falling on a raised surface.
-        "before:pointer-events-none before:absolute before:inset-x-0 before:top-0",
-        "before:-z-10 before:h-1/2 before:bg-gradient-to-b",
-        "before:from-white/22 before:to-transparent",
-        // Depth: a hairline along the top edge, then a shadow tinted with the
-        // brand rather than neutral grey, so the lift reads as emerald light.
-        "shadow-[inset_0_1px_0_0_rgb(255_255_255/0.28),0_6px_18px_-6px_rgb(13_107_94/0.55),0_2px_5px_-2px_rgb(0_0_0/0.18)]",
-        "hover:shadow-[inset_0_1px_0_0_rgb(255_255_255/0.34),0_10px_26px_-8px_rgb(13_107_94/0.62),0_3px_7px_-2px_rgb(0_0_0/0.2)]",
-        // The primitive already applies active:scale-[0.98]; the shadow
-        // collapsing at the same moment is what sells the press.
-        "active:shadow-[inset_0_1px_0_0_rgb(255_255_255/0.2),0_2px_6px_-3px_rgb(13_107_94/0.5)]",
-        // A disabled button must look inert, so drop the lift entirely.
-        "disabled:shadow-none disabled:before:opacity-0",
-        "transition-[background-color,box-shadow,transform] duration-200 ease-out"
+        // The glass fill + optics. Saturate slightly boosts whatever colour
+        // shows through the blur, which is what keeps a translucent panel from
+        // reading as merely "faded" rather than "glass".
+        "bg-accent/90 backdrop-blur-md backdrop-saturate-150",
+        "hover:bg-accent-hover/90 active:bg-accent-active/92",
+        // The rim — a bright hairline where light would catch a glass edge.
+        "ring-1 ring-inset ring-white/30",
+        // Refraction: a soft diagonal sheen plus a small bloom in the top-left
+        // corner, both behind the label (-z-10) so neither ever competes with
+        // the text sitting on top of the glass.
+        "before:pointer-events-none before:absolute before:inset-0 before:-z-10",
+        "before:bg-gradient-to-br before:from-white/35 before:via-white/8 before:to-transparent",
+        "after:pointer-events-none after:absolute after:-left-3 after:-top-5 after:-z-10",
+        "after:h-12 after:w-12 after:rounded-full after:bg-white/30 after:blur-lg",
+        // Depth: a soft brand-tinted glow rather than a hard neutral shadow —
+        // light through glass diffuses further than light off a solid surface.
+        "shadow-[0_10px_28px_-10px_rgb(13_107_94/0.5),0_2px_6px_-2px_rgb(0_0_0/0.14)]",
+        "hover:shadow-[0_14px_36px_-10px_rgb(13_107_94/0.58),0_3px_8px_-2px_rgb(0_0_0/0.16)]",
+        "active:shadow-[0_4px_12px_-6px_rgb(13_107_94/0.45)]",
+        // A disabled button must look inert: no lift, no sheen, no rim. The
+        // fill and text still fade via the primitive's own disabled:opacity-50.
+        "disabled:shadow-none disabled:ring-white/10",
+        "disabled:before:opacity-0 disabled:after:opacity-0",
+        "transition-[background-color,box-shadow,backdrop-filter] duration-200 ease-out"
       )}
     >
       {isPending ? pendingLabel : idleLabel}

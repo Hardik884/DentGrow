@@ -158,7 +158,7 @@ export function AuthShell({
             a painted brand surface, and a second emerald tile on top of it either
             fights the panel (admin, patient-light) or sinks into it (staff). */}
         <div className={cn("relative flex items-center gap-3", t.wordmark)}>
-          <DentGrowLogo size={44} variant="mono" />
+          <DentGrowLogo size={36} variant="mono" />
           <span className="text-[17px] font-semibold tracking-tight">
             DentGrow
           </span>
@@ -218,7 +218,7 @@ export function AuthShell({
             className="flex items-center gap-2.5 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-surface lg:invisible"
             aria-label="DentGrow home"
           >
-            <DentGrowLogo size={32} withWordmark />
+            <DentGrowLogo size={27} withWordmark />
           </Link>
 
           <AuthThemeToggle />
