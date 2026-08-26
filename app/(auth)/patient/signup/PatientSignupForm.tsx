@@ -17,7 +17,7 @@ const initialState: ActionResult<null> = { data: null, error: null };
 /**
  * PatientSignupForm — /patient/signup
  *
- * The only form in DentGrow that asks for a clinic, and the reason it does is
+ * The only form in OraMedha that asks for a clinic, and the reason it does is
  * simple: a brand-new patient has no record for the server to read a clinic
  * from. So the choice is presented as what it actually is — "which clinic do
  * you attend?" — rather than as a generic filter, and it is given its own

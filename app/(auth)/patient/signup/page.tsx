@@ -5,7 +5,7 @@ import { getClinics } from "@/actions/clinics";
 
 export const metadata: Metadata = {
   title: "Create Patient Account",
-  description: "Create a DentGrow patient portal account.",
+  description: "Create an OraMedha patient portal account.",
 };
 
 /**
@@ -14,7 +14,7 @@ export const metadata: Metadata = {
  * Visually the sibling of /patient/login (same mint canvas, same rhythm) so
  * moving between them feels like one product. The difference in content is the
  * point: signing in needs nothing but credentials, registering needs a clinic —
- * and this is the only page in DentGrow that asks for one.
+ * and this is the only page in OraMedha that asks for one.
  */
 export default async function PatientSignupPage() {
   const { data: clinics } = await getClinics();
@@ -23,7 +23,7 @@ export default async function PatientSignupPage() {
     <AuthShell
       tone="patient"
       eyebrow="New patient"
-      headline="Welcome to DentGrow."
+      headline="Welcome to OraMedha."
       subhead="Create your account once, then book visits and follow your treatment from any device."
       points={[
         "Book and manage appointments online",

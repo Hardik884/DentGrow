@@ -55,7 +55,7 @@ export default async function AdminPage() {
             </span>
             <div className="min-w-0">
               <h1 className="text-[15px] font-semibold tracking-tight text-text-primary">
-                DentGrow Admin
+                OraMedha Admin
               </h1>
               <p className="truncate text-xs text-text-secondary">
                 {profile.full_name ?? "Administrator"}

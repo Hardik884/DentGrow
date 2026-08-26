@@ -144,7 +144,7 @@ export const ACTION_PLANS: Readonly<Record<string, readonly ActionPlanStep[]>> =
       capability: DRAFT_APPOINTMENT_CONFIRMATION,
       title: "Prepare a confirmation for their next visit",
       description:
-        "Prepares confirmation text to send before the next appointment of a patient who has missed before. Draft only — DentGrow does not send it.",
+        "Prepares confirmation text to send before the next appointment of a patient who has missed before. Draft only — OraMedha does not send it.",
     },
     { ...CALL_FROM_APPOINTMENTS, after: [OPEN_NON_ATTENDANCE_HISTORY] },
     {
@@ -399,7 +399,7 @@ export const ACTION_PLANS: Readonly<Record<string, readonly ActionPlanStep[]>> =
       capability: SCHEDULE_FOLLOW_UP,
       title: "Record what each patient told you",
       description:
-        "Opens a blank follow-up. Writing the reason down is what lets the next analysis separate a cost barrier from a timing one — nothing else in DentGrow captures it.",
+        "Opens a blank follow-up. Writing the reason down is what lets the next analysis separate a cost barrier from a timing one — nothing else in OraMedha captures it.",
     },
   ],
 

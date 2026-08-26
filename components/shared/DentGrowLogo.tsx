@@ -4,7 +4,7 @@ import { useId } from "react";
 import { MARK_ASPECT, MARK_PATH, MARK_VIEWBOX } from "@/lib/brand/mark";
 
 /**
- * DentGrowLogo — the DentGrow mark.
+ * DentGrowLogo — the OraMedha mark.
  *
  * The mark is the supplied logo artwork, traced to vector (see
  * lib/brand/mark.ts): a tooth outline with a growth chart inside it and an
@@ -53,7 +53,7 @@ const LOCKUP_GAP_RATIO = 0.55;
 interface DentGrowLogoProps {
   /** HEIGHT of the mark in px; width follows from MARK_ASPECT. Default: 28. */
   size?: number;
-  /** Render the "DentGrow" wordmark beside the mark. Default: false. */
+  /** Render the "OraMedha" wordmark beside the mark. Default: false. */
   withWordmark?: boolean;
   /** `gradient` for a neutral surface, `mono` for a painted brand surface. */
   variant?: "gradient" | "mono";
@@ -94,7 +94,7 @@ export function DentGrowLogo({
         fill="none"
         xmlns="http://www.w3.org/2000/svg"
         role="img"
-        aria-label="DentGrow"
+        aria-label="OraMedha"
         style={{ flexShrink: 0, display: "block" }}
       >
         {variant === "gradient" && (
@@ -130,7 +130,7 @@ export function DentGrowLogo({
               "var(--font-geist-sans, -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif)",
           }}
         >
-          DentGrow
+          OraMedha
         </span>
       )}
     </div>

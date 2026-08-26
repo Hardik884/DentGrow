@@ -195,7 +195,7 @@ export const DISCRIMINATORS = {
   REMINDER_DELIVERY_LOG: {
     slug: "reminder_delivery_log",
     description:
-      "Whether an appointment reminder was dispatched and delivered for each affected appointment. NOT RECORDED: DentGrow sends no reminders and keeps no dispatch log, so a reminder that was never sent and one that was sent and ignored are indistinguishable. Needs a communications log keyed to the appointment.",
+      "Whether an appointment reminder was dispatched and delivered for each affected appointment. NOT RECORDED: OraMedha sends no reminders and keeps no dispatch log, so a reminder that was never sent and one that was sent and ignored are indistinguishable. Needs a communications log keyed to the appointment.",
     availability: Availability.REQUIRES_DATA_CAPTURE,
     portMethod: null,
   },
@@ -237,14 +237,14 @@ export const DISCRIMINATORS = {
   POST_VISIT_FEEDBACK: {
     slug: "post_visit_feedback",
     description:
-      "Recorded patient feedback or satisfaction following the last completed visit. NOT RECORDED: DentGrow captures no feedback of any kind, so patients who chose not to return and patients who were never contacted are indistinguishable.",
+      "Recorded patient feedback or satisfaction following the last completed visit. NOT RECORDED: OraMedha captures no feedback of any kind, so patients who chose not to return and patients who were never contacted are indistinguishable.",
     availability: Availability.REQUIRES_DATA_CAPTURE,
     portMethod: null,
   },
   TREATMENT_COST_BARRIER: {
     slug: "treatment_cost_barrier",
     description:
-      "Quoted value per unbooked plan alongside payment-plan availability and uptake. PARTIALLY RECORDED: quoted values are available and already surfaced by `listPendingTreatments`, but DentGrow has no concept of a payment plan, so a plan deferred over cost cannot be separated from one deferred for another reason.",
+      "Quoted value per unbooked plan alongside payment-plan availability and uptake. PARTIALLY RECORDED: quoted values are available and already surfaced by `listPendingTreatments`, but OraMedha has no concept of a payment plan, so a plan deferred over cost cannot be separated from one deferred for another reason.",
     availability: Availability.REQUIRES_DATA_CAPTURE,
     portMethod: null,
   },

@@ -306,7 +306,7 @@ export const STRATEGISED_CAUSES: ReadonlySet<string> = new Set(
  *               action is warranted. Inventing a fix would contradict the
  *               diagnosis, not support it.
  *   - "unsettleable"  the engine can NEVER settle it — the discriminators that
- *               would are data DentGrow does not hold — so it is always
+ *               would are data OraMedha does not hold — so it is always
  *               undetermined and handled by the investigative fallback instead.
  *
  * This is the other half of the coverage contract: the test treats a slug here
@@ -324,7 +324,7 @@ export const CAUSES_WITHOUT_STRATEGY: Readonly<
   capacity_suppresses_acquisition: {
     kind: "unsettleable",
     reason:
-      "Never reaches supported. Whether a full schedule is turning enquiries away needs booking-channel and enquiry data DentGrow does not record (booking_channel_activity, patient_acquisition_source), so it stays undetermined and the investigative fallback names those measurements.",
+      "Never reaches supported. Whether a full schedule is turning enquiries away needs booking-channel and enquiry data OraMedha does not record (booking_channel_activity, patient_acquisition_source), so it stays undetermined and the investigative fallback names those measurements.",
   },
   external_demand: {
     kind: "unsettleable",
@@ -334,12 +334,12 @@ export const CAUSES_WITHOUT_STRATEGY: Readonly<
   contact_reachability: {
     kind: "unsettleable",
     reason:
-      "Never reaches supported. Separating recalls never attempted from recalls that did not reach the patient needs a contact-attempt log (recall_contact_attempts); the port returns null because DentGrow records none.",
+      "Never reaches supported. Separating recalls never attempted from recalls that did not reach the patient needs a contact-attempt log (recall_contact_attempts); the port returns null because OraMedha records none.",
   },
   patient_choice: {
     kind: "unsettleable",
     reason:
-      "Never reaches supported. Whether reached patients chose not to return needs post-visit feedback (post_visit_feedback), which DentGrow does not capture.",
+      "Never reaches supported. Whether reached patients chose not to return needs post-visit feedback (post_visit_feedback), which OraMedha does not capture.",
   },
   measured_condition: {
     kind: "unsettleable",

@@ -6,7 +6,7 @@ import type {
 } from "@/types";
 
 /**
- * AI prompt templates for all DentGrow AI features.
+ * AI prompt templates for all OraMedha AI features.
  *
  * Rules (CLAUDE.md §13.13):
  * - No hardcoded clinic data — all clinic info injected from clinic_settings.
@@ -90,7 +90,7 @@ Generate insights now:`;
  * Injected once at the start of each conversation.
  */
 export function buildCopilotSystemPrompt(context: CopilotSessionContext): string {
-  return `You are DentGrow Copilot, an AI assistant for ${context.clinicName} dental clinic.
+  return `You are OraMedha Copilot, an AI assistant for ${context.clinicName} dental clinic.
 You are speaking with ${context.userName} (role: ${context.userRole}).
 
 CURRENT DATE CONTEXT (CRITICAL):
@@ -108,7 +108,7 @@ RULES:
   action and WAIT for explicit user confirmation before calling any mutating tool.
 - Do NOT provide medical diagnoses, treatment recommendations, or dosage advice.
 - If a request is outside your tool scope, politely decline and suggest the user
-  navigate to the relevant section of DentGrow.
+  navigate to the relevant section of OraMedha.
 - Be concise. Clinic staff are busy.`;
 }
 
@@ -128,7 +128,7 @@ export function buildPatientAssistantSystemPrompt(
     timezone: string;
   }
 ): string {
-  return `You are the DentGrow patient assistant for ${clinicInfo.clinicName}.
+  return `You are the OraMedha patient assistant for ${clinicInfo.clinicName}.
 
 CURRENT DATE AND TIME CONTEXT (CRITICAL):
 Current date: ${currentContext.currentDate}

@@ -81,7 +81,7 @@ export function occupiesSlot(status: string): boolean {
  * A missing or nonsensical duration falls back to 30 minutes rather than 0.
  * Zero would silently erase a real booking from the numerator and report the
  * chair as free while a patient is in it; 30 is the schema default and the
- * DentGrow-wide default appointment length, so the fallback is the same
+ * OraMedha-wide default appointment length, so the fallback is the same
  * assumption the booking screen already makes.
  */
 export function bookedMinutes(appointments: readonly AppointmentSnapshot[]): number {

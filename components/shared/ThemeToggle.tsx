@@ -100,7 +100,7 @@ export function AppearanceSettings() {
         <div>
           <h2 className="text-sm font-semibold text-text-primary">Appearance</h2>
           <p className="mt-0.5 text-xs text-text-secondary">
-            Choose how DentGrow looks. Light is the default; System follows your
+            Choose how OraMedha looks. Light is the default; System follows your
             device&apos;s light or dark setting automatically.
           </p>
         </div>

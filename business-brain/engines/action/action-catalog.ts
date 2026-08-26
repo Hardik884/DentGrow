@@ -197,7 +197,7 @@ const CATALOG_ENTRIES: readonly ActionCapability[] = [
     category: ActionCategory.PATIENT_REVIEW,
     title: "Open the last 90 days of no-shows",
     description:
-      "Opens 90 days of no-shows so repeat non-attenders can be picked out. DentGrow does not filter patients by missed-appointment count, so grouping by patient is done on the list.",
+      "Opens 90 days of no-shows so repeat non-attenders can be picked out. OraMedha does not filter patients by missed-appointment count, so grouping by patient is done on the list.",
     area: DentGrowArea.APPOINTMENTS,
     filters: (w) => ({ status: "no_show", dateFrom: w.last90Start, dateTo: w.today }),
     sortHint: "Group by patient to find names that appear more than once",
@@ -403,7 +403,7 @@ const CATALOG_ENTRIES: readonly ActionCapability[] = [
     category: ActionCategory.PATIENT_REVIEW,
     title: "Open the patient record",
     description:
-      "Opens one patient's full record. DentGrow cannot pick the patient for you here, so this opens the directory to search from.",
+      "Opens one patient's full record. OraMedha cannot pick the patient for you here, so this opens the directory to search from.",
     area: DentGrowArea.PATIENT_RECORD,
     effort: ActionEffort.MINUTES,
     readiness: ActionReadiness.MANUAL,
@@ -482,7 +482,7 @@ const CATALOG_ENTRIES: readonly ActionCapability[] = [
     category: ActionCategory.FINANCIAL,
     title: "Open a patient's payment history",
     description:
-      "Opens the payments tab of a patient record. DentGrow cannot pick the patient here, so this opens the directory to search from.",
+      "Opens the payments tab of a patient record. OraMedha cannot pick the patient here, so this opens the directory to search from.",
     area: DentGrowArea.PATIENT_RECORD,
     filters: () => ({ tab: "payments" }),
     effort: ActionEffort.MINUTES,
@@ -516,7 +516,7 @@ const CATALOG_ENTRIES: readonly ActionCapability[] = [
     category: ActionCategory.COMMUNICATION,
     title: "Work the list as a call list",
     description:
-      "The filtered list above is the call list. DentGrow does not produce a separate call sheet, so work down the screen and record the outcome — reached, booked, will call back, unreachable — against each patient.",
+      "The filtered list above is the call list. OraMedha does not produce a separate call sheet, so work down the screen and record the outcome — reached, booked, will call back, unreachable — against each patient.",
     area: DentGrowArea.PATIENTS,
     effort: ActionEffort.SESSION,
     readiness: ActionReadiness.MANUAL,
@@ -530,7 +530,7 @@ const CATALOG_ENTRIES: readonly ActionCapability[] = [
     category: ActionCategory.COMMUNICATION,
     title: "Prepare a follow-up message",
     description:
-      "Prepares a check-in message for a patient whose follow-up is due. Draft only — DentGrow does not send it.",
+      "Prepares a check-in message for a patient whose follow-up is due. Draft only — OraMedha does not send it.",
     area: DentGrowArea.PATIENTS,
     effort: ActionEffort.ONE_CLICK,
     readiness: ActionReadiness.PREPARED,
@@ -552,7 +552,7 @@ const CATALOG_ENTRIES: readonly ActionCapability[] = [
     category: ActionCategory.COMMUNICATION,
     title: "Prepare an appointment confirmation",
     description:
-      "Prepares confirmation text asking the patient to confirm or reschedule. Draft only — DentGrow does not send it.",
+      "Prepares confirmation text asking the patient to confirm or reschedule. Draft only — OraMedha does not send it.",
     area: DentGrowArea.APPOINTMENTS,
     effort: ActionEffort.ONE_CLICK,
     readiness: ActionReadiness.PREPARED,
@@ -574,7 +574,7 @@ const CATALOG_ENTRIES: readonly ActionCapability[] = [
     category: ActionCategory.COMMUNICATION,
     title: "Prepare a payment reminder",
     description:
-      "Prepares reminder text for an outstanding balance, offering a payment plan. Draft only — DentGrow does not send it.",
+      "Prepares reminder text for an outstanding balance, offering a payment plan. Draft only — OraMedha does not send it.",
     area: DentGrowArea.PAYMENTS,
     effort: ActionEffort.ONE_CLICK,
     readiness: ActionReadiness.PREPARED,
@@ -599,7 +599,7 @@ const CATALOG_ENTRIES: readonly ActionCapability[] = [
     category: ActionCategory.COMMUNICATION,
     title: "Prepare a short-notice slot offer",
     description:
-      "Prepares text offering a freed-up slot to someone waiting. Draft only — DentGrow does not send it.",
+      "Prepares text offering a freed-up slot to someone waiting. Draft only — OraMedha does not send it.",
     area: DentGrowArea.APPOINTMENTS,
     effort: ActionEffort.ONE_CLICK,
     readiness: ActionReadiness.PREPARED,
@@ -621,7 +621,7 @@ const CATALOG_ENTRIES: readonly ActionCapability[] = [
     category: ActionCategory.COMMUNICATION,
     title: "Prepare a treatment plan follow-up",
     description:
-      "Prepares text for a patient whose planned treatment has no date yet. Draft only — DentGrow does not send it.",
+      "Prepares text for a patient whose planned treatment has no date yet. Draft only — OraMedha does not send it.",
     area: DentGrowArea.TREATMENTS,
     effort: ActionEffort.ONE_CLICK,
     readiness: ActionReadiness.PREPARED,

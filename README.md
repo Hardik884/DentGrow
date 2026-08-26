@@ -1,4 +1,4 @@
-# DentGrow
+# OraMedha
 
 A multi-tenant dental practice management platform — patient records, scheduling, a live queue, billing, and a deterministic business-intelligence engine ("Business Brain"), built on Next.js 15 and Supabase.
 
@@ -6,7 +6,7 @@ A multi-tenant dental practice management platform — patient records, scheduli
 
 ## Why this exists
 
-Small and mid-size dental clinics run on paper registers, WhatsApp reminders, and a receptionist's memory for who's owed money. DentGrow centralizes that: patient records, appointment lifecycle, a real-time waiting room, treatment and billing history, consultant payouts, follow-up recall, and a rules-based diagnostic layer that tells a dentist *why* a metric moved, not just that it did.
+Small and mid-size dental clinics run on paper registers, WhatsApp reminders, and a receptionist's memory for who's owed money. OraMedha centralizes that: patient records, appointment lifecycle, a real-time waiting room, treatment and billing history, consultant payouts, follow-up recall, and a rules-based diagnostic layer that tells a dentist *why* a metric moved, not just that it did.
 
 ## Screenshots
 
@@ -139,8 +139,8 @@ types/                 Zod schemas + shared TypeScript types, one source of trut
 ## Setup
 
 ```bash
-git clone https://github.com/Hardik884/DentGrow.git
-cd DentGrow
+git clone https://github.com/Hardik884/OraMedha.git
+cd OraMedha
 npm install
 
 cp .env.example .env.local   # fill in Supabase + Gemini keys

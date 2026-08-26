@@ -1,7 +1,7 @@
 # Adopting the Supabase CLI on an existing database
 
 **Read this before running `supabase db push` against any environment that already
-has DentGrow's schema — in particular the pilot clinic's project.**
+has OraMedha's schema — in particular the pilot clinic's project.**
 
 ---
 

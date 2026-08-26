@@ -1,6 +1,6 @@
 # Third-Party Notices
 
-This file documents third-party assets embedded in DentGrow's own source code
+This file documents third-party assets embedded in OraMedha's own source code
 (as opposed to npm dependencies, which carry their own licenses under
 `node_modules` and are not duplicated here).
 
@@ -41,7 +41,7 @@ SOFTWARE.
 charting SVGs per FDI tooth number (`src/assets/teeth-svgs/{11,13,14,16}.svg`)
 — each containing dozens of toggleable pathology/restoration/orthodontic
 overlay layers, gradients, and `data-active` states for a full periodontal
-charting editor. DentGrow uses only the base healthy-tooth silhouette path
+charting editor. OraMedha uses only the base healthy-tooth silhouette path
 (`id="tooth-base"`, and where present `id="tooth-base-beauty"` for the small
 specular highlight) from four representative teeth — 11 (central incisor), 13
 (canine), 14 (first premolar), 16 (first molar) — as the four morphological

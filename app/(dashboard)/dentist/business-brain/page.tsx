@@ -47,7 +47,7 @@ export default async function BusinessBrainPage() {
           <EmptyState
             icon={<AlertTriangle className="h-5 w-5" />}
             title="Couldn't check your clinic today"
-            description="Something went wrong reading your records. Everything else in DentGrow still works — try refreshing in a minute."
+            description="Something went wrong reading your records. Everything else in OraMedha still works — try refreshing in a minute."
           />
         </div>
       </PageShell>

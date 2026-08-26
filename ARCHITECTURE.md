@@ -1,7 +1,7 @@
-# DentGrow — Complete Project Architecture
+# OraMedha — Complete Project Architecture
 
 > **Staff Next.js Architect Design Document**
-> This document is the authoritative architecture reference for the DentGrow project.
+> This document is the authoritative architecture reference for the OraMedha project.
 > It is derived from `CLAUDE.md` and the approved database migrations.
 > No implementation code. Architecture decisions only.
 
@@ -512,7 +512,7 @@ type ActionResult<T> = {
 
 ### Two Clients, Two Contexts
 
-DentGrow uses two distinct Supabase client instances. Mixing them causes session and RLS errors.
+OraMedha uses two distinct Supabase client instances. Mixing them causes session and RLS errors.
 
 | Client | File | When to Use |
 |---|---|---|
@@ -631,7 +631,7 @@ Typed return shapes for all analytics queries:
 
 ### Layered Validation
 
-DentGrow validates data at three layers. Each layer has a distinct responsibility. They are complementary, not alternatives.
+OraMedha validates data at three layers. Each layer has a distinct responsibility. They are complementary, not alternatives.
 
 ```
 Layer 1: UI / Form (client)

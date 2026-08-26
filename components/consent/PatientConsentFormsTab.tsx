@@ -40,7 +40,7 @@ export async function PatientConsentFormsTab({ patientId, role, baseHref }: Pati
       <div>
         <h3 className="font-semibold text-text-primary">Consent Forms</h3>
         <p className="text-xs text-text-secondary mt-0.5">
-          Informed-consent documents for this patient — digitally signed in DentGrow or uploaded
+          Informed-consent documents for this patient — digitally signed in OraMedha or uploaded
           after being signed on paper.
         </p>
       </div>

@@ -4,7 +4,7 @@ import { AuthShell } from "@/components/auth/AuthShell";
 
 export const metadata: Metadata = {
   title: "Clinic Sign In",
-  description: "Sign in to DentGrow to manage your clinic.",
+  description: "Sign in to OraMedha to manage your clinic.",
 };
 
 /**

@@ -1,6 +1,6 @@
 # Brand source
 
-`logo-source.png` is the DentGrow logo artwork. `trace-logo.py` converts it into
+`logo-source.png` is the OraMedha logo artwork. `trace-logo.py` converts it into
 the SVG path used by the app.
 
 **The logo path in `lib/brand/mark.ts` is generated from this file. Do not

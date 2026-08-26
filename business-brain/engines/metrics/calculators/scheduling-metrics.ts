@@ -58,7 +58,7 @@ export function noShowRate30d(s: ClinicDataSnapshot): Metric | null {
  * Median, not mean: one appointment booked six months out would drag a mean far
  * from anything the clinic recognises.
  *
- * NEGATIVE lead times are excluded. DentGrow supports backdated data entry
+ * NEGATIVE lead times are excluded. OraMedha supports backdated data entry
  * (clinic migrations), which creates appointment rows whose `createdAt` is after
  * the visit they describe. Those are historical records, not booking behaviour,
  * and including them would understate real lead time.

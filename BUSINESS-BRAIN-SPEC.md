@@ -1,4 +1,4 @@
-# The DentGrow Business Brain — Definitive Specification and Product Audit
+# The OraMedha Business Brain — Definitive Specification and Product Audit
 
 **Version audited:** pipeline `0.5.0` (`BUSINESS_BRAIN_VERSION`)
 **Date:** 31 July 2026
@@ -434,7 +434,7 @@ This is the cleverest and the most disciplined part of the system. It takes the 
 
 ## 4.2 The nine patterns
 
-**`demand_supply_mismatch` (operational)** — *idle chairs and a thin book on the same day are one observation.* Requires low utilization **and** low volume. Hypotheses: *insufficient demand* vs *unconverted demand* (a large accepted-but-unscheduled book while the chair sat idle proves demand existed and was not converted) vs *capacity not offered*. The last is partly settleable now: `open_minutes_today` = 0 means nothing was rostered (supported); > 0 rules it out; but whether the open slots were actually *offered through a booking channel* still needs data DentGrow does not hold, so it settles only in the direction the open-minutes figure can settle it. *Could be wrong when* pending-value is just below its threshold — real unconverted demand can hide under the line.
+**`demand_supply_mismatch` (operational)** — *idle chairs and a thin book on the same day are one observation.* Requires low utilization **and** low volume. Hypotheses: *insufficient demand* vs *unconverted demand* (a large accepted-but-unscheduled book while the chair sat idle proves demand existed and was not converted) vs *capacity not offered*. The last is partly settleable now: `open_minutes_today` = 0 means nothing was rostered (supported); > 0 rules it out; but whether the open slots were actually *offered through a booking channel* still needs data OraMedha does not hold, so it settles only in the direction the open-minutes figure can settle it. *Could be wrong when* pending-value is just below its threshold — real unconverted demand can hide under the line.
 
 **`capacity_ceiling` (operational)** — *a full chair AND a queue is a different story from either alone: demand met the service ceiling.* Requires near-full capacity plus a queue signal. *Demand exceeded capacity* is directly measured → supported. But *capacity suppresses acquisition* (is a full book turning new patients away?) stays **undetermined even when the low-new-patient signal is present**, because that co-occurrence is not evidence — nothing records a booking request that was declined. This restraint is the pattern at its best. Severity clamped at high.
 
@@ -446,7 +446,7 @@ This is the cleverest and the most disciplined part of the system. It takes the 
 
 **`revenue_shortfall` (financial)** — *a day that collected below the working-day minimum.* Requires low daily revenue. Reads the pair (appointments delivered, treatments completed): both at/above threshold → *yield* (work done, money not collected); both below → *volume* (less work delivered); split → both undetermined. *Case mix* (lower-value procedures) stays undetermined pending the completed-treatment mix — the metric that would settle it (`average_case_value_30d`) exists but is not yet wired in.
 
-**`pipeline_conversion_failure` (clinical)** — *planned treatment not reaching the chair.* Requires the stalled-pipeline signal, or the full pending-value + unscheduled pair. Idle capacity alongside an unscheduled book rules out "no room for it" → *booking follow-through* supported; a full schedule supports the opposite. *Patient deferral* and *cost barrier* stay undetermined (need the plans themselves, and DentGrow has no payment-plan concept). Careful throughout not to claim the patient consented.
+**`pipeline_conversion_failure` (clinical)** — *planned treatment not reaching the chair.* Requires the stalled-pipeline signal, or the full pending-value + unscheduled pair. Idle capacity alongside an unscheduled book rules out "no room for it" → *booking follow-through* supported; a full schedule supports the opposite. *Patient deferral* and *cost barrier* stay undetermined (need the plans themselves, and OraMedha has no payment-plan concept). Careful throughout not to claim the patient consented.
 
 **`patient_base_erosion` (retention)** — *both ends of the base contracting.* Requires low new patients **and** dropping returning volume. The discipline here is that when both fire, both hypotheses stay **supported together** rather than one winning — the pattern only fires when both breached, so calling a single driver would be an invention. *External demand* (did the catchment move?) stays undetermined forever — nothing in the clinic's own data can see outside it.
 

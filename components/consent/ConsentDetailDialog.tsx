@@ -349,8 +349,8 @@ function UploadedConsentView({
       <div className="rounded-md border border-warning-border bg-warning-bg px-3 py-2">
         <p className="text-xs font-medium text-warning-strong">Uploaded Signed Consent</p>
         <p className="text-[11px] text-warning-strong">
-          This consent was signed on paper outside DentGrow and uploaded. The original file is shown
-          below exactly as uploaded — it was not digitally signed in DentGrow.
+          This consent was signed on paper outside OraMedha and uploaded. The original file is shown
+          below exactly as uploaded — it was not digitally signed in OraMedha.
         </p>
       </div>
 

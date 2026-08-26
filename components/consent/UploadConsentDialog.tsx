@@ -137,7 +137,7 @@ export function UploadConsentDialog({
 
   return (
     <Dialog open={open} onClose={onClose} size="md" busy={pending} title="Upload Signed Consent"
-      description="Attach a consent that was signed on paper, outside DentGrow.">
+      description="Attach a consent that was signed on paper, outside OraMedha.">
       <div className="p-5 space-y-4">
         <Field label="Treatment (optional)" htmlFor="upload-treatment"
           hint="Links the consent to the treatment and its appointment.">

@@ -4,7 +4,7 @@ import { AuthShell } from "@/components/auth/AuthShell";
 
 export const metadata: Metadata = {
   title: "Reset Password",
-  description: "Request a password reset link for your DentGrow patient account.",
+  description: "Request a password reset link for your OraMedha patient account.",
 };
 
 /**

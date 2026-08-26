@@ -4,7 +4,7 @@ import { AuthShell } from "@/components/auth/AuthShell";
 
 export const metadata: Metadata = {
   title: "Set New Password",
-  description: "Choose a new password for your DentGrow patient account.",
+  description: "Choose a new password for your OraMedha patient account.",
 };
 
 /**

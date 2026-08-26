@@ -21,8 +21,8 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: "DentGrow",
-    template: "%s — DentGrow",
+    default: "OraMedha",
+    template: "%s — OraMedha",
   },
   description: "AI-powered dental practice management",
   icons: {

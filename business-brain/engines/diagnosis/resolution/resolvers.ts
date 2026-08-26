@@ -543,7 +543,7 @@ const serviceTimeDistribution: DiscriminatorResolver = (ctx, input) => {
  * Every entity-level discriminator this engine can resolve, keyed by catalogue
  * slug.
  *
- * `recall_contact_attempts` is deliberately ABSENT. DentGrow records no contact
+ * `recall_contact_attempts` is deliberately ABSENT. OraMedha records no contact
  * attempts, the port returns null for it, and a resolver would have nothing to
  * read. Its hypotheses stay undetermined — the honest outcome, and the one the
  * discriminator's own description asks for.

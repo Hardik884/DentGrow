@@ -217,7 +217,7 @@ export const demandSupplyMismatchMatcher: PatternMatcher = {
     // offer. Anything above zero rules that explanation out.
     //
     // The remaining half of the question — whether the open slots were actually
-    // OFFERED through a booking channel — still needs data DentGrow does not
+    // OFFERED through a booking channel — still needs data OraMedha does not
     // record, so the hypothesis is only settled in the direction the open-minutes
     // figure can settle it.
     if (openMinutes === undefined) {

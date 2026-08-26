@@ -3,7 +3,7 @@ import { AdminLoginForm } from "./AdminLoginForm";
 import { AuthShell } from "@/components/auth/AuthShell";
 
 export const metadata: Metadata = {
-  title: "DentGrow Admin",
+  title: "OraMedha Admin",
   // Not advertised, and not indexed either. This is belt-and-braces on top of
   // the real control: authorisation is checked server-side on every request.
   robots: { index: false, follow: false },
@@ -28,10 +28,10 @@ export default function AdminLoginPage() {
     <AuthShell
       tone="admin"
       eyebrow="Restricted"
-      headline="DentGrow Admin"
+      headline="OraMedha Admin"
       subhead="Authorized access only. All sign-in attempts are checked against the platform administrator record."
       formTitle="Administrator sign-in"
-      formSubtitle="This entry point is for the DentGrow platform administrator."
+      formSubtitle="This entry point is for the OraMedha platform administrator."
       footer={
         <span className="text-text-body">
           Clinic staff and patients sign in from their own pages.

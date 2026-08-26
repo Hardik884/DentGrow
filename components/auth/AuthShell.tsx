@@ -5,7 +5,7 @@ import { AuthArtwork } from "./AuthArtwork";
 import { AuthThemeToggle } from "./AuthThemeToggle";
 
 /**
- * AuthShell — the frame every DentGrow sign-in page renders inside.
+ * AuthShell — the frame every OraMedha sign-in page renders inside.
  *
  * COMPOSITION
  *   An asymmetric two-column split on large screens: a painted brand canvas on
@@ -218,7 +218,7 @@ export function AuthShell({
           <Link
             href="/"
             className="flex items-center gap-2.5 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-surface lg:invisible"
-            aria-label="DentGrow home"
+            aria-label="OraMedha home"
           >
             <DentGrowLogo size={21} withWordmark />
           </Link>

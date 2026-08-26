@@ -222,7 +222,7 @@ function PatientAssistantInner({ patientId }: PatientAssistantProps) {
           aria-label="Restore AI Assistant"
         >
           <Bot className="h-4 w-4" aria-hidden />
-          <span className="text-xs font-medium">DentGrow Assistant</span>
+          <span className="text-xs font-medium">OraMedha Assistant</span>
           {unreadCount > 0 && (
             <span className="w-5 h-5 bg-danger text-danger-foreground text-[10px] font-bold rounded-full flex items-center justify-center">
               {unreadCount}
@@ -243,7 +243,7 @@ function PatientAssistantInner({ patientId }: PatientAssistantProps) {
       */}
       <div
         role="dialog"
-        aria-label="DentGrow AI Assistant"
+        aria-label="OraMedha AI Assistant"
         aria-modal="false"
         className={[
           "fixed z-40 flex flex-col bg-surface border border-border shadow-2xl overflow-hidden",
@@ -262,7 +262,7 @@ function PatientAssistantInner({ patientId }: PatientAssistantProps) {
           </div>
           <div className="flex-1 min-w-0">
             <h2 className="text-sm font-semibold text-accent-foreground leading-none">
-              DentGrow Assistant
+              OraMedha Assistant
             </h2>
             <p className="text-[11px] text-accent-foreground/70 mt-0.5">
               Ask about appointments, hours &amp; more

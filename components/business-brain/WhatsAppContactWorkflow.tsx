@@ -107,7 +107,7 @@ export function WhatsAppContactWorkflow({
 
         {state === "error" && (
           <p className="text-sm text-warning py-6 text-center">
-            Couldn&apos;t load the list right now. The rest of DentGrow still works.
+            Couldn&apos;t load the list right now. The rest of OraMedha still works.
           </p>
         )}
 
