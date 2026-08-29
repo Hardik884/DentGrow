@@ -56,8 +56,8 @@ type ToneStyle = {
    * sits on flat ground, and the artwork's bottom edge stops reading as a seam.
    */
   scrim: string;
-  /** The line under the panel. Different audiences deserve different notes. */
-  footnote: string;
+  /** The line under the panel. Different audiences deserve different notes. Optional — not every panel needs one. */
+  footnote?: string;
 };
 
 const TONES: Record<AuthTone, ToneStyle> = {
@@ -69,7 +69,6 @@ const TONES: Record<AuthTone, ToneStyle> = {
     glow: "#35A18F",
     wordmark: "text-white",
     scrim: "from-[#0B3B34] dark:from-[#06201C]",
-    footnote: "Patient data stays inside your clinic.",
   },
   patient: {
     // Light: the soft emerald from the DentGrow ramp, so the patient door feels
@@ -207,7 +206,9 @@ export function AuthShell({
           )}
         </div>
 
-        <p className={cn("relative text-xs", t.inkMuted)}>{t.footnote}</p>
+        {t.footnote && (
+          <p className={cn("relative text-xs", t.inkMuted)}>{t.footnote}</p>
+        )}
       </aside>
 
       {/* ── Form column ───────────────────────────────────────────────────── */}
