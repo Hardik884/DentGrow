@@ -25,12 +25,17 @@ export const metadata: Metadata = {
     template: "%s — OraMedha",
   },
   description: "AI-powered dental practice management",
+  // SVG first: it carries a prefers-color-scheme rule, so the mark is near-black
+  // on a light tab strip and near-white on a dark one. A single black PNG
+  // disappeared on dark tabs. The PNG stays as a fallback for anything that will
+  // not take an SVG favicon, and for the Apple touch icon, which must be raster.
   icons: {
     icon: [
-      { url: "/icon.png", type: "image/png" },
+      { url: "/icon.svg", type: "image/svg+xml" },
+      { url: "/icon.png", type: "image/png", sizes: "512x512" },
     ],
-    shortcut: "/icon.png",
-    apple: "/icon.png",
+    shortcut: "/icon.svg",
+    apple: "/apple-icon.png",
   },
 };
 
