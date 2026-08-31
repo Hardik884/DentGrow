@@ -1,82 +1,70 @@
-"use client";
-
-import { useId } from "react";
-import { MARK_ASPECT, MARK_PATH, MARK_VIEWBOX } from "@/lib/brand/mark";
+import { MARK_ASPECT, MARK_SRC } from "@/lib/brand/mark";
 
 /**
  * DentGrowLogo — the OraMedha mark.
  *
- * The mark is the supplied logo artwork, traced to vector (see
- * lib/brand/mark.ts): a tooth outline with a growth chart inside it and an
- * arrow sweeping through and away to the upper right.
+ * The mark is the supplied logo artwork, used as-is: an all-black PNG whose
+ * alpha channel is the shape (see lib/brand/mark.ts and brand/make-mark.mjs).
  *
  * SHAPE
- *   Landscape, not square — the arrow travels well past the tooth on the right.
- *   `size` is the mark's HEIGHT and the width follows from MARK_ASPECT, so call
- *   sites keep controlling the dimension that matters in a row of nav items.
+ *   Landscape and wide — roughly 2:1. `size` is the mark's HEIGHT and the width
+ *   follows from MARK_ASPECT, so call sites keep controlling the dimension that
+ *   matters in a row of nav items.
  *
  * COLOUR
- *   The artwork is a single flat silhouette, so the mark takes one fill. In
- *   `gradient` that fill is one diagonal ramp across the whole mark — deep
- *   emerald at the bottom-left to bright mint at the arrowhead, so it brightens
- *   along the arrow. The stops are DentGrow's own accent ramp (#0D6B5E and the
- *   lighter #35A18F dark mode already uses), not a separate brand palette.
+ *   Painted with `background-color` through a CSS mask rather than drawn as an
+ *   image, so one asset serves every surface and follows the theme:
  *
- * VARIANTS
- *   `gradient` (default) — for a neutral surface: sidebar, nav, forms.
- *   `mono` — `currentColor`, for a painted brand surface (the sign-in panels)
- *     where a second gradient would fight the panel.
+ *     `themed` (default) — `var(--text-primary)`: near-black (#151918) on light,
+ *       near-white (#F1F5F3) in dark mode. The same token the wordmark uses, so
+ *       mark and text always agree.
+ *     `mono` — `currentColor`, for a painted brand surface (the sign-in panels)
+ *       where the panel sets the colour and a themed mark would fight it.
+ *
+ *   The mask is what makes this possible. An `<img>` of a black PNG would be
+ *   invisible in dark mode and on the painted panel, and fixing that would mean
+ *   shipping a second white asset to keep in sync.
+ *
+ *   No longer a client component: with the gradient gone there is no generated
+ *   id to collide, so nothing here needs to run in the browser.
  *
  * @example
- *   <DentGrowLogo size={24} withWordmark />       // sidebar
+ *   <DentGrowLogo size={24} withWordmark />                  // sidebar
  *   <DentGrowLogo size={25} variant="mono" withWordmark />   // brand panel
  */
 
 /**
  * Wordmark font-size as a fraction of the mark's height.
  *
- * NOT 0.5, which is the intuitive "mark is twice the text" and is what this
- * started as. The mark is a landscape drawing — a tooth, a chart and an arrow —
- * and its optical mass is far greater than a run of glyphs at the same height,
- * so a 2:1 relationship makes it loom over the wordmark instead of sitting
- * beside it.
- *
- * Chosen by rendering the lockup at mark:font ratios from 2.1 down to 1.2 in
- * both the panel and sidebar contexts. Balance lands at ~1.5, which is what
- * this fraction produces (1 / 0.66).
+ * Raised from 0.66 when the mark changed. The previous mark was a solid tooth
+ * silhouette, nearly square, with far more optical mass than a run of glyphs at
+ * the same height — it needed the wordmark held back to stop it looming. The
+ * current mark is a thin open stroke at twice the width, so it reads much
+ * lighter, and the old ratio left the wordmark looking undersized beside it.
  */
-const WORDMARK_RATIO = 0.66;
+const WORDMARK_RATIO = 0.78;
 
 /** Gap between mark and wordmark, as a fraction of the wordmark's font size. */
-const LOCKUP_GAP_RATIO = 0.55;
+const LOCKUP_GAP_RATIO = 0.5;
 
 interface DentGrowLogoProps {
   /** HEIGHT of the mark in px; width follows from MARK_ASPECT. Default: 28. */
   size?: number;
   /** Render the "OraMedha" wordmark beside the mark. Default: false. */
   withWordmark?: boolean;
-  /** `gradient` for a neutral surface, `mono` for a painted brand surface. */
-  variant?: "gradient" | "mono";
+  /** `themed` for a normal surface, `mono` for a painted brand surface. */
+  variant?: "themed" | "mono";
   className?: string;
 }
 
 export function DentGrowLogo({
   size = 28,
   withWordmark = false,
-  variant = "gradient",
+  variant = "themed",
   className,
 }: DentGrowLogoProps) {
-  // The gradient needs a document-unique id: the sidebar renders a logo in both
-  // the desktop rail and the mobile header, and two <defs> sharing an id is
-  // invalid HTML that breaks the moment one of them unmounts.
-  //
-  // useId's output is stripped to alphanumerics first. React generates ids
-  // containing guillemets (React 19) or colons (React 18), and neither is safe
-  // inside an SVG `url(#...)` reference.
-  const gradientId = `dg-mark-${useId().replace(/[^a-zA-Z0-9]/g, "")}`;
-  const paint = variant === "mono" ? "currentColor" : `url(#${gradientId})`;
-
   const fontSize = Math.round(size * WORDMARK_RATIO);
+  const paint = variant === "mono" ? "currentColor" : "var(--text-primary)";
 
   return (
     <div
@@ -87,32 +75,29 @@ export function DentGrowLogo({
         gap: Math.round(fontSize * LOCKUP_GAP_RATIO),
       }}
     >
-      <svg
-        width={Math.round(size * MARK_ASPECT)}
-        height={size}
-        viewBox={MARK_VIEWBOX}
-        fill="none"
-        xmlns="http://www.w3.org/2000/svg"
+      <span
         role="img"
         aria-label="OraMedha"
-        style={{ flexShrink: 0, display: "block" }}
-      >
-        {variant === "gradient" && (
-          <defs>
-            {/* Bottom-left to top-right, so the ramp runs along the arrow. */}
-            <linearGradient id={gradientId} x1="0" y1="1" x2="1" y2="0">
-              <stop offset="0%" stopColor="#0A5347" />
-              <stop offset="45%" stopColor="#0D6B5E" />
-              <stop offset="100%" stopColor="#35A18F" />
-            </linearGradient>
-          </defs>
-        )}
-
-        {/* evenodd: the trace yields outer boundaries plus holes, and the
-            source artwork's overlapping parts mean winding order is not
-            reliable. See lib/brand/mark.ts. */}
-        <path fillRule="evenodd" clipRule="evenodd" d={MARK_PATH} fill={paint} />
-      </svg>
+        style={{
+          width: Math.round(size * MARK_ASPECT),
+          height: size,
+          flexShrink: 0,
+          display: "block",
+          backgroundColor: paint,
+          // -webkit- first for older Safari, which shipped the prefixed
+          // property years before the standard one.
+          WebkitMaskImage: `url("${MARK_SRC}")`,
+          maskImage: `url("${MARK_SRC}")`,
+          WebkitMaskRepeat: "no-repeat",
+          maskRepeat: "no-repeat",
+          WebkitMaskPosition: "center",
+          maskPosition: "center",
+          // `contain`, not `cover`: the mark must never be cropped, and its
+          // box is already set to the asset's own aspect ratio.
+          WebkitMaskSize: "contain",
+          maskSize: "contain",
+        }}
+      />
 
       {withWordmark && (
         <span
@@ -120,9 +105,8 @@ export function DentGrowLogo({
             fontSize,
             fontWeight: 600,
             letterSpacing: "-0.025em",
-            // In `mono` the mark and wordmark inherit together. In `gradient`
-            // the mark carries its own colour, but the wordmark is plain text
-            // on the page and has to follow the theme to stay readable.
+            // In `mono` the mark and wordmark inherit together. In `themed` both
+            // read the same token, so they stay matched in either theme.
             color: variant === "mono" ? "currentColor" : "var(--text-primary)",
             lineHeight: 1,
             userSelect: "none",

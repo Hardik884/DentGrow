@@ -1,38 +1,55 @@
 # Brand source
 
-`logo-source.png` is the OraMedha logo artwork. `trace-logo.py` converts it into
-the SVG path used by the app.
+`logo-source-v2.png` is the current OraMedha logo artwork, as supplied.
+`make-mark.mjs` turns it into the assets the app uses:
 
-**The logo path in `lib/brand/mark.ts` is generated from this file. Do not
-hand-edit it.** Earlier attempts hand-authored those curves from the artwork by
-eye and were never close enough; the trace is the artwork.
-
-## Re-tracing
-
-Needed only when the artwork itself changes. Requires Pillow (`pip install
-pillow`).
+| Output | Used by |
+|---|---|
+| `public/brand/oramedha-mark.png` | `components/shared/DentGrowLogo` |
+| `app/icon.png` | the favicon (`app/layout.tsx` metadata) |
 
 ```bash
-python brand/trace-logo.py brand/logo-source.png 720 0.6 48 traced.txt
+node brand/make-mark.mjs
 ```
 
-Arguments: source image, trace width in px, Ramer-Douglas-Peucker epsilon, and
-the corner threshold in degrees (turns sharper than this keep their crease, so
-the arrowhead stays pointed). The output file's first line is the viewBox; the
-rest is the path data. Both go into `lib/brand/mark.ts` as `MARK_VIEWBOX` and
-`MARK_PATH`.
+Requires `sharp`, which is already a project dependency.
 
-Raising the epsilon shrinks the path at the cost of fidelity; 0.6 gives ~10KB
-and is visually indistinguishable from the bitmap at every size the app renders.
+## What it produces, and why
 
-## What the tracer does
+Both outputs are **all black, with the shape carried in the alpha channel**. The
+supplied artwork is a blue-to-purple gradient on a near-white field; the gradient
+is discarded and only coverage is kept.
 
-Marching squares with sub-pixel interpolation over an antialiased downsample —
-so contours come out smooth rather than stair-stepped — then RDP simplification,
-then Catmull-Rom-to-Bezier smoothing with corner preservation.
+That is what lets one file serve every surface. The component paints the mark
+with `background-color` through a CSS mask, so it renders near-black on light
+backgrounds, near-white in dark mode, and white on the painted sign-in panel —
+all from the same PNG, all following the theme toggle. A coloured raster would
+need one file per surface and none of them could respond to a theme change.
 
-The artwork's tooth, bars and arrow overlap into one flat silhouette, so the
-trace produces outer boundaries plus holes. They are emitted as a single path
-rendered with `fill-rule: evenodd`, which is correct regardless of winding
-order. That is also why the mark takes a single fill and its parts cannot be
-coloured separately.
+Coverage comes from each pixel's distance to the background rather than a hard
+cutoff, so the anti-aliased edge survives as partial alpha instead of turning
+into a staircase.
+
+## Known limits
+
+- **Resolution.** The artwork was supplied as a screenshot, so the mark is
+  238x117. That is comfortable at the 21–28px heights the app renders at, and
+  thin at favicon size.
+- **The favicon is black on transparent**, so it is close to invisible on a dark
+  browser tab strip. Fixing that needs either a second light asset or an SVG
+  favicon with a `prefers-color-scheme` rule.
+- Both limits go away if a vector version of the artwork turns up. In that case
+  change `lib/brand/mark.ts` — swap `MARK_SRC` for a path export and update
+  `DentGrowLogo` to draw it. Nothing else in the app knows how the mark is
+  stored.
+
+## The previous mark
+
+`logo-source.png` and `trace-logo.py` produced the **old** tooth-and-arrow logo,
+which was traced to an SVG path. They are kept only as history — the app no
+longer uses either, and `MARK_PATH` no longer exists. Do not run the tracer
+expecting it to update the current logo.
+
+The dental arch behind the sign-in form is unrelated to the logo and is still a
+vector (`ARCH_TOOTH_PATH` in `lib/brand/mark.ts`), because it is stroked, scaled
+and rotated a dozen times per render.
