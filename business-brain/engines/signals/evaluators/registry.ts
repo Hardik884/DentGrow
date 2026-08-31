@@ -25,6 +25,8 @@ import { returningVolumeDroppingEvaluator } from "./retention/returning-volume-d
 import { highCancellationRateEvaluator } from "./scheduling/high-cancellation-rate";
 import { highNoShowRateEvaluator } from "./scheduling/high-no-show-rate";
 import { lowAppointmentVolumeEvaluator } from "./scheduling/low-appointment-volume";
+import { thinWeekAheadEvaluator } from "./scheduling/thin-week-ahead";
+import { repeatNonAttendanceEvaluator } from "./scheduling/repeat-non-attendance";
 import type { SignalEvaluator } from "./types";
 
 /** Every registered signal evaluator. */
@@ -38,6 +40,8 @@ export const EVALUATORS: readonly SignalEvaluator[] = [
   highCancellationRateEvaluator,
   highNoShowRateEvaluator,
   lowAppointmentVolumeEvaluator,
+  thinWeekAheadEvaluator,
+  repeatNonAttendanceEvaluator,
   // Retention / acquisition
   lowNewPatientsEvaluator,
   returningVolumeDroppingEvaluator,

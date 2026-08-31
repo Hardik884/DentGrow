@@ -46,6 +46,12 @@ export const HEALTHY_CLINIC: MetricValues = {
   [MetricKey.TREATMENT_COMPLETED_TODAY]: 7,
   [MetricKey.CAPACITY_CHAIR_UTILIZATION]: 78,
   [MetricKey.CAPACITY_AVAILABLE_SLOTS_TODAY]: 4,
+  // Comfortably above the 40% minimum. Present so this fixture stays what the
+  // suite calls it — a COMPLETE same-day metric set — now that a rule reads the
+  // week ahead. Without it the forward rule would skip and a healthy clinic
+  // would read as partially unmeasured.
+  [MetricKey.CAPACITY_BOOKED_NEXT_7D]: 72,
+  [MetricKey.SCHEDULING_REPEAT_NON_ATTENDERS_30D]: 0,
 };
 
 /** Full chair, almost nothing left to book. */

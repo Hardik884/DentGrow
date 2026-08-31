@@ -720,6 +720,11 @@ export const UpdateClinicSettingsSchema = z.object({
   // by zero. Capped at a level no single-site practice reaches, so a typo in a
   // number field cannot silently make every capacity reading meaningless.
   chair_count: z.number().int().min(1).max(50),
+  // Days since a patient's last visit before they count as due for reactivation.
+  // Mirrors the database CHECK (30..1095): below a month is a treatment plan
+  // rather than a recall, and beyond three years the patient has lapsed by any
+  // definition — either extreme would quietly distort the clinic's call-back list.
+  recall_interval_days: z.number().int().min(30).max(1095),
   timezone: z.string().min(1),
   registration_number: z.string().max(100).optional().or(z.literal("")),
   allow_receptionist_payments: z.boolean().default(false),
@@ -1074,3 +1079,23 @@ export const UpdateConsentTemplateSchema = z.object({
     .optional(),
 });
 export type UpdateConsentTemplateInput = z.infer<typeof UpdateConsentTemplateSchema>;
+
+/**
+ * Snoozing one Business Brain problem card.
+ *
+ * `days` is bounded at 90 deliberately. A snooze is a judgement about the clinic
+ * as it is today, and a year-long one is indistinguishable from deleting the
+ * check — the clinic would have changed underneath it long before it lapsed.
+ * The floor of 1 stops a zero-day snooze, which would insert a row that suppresses
+ * nothing and reads as a bug.
+ *
+ * `reason` is required. See `dismissProblem` for why: an unexplained snooze
+ * cannot be reviewed later, and the reasons are what tell us which false
+ * positives deserve a real schema fix.
+ */
+export const DismissProblemSchema = z.object({
+  category: z.string().min(1).max(64),
+  severityAtDismissal: z.enum(["info", "low", "medium", "high", "critical"]),
+  reason: z.string().trim().min(3).max(500),
+  days: z.number().int().min(1).max(90),
+});

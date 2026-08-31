@@ -3,6 +3,7 @@ import { getPatientsWithOutstandingBalance } from "@/actions/payments";
 import { formatCurrency } from "@/lib/utils";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PaymentFormDialog } from "@/components/dentist/PaymentFormDialog";
+import { PaymentPlanControl } from "./PaymentPlanControl";
 import { ACTION_BUTTON } from "@/lib/ui/action-styles";
 import { CreditCard, Plus } from "lucide-react";
 
@@ -68,6 +69,12 @@ export async function PendingPaymentsList({ search, basePath = "/dentist" }: Pen
                 {patient.phone && (
                   <p className="text-xs text-text-disabled">{patient.phone}</p>
                 )}
+                <div className="mt-1">
+                  <PaymentPlanControl
+                    patientId={patient.id}
+                    paymentPlanUntil={patient.paymentPlanUntil}
+                  />
+                </div>
               </div>
               <div className="flex items-center gap-3 shrink-0">
                 <span className="text-sm font-semibold text-danger">

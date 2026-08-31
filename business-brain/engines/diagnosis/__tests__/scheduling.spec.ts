@@ -16,6 +16,7 @@ import {
   ATTRITION_CANCELLATION_DOMINANT,
   ATTRITION_NO_SHOW_DOMINANT,
   HEALTHY,
+  REPEAT_NON_ATTENDANCE,
   type MetricValues,
 } from "./fixtures/run-fixtures";
 
@@ -143,6 +144,34 @@ describe("schedule_attrition", () => {
   it("stays silent on a healthy day", () => {
     expect(patternsOf(diagnoseMetrics(HEALTHY))).not.toContain(
       DiagnosisPattern.SCHEDULE_ATTRITION,
+    );
+  });
+});
+
+describe("repeat_non_attendance", () => {
+  it("fires on a day whose headline attrition numbers are entirely normal", () => {
+    // The blind spot this closes: REPEAT_NON_ATTENDANCE is built on HEALTHY, so
+    // there is one cancellation, no no-shows, and the rate signals cannot fire.
+    // schedule_attrition therefore never runs — and the clinic still has three
+    // patients who have each missed more than once.
+    const result = diagnoseMetrics(REPEAT_NON_ATTENDANCE);
+    expect(patternsOf(result)).toContain(DiagnosisPattern.REPEAT_NON_ATTENDANCE);
+    expect(patternsOf(result)).not.toContain(DiagnosisPattern.SCHEDULE_ATTRITION);
+  });
+
+  it("settles the same cause schedule_attrition can only reach through entity data", () => {
+    const diagnosis = pick(
+      diagnoseMetrics(REPEAT_NON_ATTENDANCE),
+      DiagnosisPattern.REPEAT_NON_ATTENDANCE,
+    );
+    // Sharing the slug is what makes the Strategy Engine dedupe the two routes
+    // into one piece of advice instead of two near-identical recommendations.
+    expect(statuses(diagnosis)).toMatchObject({ patient_level_pattern: "supported" });
+  });
+
+  it("stays silent when nobody has missed more than once", () => {
+    expect(patternsOf(diagnoseMetrics(HEALTHY))).not.toContain(
+      DiagnosisPattern.REPEAT_NON_ATTENDANCE,
     );
   });
 });

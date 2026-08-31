@@ -6,6 +6,10 @@ import { isBusinessBrainEnabled, isWhatsAppEnabled } from "@/lib/feature-flags";
 import { runDashboardBrain } from "@/lib/business-brain/dashboard-data";
 import { computeClinicHealth } from "@/lib/business-brain/clinic-health";
 import { buildBriefing } from "@/lib/business-brain/briefing-view";
+import { readActiveDismissals, isSuppressed } from "@/lib/business-brain/dismissals";
+import { readReminderOutcomes } from "@/lib/business-brain/reminder-outcomes";
+import { ReminderOutcomes } from "@/components/business-brain/ReminderOutcomes";
+import { createServerClient } from "@/lib/supabase/server";
 import { getReminderSummaries } from "@/actions/messaging";
 import type { ReminderSummary } from "@/lib/messaging/reminder-types";
 import { BRIEFING_MESSAGE_KINDS } from "@/lib/messaging/templates";
@@ -85,7 +89,36 @@ export default async function BusinessBrainPage() {
     },
   });
 
-  const { problems, actions } = buildBriefing(result, result.metrics, patientCounts);
+  // Problems the clinic has snoozed and that have not since got worse. Resolved
+  // here rather than inside the projection: it needs the database, and the
+  // escalation check needs each constraint's CURRENT severity, so this is the
+  // only place that has both. A read failure yields an empty set, which shows
+  // everything — the safe direction.
+  const supabase = await createServerClient();
+  const dismissals = await readActiveDismissals(
+    supabase as never,
+    profile.clinic_id,
+    new Date().toISOString(),
+  );
+  const suppressedCategories = new Set(
+    result.constraints
+      .filter((c) => isSuppressed(dismissals.get(c.category), c.severity))
+      .map((c) => c.category),
+  );
+
+  const { problems, actions } = buildBriefing(
+    result,
+    result.metrics,
+    patientCounts,
+    suppressedCategories,
+  );
+
+  // Only meaningful where reminders can actually be sent, so it shares the
+  // WhatsApp gate rather than appearing as an empty panel for clinics that have
+  // never had the affordance.
+  const reminderOutcomes = whatsappEnabled
+    ? await readReminderOutcomes(supabase as never, profile.clinic_id, new Date().toISOString())
+    : [];
 
   return (
     <PageShell subtitle={formatDate(date)}>
@@ -96,6 +129,9 @@ export default async function BusinessBrainPage() {
         whatsappEnabled={whatsappEnabled}
         reminderSummaries={reminderSummaries}
       />
+      {/* Last, and deliberately: the page's job is what to do today. This is a
+          look back, useful but never the headline. */}
+      <ReminderOutcomes outcomes={reminderOutcomes} />
     </PageShell>
   );
 }

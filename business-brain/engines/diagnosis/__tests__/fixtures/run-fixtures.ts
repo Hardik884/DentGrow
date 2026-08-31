@@ -87,6 +87,12 @@ export const HEALTHY: MetricValues = {
   [MetricKey.TREATMENT_COMPLETED_TODAY]: 7,
   [MetricKey.CAPACITY_CHAIR_UTILIZATION]: 78,
   [MetricKey.CAPACITY_AVAILABLE_SLOTS_TODAY]: 4,
+  // Comfortably above the 40% minimum, so the forward-schedule rule is DECIDABLE
+  // in every scenario built on this baseline and measurably finds nothing.
+  // Omitting it would make the rule skip everywhere, which the engine correctly
+  // reports as lower decidability — a fixture gap reading as a weaker run.
+  [MetricKey.CAPACITY_BOOKED_NEXT_7D]: 72,
+  [MetricKey.SCHEDULING_REPEAT_NON_ATTENDERS_30D]: 0,
 };
 
 /** Idle chairs, thin book, and a large accepted-treatment backlog. */
@@ -232,6 +238,34 @@ export const RECALL_BACKLOG: MetricValues = {
 export const HIGH_OUTSTANDING: MetricValues = {
   ...HEALTHY,
   [MetricKey.REVENUE_OUTSTANDING]: 40_000,
+};
+
+/**
+ * A thin week ahead, with today itself perfectly healthy.
+ *
+ * Built on HEALTHY on purpose: it is the case that proves the forward finding
+ * stands on its own. Nothing about today is wrong, so no today-pattern fires,
+ * and the only thing the engine has to report is a week that can still be
+ * filled — which is exactly the situation every other rule in the catalogue is
+ * blind to.
+ */
+export const FORWARD_SCHEDULE_GAP: MetricValues = {
+  ...HEALTHY,
+  [MetricKey.CAPACITY_BOOKED_NEXT_7D]: 18,
+};
+
+/**
+ * Three patients each missing more than once, on a day whose headline attrition
+ * numbers are entirely normal.
+ *
+ * Built on HEALTHY deliberately: today shows one cancellation and no no-shows,
+ * so `high_no_show_rate` cannot fire and `schedule_attrition` never runs. This is
+ * the clinic that used to see nothing at all despite having a three-name list
+ * worth working — the exact blind spot the pattern closes.
+ */
+export const REPEAT_NON_ATTENDANCE: MetricValues = {
+  ...HEALTHY,
+  [MetricKey.SCHEDULING_REPEAT_NON_ATTENDERS_30D]: 3,
 };
 
 /**

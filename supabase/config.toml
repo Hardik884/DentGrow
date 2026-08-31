@@ -165,14 +165,16 @@ site_url = "http://localhost:3000"
 # The public URL that Auth serves on. Defaults to the API external URL with `/auth/v1` appended.
 # external_url = ""
 # A list of *exact* URLs that auth providers are permitted to redirect to post authentication.
-# DentGrow uses a PKCE/token-hash callback handler (app/auth/callback/route.ts) for
+# OraMedha uses a PKCE/token-hash callback handler (app/auth/callback/route.ts) for
 # email confirmation and password recovery. Both the callback route and the
 # reset-password page must be explicitly allow-listed or those links will be rejected.
 additional_redirect_urls = [
   "http://localhost:3000/auth/callback",
   "http://localhost:3000/reset-password",
+  "http://localhost:3000/portal/setup",
   "http://127.0.0.1:3000/auth/callback",
   "http://127.0.0.1:3000/reset-password",
+  "http://127.0.0.1:3000/portal/setup",
 ]
 # How long tokens are valid for, in seconds. Defaults to 3600 (1 hour), maximum 604,800 (1 week).
 jwt_expiry = 3600
@@ -210,8 +212,19 @@ password_requirements = ""
 # rp_origins = ["http://127.0.0.1:3000"]
 
 [auth.rate_limit]
-# Number of emails that can be sent per hour. Requires auth.email.smtp to be enabled.
-email_sent = 2
+# Number of emails that can be sent per hour. LOCAL ONLY — see the warning
+# above about `supabase config push`.
+#
+# 30 because the CLI's default of 2 is below the number of confirmation emails a
+# single e2e run generates: the suite would start failing on rate limits rather
+# than on defects, which is a test that reports the wrong thing.
+#
+# This deliberately does NOT match the hosted project. Supabase pins the
+# built-in service at 2/hour and does not let anyone raise it; Resend, once
+# configured, runs at 30. Local is a place to exercise the flow, not a
+# simulation of either quota — the per-user gap below is the limit that shapes
+# the UI, and that one IS matched.
+email_sent = 30
 # Number of SMS messages that can be sent per hour. Requires auth.sms to be enabled.
 sms_sent = 30
 # Number of anonymous sign-ins that can be made per hour per IP address. Requires enable_anonymous_sign_ins = true.
@@ -238,7 +251,18 @@ enable_signup = true
 # addresses. If disabled, only the new email is required to confirm.
 double_confirm_changes = true
 # If enabled, users need to confirm their email address before signing in.
-enable_confirmations = false
+#
+# ON, deliberately. A patient portal account is the key to a person's clinical
+# and billing history, so the address on it has to be proven to belong to them
+# before it can be used — otherwise a typo'd or borrowed address hands someone
+# else a live account, and every password-reset link after that goes to the
+# wrong inbox.
+#
+# Local development is not inconvenienced by this: the confirmation email lands
+# in Mailpit (http://127.0.0.1:55324), where the link is one click away. Turning
+# this off to make signup quicker would mean the local flow no longer resembles
+# the one in production, which is how a broken confirmation ships unnoticed.
+enable_confirmations = true
 # If enabled, users will need to reauthenticate or have logged in recently to change their password.
 secure_password_change = false
 # Controls the minimum amount of time that must pass before sending another signup confirmation or password reset email.
@@ -249,19 +273,41 @@ otp_length = 6
 otp_expiry = 3600
 
 # Use a production-ready SMTP server
+#
 # [auth.email.smtp]
 # enabled = true
-# host = "smtp.sendgrid.net"
+# host = "smtp.resend.com"
 # port = 587
-# user = "apikey"
-# pass = "env(SENDGRID_API_KEY)"
-# admin_email = "admin@email.com"
-# sender_name = "Admin"
+# user = "resend"
+# pass = "env(RESEND_SMTP_PASSWORD)"
+# admin_email = "env(AUTH_SMTP_SENDER_EMAIL)"
+# sender_name = "OraMedha"
 
-# Uncomment to customize email template
-# [auth.email.template.invite]
-# subject = "You have been invited"
-# content_path = "./supabase/templates/invite.html"
+# ── Email templates ───────────────────────────────────────────────────────────
+#
+# The OraMedha-branded bodies Supabase renders. They apply locally (visible in
+# Mailpit) and are pushed to production by `npm run auth:email:push`, so what a
+# developer sees in Mailpit is what a patient receives.
+#
+# Every link in them is a {{ .TokenHash }} link handled by /auth/callback rather
+# than {{ .ConfirmationURL }}, so confirming on a different device than the one
+# that signed up works. See supabase/templates/_README.md.
+
+[auth.email.template.confirmation]
+subject = "Verify your email for OraMedha"
+content_path = "./supabase/templates/confirmation.html"
+
+[auth.email.template.recovery]
+subject = "Reset your OraMedha password"
+content_path = "./supabase/templates/recovery.html"
+
+[auth.email.template.email_change]
+subject = "Confirm your new OraMedha email address"
+content_path = "./supabase/templates/email_change.html"
+
+[auth.email.template.invite]
+subject = "You've been invited to OraMedha"
+content_path = "./supabase/templates/invite.html"
 
 # Uncomment to customize notification email template
 # [auth.email.notification.password_changed]
@@ -402,7 +448,7 @@ deno_version = 2
 
 [analytics]
 # Disabled: the Logflare analytics container is optional local tooling that
-# DentGrow does not use, and it fails its health check on this stack
+# OraMedha does not use, and it fails its health check on this stack
 # ("could not find persistent term for endpoint LogflareWeb.Endpoint"), which
 # aborts `supabase start` after migrations have already applied successfully.
 # Turning it off makes local provisioning deterministic. Re-enable if local log

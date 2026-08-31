@@ -136,6 +136,10 @@ export function measurableSnapshot(): ClinicDataSnapshot {
       appointments: [appointment({ scheduledAt: "2026-07-30T10:00:00.000Z" })],
       openChairMinutes: 300,
     }),
+    // Present (empty) rather than absent, so revenue.outstanding_on_payment_plan
+    // is measured — 0, legitimately — instead of withheld on the one snapshot
+    // this suite asserts produces every declared key.
+    patientsOnPaymentPlan: new Set(),
   });
 }
 

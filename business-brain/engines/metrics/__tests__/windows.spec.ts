@@ -190,6 +190,30 @@ describe("reactivationCandidates", () => {
     expect(valueOf(reactivationCandidates, s)).toBe(0);
   });
 
+  it("uses the clinic's own recall interval when the snapshot supplies one", () => {
+    // Seen 2026-05-01, three months before the run date. A general practice on
+    // the 180-day default has not lapsed them; an orthodontic list reviewing
+    // every 8 weeks has, and calling them is the whole point of the metric.
+    const roster = [
+      rosterEntry({ lastVisit: "2026-05-01T10:00:00.000Z", hasUpcomingAppointment: false }),
+    ];
+    expect(valueOf(reactivationCandidates, snapshot({ patientRoster: roster }))).toBe(0);
+    expect(
+      valueOf(reactivationCandidates, snapshot({ patientRoster: roster, recallIntervalDays: 56 })),
+    ).toBe(1);
+  });
+
+  it("falls back to the global default when no clinic interval is set", () => {
+    // Backwards compatibility, stated as a test: every clinic that has never
+    // configured an interval must keep exactly the behaviour it had before.
+    const roster = [
+      rosterEntry({ lastVisit: "2026-05-01T10:00:00.000Z", hasUpcomingAppointment: false }),
+    ];
+    expect(valueOf(reactivationCandidates, snapshot({ patientRoster: roster }))).toBe(
+      valueOf(reactivationCandidates, snapshot({ patientRoster: roster, recallIntervalDays: 180 })),
+    );
+  });
+
   it("excludes a patient who has never attended — that is acquisition, not lapse", () => {
     const s = snapshot({
       patientRoster: [rosterEntry({ lastVisit: null, hasUpcomingAppointment: false })],

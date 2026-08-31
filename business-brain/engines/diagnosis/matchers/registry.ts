@@ -25,6 +25,8 @@ import { recallProcessFailureMatcher } from "./retention/recall-process-failure"
 import { recallBacklogMatcher } from "./retention/recall-backlog";
 import { acquisitionShortfallMatcher } from "./acquisition/acquisition-shortfall";
 import { scheduleAttritionMatcher } from "./scheduling/schedule-attrition";
+import { forwardScheduleGapMatcher } from "./scheduling/forward-schedule-gap";
+import { repeatNonAttendanceMatcher } from "./scheduling/repeat-non-attendance";
 import type { PatternMatcher } from "./types";
 
 /** Every registered pattern matcher. */
@@ -35,6 +37,8 @@ export const MATCHERS: readonly PatternMatcher[] = [
   capacityCeilingMatcher,
   // Scheduling
   scheduleAttritionMatcher,
+  forwardScheduleGapMatcher,
+  repeatNonAttendanceMatcher,
   // Financial
   collectionGapMatcher,
   revenueShortfallMatcher,

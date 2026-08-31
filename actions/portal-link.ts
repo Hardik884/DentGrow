@@ -5,7 +5,11 @@ import { revalidatePath } from "next/cache";
 import { createServerClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getClinicById } from "@/actions/clinics";
-import { clearSignupClinic, clearSignupPhone } from "@/lib/clinic-session";
+import {
+  clearSignupClinic,
+  clearSignupPhone,
+  clearSignupEmail,
+} from "@/lib/clinic-session";
 import {
   LinkPortalAccountSchema,
   type ActionResult,
@@ -284,6 +288,9 @@ async function _clearSignupCookies(): Promise<void> {
   try {
     await clearSignupClinic();
     await clearSignupPhone();
+    // The pending-verification address too: the account is confirmed and
+    // linked, so /patient/verify-email has nothing left to wait for.
+    await clearSignupEmail();
   } catch {
     // Cookie store may be unavailable in some execution contexts — ignore.
   }

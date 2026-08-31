@@ -37,6 +37,17 @@ export const SignalType = {
   SCHEDULING_HIGH_CANCELLATION_RATE: "scheduling.high_cancellation_rate",
   SCHEDULING_HIGH_NO_SHOW_RATE: "scheduling.high_no_show_rate",
   SCHEDULING_LOW_APPOINTMENT_VOLUME: "scheduling.low_appointment_volume",
+  /**
+   * The only FORWARD-looking signal in the set. Every other rule reports a day
+   * that is already over; this one reports a week that can still be filled.
+   */
+  SCHEDULING_THIN_WEEK_AHEAD: "scheduling.thin_week_ahead",
+  /**
+   * Attrition concentrated in a few patients rather than spread across the base.
+   * Fires independently of the no-show RATE: a clinic can sit comfortably under
+   * its rate threshold and still have three people missing repeatedly.
+   */
+  SCHEDULING_REPEAT_NON_ATTENDANCE: "scheduling.repeat_non_attendance",
   // Retention / acquisition
   ACQUISITION_LOW_NEW_PATIENTS: "acquisition.low_new_patients",
   RETENTION_RETURNING_VOLUME_DROPPING: "retention.returning_volume_dropping",

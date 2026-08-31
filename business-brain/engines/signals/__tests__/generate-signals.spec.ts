@@ -207,8 +207,8 @@ describe("generateSignals — scenarios", () => {
     expect(result.confidence).toBe(0);
     expect(result.confidenceBasis).toBe("input_coverage");
     // one index trace, one trace per evaluator, one run summary
-    expect(result.traces).toHaveLength(20);
-    expect(result.traces.filter((t) => t.reasoning.startsWith("Skipped:"))).toHaveLength(18);
+    expect(result.traces).toHaveLength(22);
+    expect(result.traces.filter((t) => t.reasoning.startsWith("Skipped:"))).toHaveLength(20);
   });
 });
 

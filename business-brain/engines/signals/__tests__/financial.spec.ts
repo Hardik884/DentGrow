@@ -67,6 +67,42 @@ describe("revenue.high_outstanding", () => {
   it("stays silent within the limit", () => {
     expect(highOutstandingEvaluator.evaluate(context(HEALTHY_CLINIC)).kind).toBe("no_signal");
   });
+
+  it("judges the UNMANAGED portion when a payment-plan figure is supplied", () => {
+    // LOW_REVENUE_CLINIC carries 62,000 outstanding against the 25,000 default
+    // limit. With 40,000 of it under an agreed plan, only 22,000 is unmanaged —
+    // below the limit, so the signal must not fire.
+    const outcome = highOutstandingEvaluator.evaluate(
+      context({
+        ...LOW_REVENUE_CLINIC,
+        [MetricKey.REVENUE_OUTSTANDING_ON_PAYMENT_PLAN]: 40_000,
+      }),
+    );
+    expect(outcome.kind).toBe("no_signal");
+  });
+
+  it("still fires when the unmanaged remainder clears the limit", () => {
+    const signal = expectSignal(
+      highOutstandingEvaluator,
+      context({
+        ...LOW_REVENUE_CLINIC,
+        [MetricKey.REVENUE_OUTSTANDING_ON_PAYMENT_PLAN]: 10_000,
+      }),
+    );
+    // 62,000 total − 10,000 managed = 52,000 unmanaged, which is what gets graded.
+    expect(signal.description).toContain("52,000");
+    expect(signal.description).toContain("10,000");
+  });
+
+  it("behaves exactly as before when no payment-plan metric is supplied", () => {
+    // Backwards compatibility, stated as a test: no confidence penalty, no
+    // change in outcome, for every repository that doesn't support this yet.
+    const withPlanMetric = highOutstandingEvaluator.evaluate(context(LOW_REVENUE_CLINIC));
+    expect(withPlanMetric.kind).toBe("signal");
+    if (withPlanMetric.kind === "signal") {
+      expect(withPlanMetric.signal.confidence).toBe(1);
+    }
+  });
 });
 
 describe("revenue.outstanding_increasing", () => {

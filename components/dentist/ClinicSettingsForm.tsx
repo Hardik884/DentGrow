@@ -70,6 +70,7 @@ export function ClinicSettingsForm({ initialSettings }: ClinicSettingsFormProps)
       address: initialSettings?.address ?? "",
       average_appointment_duration: initialSettings?.average_appointment_duration ?? 30,
       chair_count: initialSettings?.chair_count ?? 1,
+      recall_interval_days: initialSettings?.recall_interval_days ?? 180,
       timezone: initialSettings?.timezone ?? "Asia/Kolkata",
       registration_number: initialSettings?.registration_number ?? "",
       allow_receptionist_payments: initialSettings?.allow_receptionist_payments ?? false,
@@ -181,6 +182,31 @@ export function ClinicSettingsForm({ initialSettings }: ClinicSettingsFormProps)
                   <option key={c} value={c}>
                     {c} {c === 1 ? "chair" : "chairs"}
                   </option>
+                ))}
+              </Select>
+            </Field>
+
+            <Field
+              label="Recall Interval"
+              htmlFor="recall_interval_days"
+              required
+              hint="How long after a visit a patient is due back — drives the reactivation call list"
+            >
+              <Select
+                id="recall_interval_days"
+                {...register("recall_interval_days", { valueAsNumber: true })}
+                disabled={isSubmitting}
+              >
+                {[
+                  { days: 42, label: "6 weeks" },
+                  { days: 56, label: "8 weeks" },
+                  { days: 90, label: "3 months" },
+                  { days: 120, label: "4 months" },
+                  { days: 180, label: "6 months (standard)" },
+                  { days: 270, label: "9 months" },
+                  { days: 365, label: "12 months" },
+                ].map((o) => (
+                  <option key={o.days} value={o.days}>{o.label}</option>
                 ))}
               </Select>
             </Field>

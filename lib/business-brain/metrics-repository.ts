@@ -75,6 +75,7 @@ interface ClinicSettingsRow {
   timezone: string | null;
   average_appointment_duration: number | null;
   chair_count: number | null;
+  recall_interval_days: number | null;
 }
 interface AppointmentRow {
   id: string;
@@ -215,7 +216,7 @@ export class SupabaseMetricsDataRepository implements MetricsDataRepository {
     // capacity, so they must be resolved before anything date-scoped runs.
     const { data: settings } = await this.db
       .from("clinic_settings")
-      .select("timezone, average_appointment_duration, chair_count")
+      .select("timezone, average_appointment_duration, chair_count, recall_interval_days")
       .eq("clinic_id", clinicId)
       .maybeSingle();
 
@@ -264,6 +265,7 @@ export class SupabaseMetricsDataRepository implements MetricsDataRepository {
       followUps,
       patientsWithFutureAppointment,
       roster,
+      patientsOnPaymentPlan,
       trailingAppointments,
       forwardAppointments,
     ] = await Promise.all([
@@ -275,6 +277,7 @@ export class SupabaseMetricsDataRepository implements MetricsDataRepository {
       this.fetchFollowUps(clinicId, date),
       this.fetchPatientsWithFutureAppointments(clinicId, asOf),
       this.fetchPatientRoster(clinicId, asOf),
+      this.fetchPatientsOnPaymentPlan(clinicId, date),
       this.fetchAppointmentsInRange(clinicId, trailingFrom, date, timezone),
       this.fetchAppointmentsInRange(clinicId, forwardFrom, forwardTo, timezone),
     ]);
@@ -336,6 +339,11 @@ export class SupabaseMetricsDataRepository implements MetricsDataRepository {
         lastVisit: p.last_visit,
         hasUpcomingAppointment: patientsWithFutureAppointment.has(p.id),
       })),
+      // Per-clinic recall interval, where the clinic has set one. Passed through
+      // rather than defaulted here: the calculator owns the fallback, so there is
+      // one place that decides what "no interval configured" means.
+      recallIntervalDays: cfg?.recall_interval_days ?? undefined,
+      patientsOnPaymentPlan,
     };
   }
 
@@ -534,6 +542,26 @@ export class SupabaseMetricsDataRepository implements MetricsDataRepository {
    * a long time. It is derived from completed appointments instead, which carry
    * their own dates and can therefore be asked about any moment.
    */
+  /**
+   * Patients currently under an agreed payment plan — `payment_plan_until` set
+   * and not yet passed.
+   *
+   * Independent of {@link fetchPatientRoster}'s historical, creation-date-bounded
+   * query: a payment plan is a fact about the clinic's arrangement TODAY, not
+   * something that needs asking about as of an arbitrary past date, so it is its
+   * own small query rather than folded into the roster's shape.
+   */
+  private async fetchPatientsOnPaymentPlan(clinicId: string, date: string): Promise<Set<string>> {
+    const { data, error } = await this.db
+      .from("patients")
+      .select("id")
+      .eq("clinic_id", clinicId)
+      .is("deleted_at", null)
+      .gte("payment_plan_until", date);
+    if (error) throw new Error(`patients (payment plan): ${error.message}`);
+    return new Set(rows<{ id: string }>(data).map((p) => p.id));
+  }
+
   private async fetchPatientRoster(clinicId: string, asOf: string): Promise<PatientRosterRow[]> {
     const [rosterResult, visitsResult] = await Promise.all([
       this.db

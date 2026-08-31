@@ -265,6 +265,7 @@ export type Database = {
           email: string | null
           enable_xray_charges: boolean
           phone: string | null
+          recall_interval_days: number
           registration_number: string | null
           show_consultancy_on_dashboard: boolean
           timezone: string
@@ -284,6 +285,7 @@ export type Database = {
           email?: string | null
           enable_xray_charges?: boolean
           phone?: string | null
+          recall_interval_days?: number
           registration_number?: string | null
           show_consultancy_on_dashboard?: boolean
           timezone?: string
@@ -303,6 +305,7 @@ export type Database = {
           email?: string | null
           enable_xray_charges?: boolean
           phone?: string | null
+          recall_interval_days?: number
           registration_number?: string | null
           show_consultancy_on_dashboard?: boolean
           timezone?: string
@@ -1137,6 +1140,7 @@ export type Database = {
           last_visit: string | null
           name: string
           notes: string | null
+          payment_plan_until: string | null
           phone: string | null
           portal_registered_at: string | null
           total_visits: number
@@ -1157,6 +1161,7 @@ export type Database = {
           last_visit?: string | null
           name: string
           notes?: string | null
+          payment_plan_until?: string | null
           phone?: string | null
           portal_registered_at?: string | null
           total_visits?: number
@@ -1177,6 +1182,7 @@ export type Database = {
           last_visit?: string | null
           name?: string
           notes?: string | null
+          payment_plan_until?: string | null
           phone?: string | null
           portal_registered_at?: string | null
           total_visits?: number
@@ -1314,6 +1320,54 @@ export type Database = {
             columns: ["treatment_id"]
             isOneToOne: false
             referencedRelation: "treatments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      problem_dismissals: {
+        Row: {
+          category: string
+          clinic_id: string
+          created_at: string
+          dismissed_by: string | null
+          expires_at: string
+          id: string
+          reason: string
+          severity_at_dismissal: string
+        }
+        Insert: {
+          category: string
+          clinic_id: string
+          created_at?: string
+          dismissed_by?: string | null
+          expires_at: string
+          id?: string
+          reason: string
+          severity_at_dismissal: string
+        }
+        Update: {
+          category?: string
+          clinic_id?: string
+          created_at?: string
+          dismissed_by?: string | null
+          expires_at?: string
+          id?: string
+          reason?: string
+          severity_at_dismissal?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "problem_dismissals_clinic_id_fkey"
+            columns: ["clinic_id"]
+            isOneToOne: false
+            referencedRelation: "clinics"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "problem_dismissals_dismissed_by_fkey"
+            columns: ["dismissed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]

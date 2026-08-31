@@ -10,6 +10,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { Metric } from "@/business-brain";
+import { ConstraintCategory } from "@/business-brain";
 import { computeClinicHealth } from "../clinic-health";
 
 /** Build a metric whose id matches the "<key>:<clinic>:<date>" lookup prefix. */
@@ -23,6 +24,31 @@ function metric(key: string, value: number): Metric {
     timestamp: "2026-08-06T06:30:00.000Z",
   };
 }
+
+describe("deduction categories", () => {
+  it("every deduction names a real constraint category", () => {
+    // The briefing marks a deduction "tracked" when its category has no problem
+    // card. A typo here would not throw and would not fail any other test — the
+    // line would simply read "tracked" forever, including when a card for it is
+    // sitting directly underneath. Pinning the strings is what makes that
+    // silent-wrongness impossible.
+    const health = computeClinicHealth([
+      metric("revenue.outstanding", 60_000),
+      metric("treatment.accepted_pending_scheduling", 5),
+      metric("followups.overdue", 5),
+      metric("scheduling.no_show_rate_30d", 40),
+      metric("capacity.chair_utilization", 20),
+      metric("queue.average_waiting_time", 50),
+    ]);
+
+    // All six factors fire, so this covers every category the rubric can emit.
+    expect(health.deductions).toHaveLength(6);
+    const valid = new Set<string>(Object.values(ConstraintCategory));
+    for (const d of health.deductions) {
+      expect(valid, `"${d.category}" is not a ConstraintCategory`).toContain(d.category);
+    }
+  });
+});
 
 describe("computeClinicHealth", () => {
   it("scores a clean clinic 100 with no deductions", () => {
@@ -191,5 +217,36 @@ describe("computeClinicHealth", () => {
     const overdue = health.deductions.find((d) => d.factor === "Overdue recalls");
     expect(overdue?.detail).toBe("3 patients overdue for a check-up reminder");
     expect(overdue?.points).toBe(9);
+  });
+});
+
+describe("outstanding balance, netted against a payment plan", () => {
+  it("scores the unmanaged remainder, not the total", () => {
+    // 60,000 total, 45,000 already under an agreed plan → 15,000 unmanaged,
+    // which bands at 6 points rather than the 18 the raw total would cost.
+    const health = computeClinicHealth([
+      metric("revenue.outstanding", 60_000),
+      metric("revenue.outstanding_on_payment_plan", 45_000),
+    ]);
+    const deduction = health.deductions.find((d) => d.factor === "Unpaid balances");
+    expect(deduction?.points).toBe(6);
+    expect(deduction?.detail).toContain("15,000");
+    expect(deduction?.detail).toContain("payment plan");
+  });
+
+  it("drops the factor entirely once the plan covers everything", () => {
+    const health = computeClinicHealth([
+      metric("revenue.outstanding", 30_000),
+      metric("revenue.outstanding_on_payment_plan", 30_000),
+    ]);
+    expect(health.deductions.find((d) => d.factor === "Unpaid balances")).toBeUndefined();
+    expect(health.score).toBe(100);
+  });
+
+  it("behaves exactly as before when no payment-plan metric is supplied", () => {
+    const health = computeClinicHealth([metric("revenue.outstanding", 60_000)]);
+    const deduction = health.deductions.find((d) => d.factor === "Unpaid balances");
+    expect(deduction?.points).toBe(18);
+    expect(deduction?.detail).not.toContain("payment plan");
   });
 });

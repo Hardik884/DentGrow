@@ -525,6 +525,25 @@ const CORRECTIVE_TEMPLATES: Readonly<Record<string, WorkflowTemplate>> = {
     ],
     outcome: { description: "Cleared the overdue recall backlog before those patients lapsed", valueType: ValueType.RETENTION_IMPROVED },
   },
+
+  forward_schedule_gap: {
+    title: "Fill next week's open slots this week",
+    reason: "The coming week is booked below normal while there is still time to fill it",
+    owner: WorkflowOwner.RECEPTIONIST,
+    effort: WorkflowEffort.MODERATE,
+    // THIS_WEEK, not SOON: the whole value of this finding is that it arrives
+    // while the days it describes can still be sold. Deferring it turns the one
+    // warning the engine can give into another report of a week already lost.
+    timeframe: WorkflowTimeframe.THIS_WEEK,
+    tasks: [
+      { order: 1, instruction: "Open next week's schedule and note which days are thinnest", hint: "Appointments → next 7 days" },
+      { order: 2, instruction: "Pull patients with planned treatment and no next visit booked", hint: "Treatments → planned" },
+      { order: 3, instruction: "Pull patients whose recall is overdue", hint: "Follow-ups → pending" },
+      { order: 4, instruction: "Call both lists and offer a specific day and time from the open slots" },
+      { order: 5, instruction: "Book on the call rather than promising to ring back" },
+    ],
+    outcome: { description: "Filled open chair time in the week ahead before it passed", valueType: ValueType.APPOINTMENTS_BOOKED },
+  },
 };
 
 /**
@@ -623,6 +642,23 @@ const INVESTIGATIVE_TEMPLATES: Readonly<Record<ConstraintCategory, WorkflowTempl
       { order: 4, instruction: "Note findings for the next analysis cycle" },
     ],
     outcome: { description: "Identified the cause of declining new-patient flow" },
+  },
+
+  [ConstraintCategory.FORWARD_SCHEDULE]: {
+    title: "Investigate why the coming week is filling slowly",
+    reason: "Next week is booked below normal and the reason is not visible in the data",
+    owner: WorkflowOwner.DENTIST,
+    effort: WorkflowEffort.QUICK,
+    // THIS_WEEK even for the investigative version: the question is only worth
+    // answering while the week it concerns is still ahead.
+    timeframe: WorkflowTimeframe.THIS_WEEK,
+    tasks: [
+      { order: 1, instruction: "Check that next week's hours are published and bookable" },
+      { order: 2, instruction: "Confirm no block or leave is closing slots unintentionally" },
+      { order: 3, instruction: "Note whether the gap is one quiet day or spread across the week" },
+      { order: 4, instruction: "Record findings so the next analysis can separate the cause" },
+    ],
+    outcome: { description: "Identified why the week ahead is filling below normal" },
   },
 };
 

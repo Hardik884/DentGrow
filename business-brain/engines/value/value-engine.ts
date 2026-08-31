@@ -103,6 +103,19 @@ const VALUE_BY_CATEGORY: Readonly<Record<ConstraintCategory, ValueSpec | null>> 
   // became an appointment leaves no record at all. Sizing acquisition from what
   // did arrive would measure the opposite of the thing.
   [ConstraintCategory.ACQUISITION]: null,
+  // Unsized, and honestly so. What is at stake in a thin week is the chair time
+  // still open across it — minutes — but the only forward measurement the engine
+  // has is an OCCUPANCY PERCENTAGE (`capacity.booked_next_7d`). There is no
+  // metric for the minutes the next 7 days offer, so the minutes cannot be
+  // derived, and publishing the percentage as a Value would put a number in a
+  // field that means money, minutes, appointments or patients, and mean none of
+  // them.
+  //
+  // The percentage is not lost: the briefing states it in the problem's own
+  // summary line, where a share reads as a share. Sizing this properly needs a
+  // `capacity.open_minutes_next_7d` metric, at which point this becomes a
+  // MINUTES spec like CAPACITY above.
+  [ConstraintCategory.FORWARD_SCHEDULE]: null,
 };
 
 export interface ValueResult {

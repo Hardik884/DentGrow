@@ -54,13 +54,21 @@ export function returningPatientsToday(s: ClinicDataSnapshot): Metric {
  *
  * WITHHELD when the snapshot carries no roster: the repository could not supply
  * the data, which is different from a clinic having nobody to reactivate.
+ *
+ * The interval is PER CLINIC where the snapshot supplies one. Recall frequency
+ * is a clinical judgement, not a property of the software: an orthodontic list
+ * reviews every 6-8 weeks and an implant-led one runs far longer, and judging
+ * both against a single six-month constant puts patients on the call list months
+ * early or — silently, which is worse — leaves them off it long after they
+ * lapsed. `METRIC_WINDOWS.REACTIVATION_DAYS` remains the fallback, so a clinic
+ * that has never set one behaves exactly as before.
  */
 export function reactivationCandidates(s: ClinicDataSnapshot): Metric | null {
   const roster = s.patientRoster;
   if (roster === undefined) {
     return null;
   }
-  const cutoff = addDays(s.date, -METRIC_WINDOWS.REACTIVATION_DAYS);
+  const cutoff = addDays(s.date, -(s.recallIntervalDays ?? METRIC_WINDOWS.REACTIVATION_DAYS));
   const value = roster.filter(
     (p) =>
       p.lastVisit !== null &&

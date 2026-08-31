@@ -24,6 +24,12 @@ import { ACCOUNTS, CLINICS, attemptSignIn, signInStaff } from "./helpers/auth";
  */
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "http://127.0.0.1:55321";
+/**
+ * The local mail catcher every Auth email lands in (supabase/config.toml
+ * [local_smtp]). Production sends the identical message through Resend SMTP
+ * instead; nothing in this suite ever touches that account.
+ */
+const MAILPIT_URL = process.env.E2E_MAILPIT_URL ?? "http://127.0.0.1:55324";
 const THEME_KEY = "dentgrow-theme";
 
 async function localSupabaseReachable(): Promise<boolean> {
@@ -213,9 +219,20 @@ test.describe("authentication", () => {
       await page.getByLabel("Confirm password").fill("password123");
       await submit.click();
 
-      // Signup hands off to the linking step, scoped to the chosen clinic.
-      await page.waitForURL("**/portal/setup**", { timeout: 30_000 });
-      await expect(page.getByText(CLINICS.liying).first()).toBeVisible();
+      // Email confirmation is ON, so signUp returns no session and the account
+      // cannot be used yet. Signup therefore hands off to the "check your
+      // email" screen, not to the linking step — /portal/setup at this moment
+      // would be a page that cannot do anything and does not say why.
+      await page.waitForURL("**/patient/verify-email**", { timeout: 30_000 });
+      await expect(
+        page.getByRole("heading", { name: "Check your email" })
+      ).toBeVisible();
+
+      // The address is echoed back masked: enough to catch a typo, not enough
+      // to read off a shared screen. The full local part must never appear.
+      const local = email.split("@")[0];
+      await expect(page.getByText(`${local[0]}••••@dentgrow.test`)).toBeVisible();
+      await expect(page.getByText(local, { exact: true })).toHaveCount(0);
     });
 
     test("signing up with an address that already exists is explained, not swallowed", async ({
@@ -233,10 +250,12 @@ test.describe("authentication", () => {
       await page.getByLabel("Confirm password").fill("password123");
       await page.getByRole("button", { name: "Create account" }).click();
 
-      // Supabase may either report the duplicate or (when "confirm email" is
-      // on) accept it silently and send a confirmation instead. Either way the
-      // user must not be dropped into someone else's portal.
-      await page.waitForURL(/\/(patient\/signup|portal\/setup)/, { timeout: 30_000 });
+      // Supabase may either report the duplicate or — because "confirm email"
+      // is on — accept it silently rather than confirm the address exists.
+      // Either way the user must not be dropped into someone else's portal.
+      await page.waitForURL(/\/(patient\/signup|patient\/verify-email|portal\/setup)/, {
+        timeout: 30_000,
+      });
       await expect(page).not.toHaveURL(/\/portal$/);
     });
 
@@ -244,6 +263,172 @@ test.describe("authentication", () => {
       await page.goto("/signup");
       await expect(page).toHaveURL(/\/patient\/signup/);
     });
+  });
+
+  // ══ Email verification ══════════════════════════════════════════════════
+  //
+  // The screen between "account created" and "account usable". It sends no
+  // email of its own: "Resend email" calls Supabase Auth's own resend, which
+  // goes out over whatever SMTP the project has (Mailpit here, Resend in
+  // production).
+
+  test.describe("verification — /patient/verify-email", () => {
+    /** Register a fresh patient and stop on the verification screen. */
+    async function signUpAndWait(page: Page): Promise<string> {
+      const email = `e2e-verify-${Date.now()}@dentgrow.test`;
+
+      await page.goto("/patient/signup");
+      await page.getByRole("combobox").first().click();
+      await page.getByRole("option", { name: CLINICS.liying }).click();
+      await page.getByLabel("Full name").fill("E2E Verify");
+      await page.getByLabel("Phone number").fill(`97${String(Date.now()).slice(-8)}`);
+      await page.getByLabel("Email address").fill(email);
+      await page.getByLabel("Password", { exact: true }).fill("password123");
+      await page.getByLabel("Confirm password").fill("password123");
+      await page.getByRole("button", { name: "Create account" }).click();
+      await page.waitForURL("**/patient/verify-email**", { timeout: 30_000 });
+
+      return email;
+    }
+
+    test("explains what happened and offers both ways out", async ({ page }) => {
+      await signUpAndWait(page);
+
+      await expect(page.getByText("Verification link sent to")).toBeVisible();
+      await expect(page.getByRole("button", { name: "Change email" })).toBeVisible();
+      // The resend control is present in one of its two states.
+      await expect(
+        page.getByRole("button", { name: /Resend email|Resend in \d+s/ })
+      ).toBeVisible();
+    });
+
+    test("resend opens already counting down, because signup just sent one", async ({
+      page,
+    }) => {
+      await signUpAndWait(page);
+
+      // Supabase measures its throttle from the confirmation SIGNUP sent, so on
+      // arrival a resend would be refused. An enabled button here would hand the
+      // patient a guaranteed rejection and read as a broken system; the
+      // countdown says the same thing truthfully and before the click.
+      const cooling = page.getByRole("button", { name: /Resend in \d+s/ });
+      await expect(cooling).toBeVisible();
+      await expect(cooling).toBeDisabled();
+
+      // And it really is counting, not just stuck.
+      const first = Number(/(\d+)/.exec((await cooling.textContent()) ?? "")![1]);
+      await expect
+        .poll(
+          async () => Number(/(\d+)/.exec((await cooling.textContent()) ?? "")?.[1] ?? first),
+          { timeout: 15_000 }
+        )
+        .toBeLessThan(first);
+    });
+
+    test("'Change email' returns to signup with the address dropped", async ({ page }) => {
+      await signUpAndWait(page);
+
+      await page.getByRole("button", { name: "Change email" }).click();
+      await page.waitForURL("**/patient/signup**", { timeout: 30_000 });
+
+      // The pending address is gone, so the verification screen has nothing
+      // left to wait for and sends visitors to sign-in instead.
+      await page.goto("/patient/verify-email");
+      await expect(page).toHaveURL(/\/patient\/login/);
+    });
+
+    test("a dead link is explained where it can be fixed, not on a blank form", async ({
+      page,
+    }) => {
+      await signUpAndWait(page);
+
+      // What /auth/callback redirects to when verifyOtp rejects a spent or
+      // expired signup token.
+      await page.goto("/patient/verify-email?error=link");
+
+      const alert = page.locator('[role="alert"]').filter({ hasText: /expired/i });
+      await expect(alert).toBeVisible();
+      // …next to the control that fixes it, rather than on a page that offers
+      // no way forward.
+      await expect(
+        page.getByRole("button", { name: /Resend email|Resend in \d+s/ })
+      ).toBeVisible();
+    });
+
+    test("'Resend email' really delivers a second message", async ({ page }) => {
+      // Deliberately longer than the default: this waits out Supabase's real
+      // throttle window rather than mocking it, because the thing worth proving
+      // is that a second message is actually accepted and delivered by the
+      // configured SMTP server — Mailpit here, Resend in production.
+      test.setTimeout(180_000);
+
+      const email = await signUpAndWait(page);
+
+      const delivered = async () => {
+        const res = await fetch(
+          `${MAILPIT_URL}/api/v1/search?query=${encodeURIComponent(`to:${email}`)}`
+        );
+        if (!res.ok) return 0;
+        const body = (await res.json()) as { messages?: unknown[] };
+        return body.messages?.length ?? 0;
+      };
+
+      // Signup itself sent the first one.
+      await expect.poll(delivered, { timeout: 30_000 }).toBe(1);
+
+      // Wait for the throttle to lift, then send again for real.
+      const resend = page.getByRole("button", { name: /Resend email|Resend in \d+s/ });
+      await expect(resend).toBeEnabled({ timeout: 90_000 });
+      await resend.click();
+
+      await expect(
+        page.getByRole("status").filter({ hasText: "Verification email sent" })
+      ).toBeVisible({ timeout: 30_000 });
+
+      await expect.poll(delivered, { timeout: 30_000 }).toBe(2);
+    });
+
+    test("is unreachable without a pending signup", async ({ page }) => {
+      await page.goto("/patient/verify-email");
+      await expect(page).toHaveURL(/\/patient\/login/);
+    });
+
+    for (const theme of ["light", "dark"] as const) {
+      test(`${theme}: renders without horizontal overflow from 320px up`, async ({
+        page,
+      }) => {
+        await forceTheme(page, theme);
+        await signUpAndWait(page);
+
+        for (const width of [320, 360, 390, 768, 1440]) {
+          await page.setViewportSize({ width, height: 860 });
+          await page.goto("/patient/verify-email", { waitUntil: "networkidle" });
+
+          const scrolls = await page.evaluate(
+            () =>
+              document.documentElement.scrollWidth >
+              document.documentElement.clientWidth + 1
+          );
+          expect(scrolls, `overflow at ${width}px (${theme})`).toBe(false);
+
+          // Both recovery paths stay reachable and comfortably tappable.
+          // The resend control is matched loosely because it may be showing its
+          // cooldown label.
+          for (const name of [/Resend email|Resend in \d+s/, /Change email/]) {
+            const box = await page.getByRole("button", { name }).boundingBox();
+            expect(box, `${name} missing at ${width}px`).not.toBeNull();
+            expect(box!.height).toBeGreaterThanOrEqual(44);
+          }
+
+          if (width === 390 || width === 1440) {
+            await page.screenshot({
+              path: `test-results/auth/${theme}_verify-email_${width}.png`,
+              fullPage: true,
+            });
+          }
+        }
+      });
+    }
   });
 
   // ══ Admin ═══════════════════════════════════════════════════════════════
@@ -258,7 +443,7 @@ test.describe("authentication", () => {
       await page.getByRole("button", { name: "Continue" }).click();
 
       await page.waitForURL("**/admin", { timeout: 30_000 });
-      await expect(page.getByRole("heading", { name: "DentGrow Admin" })).toBeVisible();
+      await expect(page.getByRole("heading", { name: "OraMedha Admin" })).toBeVisible();
 
       await page.screenshot({
         path: "test-results/auth/admin-console.png",
@@ -307,7 +492,7 @@ test.describe("authentication", () => {
 
       await page.goto("/admin");
       await expect(page).toHaveURL(/\/dentist(\/|$)/);
-      await expect(page.getByRole("heading", { name: "DentGrow Admin" })).toHaveCount(0);
+      await expect(page.getByRole("heading", { name: "OraMedha Admin" })).toHaveCount(0);
 
       // And the admin sign-in page itself doesn't offer them a second chance.
       await page.goto("/admin/login");

@@ -51,9 +51,14 @@ export function MorningBriefing({
   const actionByProblemId = new Map(actions.map((a) => [a.problemId, a]));
   const summaryByKind = whatsappEnabled ? new Map(reminderSummaries.map((s) => [s.kind, s])) : null;
 
+  // Which problem categories actually have a card below, so the health breakdown
+  // can mark the deductions that do not. Derived from the rendered cards rather
+  // than restated, so it cannot disagree with what is on screen.
+  const coveredCategories = new Set(actions.map((a) => a.category));
+
   return (
     <div className="space-y-6">
-      <HealthMeter health={health} />
+      <HealthMeter health={health} coveredCategories={coveredCategories} />
 
       {allClear ? (
         <div className="bg-surface border border-border rounded-xl px-6 py-10 text-center">

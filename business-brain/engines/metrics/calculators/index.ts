@@ -22,6 +22,7 @@ import {
 import {
   revenueCollectedToday,
   outstandingPayments,
+  outstandingOnPaymentPlan,
   pendingTreatmentValue,
   production30d,
   collectionRate30d,
@@ -45,6 +46,7 @@ import {
 import {
   cancellationRate30d,
   noShowRate30d,
+  repeatNonAttenders30d,
   bookingLeadTimeDays,
 } from "./scheduling-metrics";
 
@@ -69,6 +71,7 @@ export const METRIC_CALCULATORS: readonly MetricCalculator[] = [
   // Scheduling (trailing window)
   cancellationRate30d,
   noShowRate30d,
+  repeatNonAttenders30d,
   bookingLeadTimeDays,
   // Patients
   newPatientsToday,
@@ -77,6 +80,7 @@ export const METRIC_CALCULATORS: readonly MetricCalculator[] = [
   // Revenue
   revenueCollectedToday,
   outstandingPayments,
+  outstandingOnPaymentPlan,
   pendingTreatmentValue,
   production30d,
   collectionRate30d,

@@ -239,6 +239,36 @@ export interface ClinicDataSnapshot {
   readonly patientRoster?: readonly PatientRosterEntry[];
 
   /**
+   * Days since a patient's last visit before they count as due for reactivation,
+   * for THIS clinic.
+   *
+   * OPTIONAL. Recall frequency is a clinical judgement that varies by practice
+   * type — orthodontic lists review in weeks, implant-led ones in years — so a
+   * single global constant is wrong for anyone who is not a general practice.
+   * When a repository supplies one, `patients.reactivation_candidates` uses it;
+   * when it does not, the metric falls back to the global default and behaves
+   * exactly as it always has.
+   *
+   * Optional rather than required on purpose: making it mandatory would force
+   * every existing repository and every test fixture to state a number, which
+   * would have meant inventing one in a dozen places that have no opinion.
+   */
+  readonly recallIntervalDays?: number;
+
+  /**
+   * Patient ids whose outstanding balance is currently under an agreed payment
+   * plan with the clinic — `patients.payment_plan_until >= today`, resolved by
+   * the repository.
+   *
+   * OPTIONAL, and its absence means something different from an empty set. Not
+   * supplied: no repository support, so `revenue.outstanding_on_payment_plan` is
+   * WITHHELD and `revenue.high_outstanding` reads the whole outstanding total
+   * exactly as it always has. An empty set: the repository looked and nobody
+   * currently has one — a real, reportable zero.
+   */
+  readonly patientsOnPaymentPlan?: ReadonlySet<string>;
+
+  /**
    * The trailing schedule window ending on `date` (inclusive).
    *
    * Rates and averages need a denominator larger than one day. Dentistry is

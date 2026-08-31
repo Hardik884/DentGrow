@@ -12,7 +12,11 @@ import {
   clearSignupClinic,
   setSignupPhone,
   clearSignupPhone,
+  setSignupEmail,
+  getSignupEmail,
+  clearSignupEmail,
 } from "@/lib/clinic-session";
+import { describeEmailSendFailure } from "@/lib/auth/verification";
 import type { ActionResult } from "@/types";
 
 /**
@@ -308,15 +312,20 @@ export async function signUpPatient(
 
   const supabase = await createServerClient();
 
-  const { error: signUpError } = await supabase.auth.signUp({
+  const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
     email,
     password,
     options: {
       data: fullName ? { full_name: fullName } : undefined,
-      // Redirect after email confirmation — handled by Supabase Auth.
-      // Origin is resolved from the live request so the link is correct per
+      // Where Supabase is permitted to send the confirmed patient. The link in
+      // the email itself is built from the project's Site URL by the template
+      // (supabase/templates/confirmation.html), but this value still has to be
+      // an allow-listed URL for the signup to be accepted, and it is what a
+      // default template would use.
+      //
+      // Origin is resolved from the live request so it is correct per
       // environment (never a build-time-baked localhost URL in production).
-      emailRedirectTo: await getAppUrl("/portal/setup"),
+      emailRedirectTo: await getAppUrl("/auth/callback?next=/portal/setup"),
     },
   });
 
@@ -328,6 +337,20 @@ export async function signUpPatient(
         error: "An account with this email already exists. Try signing in instead.",
       };
     }
+
+    // Signup can fail on the SEND rather than on the account — most visibly
+    // when the project is on Supabase's built-in email service, which delivers
+    // only to addresses on the project's team and rejects everyone else. That
+    // is a configuration problem wearing the costume of a bad password, so it
+    // gets its own explanation instead of "check your details and try again".
+    const failure = describeEmailSendFailure(signUpError.message);
+    if (failure.kind !== "unknown") {
+      if (failure.kind === "not_authorized") {
+        console.error("[signUpPatient] recipient refused by the mail transport:", signUpError.message);
+      }
+      return { data: null, error: failure.message };
+    }
+
     return { data: null, error: friendlyAuthError(signUpError.message) };
   }
 
@@ -336,10 +359,107 @@ export async function signUpPatient(
   await setSignupClinic(clinicId);
   await setSelectedClinic(clinicId);
   if (phone) await setSignupPhone(phone);
+  await setSignupEmail(email);
 
-  // Redirect immediately to setup — if email confirmation is required,
-  // the setup page will surface the "check your email" message.
+  // Where to send them next depends on whether Supabase confirmed the address
+  // on the spot. With email confirmation ON — which is how DentGrow runs — no
+  // session comes back and the account cannot be used until the link in the
+  // email is clicked, so anything other than the "check your email" screen
+  // would be a dead end. Read from the response rather than from configuration,
+  // so this stays correct whichever way the project is configured.
+  if (!signUpData.session) {
+    redirect("/patient/verify-email");
+  }
+
   redirect("/portal/setup");
+}
+
+// ── Verification email resend — /patient/verify-email ────────────────────────
+
+/**
+ * resendVerificationEmail
+ *
+ * Asks SUPABASE AUTH to send the signup confirmation again. This is Supabase's
+ * own `auth.resend` — DentGrow does not mint tokens, does not template the
+ * message and never talks to the email provider itself. The message goes out
+ * over whatever SMTP the project is configured with (Resend in production,
+ * Mailpit locally), exactly like the first one did.
+ *
+ * The address comes from the httpOnly cookie written at signup, never from the
+ * form, so a visitor cannot use this endpoint to aim a confirmation email at
+ * an address of their choosing.
+ *
+ * Enumeration-safe: Supabase answers the same way whether or not the account
+ * exists. Failures are classified by describeEmailSendFailure so the patient is
+ * told which of the two things they can act on has happened — wait, because one
+ * has just gone out, or stop, because the transport will not carry mail to that
+ * address at all. Neither reveals whether the account exists.
+ */
+export async function resendVerificationEmail(
+  _prevState: ActionResult<{ sent: true }>,
+  _formData: FormData
+): Promise<ActionResult<{ sent: true }>> {
+  const email = await getSignupEmail();
+
+  if (!email) {
+    return {
+      data: null,
+      error:
+        "We've lost track of which address to use. Please start again from the sign-up page.",
+    };
+  }
+
+  try {
+    const supabase = await createServerClient();
+    const { error } = await supabase.auth.resend({
+      type: "signup",
+      email,
+      options: {
+        emailRedirectTo: await getAppUrl("/auth/callback?next=/portal/setup"),
+      },
+    });
+
+    if (error) {
+      const failure = describeEmailSendFailure(error.message);
+
+      // A throttle is the patient's own recent click and needs no log. The
+      // other two mean the project's mail transport is refusing work, which a
+      // developer has to see — with the real wording, which never reaches the
+      // screen (CLAUDE.md §13.1).
+      if (failure.kind !== "throttled") {
+        console.error(
+          `[resendVerificationEmail] ${failure.kind}:`,
+          error.message
+        );
+      }
+
+      return { data: null, error: failure.message };
+    }
+
+    // Re-stamp the cookie so the cooldown is measured from THIS send. Without
+    // it, reloading the page would show a button that looks ready and isn't.
+    await setSignupEmail(email);
+  } catch (err) {
+    console.error("[resendVerificationEmail] unexpected:", err);
+    return { data: null, error: "Something went wrong. Please try again." };
+  }
+
+  return { data: { sent: true }, error: null };
+}
+
+/**
+ * abandonSignupEmail
+ *
+ * "Change email" on the verification screen. Drops the pending address (and the
+ * phone prefill that went with it) and returns to the sign-up form, so the
+ * patient starts cleanly rather than re-submitting on top of half a session.
+ * The clinic choice is kept — they picked it a minute ago and it is the one
+ * thing they are unlikely to want to change.
+ */
+export async function abandonSignupEmail(): Promise<void> {
+  await clearSignupEmail();
+  await clearSignupPhone();
+  redirect("/patient/signup");
 }
 
 // ── Sign Out ───────────────────────────────────────────────────────────────────
@@ -382,6 +502,7 @@ export async function signOut(): Promise<void> {
   await clearSelectedClinic();
   await clearSignupClinic();
   await clearSignupPhone();
+  await clearSignupEmail();
   redirect(destination);
 }
 
@@ -485,8 +606,15 @@ export async function requestPasswordReset(
         redirectTo: await getAppUrl("/auth/callback?next=/reset-password"),
       });
       // A genuine send failure is a system problem, not an existence signal.
+      //
+      // The classification is logged, never returned: this action reaches here
+      // ONLY for an address that turned out to be reset-eligible, so echoing
+      // "that address is not authorized" back to the browser would confirm the
+      // account exists and is a patient — exactly what the generic response
+      // above exists to hide. The operator gets the detail in the log instead.
       if (error) {
-        console.error("[requestPasswordReset] send failed:", error);
+        const failure = describeEmailSendFailure(error.message);
+        console.error(`[requestPasswordReset] ${failure.kind}:`, error.message);
         return {
           data: null,
           error: "We couldn't send the reset email. Please try again.",

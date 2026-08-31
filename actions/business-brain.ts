@@ -13,7 +13,8 @@ import { addDays } from "@/business-brain";
 import { getClinicConfig } from "@/lib/clinic/config";
 import { getTodayInTimezone } from "@/lib/utils";
 import { persistMetricRange, type PersistResult } from "@/lib/business-brain/persist-metrics";
-import type { ActionResult } from "@/types";
+import { revalidatePath } from "next/cache";
+import { DismissProblemSchema, type ActionResult } from "@/types";
 
 /**
  * Business Brain — AI explanation Server Action.
@@ -172,5 +173,74 @@ export async function recordMetricHistory(days = 30): Promise<ActionResult<Persi
   } catch (error) {
     console.error("[recordMetricHistory]", error);
     return { data: null, error: "Could not record metric history." };
+  }
+}
+
+/**
+ * Snooze one problem category for this clinic.
+ *
+ * Records a decision, never a measurement. The pipeline still computes the
+ * problem in full on every run; this only stops the briefing drawing its card
+ * while the snooze stands.
+ *
+ * Two guards make a snooze safe to offer at all:
+ *
+ * 1. It EXPIRES. `days` is bounded, so a decision made today cannot silently
+ *    govern the clinic six months from now.
+ * 2. It is bound to the severity the problem carried when dismissed
+ *    (`severityAtDismissal`). If the problem escalates a band the card returns
+ *    immediately, whatever the expiry says — see `isSuppressed`. Without that, a
+ *    snooze on "3 patients owe money" would keep hiding it at 40 patients.
+ *
+ * A reason is required rather than optional: a snooze with no reason is
+ * indistinguishable from a mis-click when it is read back weeks later, and the
+ * reasons are how we learn which false positives are worth fixing in the schema
+ * instead of papering over.
+ */
+export async function dismissProblem(input: {
+  category: string;
+  severityAtDismissal: string;
+  reason: string;
+  days: number;
+}): Promise<ActionResult<{ expiresAt: string }>> {
+  try {
+    const { db, profile } = await resolveSession();
+    if (!profile || profile.role !== "dentist") {
+      return { data: null, error: "Forbidden" };
+    }
+    if (!isBusinessBrainEnabled(profile.clinic_id)) {
+      return { data: null, error: "Not available for this clinic." };
+    }
+
+    const parsed = DismissProblemSchema.safeParse(input);
+    if (!parsed.success) {
+      return { data: null, error: parsed.error.issues[0]?.message ?? "Invalid input." };
+    }
+
+    const expiresAt = new Date(
+      Date.now() + parsed.data.days * 24 * 60 * 60 * 1000,
+    ).toISOString();
+
+    const { error } = await db.from("problem_dismissals").insert({
+      clinic_id: profile.clinic_id,
+      category: parsed.data.category,
+      severity_at_dismissal: parsed.data.severityAtDismissal,
+      reason: parsed.data.reason.trim(),
+      expires_at: expiresAt,
+      dismissed_by: profile.id,
+    });
+    if (error) {
+      console.error("[dismissProblem]", error.message);
+      return { data: null, error: "Could not snooze this problem." };
+    }
+
+    // The briefing is a server render, so it has to be re-read for the card to
+    // disappear. Revalidating here rather than relying on the client keeps the
+    // page's own data the single source of what is shown.
+    revalidatePath("/dentist/business-brain");
+    return { data: { expiresAt }, error: null };
+  } catch (error) {
+    console.error("[dismissProblem]", error);
+    return { data: null, error: "Could not snooze this problem." };
   }
 }

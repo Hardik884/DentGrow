@@ -168,3 +168,47 @@ export function collected30d(s: ClinicDataSnapshot): Metric {
   );
   return buildMetric(MetricKey.REVENUE_COLLECTED_30D, value, s.clinicId, s.date, s.asOf);
 }
+
+/**
+ * Portion of the outstanding total covered by an agreed payment plan.
+ *
+ * Sums each payment-plan patient's own clamped outstanding balance (charges
+ * minus payments, floored at zero — the same per-patient clamp
+ * {@link outstandingPayments} uses), never a flat share of the clinic total. A
+ * flat share would misrepresent a patient whose plan covers a small balance as
+ * if it covered a proportional slice of everyone else's debt too.
+ *
+ * WITHHELD, never zero, when the snapshot carries no `patientsOnPaymentPlan` —
+ * that means no repository support, not "nobody is on a plan". An empty (but
+ * present) set legitimately returns 0.
+ */
+export function outstandingOnPaymentPlan(s: ClinicDataSnapshot): Metric | null {
+  const onPlan = s.patientsOnPaymentPlan;
+  if (onPlan === undefined) return null;
+
+  const chargedByPatient = new Map<string, number>();
+  const paidByPatient = new Map<string, number>();
+
+  for (const t of s.treatments) {
+    if (!t.patientId || !onPlan.has(t.patientId)) continue;
+    const charge = treatmentTotalCharge(t);
+    if (charge === 0) continue;
+    chargedByPatient.set(t.patientId, (chargedByPatient.get(t.patientId) ?? 0) + charge);
+  }
+  for (const p of s.payments) {
+    if (!p.patientId || !onPlan.has(p.patientId)) continue;
+    paidByPatient.set(p.patientId, (paidByPatient.get(p.patientId) ?? 0) + p.amount);
+  }
+
+  let value = 0;
+  for (const [patientId, charged] of chargedByPatient) {
+    value += Math.max(0, charged - (paidByPatient.get(patientId) ?? 0));
+  }
+  return buildMetric(
+    MetricKey.REVENUE_OUTSTANDING_ON_PAYMENT_PLAN,
+    value,
+    s.clinicId,
+    s.date,
+    s.asOf,
+  );
+}

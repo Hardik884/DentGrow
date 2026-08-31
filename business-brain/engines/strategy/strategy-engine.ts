@@ -147,6 +147,13 @@ const CORRECTIVE_BY_HYPOTHESIS: Readonly<
       "The lost appointments are spread across patients and slots rather than concentrated, the pattern that shows when reminders are not reaching people. Put a day-before reminder call or message on every booking and tick each one off, so no appointment goes unconfirmed.",
   },
 
+  // ── Scheduling: forward_schedule_gap ──────────────────────────────────────
+  forward_schedule_gap: {
+    title: "Fill next week from the patients already waiting on you",
+    description:
+      "The coming week is booked below normal while there is still time to change it. Work two lists into the open slots before they pass: patients with planned treatment and no next visit, and patients whose recall is overdue. Both have already chosen this clinic, so they are the cheapest appointments available to fill a thin week with.",
+  },
+
   // ── Financial: collection_gap ─────────────────────────────────────────────
   systemic_process: {
     title: "Collect at checkout, every time",
@@ -357,6 +364,7 @@ const INVESTIGATIVE_BY_CATEGORY: Readonly<Record<ConstraintCategory, string>> = 
     "why patients with planned treatment are leaving without a next visit booked",
   [ConstraintCategory.RETENTION]: "why patients are not coming back",
   [ConstraintCategory.ACQUISITION]: "why fewer new patients are arriving",
+  [ConstraintCategory.FORWARD_SCHEDULE]: "why the coming week is filling more slowly than usual",
 };
 
 /**
@@ -375,6 +383,7 @@ const VALUE_TYPES_BY_CATEGORY: Readonly<Record<ConstraintCategory, readonly Valu
   [ConstraintCategory.SCHEDULING]: [ValueType.APPOINTMENTS_BOOKED],
   [ConstraintCategory.RETENTION]: [ValueType.RETENTION_IMPROVED],
   [ConstraintCategory.ACQUISITION]: [ValueType.OTHER],
+  [ConstraintCategory.FORWARD_SCHEDULE]: [ValueType.APPOINTMENTS_BOOKED],
 };
 
 /** Hypothesis slug from its `<diagnosisId>#h.<slug>` id. */

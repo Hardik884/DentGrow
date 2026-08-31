@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   BILLABLE_TREATMENT_STATUSES,
+  outstandingOnPaymentPlan,
   outstandingPayments,
   pendingTreatmentValue,
   revenueCollectedToday,
@@ -189,3 +190,46 @@ describe("pendingTreatmentValue", () => {
   });
 });
 
+
+describe("outstandingOnPaymentPlan", () => {
+  it("is WITHHELD, never zero, when the snapshot carries no payment-plan set", () => {
+    // Absence must mean "no repository support", never "nobody has one" — the
+    // same withheld-not-zero discipline every other optional input follows.
+    const s = snapshot({
+      treatments: [treatment({ patientId: "A", cost: 5000, status: "completed" })],
+    });
+    expect(outstandingOnPaymentPlan(s)).toBeNull();
+  });
+
+  it("reports 0 when the set is present but empty — a real, reportable fact", () => {
+    const s = snapshot({
+      treatments: [treatment({ patientId: "A", cost: 5000, status: "completed" })],
+      patientsOnPaymentPlan: new Set(),
+    });
+    expect(valueOf(outstandingOnPaymentPlan, s)).toBe(0);
+  });
+
+  it("sums only the plan patients' own clamped balance, not a share of the total", () => {
+    const s = snapshot({
+      treatments: [
+        treatment({ patientId: "A", cost: 50_000, status: "completed" }),
+        treatment({ patientId: "B", cost: 10_000, status: "completed" }),
+      ],
+      payments: [payment({ patientId: "A", amount: 5_000 })],
+      patientsOnPaymentPlan: new Set(["A"]),
+    });
+    // A owes 45,000 under the plan; B's 10,000 is unrelated and must not appear.
+    expect(valueOf(outstandingOnPaymentPlan, s)).toBe(45_000);
+    // The clinic-wide total is unaffected — the money is still genuinely owed.
+    expect(valueOf(outstandingPayments, s)).toBe(55_000);
+  });
+
+  it("never reads negative even if a plan patient has overpaid", () => {
+    const s = snapshot({
+      treatments: [treatment({ patientId: "A", cost: 1_000, status: "completed" })],
+      payments: [payment({ patientId: "A", amount: 5_000 })],
+      patientsOnPaymentPlan: new Set(["A"]),
+    });
+    expect(valueOf(outstandingOnPaymentPlan, s)).toBe(0);
+  });
+});

@@ -68,6 +68,25 @@ export interface SignalThresholdConfig {
     readonly minimumDailyAppointments: number;
     /** Denominator guard: below this, rates are statistical noise. */
     readonly minimumAppointmentSample: number;
+    /**
+     * Share of the next 7 days' offered chair time that should already be
+     * booked (%). Below this, the week ahead is thin enough to act on while
+     * there is still time to fill it.
+     *
+     * A RATE, so it stays global rather than being calibrated per clinic — the
+     * same rule as cancellation and no-show rates. A percentage of a clinic's
+     * own offered capacity is already relative to that clinic's size.
+     */
+    readonly minimumWeekAheadBooked: number;
+    /**
+     * Distinct patients who each missed 2+ appointments in the trailing window
+     * before the concentration is worth naming.
+     *
+     * A COUNT of people, not a rate, and deliberately not calibrated: this is
+     * "is there a short list worth working", and that list is the same size
+     * whether the clinic has one chair or four.
+     */
+    readonly repeatNonAttenderLimit: number;
   };
   readonly patients: {
     /** Minimum new patients expected on a working day. */
@@ -153,6 +172,15 @@ export const DEFAULT_SIGNAL_THRESHOLDS: SignalThresholdConfig = {
     highNoShowRate: 8,
     minimumDailyAppointments: 5,
     minimumAppointmentSample: 5,
+    // A week that is under 40% booked with seven days to go has room that can
+    // still be sold; above it, the normal flow of walk-ins and short-notice
+    // bookings usually closes the gap. Like every other default here this is a
+    // reasoned starting point, not a validated figure.
+    minimumWeekAheadBooked: 40,
+    // Two. One patient who missed twice is a conversation the dentist is
+    // probably already having; two or more is a pattern, and the point at which
+    // "handle these people differently" becomes a policy rather than a favour.
+    repeatNonAttenderLimit: 2,
   },
   patients: {
     minimumNewPatientsPerDay: 1,
@@ -186,6 +214,9 @@ export const DEFAULT_SIGNAL_THRESHOLDS: SignalThresholdConfig = {
       "retention.followup_backlog": { floor: "low" },
       // A quiet day is a business problem, not a crisis.
       "scheduling.low_appointment_volume": { ceiling: "high" },
+      // A thin week ahead is a warning with days left to act on it. It should
+      // never outrank something already going wrong today.
+      "scheduling.thin_week_ahead": { ceiling: "high" },
       // The threshold is 1 patient, so relative breach maths is jumpy here.
       "acquisition.low_new_patients": { ceiling: "medium" },
     },

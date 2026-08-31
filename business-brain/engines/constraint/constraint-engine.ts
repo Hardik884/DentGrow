@@ -61,6 +61,12 @@ const CATEGORY_BY_PATTERN: Readonly<Record<string, ConstraintCategory>> = {
   [DiagnosisPattern.OUTSTANDING_RECEIVABLES]: ConstraintCategory.REVENUE_LEAKAGE,
   [DiagnosisPattern.RECALL_BACKLOG]: ConstraintCategory.RETENTION,
   [DiagnosisPattern.ACQUISITION_SHORTFALL]: ConstraintCategory.ACQUISITION,
+  // Its own bottleneck rather than CAPACITY: same resource, different tense.
+  // See the note on ConstraintCategory.FORWARD_SCHEDULE.
+  [DiagnosisPattern.FORWARD_SCHEDULE_GAP]: ConstraintCategory.FORWARD_SCHEDULE,
+  // Alongside schedule_attrition on purpose: both describe appointments booked
+  // and then lost, so they belong to one bottleneck rather than two headlines.
+  [DiagnosisPattern.REPEAT_NON_ATTENDANCE]: ConstraintCategory.SCHEDULING,
 };
 
 /** Human-readable name per bottleneck. Factual: names the limit, not a remedy. */
@@ -71,6 +77,7 @@ const CONSTRAINT_NAMES: Readonly<Record<ConstraintCategory, string>> = {
   [ConstraintCategory.TREATMENT_ACCEPTANCE]: "Planned treatment with no next visit booked",
   [ConstraintCategory.RETENTION]: "Patients returning, and being brought back",
   [ConstraintCategory.ACQUISITION]: "New patients reaching the clinic",
+  [ConstraintCategory.FORWARD_SCHEDULE]: "Chair time in the week ahead, and how much is sold",
 };
 
 const SEVERITY_RANK: Readonly<Record<string, number>> = {

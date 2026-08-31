@@ -362,6 +362,18 @@ export const ACTION_PLANS: Readonly<Record<string, readonly ActionPlanStep[]>> =
     { capability: OPEN_APPOINTMENT_SCHEDULER, title: "Book those who agree, on the call" },
   ],
 
+  // The only plan that opens a FORWARD window. Every step points at days that
+  // have not happened yet, and the two lists it pulls are the cheapest possible
+  // sources of a booking: patients who already chose this clinic.
+  forward_schedule_gap: [
+    { capability: OPEN_WEEK_SCHEDULE, primary: true, title: "See which days next week are thinnest" },
+    { capability: OPEN_PLANNED_TREATMENTS, title: "Pull patients with planned treatment and no next visit" },
+    { capability: OPEN_OVERDUE_RECALL_PATIENTS, title: "Pull patients whose recall is overdue" },
+    { ...CALL_FROM_TREATMENTS, after: [OPEN_PLANNED_TREATMENTS] },
+    { capability: DRAFT_RECALL_INVITATION },
+    { capability: OPEN_APPOINTMENT_SCHEDULER, title: "Book into next week's open slots, on the call" },
+  ],
+
   // ── Investigative ─────────────────────────────────────────────────────────
   // Shorter plans, and deliberately so: the cause is not settled, so the actions
   // gather the measurement that would settle it rather than acting on a guess.
@@ -419,6 +431,14 @@ export const ACTION_PLANS: Readonly<Record<string, readonly ActionPlanStep[]>> =
     {
       capability: OPEN_RECENT_PATIENTS,
       title: "Ask recent new patients how they found the clinic",
+    },
+  ],
+
+  "investigate.forward_schedule": [
+    { capability: OPEN_WEEK_SCHEDULE, primary: true, title: "Check next week day by day" },
+    {
+      capability: OPEN_AVAILABILITY_SETTINGS,
+      title: "Confirm next week's hours are published and bookable",
     },
   ],
 };

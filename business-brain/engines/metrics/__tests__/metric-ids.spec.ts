@@ -57,8 +57,16 @@ describe("metric manifest", () => {
         MetricKey.CAPACITY_CHAIR_UTILIZATION_30D,
         MetricKey.PATIENTS_REACTIVATION_CANDIDATES,
         MetricKey.REVENUE_COLLECTION_RATE_30D,
+        // The empty-clinic-day fixture supplies no patientsOnPaymentPlan set at
+        // all, so this is correctly withheld — absent means no repository
+        // support for payment plans, never "nobody has one".
+        MetricKey.REVENUE_OUTSTANDING_ON_PAYMENT_PLAN,
         MetricKey.SCHEDULING_BOOKING_LEAD_TIME_DAYS,
         MetricKey.SCHEDULING_CANCELLATION_RATE_30D,
+        // No trailing window means no appointments to have been missed. Zero
+        // would claim nobody misses appointments here, which is a different
+        // statement from never having looked.
+        MetricKey.SCHEDULING_REPEAT_NON_ATTENDERS_30D,
         MetricKey.SCHEDULING_NO_SHOW_RATE_30D,
         MetricKey.TREATMENT_AVERAGE_CASE_VALUE_30D,
       ].sort(),

@@ -539,7 +539,16 @@ export async function getPaymentsToday(): Promise<ActionResult<number>> {
 // =============================================================================
 
 export async function getPatientsWithOutstandingBalance(): Promise<
-  ActionResult<Array<{ id: string; name: string; phone: string | null; balance: number }>>
+  ActionResult<
+    Array<{
+      id: string;
+      name: string;
+      phone: string | null;
+      balance: number;
+      /** Set and today-or-later: this balance is under an agreed payment plan. */
+      paymentPlanUntil: string | null;
+    }>
+  >
 > {
   try {
     const { db, profile } = await resolveSession();
@@ -556,7 +565,7 @@ export async function getPatientsWithOutstandingBalance(): Promise<
       await Promise.all([
         db
           .from("patients")
-          .select("id, name, phone")
+          .select("id, name, phone, payment_plan_until")
           .eq("clinic_id", cid)
           .is("deleted_at", null),
         db
@@ -597,12 +606,15 @@ export async function getPatientsWithOutstandingBalance(): Promise<
       paidMap.set(p.patient_id, (paidMap.get(p.patient_id) ?? 0) + Number(p.amount ?? 0));
     }
 
-    const result = (patients as { id: string; name: string; phone: string | null }[])
+    const result = (
+      patients as { id: string; name: string; phone: string | null; payment_plan_until: string | null }[]
+    )
       .map((p) => ({
         id: p.id,
         name: p.name,
         phone: p.phone,
         balance: Math.max(0, (costMap.get(p.id) ?? 0) - (paidMap.get(p.id) ?? 0)),
+        paymentPlanUntil: p.payment_plan_until,
       }))
       .filter((p) => p.balance > 0)
       .sort((a, b) => b.balance - a.balance);
@@ -830,4 +842,81 @@ export async function getPaymentRecorderNames(
     console.error("[getPaymentRecorderNames] unexpected:", err);
     return { data: {}, error: null };
   }
+}
+
+// =============================================================================
+// setPaymentPlan — mark a patient's outstanding balance as under an agreed plan
+// =============================================================================
+
+/**
+ * Record (or clear) that a patient's outstanding balance is under an agreed
+ * payment plan with the clinic.
+ *
+ * The balance itself is never touched — `getOutstandingBalance` and every other
+ * screen keep reporting the same figure, because the money is still genuinely
+ * owed. This only tells the Business Brain that some or all of it is already
+ * being collected on schedule, so `revenue.high_outstanding` and the clinic
+ * health score can size how much is actually unmanaged (see
+ * `revenue.outstanding_on_payment_plan`).
+ *
+ * `until: null` clears the plan immediately. A past date is rejected rather than
+ * silently accepted-and-ignored: a plan that already expired is not a
+ * meaningful thing to record, and the honest options are "set a real future
+ * date" or "clear it".
+ */
+export async function setPaymentPlan(
+  patientId: string,
+  until: string | null,
+): Promise<ActionResult<{ paymentPlanUntil: string | null }>> {
+  try {
+    const { db, profile } = await resolveCachedSession();
+    if (!profile) return { data: null, error: "Unauthorized" };
+    if (profile.role !== "dentist" && profile.role !== "receptionist") {
+      return { data: null, error: "Forbidden" };
+    }
+
+    if (until !== null) {
+      const parsed = ISO_DATE_REGEX.test(until) ? new Date(`${until}T00:00:00Z`) : null;
+      if (parsed === null || Number.isNaN(parsed.getTime())) {
+        return { data: null, error: "Invalid date." };
+      }
+      const { timezone } = await getClinicConfigFor(profile.clinic_id, db);
+      if (until < getTodayInTimezone(timezone)) {
+        return { data: null, error: "The payment plan date must be today or later." };
+      }
+    }
+
+    const { error } = await db
+      .from("patients")
+      .update({ payment_plan_until: until })
+      .eq("id", patientId)
+      .eq("clinic_id", profile.clinic_id);
+
+    if (error) {
+      console.error("[setPaymentPlan]", error.message);
+      return { data: null, error: "Could not update the payment plan." };
+    }
+
+    revalidatePath(`/${profile.role}/payments`);
+    revalidatePath(`/${profile.role}/patients/${patientId}`);
+    return { data: { paymentPlanUntil: until }, error: null };
+  } catch (err) {
+    console.error("[setPaymentPlan] unexpected:", err);
+    return { data: null, error: "Unexpected error" };
+  }
+}
+
+const ISO_DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
+
+/** Clinic timezone, without pulling in the full clinic-config module here. */
+async function getClinicConfigFor(
+  clinicId: string,
+  db: Awaited<ReturnType<typeof resolveCachedSession>>["db"],
+): Promise<{ timezone: string }> {
+  const { data } = await db
+    .from("clinic_settings")
+    .select("timezone")
+    .eq("clinic_id", clinicId)
+    .maybeSingle();
+  return { timezone: data?.timezone ?? "Asia/Kolkata" };
 }

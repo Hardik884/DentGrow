@@ -60,7 +60,21 @@ export async function updateSession(request: NextRequest) {
   // auth gate here prevents the "unauthenticated → sign-in" redirect from
   // breaking the flow. Reset itself still relies on the authenticated Supabase
   // account, never on any clinic selection.
-  const PUBLIC_AUTH_PATHS = ["/forgot-password", "/reset-password", "/auth/callback"];
+  //
+  // /patient/verify-email joins them for the same reason. With email
+  // confirmation on, `signUp` returns NO session — the account exists but
+  // cannot be used until the link is opened. So the one screen that explains
+  // that is reached by a visitor the middleware would otherwise class as
+  // unauthenticated and bounce to /patient/login, which is exactly the page
+  // that cannot help them yet. The page is not left ungated: it renders only
+  // while the httpOnly signup cookie is present, and redirects to sign-in
+  // otherwise.
+  const PUBLIC_AUTH_PATHS = [
+    "/forgot-password",
+    "/reset-password",
+    "/auth/callback",
+    "/patient/verify-email",
+  ];
   if (PUBLIC_AUTH_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`))) {
     return response();
   }

@@ -33,8 +33,10 @@ describe("diagnose — healthy and isolated runs", () => {
     expect(result.error).toBeUndefined();
     expect(result.confidenceBasis).toBe("matcher_decidability");
     // No prior period was supplied, so the three trend evaluators skipped and the
-    // two matchers that need them could not be ruled out: 10 of 12 decidable.
-    expect(result.confidence).toBe(0.83);
+    // two matchers that need them could not be ruled out: 12 of 14 decidable.
+    // forward_schedule_gap IS decidable here — HEALTHY carries a healthy week
+    // ahead, so its rule ran and measurably found nothing.
+    expect(result.confidence).toBe(0.86);
 
     // With a prior period every evaluator reaches a verdict, and a quiet day then
     // legitimately reports full decidability.

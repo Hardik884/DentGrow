@@ -45,6 +45,23 @@ export interface HealthDeduction {
   readonly detail: string;
   /** Points removed (a positive number; the score subtracts it). */
   readonly points: number;
+  /**
+   * The problem category this factor speaks about — a `ConstraintCategory`
+   * value, declared here beside the factor that measures it rather than in a
+   * lookup table somewhere else.
+   *
+   * It exists so the briefing can tell a dentist WHICH deductions have a
+   * matching problem card below and which do not. The score and the cards are
+   * deliberately two different rulebooks (see the header): a fact can be real
+   * enough to cost points and still sit under the clinic's calibrated threshold
+   * for raising a signal. That is correct, and it looks like a contradiction on
+   * screen unless the page says so — which it cannot do without knowing what
+   * each line refers to.
+   *
+   * Colocated deliberately: a separate factor→category table would be a second
+   * source of truth able to drift from the factor it describes.
+   */
+  readonly category: string;
 }
 
 export interface ClinicHealth {
@@ -112,10 +129,25 @@ const FACTORS: readonly HealthFactor[] = [
   {
     id: "outstanding_balance",
     evaluate: (m) => {
-      const v = metricValue(m, "revenue.outstanding");
-      if (v === null || v <= 0) return null;
+      const total = metricValue(m, "revenue.outstanding");
+      if (total === null || total <= 0) return null;
+      // Netted against whatever is already on an agreed payment plan (see
+      // revenue.outstanding_on_payment_plan) before the score judges it — a
+      // balance being collected on schedule should not cost points meant for
+      // money nobody is chasing. Metric absent (no repository support):
+      // behaves exactly as before. Floored: a data-lag moment must never
+      // read as negative unmanaged debt.
+      const onPlan = metricValue(m, "revenue.outstanding_on_payment_plan");
+      const v = onPlan === null ? total : Math.max(0, total - onPlan);
+      if (v <= 0) return null;
       const points = v >= 50000 ? 18 : v >= 25000 ? 12 : v >= 10000 ? 6 : 2;
-      return { factor: "Unpaid balances", detail: `${rupees(v)} owed for completed work`, points };
+      const planNote = onPlan !== null && onPlan > 0 ? ` (${rupees(onPlan)} on a payment plan)` : "";
+      return {
+        factor: "Unpaid balances",
+        detail: `${rupees(v)} owed for completed work${planNote}`,
+        points,
+        category: "revenue_leakage",
+      };
     },
   },
 
@@ -137,6 +169,7 @@ const FACTORS: readonly HealthFactor[] = [
         factor: "No next visit booked",
         detail: `${n} patient${n === 1 ? "" : "s"} have planned treatment but no next appointment`,
         points,
+        category: "treatment_acceptance",
       };
     },
   },
@@ -157,6 +190,7 @@ const FACTORS: readonly HealthFactor[] = [
         factor: "Overdue recalls",
         detail: `${n} patient${n === 1 ? "" : "s"} overdue for a check-up reminder`,
         points,
+        category: "retention",
       };
     },
   },
@@ -174,6 +208,7 @@ const FACTORS: readonly HealthFactor[] = [
         factor: "No-shows",
         detail: `${Math.round(v)}% of appointments were no-shows this month`,
         points,
+        category: "scheduling",
       };
     },
   },
@@ -191,6 +226,7 @@ const FACTORS: readonly HealthFactor[] = [
         factor: "Empty chair time",
         detail: `Chairs were only ${Math.round(v)}% used today`,
         points,
+        category: "capacity",
       };
     },
   },
@@ -207,6 +243,7 @@ const FACTORS: readonly HealthFactor[] = [
         factor: "Long waits",
         detail: `Patients waited ${Math.round(v)} minutes on average today`,
         points,
+        category: "capacity",
       };
     },
   },

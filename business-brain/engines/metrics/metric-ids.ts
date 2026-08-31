@@ -1,5 +1,5 @@
 /**
- * Business Brain — Metrics Engine: Metric definitions
+ * Business Brain — Metrics Engine: Metric definitions
  *
  * Stable keys, display names, categories, and units for every metric the
  * engine produces. Centralising these keeps calculators tiny and makes adding
@@ -17,6 +17,15 @@ export const MetricKey = {
   APPOINTMENTS_NO_SHOWS_TODAY: "appointments.no_shows_today",
   SCHEDULING_CANCELLATION_RATE_30D: "scheduling.cancellation_rate_30d",
   SCHEDULING_NO_SHOW_RATE_30D: "scheduling.no_show_rate_30d",
+  /**
+   * Distinct patients who missed 2+ appointments in the trailing window.
+   *
+   * A rate says how much attrition there is; this says whether it is
+   * CONCENTRATED. The two need opposite responses — a broad reminder policy
+   * versus a short list of people handled differently — and a rate alone cannot
+   * tell them apart.
+   */
+  SCHEDULING_REPEAT_NON_ATTENDERS_30D: "scheduling.repeat_non_attenders_30d",
   SCHEDULING_BOOKING_LEAD_TIME_DAYS: "scheduling.booking_lead_time_days",
   // Patients
   PATIENTS_NEW_TODAY: "patients.new_today",
@@ -25,6 +34,18 @@ export const MetricKey = {
   // Revenue
   REVENUE_COLLECTED_TODAY: "revenue.collected_today",
   REVENUE_OUTSTANDING: "revenue.outstanding",
+  /**
+   * Portion of revenue.outstanding covered by an agreed payment plan.
+   *
+   * A patient paying ₹5,000/month against a ₹50,000 balance and one who
+   * has stopped paying entirely both show the same total in revenue.outstanding
+   * -- correctly, since both amounts are genuinely owed. This is the fact that
+   * tells them apart: how much of the total is already being collected on
+   * schedule versus unmanaged. Never subtracted from revenue.outstanding itself
+   * -- the money is still owed either way -- only used to size what needs
+   * chasing.
+   */
+  REVENUE_OUTSTANDING_ON_PAYMENT_PLAN: "revenue.outstanding_on_payment_plan",
   REVENUE_PENDING_TREATMENT_VALUE: "revenue.pending_treatment_value",
   REVENUE_PRODUCTION_30D: "revenue.production_30d",
   REVENUE_COLLECTION_RATE_30D: "revenue.collection_rate_30d",
@@ -90,6 +111,12 @@ export const METRIC_DESCRIPTORS: Readonly<Record<MetricKey, MetricDescriptor>> =
     category: MetricCategory.SCHEDULING,
     unit: MetricUnit.PERCENTAGE,
   },
+  [MetricKey.SCHEDULING_REPEAT_NON_ATTENDERS_30D]: {
+    key: MetricKey.SCHEDULING_REPEAT_NON_ATTENDERS_30D,
+    name: "Patients Who Missed More Than Once (30 days)",
+    category: MetricCategory.SCHEDULING,
+    unit: MetricUnit.COUNT,
+  },
   [MetricKey.SCHEDULING_BOOKING_LEAD_TIME_DAYS]: {
     key: MetricKey.SCHEDULING_BOOKING_LEAD_TIME_DAYS,
     name: "Median Booking Lead Time",
@@ -129,6 +156,12 @@ export const METRIC_DESCRIPTORS: Readonly<Record<MetricKey, MetricDescriptor>> =
   [MetricKey.REVENUE_OUTSTANDING]: {
     key: MetricKey.REVENUE_OUTSTANDING,
     name: "Outstanding Payments",
+    category: MetricCategory.REVENUE,
+    unit: MetricUnit.CURRENCY,
+  },
+  [MetricKey.REVENUE_OUTSTANDING_ON_PAYMENT_PLAN]: {
+    key: MetricKey.REVENUE_OUTSTANDING_ON_PAYMENT_PLAN,
+    name: "Outstanding Covered by a Payment Plan",
     category: MetricCategory.REVENUE,
     unit: MetricUnit.CURRENCY,
   },
@@ -236,7 +269,7 @@ export const METRIC_DESCRIPTORS: Readonly<Record<MetricKey, MetricDescriptor>> =
 
 /**
  * Build a {@link Metric} domain object from a metric key and a computed value.
- * Pure construction only — no calculation happens here.
+ * Pure construction only — no calculation happens here.
  *
  * The id is deterministic (`key:clinicId:date`) so the same measurement always
  * carries the same id.

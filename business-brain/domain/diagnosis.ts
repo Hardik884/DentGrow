@@ -45,6 +45,20 @@ export const DiagnosisPattern = {
   ACQUISITION_SHORTFALL: "acquisition_shortfall",
   OUTSTANDING_RECEIVABLES: "outstanding_receivables",
   RECALL_BACKLOG: "recall_backlog",
+  /**
+   * The one pattern about days that have not happened yet. It needs no guard
+   * against the today-patterns: a thin week ahead and an idle chair this
+   * morning are different facts about different days, so reporting both is two
+   * findings rather than one story told twice.
+   */
+  FORWARD_SCHEDULE_GAP: "forward_schedule_gap",
+  /**
+   * Non-attendance concentrated in a few patients. Settles the SAME cause
+   * (`patient_level_pattern`) that schedule_attrition can only reach through
+   * entity resolution — from a metric, so it is available even when no entity
+   * context port is wired up.
+   */
+  REPEAT_NON_ATTENDANCE: "repeat_non_attendance",
   UNCLUSTERED_SIGNAL: "unclustered_signal",
 } as const;
 

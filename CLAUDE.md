@@ -1,6 +1,6 @@
-# CLAUDE.md — DentGrow
+# CLAUDE.md — OraMedha
 
-> **Single source of truth for all AI-assisted and human development on the DentGrow project.**
+> **Single source of truth for all AI-assisted and human development on the OraMedha project.**
 > Every engineer or AI coding agent working on this codebase must read this document before writing any code.
 
 ---
@@ -29,13 +29,13 @@
 
 ## 1. Product Overview
 
-### What is DentGrow?
+### What is OraMedha?
 
-DentGrow is an AI-powered dental practice management system designed specifically for small and medium dental clinics. It centralises patient records, appointment scheduling, real-time queue management, treatment tracking, payments, and analytics into a single web application — augmented with AI features that surface insights and assist clinical and administrative workflows.
+OraMedha is an AI-powered dental practice management system designed specifically for small and medium dental clinics. It centralises patient records, appointment scheduling, real-time queue management, treatment tracking, payments, and analytics into a single web application — augmented with AI features that surface insights and assist clinical and administrative workflows.
 
 ### Problems It Solves
 
-| Problem | How DentGrow Addresses It |
+| Problem | How OraMedha Addresses It |
 |---|---|
 | Paper-based or fragmented patient records | Centralised digital patient profiles with full visit history |
 | Manual appointment booking and rescheduling | Structured appointment lifecycle with source tracking |
@@ -82,7 +82,7 @@ Roles are stored in the `profiles` table and enforced via Supabase RLS policies 
 
 ### Authentication entry points
 
-DentGrow has **three separate sign-in pages, one per audience**. They are separate so
+OraMedha has **three separate sign-in pages, one per audience**. They are separate so
 that no page has to ask a visitor to describe themselves:
 
 | Route | For | Notes |
@@ -90,6 +90,7 @@ that no page has to ask a visitor to describe themselves:
 | `/login` | dentists + receptionists | No clinic dropdown, no role picker |
 | `/patient/login` | existing patients | No clinic dropdown |
 | `/patient/signup` | new patients | The **only** place a clinic is chosen |
+| `/patient/verify-email` | new patients, mid-signup | "Check your email"; resend + change address |
 | `/admin/login` | the platform admin | Not linked from anywhere; not indexed |
 
 The rule that makes this safe: **nothing about identity comes from the browser.** Each
@@ -102,13 +103,56 @@ The clinic id chosen on `/patient/signup` is validated against the `clinics` tab
 it scopes anything — a brand-new patient has no record for the server to read a clinic
 from, which is the only reason the field exists at all.
 
+### Email confirmation
+
+Email confirmation is **ON** in every environment. `auth.signUp` therefore returns no
+session, and the new account cannot be used until the link in the inbox is opened — so
+signup hands off to `/patient/verify-email` rather than to `/portal/setup`, which at that
+moment could do nothing and could not say why.
+
+Supabase Auth is the whole of authentication; only the mail **transport** differs by
+environment. OraMedha never composes or sends an auth email, holds a mail-provider
+credential, or stores a verification token.
+
+| Mode | Transport | Reaches |
+|---|---|---|
+| local | Mailpit (`http://127.0.0.1:55324`) | anyone |
+| `default` | Supabase's built-in service | **project team members**, 2/hour |
+| `resend-test` | Resend via `onboarding@resend.dev` | **the Resend account owner only**, 100/day |
+| `resend` | Resend from a verified domain | anyone |
+
+**Only `resend` can email a patient, and it needs a domain OraMedha does not own yet.**
+The two no-domain options each reach exactly one small audience — a Supabase project
+team, or the single address the Resend account was created with — so the hosted project
+is a working *staging* setup and **not a patient-facing signup path** under either.
+Both restrictions are vendor policy, not settings: Supabase refuses non-team recipients
+with `Email address not authorized`, and Resend refuses non-owner recipients from its
+shared domain with a 403
+([docs](https://resend.com/docs/knowledge-base/403-error-resend-dev-domain)).
+
+Switching transport is one flag on `npm run auth:email:push` and touches configuration
+only — no application code, templates or tests. `npm run auth:email:probe` asks the real
+Resend SMTP server what the account may actually send, rather than trusting either the
+documentation or this file.
+
+`describeEmailSendFailure` (`lib/auth/verification.ts`) classifies send failures so a
+patient sees a real wait time or "contact your clinic" rather than a raw provider error,
+and the operator gets the cause in the log.
+
+Every link is a `{{ .TokenHash }}` link verified by `/auth/callback`, never
+`{{ .ConfirmationURL }}` — the latter finishes in the PKCE flow and dies when the email
+is opened on a different device than the one that signed up.
+
+The full architecture, the production checklist and the DNS records Resend needs are in
+**`supabase/EMAIL.md`**. Templates live in `supabase/templates/`.
+
 ### The `is_admin` capability
 
 `profiles.is_admin` is an **additive** flag, not a fourth role. An admin keeps its normal
 `role` and `clinic_id` and behaves like any other staff member inside the app; the flag
 only gates `/admin` and `/admin/login`.
 
-It was deliberately not modelled as a `user_role` enum value: the DentGrow owner account
+It was deliberately not modelled as a `user_role` enum value: the OraMedha owner account
 (`owner@dentgrow.local`) is also the dentist of "My Dental Clinic", the development clinic
 the Business Brain dashboard is allow-listed to, and changing its role would strip that
 access and break every RLS policy expressed in terms of `auth_role()`.
@@ -710,7 +754,7 @@ Analytics are read-only and available only to the `dentist` role. All analytics 
 
 All AI features use **Gemini 3.1 Flash Lite** via the Google AI SDK. AI calls are always made server-side (Server Actions or Route Handlers). Never expose API keys to the client.
 
-> **AI Resilience Principle:** DentGrow must remain fully functional even if Gemini is unavailable. AI features are enhancements only and must never be required for core clinic operations. The following must work without AI: Patients, Appointments, Queue, Treatments, Payments, and Analytics. All AI features must fail gracefully with a user-facing message (e.g., "AI features are temporarily unavailable") and never block or error the surrounding page.
+> **AI Resilience Principle:** OraMedha must remain fully functional even if Gemini is unavailable. AI features are enhancements only and must never be required for core clinic operations. The following must work without AI: Patients, Appointments, Queue, Treatments, Payments, and Analytics. All AI features must fail gracefully with a user-facing message (e.g., "AI features are temporarily unavailable") and never block or error the surrounding page.
 
 ### 8.1 Patient Summary
 
@@ -873,7 +917,7 @@ n8n is integrated for automation workflows. In MVP, the infrastructure is set up
 
 ## 10. Multi-Tenant Architecture
 
-DentGrow is a multi-tenant SaaS product. Each clinic is a tenant. **All data isolation is enforced at the database level via Row Level Security (RLS), not just at the application level.**
+OraMedha is a multi-tenant SaaS product. Each clinic is a tenant. **All data isolation is enforced at the database level via Row Level Security (RLS), not just at the application level.**
 
 ### Core Rules
 
@@ -1154,7 +1198,8 @@ dentgrow/
 │   │   ├── login/                  # Staff sign-in (dentist + receptionist)
 │   │   ├── patient/
 │   │   │   ├── login/              # Patient sign-in
-│   │   │   └── signup/             # New patient registration (clinic selection)
+│   │   │   ├── signup/             # New patient registration (clinic selection)
+│   │   │   └── verify-email/       # "Check your email" — resend / change address
 │   │   ├── admin/
 │   │   │   └── login/              # Platform admin sign-in
 │   │   ├── signup/                 # Legacy alias → redirects to /patient/signup
@@ -1231,7 +1276,9 @@ dentgrow/
 │   ├── scheduling/
 │   │   └── slots.ts                # getAvailableSlots() slot generation logic
 │   ├── auth/
-│   │   └── session.ts              # resolveSession(), requireAdmin()
+│   │   ├── session.ts              # resolveSession(), requireAdmin()
+│   │   ├── email-mask.ts           # maskEmail() for the verification screen
+│   │   └── verification.ts         # resend cooldown + send-failure classification
 │   ├── brand/
 │   │   └── mark.ts                 # TOOTH_PATH — the logo AND the auth arch
 │   └── utils.ts                    # Shared utility functions
@@ -1253,7 +1300,12 @@ dentgrow/
 │   └── useRealtimeAppointments.ts
 ├── middleware.ts                   # Next.js middleware (auth + role routing)
 ├── .env.local                      # Local environment variables (never commit)
+├── scripts/
+│   ├── push-auth-email-config.mjs  # Configures the HOSTED project's Auth email
+│   └── probe-resend-smtp.mjs       # Asks Resend which recipients it will carry
 └── supabase/
+    ├── EMAIL.md                    # Email transports, limits + the Resend switch
+    ├── templates/                  # OraMedha-branded Supabase Auth email bodies
     └── migrations/                 # SQL migration files
 ```
 
@@ -1396,6 +1448,20 @@ N8N_BASE_URL=https://your-n8n-instance.com        # Server-side only
 
 # App
 NEXT_PUBLIC_APP_URL=http://localhost:3000
+
+# Auth email delivery — NOT read by the app. Used only by
+# `npm run auth:email:push`, which configures the HOSTED Supabase project.
+# Local development sends to Mailpit and needs none of these.
+# See supabase/EMAIL.md.
+AUTH_SITE_URL=https://your-domain.com
+SUPABASE_ACCESS_TOKEN=sbp_personal_access_token   # Server-side only
+SUPABASE_PROJECT_REF=your-project-ref
+
+# Resend — unset today, so the push script selects Supabase's built-in service.
+# Fill in only once a sending domain is verified in Resend.
+# RESEND_SMTP_PASSWORD=re_your_resend_api_key     # Server-side only
+# AUTH_SMTP_SENDER_EMAIL=no-reply@auth.your-domain.com
+# AUTH_SMTP_SENDER_NAME=OraMedha
 ```
 
 ### Usage Rules
@@ -1409,6 +1475,11 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000
 | `N8N_WEBHOOK_SECRET` | Webhook route handler only | **No** |
 | `N8N_BASE_URL` | n8n trigger calls only | **No** |
 | `NEXT_PUBLIC_APP_URL` | Absolute URL generation | Yes |
+| `RESEND_SMTP_PASSWORD` | `npm run auth:email:push -- --provider=resend` | **No** |
+| `SUPABASE_ACCESS_TOKEN` | `npm run auth:email:push` only | **No** |
+| `AUTH_SMTP_SENDER_EMAIL` | `npm run auth:email:push` only | **No** |
+| `AUTH_SITE_URL` | `npm run auth:email:push` only | **No** |
+| `SUPABASE_PROJECT_REF` | `npm run auth:email:push` only | **No** |
 
 ---
 
@@ -1513,4 +1584,4 @@ export type ActionResult<T> = {
 
 ---
 
-*This document is the authoritative reference for DentGrow. When in doubt about architecture, features, or scope — consult this file first. Update it whenever a significant architectural decision is made.*
+*This document is the authoritative reference for OraMedha. When in doubt about architecture, features, or scope — consult this file first. Update it whenever a significant architectural decision is made.*

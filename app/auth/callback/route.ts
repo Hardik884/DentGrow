@@ -55,7 +55,22 @@ export async function GET(request: NextRequest) {
     console.error("[auth/callback] OTP verification failed:", error.message);
   }
 
-  // No usable token, or verification failed — send to the reset page with an
-  // error flag so the user gets a clear "invalid or expired link" message.
-  return NextResponse.redirect(`${origin}/reset-password?error=link`);
+  // No usable token, or verification failed. Send them somewhere that can
+  // actually fix it, which depends on which link died:
+  //
+  //   signup / invite  → /patient/verify-email, which offers "Resend email".
+  //                      If the pending-signup cookie is gone (the link was
+  //                      opened on a different device days later) that page
+  //                      forwards to /patient/login on its own.
+  //   everything else  → /reset-password, which renders the expired-link
+  //                      message and a route back to /forgot-password.
+  //
+  // Both carry ?error=link so the destination explains what happened rather
+  // than silently showing an empty form.
+  const recoveryPath =
+    type === "signup" || type === "invite"
+      ? "/patient/verify-email"
+      : "/reset-password";
+
+  return NextResponse.redirect(`${origin}${recoveryPath}?error=link`);
 }
