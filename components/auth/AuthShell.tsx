@@ -41,7 +41,7 @@ type ToneStyle = {
   ink: string;
   /** Muted ink for supporting copy on the panel. */
   inkMuted: string;
-  /** Hairline used for the eyebrow rule and footnote separator. */
+  /** Hairline used for the eyebrow rule. */
   rule: string;
   /** Glow colour handed to the artwork. */
   glow: string;
@@ -56,8 +56,6 @@ type ToneStyle = {
    * sits on flat ground, and the artwork's bottom edge stops reading as a seam.
    */
   scrim: string;
-  /** The line under the panel. Different audiences deserve different notes. */
-  footnote: string;
 };
 
 const TONES: Record<AuthTone, ToneStyle> = {
@@ -69,7 +67,6 @@ const TONES: Record<AuthTone, ToneStyle> = {
     glow: "#35A18F",
     wordmark: "text-white",
     scrim: "from-[#0B3B34] dark:from-[#06201C]",
-    footnote: "Patient data stays inside your clinic.",
   },
   patient: {
     // Light: the soft emerald from the DentGrow ramp, so the patient door feels
@@ -84,7 +81,6 @@ const TONES: Record<AuthTone, ToneStyle> = {
     glow: "#0D6B5E",
     wordmark: "text-[#0A3B33] dark:text-[#EAF3F0]",
     scrim: "from-[#E4F2ED] dark:from-[#172B26]",
-    footnote: "Your records are private to you and your clinic.",
   },
   admin: {
     panel: "bg-[#14191A] dark:bg-[#0A0D0E]",
@@ -94,7 +90,6 @@ const TONES: Record<AuthTone, ToneStyle> = {
     glow: "#4A5B57",
     wordmark: "text-[#E8ECEA]",
     scrim: "from-[#14191A] dark:from-[#0A0D0E]",
-    footnote: "Access is verified server-side on every request.",
   },
 };
 
@@ -206,8 +201,6 @@ export function AuthShell({
             </ul>
           )}
         </div>
-
-        <p className={cn("relative text-xs", t.inkMuted)}>{t.footnote}</p>
       </aside>
 
       {/* ── Form column ───────────────────────────────────────────────────── */}

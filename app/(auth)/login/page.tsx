@@ -22,12 +22,12 @@ export default function LoginPage() {
     <AuthShell
       tone="staff"
       eyebrow="Clinic sign-in"
-      headline="Dental care, intelligently managed."
-      subhead="Appointments, the waiting room, treatments and payments — one place, updating live for everyone on shift."
+      headline="Built to run your clinic, not just record it."
+      subhead="Every screen exists to move something forward — check a patient in, advance the queue, close out a payment — in one tap, updating live for everyone on shift."
       points={[
-        "Today's schedule and live queue at a glance",
-        "Patient history, treatments and balances together",
-        "Insights drawn from your own clinic's data",
+        "One tap moves the queue for the whole front desk",
+        "Treatments, balances and history closed out in place",
+        "No forms to hunt for — just the next action",
       ]}
       formTitle="Welcome back"
       formSubtitle="Sign in to your clinic workspace."
