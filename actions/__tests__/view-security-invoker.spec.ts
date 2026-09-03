@@ -84,6 +84,14 @@ const VIEWS: readonly { view: string; base: string }[] = [
   { view: "receptionist_treatments", base: "treatments" },
   { view: "patient_dental_chart", base: "patient_teeth" },
   { view: "patient_consents", base: "consents" },
+  {
+    // Added by 20260903000200_data_processing_consent.sql. It participates in
+    // the "anon sees nothing" sweep below; it is outside SOFT_DELETE_VIEWS, so
+    // the count-agreement and non-vacuity assertions — which need a seeded base
+    // table — correctly do not apply to it.
+    view: "patient_data_consent_state",
+    base: "data_consent_records",
+  },
 ];
 
 async function reachable(): Promise<boolean> {

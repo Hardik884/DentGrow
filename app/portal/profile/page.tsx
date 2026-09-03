@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getPortalProfile } from "@/actions/portal-link";
+import { getMyDataConsents } from "@/actions/data-consent";
 import { PortalProfileView } from "@/components/patient/PortalProfileView";
+import { PrivacyChoices } from "@/components/patient/PrivacyChoices";
 import { AppearanceSettings } from "@/components/shared/ThemeToggle";
 
 export const metadata: Metadata = {
@@ -44,10 +46,16 @@ export default async function PortalProfilePage() {
     );
   }
 
+  // Privacy choices are fetched here rather than inside the card so a failure
+  // to load them degrades to a missing section instead of a broken profile
+  // page — the profile is what the patient came for.
+  const consents = await getMyDataConsents();
+
   return (
     <div className="space-y-6">
       <h1 className="text-xl font-semibold text-text-primary">My Profile</h1>
       <PortalProfileView profile={result.data} />
+      {consents.data && <PrivacyChoices initial={consents.data} />}
       <AppearanceSettings />
     </div>
   );
