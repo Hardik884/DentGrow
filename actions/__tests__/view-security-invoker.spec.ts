@@ -140,6 +140,28 @@ async function countAs(relation: string, token: string): Promise<number> {
   return Number(total);
 }
 
+/**
+ * How many rows of `relation` this caller can actually obtain — where being
+ * refused the relation entirely counts as zero.
+ *
+ * countAs() above throws when there is no count header, which is right for a
+ * caller that is *supposed* to be able to read: a missing count means the probe
+ * itself broke. But for the "sees nothing" direction, a 401/403 has no
+ * content-range and is the STRONGER outcome — the relation is not addressable
+ * at all. This distinguishes the two so the safer result is not reported as a
+ * broken test. Any other failure still surfaces.
+ */
+async function readableRowsAs(relation: string, token: string): Promise<number> {
+  const res = await fetch(`${URL}/rest/v1/${relation}?select=*&limit=0`, {
+    headers: { apikey: ANON, Authorization: `Bearer ${token}`, Prefer: "count=exact" },
+  });
+  if (res.status === 401 || res.status === 403) return 0; // denied — nothing readable
+  if (!res.ok) throw new Error(`unexpected ${res.status} for ${relation}`);
+  const total = res.headers.get("content-range")?.split("/")[1];
+  if (!total || total === "*") throw new Error(`no count for ${relation}`);
+  return Number(total);
+}
+
 describe.skipIf(!LOCAL_UP)("public views must enforce RLS as the caller", () => {
   let brain = "";
   let liying = "";
@@ -174,10 +196,20 @@ describe.skipIf(!LOCAL_UP)("public views must enforce RLS as the caller", () => 
   // This is the assertion that would have failed before 20260902155414. Every
   // one of these returned the entire table, for every clinic, to a caller with
   // nothing but the public anon key.
+  //
+  // Two outcomes are acceptable, and the stricter one must not be scored as a
+  // failure. A view anon holds SELECT on returns a count of 0 (RLS matched no
+  // rows). A view anon holds NO grant on is refused outright with 401
+  // "permission denied for view" and carries no content-range header at all —
+  // which is strictly better, because the relation is not addressable. Asserting
+  // only on the count would fail the safer of the two, which is how a test ends
+  // up arguing for weaker security. patient_data_consent_state is the second
+  // kind: 20260903000200 grants it to `authenticated` only.
   it.each(VIEWS.map((v) => v.view))(
     "%s returns nothing to an unauthenticated caller",
     async (view) => {
-      expect(await countAs(view, ANON)).toBe(0);
+      const seen = await readableRowsAs(view, ANON);
+      expect(seen).toBe(0);
     },
   );
 

@@ -26,7 +26,7 @@ import type { Diagnosis } from "@/business-brain";
 import { computeOutstandingBalance } from "@/lib/billing/balance";
 import { SupabaseDiagnosisContext } from "../diagnosis-context";
 
-const URL = process.env.SUPABASE_TEST_URL ?? "http://127.0.0.1:54321";
+const URL = process.env.SUPABASE_TEST_URL ?? "http://127.0.0.1:55321";
 const KEY =
   process.env.SUPABASE_TEST_SERVICE_KEY ??
   // Standard local-development service key — published in Supabase's own docs.

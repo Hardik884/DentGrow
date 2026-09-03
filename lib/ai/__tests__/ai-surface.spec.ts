@@ -19,7 +19,7 @@
  */
 
 import { readFileSync, readdirSync, statSync } from "node:fs";
-import { join } from "node:path";
+import { join, sep } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const ROOT = process.cwd();
@@ -43,11 +43,26 @@ function read(file: string): string {
   return readFileSync(file, "utf8");
 }
 
+/**
+ * Repo-relative path with forward slashes, on every platform.
+ *
+ * `join()` emits the platform separator, so on Windows these paths came back as
+ * `lib\ai\gemini.ts` and every comparison against a literal like "lib/ai/" or
+ * "actions/ai.ts" failed. That made three of this file's assertions — the ones
+ * that confine the AI SDK to a single module and enumerate every model caller —
+ * fail on Windows for a reason that has nothing to do with what they check,
+ * while passing on CI. A guard that only works on one platform is a guard the
+ * author on the other platform learns to ignore.
+ */
+function rel(file: string): string {
+  return file.slice(ROOT.length + 1).split(sep).join("/");
+}
+
 describe("the AI provider is reachable through exactly one module", () => {
   it("constructs a GoogleGenerativeAI client only in lib/ai/gemini.ts", () => {
     const constructors = ALL_SOURCE.filter((file) =>
       /new\s+GoogleGenerativeAI\s*\(/.test(read(file))
-    ).map((f) => f.slice(ROOT.length + 1));
+    ).map(rel);
 
     expect(constructors).toEqual(["lib/ai/gemini.ts"]);
   });
@@ -55,7 +70,7 @@ describe("the AI provider is reachable through exactly one module", () => {
   it("imports the provider SDK only in lib/ai modules", () => {
     const importers = ALL_SOURCE.filter((file) =>
       /from\s+"@google\/generative-ai"/.test(read(file))
-    ).map((f) => f.slice(ROOT.length + 1));
+    ).map(rel);
 
     // patient-tools.ts imports the SDK for its FunctionDeclaration TYPES only —
     // it never constructs a client. Everything else must go through gemini.ts.
@@ -80,7 +95,7 @@ describe("every prompt that leaves the building is guarded", () => {
       return (
         /\.generateContent\s*\(/.test(src) || /model\.startChat\s*\(/.test(src)
       );
-    }).map((f) => f.slice(ROOT.length + 1));
+    }).map(rel);
 
     expect(callers.sort()).toEqual([...AI_CALLERS].sort());
   });

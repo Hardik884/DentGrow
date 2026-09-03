@@ -37,7 +37,12 @@ const RECEPTIONIST = "receptionist@dentgrow.test"; // Dr. Liying's Dental Care
 const PATIENT = "patient@dentgrow.test"; // portal patient
 
 const MY_CLINIC = "00000000-0000-0000-0000-000000000001";
-const LIYING_CLINIC = "00000000-0000-0000-0000-000000000000";
+// Dr. Liying's Dental Care, as seeded by 20260627000000_multi_clinic_pilot.sql.
+// This previously read ...000000, which matches no clinic: every insert in the
+// fixture below failed the clinic_id foreign key, the beforeAll threw, and all
+// ten assertions in this file were reported as SKIPPED rather than failed. The
+// audit-log immutability guarantees were therefore never actually exercised.
+const LIYING_CLINIC = "11111111-1111-1111-1111-111111111111";
 
 // Namespaced so a failed run leaves nothing that collides with real rows.
 const ROW_MY_CLINIC = "d1000000-0000-4000-8000-000000000001";
@@ -127,7 +132,16 @@ describe.skipIf(!LOCAL_UP)("phi_access_log", () => {
 
     // One row per clinic, so "cannot see the other clinic's rows" is proven
     // against a row that actually exists rather than against an empty table.
-    await service.from("phi_access_log").delete().in("id", [ROW_MY_CLINIC, ROW_LIYING]);
+    //
+    // Clear via the purge RPC, not `.delete()`. The append-only trigger blocks a
+    // plain DELETE even for the service role — which is the property this file
+    // exists to assert — so a `.delete()` here silently removes nothing. Any run
+    // that aborted before afterAll then leaves its rows behind, and the insert
+    // below dies on the primary key instead of on the thing under test. Same
+    // call afterAll uses, for the same reason.
+    await service.rpc("purge_phi_access_log_rows", {
+      p_ids: [ROW_MY_CLINIC, ROW_LIYING],
+    });
     const { error } = await service.from("phi_access_log").insert([
       {
         id: ROW_MY_CLINIC,
@@ -205,12 +219,35 @@ describe.skipIf(!LOCAL_UP)("phi_access_log", () => {
 
   // ── 2. IMMUTABILITY ───────────────────────────────────────────────────────
 
+  /*
+   * A NOTE ON WHAT "REJECTED" LOOKS LIKE OVER POSTGREST
+   *
+   * These two cases assert the row is UNCHANGED, not that the HTTP call
+   * errored, because for a signed-in caller those are different things.
+   *
+   * phi_access_log carries exactly one policy — SELECT for a dentist in their
+   * own clinic. There is no UPDATE or DELETE policy, so RLS matches no rows for
+   * the write and PostgREST returns 204 No Content having touched nothing.
+   * `res.ok` is therefore TRUE for a write that changed nothing at all.
+   *
+   * Asserting `res.ok === false` looks stricter and is actually weaker: it
+   * describes a status code rather than the guarantee, and it fails against a
+   * correctly-locked table. The guarantee is that the row survives the attempt
+   * byte-for-byte, which is what is asserted below — read back through the
+   * service role so RLS cannot hide a change from the assertion itself.
+   *
+   * The append-only TRIGGER is the second layer and does raise, but it only
+   * fires once a row is matched — which for these callers never happens. The
+   * two service-role cases further down are what exercise the trigger.
+   */
+
   it("cannot be modified by a dentist who can read it", async () => {
     const res = await request(`phi_access_log?id=eq.${ROW_MY_CLINIC}`, brain, {
       method: "PATCH",
       body: JSON.stringify({ event: "PATIENT_SEARCHED" }),
     });
-    expect(res.ok).toBe(false);
+    // Denied by matching no rows, not by an error status — see the note above.
+    expect(res.status).toBe(204);
 
     const { data } = await service
       .from("phi_access_log")
@@ -224,7 +261,7 @@ describe.skipIf(!LOCAL_UP)("phi_access_log", () => {
     const res = await request(`phi_access_log?id=eq.${ROW_MY_CLINIC}`, brain, {
       method: "DELETE",
     });
-    expect(res.ok).toBe(false);
+    expect(res.status).toBe(204);
 
     const { data } = await service
       .from("phi_access_log")
@@ -252,5 +289,47 @@ describe.skipIf(!LOCAL_UP)("phi_access_log", () => {
 
     expect(error).not.toBeNull();
     expect(error.message).toMatch(/retention purge/i);
+  });
+
+  /*
+   * The other half of the lifecycle, and the half that was silently broken.
+   *
+   * Every assertion above proves rows CANNOT be removed. None of them proved
+   * they can be removed when they are supposed to be — and they could not: the
+   * append-only trigger was a BEFORE ... FOR EACH ROW trigger ending in
+   * `return null`, which in PostgreSQL cancels the row operation silently. The
+   * authorised purge therefore deleted nothing and reported success, so
+   * retention was inert while every immutability test still passed.
+   *
+   * A one-directional guarantee is how that hid. This asserts the other
+   * direction, on a row of its own so it cannot disturb the fixtures above.
+   */
+  it("CAN be deleted by the declared retention purge — and actually removes the row", async () => {
+    const disposable = "d1000000-0000-4000-8000-00000000000f";
+
+    const { error: insErr } = await service.from("phi_access_log").insert({
+      id: disposable,
+      clinic_id: MY_CLINIC,
+      actor_id: await profileIdFor(BRAIN),
+      actor_role: "dentist",
+      event: "PATIENT_VIEWED",
+      resource_type: "patient",
+      context: { surface: "spec-purge" },
+    });
+    expect(insErr).toBeNull();
+
+    const { data: purged, error: purgeErr } = await service.rpc(
+      "purge_phi_access_log_rows",
+      { p_ids: [disposable] },
+    );
+    expect(purgeErr).toBeNull();
+    expect(purged).toBe(1); // reported one removed...
+
+    const { data } = await service
+      .from("phi_access_log")
+      .select("id")
+      .eq("id", disposable)
+      .maybeSingle();
+    expect(data).toBeNull(); // ...and the row is genuinely gone.
   });
 });
