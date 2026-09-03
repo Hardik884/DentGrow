@@ -1,5 +1,10 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { updateSession } from "@/lib/supabase/middleware";
+import {
+  buildCsp,
+  cspHeaderName,
+  generateNonce,
+} from "@/lib/security/headers";
 
 /**
  * Next.js Middleware — runs on every matched request.
@@ -15,12 +20,33 @@ import { updateSession } from "@/lib/supabase/middleware";
  *    - /portal/*        → patients only;
  *                         redirects to /portal/setup if no portal link exists
  * 4. Redirect already-authenticated users away from every sign-in page.
+ * 5. Issue a per-request CSP nonce and attach the Content-Security-Policy.
  *
- * Security note: middleware is a UX redirect layer only.
- * RLS policies in Supabase are the authoritative security boundary.
+ * Security note: the ROUTING part of this middleware is a UX redirect layer
+ * only. RLS policies in Supabase are the authoritative security boundary.
+ * The CSP is a real control, but a browser-side one: it limits the damage a
+ * successfully injected script can do, it does not decide who may read what.
  */
 export async function middleware(request: NextRequest) {
-  return await updateSession(request);
+  // One nonce per request. It travels two ways, and both are needed:
+  //   - as a REQUEST header, so the root layout can stamp the inline theme
+  //     script with it, and so Next.js stamps its own bootstrap scripts;
+  //   - inside the CSP on the RESPONSE, which is what the browser enforces.
+  const nonce = generateNonce();
+  const csp = buildCsp(nonce);
+
+  const response = await updateSession(request, {
+    "x-nonce": nonce,
+    // Next.js looks for the nonce on this request header to nonce the scripts
+    // it generates. It is always the enforcing header name, regardless of the
+    // mode used on the response — otherwise report-only mode would report every
+    // framework script and the reports would be unreadable.
+    "content-security-policy": csp,
+  });
+
+  response.headers.set(cspHeaderName(), csp);
+
+  return response;
 }
 
 export const config = {

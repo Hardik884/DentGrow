@@ -1,10 +1,10 @@
 import type { Metadata, Viewport } from "next";
+import { headers } from "next/headers";
 import { Geist, Geist_Mono } from "next/font/google";
 import { QueryProvider } from "@/components/providers/QueryProvider";
 import { ThemeProvider } from "@/components/providers/ThemeProvider";
 import { ThemedToaster } from "@/components/providers/ThemedToaster";
 import { THEME_INIT_SCRIPT } from "@/lib/theme/script";
-import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -50,11 +50,17 @@ export const viewport: Viewport = {
   ],
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // Issued per request by middleware.ts and carried here on a request header,
+  // because a Server Component can read request headers but not the response's.
+  // Undefined only where middleware does not run (it excludes /api and static
+  // assets, neither of which renders this layout) — in that case the script is
+  // emitted un-nonced and the CSP, not this file, decides what happens.
+  const nonce = (await headers()).get("x-nonce") ?? undefined;
   return (
     // suppressHydrationWarning: THEME_INIT_SCRIPT below edits <html>'s class and
     // style before React hydrates, which is intentional and is the only thing
@@ -66,14 +72,33 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <head>
-        <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
+        <script nonce={nonce} dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
       </head>
       <body className="font-sans antialiased">
         <ThemeProvider>
           <QueryProvider>{children}</QueryProvider>
           <ThemedToaster />
         </ThemeProvider>
-        <Analytics />
+        {/*
+          NO PRODUCT ANALYTICS HERE, DELIBERATELY.
+
+          <Analytics /> from @vercel/analytics used to be mounted at this point.
+          The root layout wraps EVERY route in the product, so it ran on the
+          patient portal and on every clinical screen — and those URLs carry
+          record identifiers in the path (/portal/billing/{treatmentId},
+          /dentist/patients/{id}, /dentist/treatments/{id}). That made page
+          paths derived from patient and treatment records a third-party
+          disclosure, with no notice, no consent and no processing agreement.
+
+          There is no marketing surface in this repository to scope it to — the
+          marketing site is a separate application (oramedha.com) and is free to
+          carry its own analytics. So the correct scope inside the PMS is none.
+
+          If product telemetry is wanted later, it must not be mounted here:
+          instrument specific non-clinical events server-side with identifiers
+          the vendor cannot resolve back to a patient, and record the vendor in
+          docs/subprocessors.json first.
+        */}
       </body>
     </html>
   );

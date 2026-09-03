@@ -25,8 +25,17 @@ import { createMiddlewareClient } from "@/lib/supabase/middleware-client";
  * requireAdmin() server-side — visiting /admin/login or /admin directly can
  * never bypass authorisation, because nothing here is what grants access.
  */
-export async function updateSession(request: NextRequest) {
-  const { supabase, response } = createMiddlewareClient(request);
+export async function updateSession(
+  request: NextRequest,
+  /**
+   * Headers to make visible to the downstream render (not just the browser).
+   * middleware.ts passes the CSP nonce here so the root layout can stamp its
+   * inline theme script with it — a response header would not be readable from
+   * a Server Component.
+   */
+  extraRequestHeaders?: Record<string, string>
+) {
+  const { supabase, response } = createMiddlewareClient(request, extraRequestHeaders);
 
   // IMPORTANT: do not remove this call — it refreshes the session cookie
   const {

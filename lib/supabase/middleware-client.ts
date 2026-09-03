@@ -16,6 +16,13 @@ import type { Database } from "@/types/database.types";
  * `updateSession`'s, leaving the real client in place.
  *
  * Behaviour is unchanged: same cookie plumbing, same client options.
+ *
+ * `extraRequestHeaders` lets middleware add headers the DOWNSTREAM render can
+ * read via next/headers — the CSP nonce is passed this way, because a response
+ * header is not visible to a Server Component. They are merged fresh on every
+ * `NextResponse.next()` (including the one Supabase triggers when it rotates
+ * session cookies) so a refreshed `cookie` header is never lost to a stale
+ * snapshot.
  */
 
 export type MiddlewareClient = {
@@ -27,8 +34,20 @@ export type MiddlewareClient = {
   response: () => NextResponse;
 };
 
-export function createMiddlewareClient(request: NextRequest): MiddlewareClient {
-  let response = NextResponse.next({ request });
+export function createMiddlewareClient(
+  request: NextRequest,
+  extraRequestHeaders?: Record<string, string>
+): MiddlewareClient {
+  const withExtraHeaders = () => {
+    if (!extraRequestHeaders) return { request };
+    const headers = new Headers(request.headers);
+    for (const [name, value] of Object.entries(extraRequestHeaders)) {
+      headers.set(name, value);
+    }
+    return { request: { headers } };
+  };
+
+  let response = NextResponse.next(withExtraHeaders());
 
   const supabase = createServerClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -40,7 +59,7 @@ export function createMiddlewareClient(request: NextRequest): MiddlewareClient {
         },
         setAll(cookiesToSet: { name: string; value: string; options?: CookieOptions }[]) {
           cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
-          response = NextResponse.next({ request });
+          response = NextResponse.next(withExtraHeaders());
           cookiesToSet.forEach(({ name, value, options }) =>
             response.cookies.set(name, value, options)
           );
