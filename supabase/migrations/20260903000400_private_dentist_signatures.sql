@@ -66,11 +66,23 @@ create policy "dentist-signatures: portal read own clinic"
     and (select auth_patient_id()) is not null
   );
 
-comment on policy "dentist-signatures: portal read own clinic" on storage.objects is
-  'A portal patient may read the signature of a dentist AT THEIR OWN CLINIC, '
-  'because it is rendered on their prescriptions, treatment records and '
-  'consents. Added when the bucket stopped being world-readable — without it, '
-  'making the bucket private would have silently blanked those signatures.';
+-- NOTE ON THE MISSING `comment on policy`
+--   The rationale above would normally be attached to the policy itself with
+--   `comment on policy ... on storage.objects`. It cannot be: COMMENT requires
+--   ownership of the relation, and storage.objects is owned by
+--   supabase_storage_admin, not by postgres (the role the CLI runs migrations
+--   as). Attempting it aborts the whole migration with
+--
+--     ERROR: must be owner of relation objects (SQLSTATE 42501)
+--
+--   CREATE POLICY on storage.objects is separately granted and does work, which
+--   is why every storage policy in this repository is created without a comment.
+--   The explanation therefore lives here instead:
+--
+--   A portal patient may read the signature of a dentist AT THEIR OWN CLINIC,
+--   because it is rendered on their prescriptions, treatment records and
+--   consents. Added when the bucket stopped being world-readable — without it,
+--   making the bucket private would have silently blanked those signatures.
 
 -- =============================================================================
 -- END OF MIGRATION

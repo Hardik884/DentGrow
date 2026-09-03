@@ -111,6 +111,24 @@ comment on function auth_patient_pinned_fields() is
 revoke all on function auth_patient_pinned_fields() from public;
 revoke all on function auth_patient_pinned_fields() from anon;
 
+-- ...and `authenticated` MUST then be granted it back explicitly.
+--
+-- This is not optional tidying. 20260727000002_baseline_role_grants.sql
+-- deliberately excludes FUNCTIONS from the schema's default privileges ("Function
+-- EXECUTE must be granted explicitly, per function, as a conscious decision"), so
+-- a new function starts with only the implicit PUBLIC grant — which the REVOKE
+-- above then removes. Without this GRANT the policy below still *installs*
+-- cleanly, and then every portal profile UPDATE fails at runtime with
+--
+--   ERROR: permission denied for function auth_patient_pinned_fields (42501)
+--
+-- because the WITH CHECK cannot evaluate. That breaks the portal's own
+-- contact-details edit — the single feature this policy exists to permit — while
+-- looking, in a migration log, exactly like success.
+--
+-- Same shape as auth_is_admin() in 20260821000000, for the same reason.
+grant execute on function auth_patient_pinned_fields() to authenticated, service_role;
+
 -- =============================================================================
 -- 2. THE POLICY
 -- =============================================================================

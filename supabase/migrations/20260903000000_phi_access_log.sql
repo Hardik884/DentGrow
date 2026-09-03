@@ -192,7 +192,20 @@ begin
       using errcode = 'restrict_violation';
   end if;
 
-  return null;
+  -- Reached only by an AUTHORISED delete: UPDATE always raised above, and an
+  -- unauthorised DELETE raised too. Returning OLD lets that delete proceed.
+  --
+  -- This previously read `return null`. In a BEFORE ... FOR EACH ROW trigger,
+  -- returning NULL SILENTLY CANCELS the row operation — no error, no row
+  -- affected. So the retention purge, which is the one caller allowed to delete
+  -- here, deleted nothing at all and reported success:
+  --
+  --   select purge_phi_access_log_rows(array(select id from phi_access_log));
+  --    -> 0        (with the rows still present afterwards)
+  --
+  -- The append-only guarantee still held, but the purge half of the lifecycle
+  -- was inert, which is only visible by actually executing a purge.
+  return old;
 end;
 $$;
 
