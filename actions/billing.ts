@@ -2,6 +2,7 @@
 
 import { createServerClient } from "@/lib/supabase/server";
 import { resolveSession as resolveCachedSession } from "@/lib/auth/session";
+import { resolveSignatureUrl } from "@/lib/signatures/resolve";
 import { getTodayInTimezone } from "@/lib/utils";
 import {
   allocateCollectionsToTreatments,
@@ -131,7 +132,13 @@ async function fetchDentistInfo(
 
   return {
     name: (data?.full_name as string | undefined) ?? "Dentist",
-    signatureUrl: (data?.signature_url as string | null | undefined) ?? null,
+    // The stored value is an object path in a private bucket (or, on rows
+    // written before 20260903000400, a legacy public URL). Either way it has to
+    // be signed before a browser can render it.
+    signatureUrl: await resolveSignatureUrl(
+      db,
+      data?.signature_url as string | null | undefined
+    ),
   };
 }
 

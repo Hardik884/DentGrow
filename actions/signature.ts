@@ -8,13 +8,23 @@ import {
   MAX_SIGNATURE_SIZE,
   signatureObjectPath,
 } from "@/lib/signatures/constants";
+import { resolveSignatureUrl } from "@/lib/signatures/resolve";
+import {
+  actualContentType,
+  assertImageContentMatches,
+} from "@/lib/security/file-validation";
 import type { ActionResult } from "@/types";
 
 /**
  * Dentist Digital Signature — Server Actions
  *
- * A dentist uploads their signature ONCE. It is stored securely in the
- * dentist-signatures bucket and referenced (URL only) from profiles.signature_url.
+ * A dentist uploads their signature ONCE. It is stored in the PRIVATE
+ * dentist-signatures bucket and referenced by object PATH from
+ * profiles.signature_url; a short-lived signed URL is minted at render time
+ * (lib/signatures/resolve.ts). The bucket was public until 20260903000400 —
+ * a permanent world-readable URL for the mark that authenticates a
+ * prescription. Rows written before that still hold an absolute URL and the
+ * resolver handles both.
  * It is then resolved automatically onto every completed treatment shown to
  * patients — the dentist never signs individual treatments.
  *
@@ -67,7 +77,8 @@ export async function getMySignature(): Promise<ActionResult<{ url: string | nul
       return { data: null, error: "Failed to load signature." };
     }
 
-    return { data: { url: (data?.signature_url as string | null) ?? null }, error: null };
+    const url = await resolveSignatureUrl(db, data?.signature_url as string | null);
+    return { data: { url }, error: null };
   } catch (err) {
     console.error("[getMySignature] unexpected:", err);
     return { data: null, error: "Unexpected error" };
@@ -100,6 +111,11 @@ export async function uploadSignature(
       return { data: null, error: "File too large (max 4 MB)." };
     }
 
+    // file.type is whatever the browser said. Read the first bytes and check
+    // they are actually a PNG or JPEG — see lib/security/file-validation.ts.
+    const contentError = await assertImageContentMatches(file);
+    if (contentError) return { data: null, error: contentError };
+
     const { db, profile } = await resolveSession();
     if (!profile) return { data: null, error: "Unauthorized" };
     if (profile.role !== "dentist") {
@@ -112,21 +128,19 @@ export async function uploadSignature(
     // so replacing never leaves an orphaned object.
     const { error: uploadErr } = await db.storage
       .from(SIGNATURE_BUCKET)
-      .upload(path, file, { contentType: file.type, upsert: true });
+      .upload(path, file, { contentType: await actualContentType(file), upsert: true });
 
     if (uploadErr) {
       console.error("[uploadSignature] upload:", uploadErr);
       return { data: null, error: "Failed to upload signature." };
     }
 
-    // Public bucket → stable public URL. Append a cache-buster so a replaced
-    // signature (same path) is not served stale from the browser/CDN cache.
-    const { data: pub } = db.storage.from(SIGNATURE_BUCKET).getPublicUrl(path);
-    const publicUrl = `${pub.publicUrl}?v=${Date.now()}`;
-
+    // Store the object PATH, not a URL. The bucket is private, so there is no
+    // stable URL to store — and a stored URL is exactly what leaked before.
+    // No cache-buster is needed either: every signed URL is freshly minted.
     const { error: updateErr } = await db
       .from("profiles")
-      .update({ signature_url: publicUrl, updated_at: new Date().toISOString() })
+      .update({ signature_url: path, updated_at: new Date().toISOString() })
       .eq("id", profile.id);
 
     if (updateErr) {
@@ -136,7 +150,14 @@ export async function uploadSignature(
 
     revalidatePath("/dentist/settings");
 
-    return { data: { url: publicUrl }, error: null };
+    const url = await resolveSignatureUrl(db, path);
+    if (!url) {
+      // The object is stored and the profile points at it; only the preview
+      // link failed. Say so rather than reporting a failed upload.
+      return { data: null, error: "Signature saved, but the preview could not be loaded." };
+    }
+
+    return { data: { url }, error: null };
   } catch (err) {
     console.error("[uploadSignature] unexpected:", err);
     return { data: null, error: "Unexpected error" };

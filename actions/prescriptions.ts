@@ -3,6 +3,7 @@
 import { resolveSession as resolveCachedSession } from "@/lib/auth/session";
 import { getUtcBoundariesForLocalDate } from "@/lib/utils";
 import { recordPhiAccess } from "@/lib/audit/phi-access";
+import { resolveSignatureUrls } from "@/lib/signatures/resolve";
 import { DEFAULT_TIMEZONE } from "@/lib/clinic/constants";
 import { getPatientTreatments } from "@/actions/treatments";
 import type { ActionResult, TreatmentForPatientWithSignature } from "@/types";
@@ -276,12 +277,17 @@ export async function getPrescriptions(filters?: {
       .select("id, full_name, signature_url")
       .in("id", dentistIds);
 
-    const dentistById = new Map(
-      ((dentistsData ?? []) as {
-        id: string;
-        full_name: string;
-        signature_url: string | null;
-      }[]).map((d) => [d.id, d])
+    const dentistRows = (dentistsData ?? []) as {
+      id: string;
+      full_name: string;
+      signature_url: string | null;
+    }[];
+    const dentistById = new Map(dentistRows.map((d) => [d.id, d]));
+
+    // One signed URL per distinct dentist, reused across the page's rows.
+    const signedByStored = await resolveSignatureUrls(
+      db,
+      dentistRows.map((d) => d.signature_url)
     );
 
     // Resolve registration number from clinic_settings
@@ -313,7 +319,9 @@ export async function getPrescriptions(filters?: {
           dentist_id: dentistId!,
           dentist_name: dentist.full_name,
           dentist_registration_number: registrationNumber,
-          dentist_signature_url: dentist.signature_url,
+          dentist_signature_url: dentist.signature_url
+            ? (signedByStored.get(dentist.signature_url) ?? null)
+            : null,
           medications: t.medications ?? [],
           patient_visible_notes: t.patient_visible_notes,
           medicine_count: t.medications?.length ?? 0,

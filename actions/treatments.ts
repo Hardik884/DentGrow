@@ -5,6 +5,11 @@ import { createServerClient } from "@/lib/supabase/server";
 import { resolveSession as resolveCachedSession } from "@/lib/auth/session";
 import { recordPhiAccess, recordPhiAccessBatch } from "@/lib/audit/phi-access";
 import { diffFields, writeTreatmentHistory } from "@/lib/treatments/history";
+import { resolveSignatureUrls } from "@/lib/signatures/resolve";
+import {
+  actualContentType,
+  assertContentMatchesType,
+} from "@/lib/security/file-validation";
 import { DOCUMENT_URL_TTL_SECONDS } from "@/lib/storage/signed-urls";
 import {
   CreateTreatmentSchema,
@@ -979,20 +984,29 @@ export async function getPatientTreatments(
           .select("id, full_name, signature_url")
           .in("id", dentistIds);
 
-        const dentistById = new Map(
-          ((dentists ?? []) as {
-            id: string;
-            full_name: string;
-            signature_url: string | null;
-          }[]).map((d) => [d.id, d])
+        const dentistRows = (dentists ?? []) as {
+          id: string;
+          full_name: string;
+          signature_url: string | null;
+        }[];
+        const dentistById = new Map(dentistRows.map((d) => [d.id, d]));
+
+        // Sign once per distinct stored value rather than once per appointment:
+        // a patient's history is typically all the same one or two dentists.
+        const signedByStored = await resolveSignatureUrls(
+          db,
+          dentistRows.map((d) => d.signature_url)
         );
 
         for (const appt of apptRows) {
           const dentist = dentistById.get(appt.dentist_id);
-          if (dentist?.signature_url) {
+          const signed = dentist?.signature_url
+            ? signedByStored.get(dentist.signature_url)
+            : undefined;
+          if (dentist && signed) {
             signatureByAppointment.set(appt.id, {
               dentistName: dentist.full_name,
-              signatureUrl: dentist.signature_url,
+              signatureUrl: signed,
             });
           }
         }
@@ -1136,6 +1150,11 @@ export async function uploadTreatmentDocument(
       return { data: null, error: "File too large (max 10 MB)." };
     }
 
+    // The check above trusted file.type, which is the browser's guess and is
+    // under the caller's control. This one reads the actual bytes.
+    const contentError = await assertContentMatchesType(file, ALLOWED_DOCUMENT_TYPES);
+    if (contentError) return { data: null, error: contentError };
+
     const { db, profile } = await resolveSession();
     if (!profile) return { data: null, error: "Unauthorized" };
     if (profile.role !== "dentist") {
@@ -1156,9 +1175,13 @@ export async function uploadTreatmentDocument(
     const safeName = file.name.replace(/[^\w.\-]/g, "_");
     const path = `${profile.clinic_id}/${patientId}/${treatmentId}/${Date.now()}-${safeName}`;
 
+    // Store the type the BYTES say, not the one the browser claimed — that is
+    // the Content-Type the object is later served with.
+    const contentType = await actualContentType(file);
+
     const { error: uploadErr } = await db.storage
       .from(DOCUMENT_BUCKET)
-      .upload(path, file, { contentType: file.type, upsert: false });
+      .upload(path, file, { contentType, upsert: false });
 
     if (uploadErr) {
       console.error("[uploadTreatmentDocument] upload:", uploadErr);
@@ -1173,7 +1196,7 @@ export async function uploadTreatmentDocument(
         treatment_id: treatmentId,
         file_name: file.name,
         file_path: path,
-        file_type: file.type,
+        file_type: contentType,
         file_size: file.size,
         created_by: profile.id,
       })
@@ -1392,6 +1415,9 @@ export async function uploadAppointmentDocument(
       return { data: null, error: "File too large (max 10 MB)." };
     }
 
+    const apptContentError = await assertContentMatchesType(file, ALLOWED_DOCUMENT_TYPES);
+    if (apptContentError) return { data: null, error: apptContentError };
+
     const { db, profile } = await resolveSession();
     if (!profile) return { data: null, error: "Unauthorized" };
     if (profile.role !== "dentist" && profile.role !== "receptionist") {
@@ -1412,9 +1438,11 @@ export async function uploadAppointmentDocument(
     const safeName = file.name.replace(/[^\w.\-]/g, "_");
     const path = `${profile.clinic_id}/${patientId}/appointments/${appointmentId}/${Date.now()}-${safeName}`;
 
+    const apptContentType = await actualContentType(file);
+
     const { error: uploadErr } = await db.storage
       .from(DOCUMENT_BUCKET)
-      .upload(path, file, { contentType: file.type, upsert: false });
+      .upload(path, file, { contentType: apptContentType, upsert: false });
 
     if (uploadErr) {
       console.error("[uploadAppointmentDocument] upload:", uploadErr);
@@ -1431,7 +1459,7 @@ export async function uploadAppointmentDocument(
         document_type: documentType,
         file_name: file.name,
         file_path: path,
-        file_type: file.type,
+        file_type: apptContentType,
         file_size: file.size,
         created_by: profile.id,
       })

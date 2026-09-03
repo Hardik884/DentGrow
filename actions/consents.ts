@@ -20,7 +20,16 @@ import {
   validateConsentUpload,
 } from "@/lib/consents/constants";
 import { CONSENT_URL_TTL_SECONDS } from "@/lib/storage/signed-urls";
+import {
+  actualContentType,
+  assertContentMatchesType,
+} from "@/lib/security/file-validation";
+import { ALLOWED_CONSENT_UPLOAD_TYPES } from "@/lib/consents/constants";
 import { recordPhiAccess } from "@/lib/audit/phi-access";
+import {
+  resolveSignatureUrl,
+  signatureObjectPathFrom,
+} from "@/lib/signatures/resolve";
 import { ensureConsentTemplates } from "@/actions/consent-templates";
 import {
   CreateConsentSchema,
@@ -349,7 +358,11 @@ export async function signConsent(id: string, input: unknown): Promise<ActionRes
       .maybeSingle();
 
     const dentistName = (dentist?.full_name as string | null | undefined) ?? profile.full_name ?? null;
-    const dentistSignatureUrl = (dentist?.signature_url as string | null | undefined) ?? null;
+    // The SNAPSHOT stores the object PATH, not a signed URL — a signed URL
+    // would expire and a frozen consent document would lose its signature.
+    // Readers sign it at render time (resolveConsentSnapshotSignature below).
+    const dentistSignatureUrl =
+      signatureObjectPathFrom(dentist?.signature_url as string | null | undefined);
 
     const snapshot = existing.content_snapshot as ConsentSnapshot;
     const frozen: ConsentSnapshot = {
@@ -479,6 +492,16 @@ export async function uploadSignedConsent(formData: FormData): Promise<ActionRes
     if (invalid) {
       return { data: null, error: invalid };
     }
+    // validateConsentUpload checks the type the BROWSER claimed, which the
+    // caller controls. This reads the leading bytes and checks the file really
+    // is the PDF/JPEG/PNG it says it is.
+    const contentInvalid = await assertContentMatchesType(
+      file,
+      ALLOWED_CONSENT_UPLOAD_TYPES
+    );
+    if (contentInvalid) {
+      return { data: null, error: contentInvalid };
+    }
 
     const { db, profile } = await resolveSession();
     if (!profile) return { data: null, error: "Unauthorized" };
@@ -512,9 +535,13 @@ export async function uploadSignedConsent(formData: FormData): Promise<ActionRes
 
     // Upload the original file through the user-scoped client so storage RLS
     // (clinic-scoped staff insert) is exercised as defence in depth.
+    // The type the bytes say, not the one the browser claimed — this becomes
+    // the Content-Type the object is served with.
+    const consentContentType = await actualContentType(file);
+
     const { error: uploadErr } = await db.storage
       .from(CONSENT_BUCKET)
-      .upload(path, file, { contentType: file.type, upsert: false });
+      .upload(path, file, { contentType: consentContentType, upsert: false });
     if (uploadErr) {
       // Storage rejected the object (bucket missing, storage RLS, quota…).
       // Log the real fault; show the user something they can act on.
@@ -560,7 +587,7 @@ export async function uploadSignedConsent(formData: FormData): Promise<ActionRes
         content_snapshot: snapshot,
         file_name: file.name,
         file_path: path,
-        file_type: file.type,
+        file_type: consentContentType,
         file_size: file.size,
         uploaded_by: profile.id,
         uploaded_at: new Date().toISOString(),
@@ -712,6 +739,35 @@ export async function getConsentsForTreatment(
 }
 
 /** Full consent row for staff (dentist/receptionist), clinic-scoped. */
+
+/**
+ * Re-signs the dentist signature inside a frozen consent snapshot.
+ *
+ * The snapshot stores the object PATH, deliberately: a signed URL expires, and
+ * a consent document is a permanent record that must still render its
+ * signature years later. Signing is therefore done at READ time, here, on the
+ * way out to whoever is entitled to see the consent.
+ *
+ * Snapshots frozen before 20260903000400 hold an absolute public URL instead;
+ * signatureObjectPathFrom (inside resolveSignatureUrl) recognises those and
+ * extracts the path, so old consents keep rendering unchanged.
+ *
+ * Returns the snapshot untouched when there is nothing to sign, so a consent
+ * with no dentist signature is not turned into one with a broken image.
+ */
+async function withSignedSnapshotSignature(
+  db: DbClient,
+  snapshot: ConsentSnapshot | null
+): Promise<ConsentSnapshot | null> {
+  if (!snapshot?.dentist?.signatureUrl) return snapshot;
+
+  const signed = await resolveSignatureUrl(db, snapshot.dentist.signatureUrl);
+  return {
+    ...snapshot,
+    dentist: { ...snapshot.dentist, signatureUrl: signed },
+  };
+}
+
 export async function getConsent(id: string): Promise<ActionResult<Consent>> {
   try {
     const { db, profile } = await resolveSession();
@@ -736,7 +792,18 @@ export async function getConsent(id: string): Promise<ActionResult<Consent>> {
       return { data: null, error: "Failed to load consent." };
     }
     if (!data) return { data: null, error: "Consent not found." };
-    return { data: data as Consent, error: null };
+
+    const consent = data as Consent;
+    return {
+      data: {
+        ...consent,
+        content_snapshot: await withSignedSnapshotSignature(
+          db,
+          consent.content_snapshot as ConsentSnapshot | null
+        ),
+      } as Consent,
+      error: null,
+    };
   } catch (err) {
     console.error("[getConsent] unexpected:", err);
     return { data: null, error: "Unexpected error" };
@@ -852,7 +919,10 @@ export async function getPortalConsentDetail(
 
     return {
       data: {
-        snapshot: data.content_snapshot as ConsentSnapshot,
+        snapshot: (await withSignedSnapshotSignature(
+          db,
+          data.content_snapshot as ConsentSnapshot
+        )) as ConsentSnapshot,
         source: data.source as string,
         status: data.status as string,
         signed_at: (data.signed_at as string | null) ?? null,

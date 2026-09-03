@@ -4,7 +4,12 @@
  * may only export async functions.
  */
 
-/** Supabase storage bucket name for dentist signatures (public read). */
+/**
+ * Supabase storage bucket for dentist signatures. PRIVATE since
+ * 20260903000400 — it was public, which made a permanent world-readable URL
+ * out of the mark that authenticates a prescription. Reads go through
+ * short-lived signed URLs (lib/signatures/resolve.ts).
+ */
 export const SIGNATURE_BUCKET = "dentist-signatures";
 
 /** Allowed signature upload mime types — PNG, JPG, JPEG. */
