@@ -6,7 +6,10 @@
  *   - patient isolation on the portal path (getPortalTreatmentBill /
  *     getPortalBillsList never resolve another patient's data, and never
  *     trust a client-supplied patient id)
- *   - digital signature retrieval (present / missing) passes through as-is
+ *   - digital signature retrieval (present / missing). Since 20260903000400 the
+ *     bucket is private, so the stored value is an object PATH and the bill
+ *     carries a freshly SIGNED url — the mock storage below is what proves the
+ *     signing step actually happens rather than the raw path leaking through
  *   - per-treatment vs. whole-visit scoping reuses the same data path
  */
 
@@ -67,6 +70,18 @@ function makeGenericDb(tables: Tables, currentUserId = "portal-user-1") {
   return {
     from: (table: string) => builder(table),
     auth: { getUser: async () => ({ data: { user: { id: currentUserId } } }) },
+    // The dentist-signatures bucket is private, so a stored path has to be
+    // signed before it can be rendered. The stub returns a URL that is
+    // recognisably NOT the stored value, so a test asserting on it cannot pass
+    // if the signing step were skipped and the raw path passed through.
+    storage: {
+      from: (bucket: string) => ({
+        createSignedUrl: async (path: string, ttl: number) => ({
+          data: { signedUrl: `https://signed.example/${bucket}/${path}?exp=${ttl}` },
+          error: null,
+        }),
+      }),
+    },
   };
 }
 
@@ -103,7 +118,7 @@ describe("getStaffBill", () => {
     expect(result.error).toBe("Forbidden");
   });
 
-  it("builds a whole-visit bill and passes through a configured signature", async () => {
+  it("builds a whole-visit bill and signs the dentist's stored signature", async () => {
     (resolveSession as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({
       db: makeGenericDb({
         appointments: [
@@ -124,7 +139,10 @@ describe("getStaffBill", () => {
         clinic_settings: [
           { clinic_id: CLINIC_A, clinic_name: "Dr. Liying's Dental Care", address: "12 MG Road", phone: "0123456789", email: "clinic@example.com", registration_number: "REG-1", timezone: "Asia/Kolkata" },
         ],
-        profiles: [{ id: "d1", full_name: "Dr. Liying", signature_url: "https://storage.example/sig.png" }],
+        // What the column holds since the bucket went private: an object path.
+        profiles: [
+          { id: "d1", full_name: "Dr. Liying", signature_url: `${CLINIC_A}/d1/signature.png` },
+        ],
       }),
       profile: { id: "staff-1", clinic_id: CLINIC_A, role: "dentist" },
     });
@@ -135,7 +153,11 @@ describe("getStaffBill", () => {
     expect(result.data?.bill.paid).toBe(5000);
     expect(result.data?.bill.balanceDue).toBe(3700);
     expect(result.data?.bill.status).toBe("partial");
-    expect(result.data?.dentist.signatureUrl).toBe("https://storage.example/sig.png");
+    // Signed, not passed through: a private-bucket path is unusable in an
+    // <img> and would render as a broken signature on the invoice.
+    expect(result.data?.dentist.signatureUrl).toBe(
+      `https://signed.example/dentist-signatures/${CLINIC_A}/d1/signature.png?exp=3600`
+    );
     expect(result.data?.clinic.name).toBe("Dr. Liying's Dental Care");
   });
 
