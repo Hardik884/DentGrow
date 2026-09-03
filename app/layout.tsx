@@ -82,7 +82,7 @@ export default async function RootLayout({
         {/*
           NO PRODUCT ANALYTICS HERE, DELIBERATELY.
 
-          <Analytics /> from @vercel/analytics used to be mounted at this point.
+          The Vercel Analytics component used to be mounted at this point.
           The root layout wraps EVERY route in the product, so it ran on the
           patient portal and on every clinical screen — and those URLs carry
           record identifiers in the path (/portal/billing/{treatmentId},

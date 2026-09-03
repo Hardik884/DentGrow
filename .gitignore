@@ -56,9 +56,23 @@ logs
 .supabase/
 
 # Database dumps — may contain production patient data (PII). Never commit.
+#
+# A production dump contains auth.users (password hashes), auth.refresh_tokens
+# and every patient, treatment and payment row. One has previously existed
+# uncontrolled on a developer machine; see docs/INCIDENT-RESPONSE.md §4 for the
+# remediation that cannot be performed from this repository.
+#
+# The patterns below cover the shapes a dump actually arrives in — pg_dump's
+# defaults, a gzipped dump, a custom-format archive, and anything named
+# "backup".
 backup*.sql
 *.dump
+*.sql.gz
+*.sql.zst
+*.backup
+pg_dump*
 supabase/backup*.sql
+supabase/*.dump
 
 # OS
 Thumbs.db

@@ -1,0 +1,159 @@
+{
+  "$comment": [
+    "Third parties that actually process data for the OraMedha PMS.",
+    "",
+    "SCOPE: this repository — the practice-management application. The OraMedha",
+    "marketing site (oramedha.com) is a separate application with its own",
+    "dependencies (including a Google Sheets integration for demo requests) and",
+    "its own inventory; nothing here covers it.",
+    "",
+    "RULE: a provider appears here only if data actually reaches it from THIS",
+    "codebase. Several vendors commonly assumed to be present are genuinely",
+    "absent, and are listed under `not_used` so an assumption can be checked",
+    "rather than repeated.",
+    "",
+    "HONESTY: `dpa` records whether a Data Processing Agreement is on file.",
+    "Every entry currently reads \"none-on-record\". That is not a formatting",
+    "placeholder — it is the actual position, and it is the single largest",
+    "outstanding item in this file.",
+    "",
+    "Validated by lib/__tests__/subprocessors.spec.ts, which cross-checks this",
+    "file against package.json and the source tree so a new outbound dependency",
+    "cannot be added without appearing here."
+  ],
+  "version": 1,
+  "updated": "2026-09-03",
+  "scope": "OraMedha practice-management application (this repository)",
+
+  "subprocessors": [
+    {
+      "id": "supabase",
+      "provider": "Supabase",
+      "purpose": "Primary datastore, authentication, file storage, realtime",
+      "evidence": {
+        "packages": ["@supabase/supabase-js", "@supabase/ssr"],
+        "env": ["NEXT_PUBLIC_SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY"]
+      },
+      "receives_patient_data": true,
+      "data_categories": [
+        "identity",
+        "contact",
+        "clinical",
+        "financial",
+        "authentication",
+        "documents-and-imaging"
+      ],
+      "region": "unverified",
+      "region_note": "Set when the project was created and readable in the Supabase dashboard (Project Settings → General). Not determinable from this repository. → REQUIRES MANUAL VERIFICATION.",
+      "retention": "platform default; not independently verified",
+      "dpa": "none-on-record",
+      "status": "active",
+      "criticality": "high"
+    },
+    {
+      "id": "vercel",
+      "provider": "Vercel",
+      "purpose": "Application hosting and serverless execution",
+      "evidence": {
+        "packages": ["next"],
+        "notes": "Deployed at dent-grow.vercel.app; next.config.ts documents Vercel's serverless body-size cap."
+      },
+      "receives_patient_data": true,
+      "data_categories": [
+        "request-urls-containing-record-identifiers",
+        "function-logs",
+        "ip-addresses"
+      ],
+      "region": "unverified",
+      "region_note": "Function region is a project setting in the Vercel dashboard. → REQUIRES MANUAL VERIFICATION.",
+      "retention": "plan default; not independently verified",
+      "dpa": "none-on-record",
+      "status": "active",
+      "criticality": "high"
+    },
+    {
+      "id": "google-gemini",
+      "provider": "Google (Gemini Developer API)",
+      "purpose": "AI-assisted patient summaries, clinic insights, portal assistant, plain-English Business Brain explanations",
+      "evidence": {
+        "packages": ["@google/generative-ai"],
+        "env": ["GOOGLE_AI_API_KEY"],
+        "endpoint": "generativelanguage.googleapis.com"
+      },
+      "receives_patient_data": true,
+      "data_categories": [
+        "clinical-summary-pseudonymised",
+        "treatment-types-and-patient-visible-notes",
+        "outstanding-balance",
+        "clinic-aggregates"
+      ],
+      "minimisation": "Patient name, phone, email and date of birth are never sent. Age is banded, last-visit is coarsened to a month, and every outbound prompt passes lib/ai/redaction.ts. Pseudonymised is NOT anonymous — a treatment history is distinctive.",
+      "region": "no-control",
+      "region_note": "The Developer API offers no regional pinning. Vertex AI does; migrating is the open item recorded in docs/AI-DATA-HANDLING.md.",
+      "retention": "not-established",
+      "training_use": "not-verified",
+      "training_note": "Whether submitted data may be used to improve Google's models depends on the billing tier this key sits on, which has not been confirmed. This is the decisive open question.",
+      "dpa": "none-on-record",
+      "status": "active",
+      "criticality": "high"
+    },
+    {
+      "id": "meta-whatsapp",
+      "provider": "Meta (WhatsApp)",
+      "purpose": "Reminder messages, composed in-app and sent BY A HUMAN through a wa.me click-to-send link",
+      "evidence": {
+        "source": "lib/whatsapp/, business-brain/engines/action/",
+        "notes": "No API integration and no automated sending. OraMedha never transmits to Meta; it opens a link and a staff member sends the message from their own WhatsApp account."
+      },
+      "receives_patient_data": true,
+      "data_categories": ["name", "phone", "appointment-date", "amount-outstanding"],
+      "region": "meta-controlled",
+      "retention": "meta-controlled",
+      "dpa": "none-on-record",
+      "status": "allow-listed",
+      "status_note": "Gated to development clinic IDs by WHATSAPP_ENABLED_CLINIC_IDS and asserted by lib/__tests__/business-brain-gate.spec.ts. MUST NOT be widened before communications consent is in force — data_consent_records now provides the mechanism.",
+      "criticality": "medium"
+    },
+    {
+      "id": "resend",
+      "provider": "Resend",
+      "purpose": "SMTP transport for Supabase Auth emails (verification, password reset)",
+      "evidence": {
+        "source": "scripts/push-auth-email-config.mjs, supabase/EMAIL.md",
+        "env": ["RESEND_SMTP_PASSWORD"]
+      },
+      "receives_patient_data": true,
+      "data_categories": ["email-address"],
+      "region": "provider-default",
+      "retention": "provider-default",
+      "dpa": "none-on-record",
+      "status": "not-active",
+      "status_note": "Configured only if RESEND_SMTP_PASSWORD is set and `npm run auth:email:push` has been run with a Resend provider. Unset by default, in which case Supabase's own email service carries the message and Resend receives nothing. The application never holds a mail credential or sends an email itself.",
+      "criticality": "medium"
+    }
+  ],
+
+  "not_used": {
+    "$comment": "Verified absent from this repository. Listed so an assumption can be checked instead of repeated.",
+    "vercel-analytics": "REMOVED. @vercel/analytics was mounted in the root layout, so it ran on the patient portal and every clinical route, sending paths containing patient and treatment UUIDs. The dependency has been uninstalled.",
+    "google-fonts-runtime": "next/font/google self-hosts the typeface at build time. No runtime request reaches Google and no visitor IP is disclosed.",
+    "google-sheets": "The MARKETING SITE has a Sheets integration for demo requests. This application does not, and has no googleapis dependency.",
+    "n8n": "A webhook route handler exists as a skeleton and has never been written to. No n8n instance receives anything.",
+    "sentry": "absent",
+    "posthog": "absent",
+    "mixpanel": "absent",
+    "google-analytics": "absent",
+    "hotjar": "absent",
+    "twilio-or-sms": "absent — auth.sms is disabled in supabase/config.toml",
+    "payment-gateway": "absent — no payment processor is integrated; payments are recorded, not taken",
+    "redis": "absent — the rate limiter is in-process, which lib/security/rate-limit.ts states plainly",
+    "aws-direct": "absent"
+  },
+
+  "open_items": [
+    "No Data Processing Agreement is on record with ANY provider above. → REQUIRES LEGAL ACTION.",
+    "Supabase and Vercel regions are unverified. → REQUIRES MANUAL VERIFICATION in each dashboard.",
+    "Google's retention and training-use position for this API key is unverified, and depends on the billing tier. → REQUIRES PROVIDER CONFIRMATION.",
+    "A published subprocessor list is a disclosure obligation under several regimes. This file is the engineering inventory it would be built from, not the published document."
+  ]
+}
