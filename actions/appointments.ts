@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createServerClient } from "@/lib/supabase/server";
 import { resolveSession as resolveCachedSession } from "@/lib/auth/session";
 import { isPatientBookingEnabled } from "@/lib/feature-flags";
+import { recordPhiAccess } from "@/lib/audit/phi-access";
 import {
   CreateAppointmentSchema,
   RescheduleAppointmentSchema,
@@ -1207,6 +1208,21 @@ export async function getAppointment(
         .order("timestamp", { ascending: false });
 
       history = (historyData ?? []) as AppointmentHistory[];
+    }
+
+    // An appointment carries medical_history, chief_complaints, oral_findings
+    // and provisional_diagnosis, so a staff read of one is a clinical read.
+    // A patient opening their own appointment is not recorded — the log exists
+    // to answer who ELSE saw a record.
+    if (!isPatient) {
+      await recordPhiAccess(profile, {
+        event: "CLINICAL_RECORD_VIEWED",
+        resourceType: "appointment",
+        resourceId: id,
+        patientId:
+          (appointment as { patient_id?: string | null }).patient_id ?? null,
+        context: { surface: "appointment-detail" },
+      });
     }
 
     return {

@@ -5,6 +5,7 @@ import { createServerClient } from "@/lib/supabase/server";
 import { resolveSession as resolveCachedSession } from "@/lib/auth/session";
 import { getTodayInTimezone } from "@/lib/utils";
 import { computeOutstandingBalance, treatmentTotalCharge } from "@/lib/billing/balance";
+import { recordPhiAccess } from "@/lib/audit/phi-access";
 import {
   allocateCollectionsToTreatments,
   type PayoutPaymentLike,
@@ -198,7 +199,20 @@ export async function getPatientPayments(
         return { data: null, error: "Failed to fetch payments." };
       }
 
-      return { data: (data ?? []) as Payment[], error: null };
+      const rows = (data ?? []) as Payment[];
+
+      // A patient's payment ledger is financial data about a named person, so a
+      // staff read of one patient's ledger is recorded. Amounts are not: the
+      // log stores that the ledger was opened, never what it said.
+      await recordPhiAccess(profile, {
+        event: "PAYMENT_VIEWED",
+        resourceType: "patient",
+        resourceId: patientId,
+        patientId,
+        context: { surface: "patient-payments", count: rows.length },
+      });
+
+      return { data: rows, error: null };
     }
 
     // Patient portal path: resolve via portal link

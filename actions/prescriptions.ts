@@ -2,6 +2,7 @@
 
 import { resolveSession as resolveCachedSession } from "@/lib/auth/session";
 import { getUtcBoundariesForLocalDate } from "@/lib/utils";
+import { recordPhiAccess } from "@/lib/audit/phi-access";
 import { DEFAULT_TIMEZONE } from "@/lib/clinic/constants";
 import { getPatientTreatments } from "@/actions/treatments";
 import type { ActionResult, TreatmentForPatientWithSignature } from "@/types";
@@ -319,6 +320,22 @@ export async function getPrescriptions(filters?: {
         };
       })
       .filter((p): p is PrescriptionRecord => p !== null);
+
+    // The prescriptions worklist resolves patient names, phone numbers and
+    // dispensed medications together, so a page of it is a real clinical read
+    // even though it is a list rather than one record. Recorded ONCE per page,
+    // with a count and no identifiers of the patients it contained — a row per
+    // prescription would drown the log every time a receptionist paged.
+    if (prescriptions.length > 0) {
+      await recordPhiAccess(profile, {
+        event: "PRESCRIPTION_VIEWED",
+        resourceType: "treatment",
+        context: {
+          surface: "prescriptions-worklist",
+          count: prescriptions.length,
+        },
+      });
+    }
 
     return {
       data: {

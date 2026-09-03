@@ -835,11 +835,24 @@ export type CopilotMessage = {
   content: string;
 };
 
+/**
+ * What the Patient Summary feature is allowed to send to the AI provider.
+ *
+ * `name` was here, and is gone. The dentist reading the summary already knows
+ * whose record they opened; the model does not need to, and putting a name in
+ * the prompt was the difference between sending a clinical history and sending
+ * an IDENTIFIED clinical history to a service with no processing agreement.
+ *
+ * Age and last-visit are coarsened by the caller (lib/ai/redaction.ts) for the
+ * same reason: an exact date of birth is a re-identification key, an age band
+ * is a clinical fact.
+ */
 export type PatientSummaryContext = {
-  name: string;
-  age: number | null;
+  /** Ten-year band, e.g. "30-39", or "unknown". Never a date of birth. */
+  ageBand: string;
   gender: string | null;
   totalVisits: number;
+  /** Month and year only, e.g. "March 2026". Never an exact timestamp. */
   lastVisit: string | null;
   outstandingBalance: string;
   treatments: Array<{

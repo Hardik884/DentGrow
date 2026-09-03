@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { resolveSession as resolveCachedSession } from "@/lib/auth/session";
 import { computeOutstandingBalance } from "@/lib/billing/balance";
+import { recordPhiAccess } from "@/lib/audit/phi-access";
 import { getTodayInTimezone, getUtcBoundariesForLocalDate } from "@/lib/utils";
 import {
   CreatePatientSchema,
@@ -348,6 +349,12 @@ export async function searchPatients(
     if (!profile) return { data: null, error: "Unauthorized" };
 
     if (profile.role === "patient") {
+      await recordPhiAccess(profile, {
+        event: "PATIENT_SEARCHED",
+        resourceType: "patient",
+        allowed: false,
+        context: { reason: "role-not-permitted", surface: "patient-search" },
+      });
       return { data: null, error: "Forbidden" };
     }
 
@@ -368,7 +375,25 @@ export async function searchPatients(
       return { data: null, error: "Search failed." };
     }
 
-    return { data: (data ?? []) as Patient[], error: null };
+    const results = (data ?? []) as Patient[];
+
+    // A search that returned nothing resolved nobody's record, so it is not an
+    // access and is not recorded. The term itself is never stored — only how
+    // long it was, which is enough to spot enumeration without keeping a log of
+    // the names staff typed.
+    if (results.length > 0) {
+      await recordPhiAccess(profile, {
+        event: "PATIENT_SEARCHED",
+        resourceType: "patient",
+        context: {
+          surface: "patient-search",
+          count: results.length,
+          queryLength: safe.length,
+        },
+      });
+    }
+
+    return { data: results, error: null };
   } catch (err) {
     console.error("[searchPatients] unexpected:", err);
     return { data: null, error: "Unexpected error" };
@@ -441,6 +466,18 @@ export async function getPatient(
       outstandingBalance,
       pendingFollowUps: (followUps ?? []) as FollowUp[],
     };
+
+    // Opening one patient's record is the single most important read to be able
+    // to account for later, so it is recorded here rather than at the page.
+    // Recorded only on a SUCCESSFUL resolve: a miss above returned already, and
+    // "not found" is not an access.
+    await recordPhiAccess(profile, {
+      event: "PATIENT_VIEWED",
+      resourceType: "patient",
+      resourceId: id,
+      patientId: id,
+      context: { surface: "patient-profile" },
+    });
 
     return { data: result, error: null };
   } catch (err) {

@@ -1,3 +1,4 @@
+import { PATIENT_PSEUDONYM } from "./redaction";
 import type {
   PatientSummaryContext,
   InsightsContext,
@@ -21,7 +22,12 @@ import type {
 
 /**
  * Builds the prompt for the Patient Summary AI feature.
- * Input is assembled server-side from the patient's clinical records.
+ *
+ * Assembled server-side from the patient's clinical records, MINUS their
+ * identity. There is no name, no phone number, no address and no date of
+ * birth in what follows — see PatientSummaryContext and lib/ai/redaction.ts
+ * for why, and note that the model is explicitly told not to invent one, since
+ * a summary that opens "Priya has attended four times" would read as fact.
  */
 export function buildPatientSummaryPrompt(context: PatientSummaryContext): string {
   return `You are a clinical documentation assistant for a dental practice.
@@ -33,10 +39,11 @@ IMPORTANT RULES:
 - Write in a factual, clinical-adjacent tone suitable for a dentist's quick review.
 - Focus on: visit frequency, recent treatments, financial standing, and follow-up needs.
 - Base observations only on the data provided — do not infer beyond what is given.
+- The patient is deliberately not named. Refer to them as "${PATIENT_PSEUDONYM}".
+  Never invent, guess or ask for a name, and never address them by one.
 
 PATIENT DATA:
-Name: ${context.name}
-Age: ${context.age ?? "Unknown"}
+Age band: ${context.ageBand}
 Gender: ${context.gender ?? "Not specified"}
 Total Visits: ${context.totalVisits}
 Last Visit: ${context.lastVisit ?? "No recorded visits"}

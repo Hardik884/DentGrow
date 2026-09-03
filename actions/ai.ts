@@ -1,7 +1,14 @@
 "use server";
 
 import { createServerClient } from "@/lib/supabase/server";
-import { AIError, getGeminiModel, withAITimeout } from "@/lib/ai/gemini";
+import {
+  AIError,
+  getGeminiModel,
+  guardOutboundPrompt,
+  withAITimeout,
+} from "@/lib/ai/gemini";
+import { ageBand, coarsenToMonth } from "@/lib/ai/redaction";
+import { recordPhiAccess } from "@/lib/audit/phi-access";
 import { isPatientBookingEnabled, PATIENT_BOOKING_DISABLED_MESSAGE } from "@/lib/feature-flags";
 import {
   buildPatientSummaryPrompt,
@@ -533,8 +540,12 @@ export async function generatePatientSummary(
 
     const [patientRes, treatmentsRes, followUpsRes] = await Promise.all([
       db
+        // `name` is deliberately NOT selected. It was read only to be
+        // interpolated into the outbound prompt, and the prompt no longer
+        // carries one — so the safest place to drop it is here, where it is
+        // never loaded into the process at all.
         .from("patients")
-        .select("name, date_of_birth, gender, total_visits, last_visit")
+        .select("date_of_birth, gender, total_visits, last_visit")
         .eq("id", patientId)
         .eq("clinic_id", profile.clinic_id)
         .is("deleted_at", null)
@@ -559,7 +570,6 @@ export async function generatePatientSummary(
     if (!patientRes.data) return { data: null, error: "Patient not found." };
 
     const p = patientRes.data as {
-      name: string;
       date_of_birth: string | null;
       gender: string | null;
       total_visits: number;
@@ -588,38 +598,53 @@ export async function generatePatientSummary(
       (paymentRes.data ?? []) as { amount: number }[]
     );
 
+    // Assembling a patient's clinical and financial position for transmission
+    // to a third-party model is a read of that record, and one worth being able
+    // to account for. Recorded whether or not the provider then succeeds.
+    await recordPhiAccess(
+      { id: user.id, clinic_id: profile.clinic_id, role: profile.role },
+      {
+        event: "AI_CONTEXT_PREPARED",
+        resourceType: "patient",
+        resourceId: patientId,
+        patientId,
+        context: { feature: "patient-summary", count: (treatmentsRes.data ?? []).length },
+      }
+    );
+
+    const prompt = guardOutboundPrompt(
+      buildPatientSummaryPrompt({
+        ageBand: ageBand(age),
+        gender: p.gender,
+        totalVisits: p.total_visits,
+        lastVisit: coarsenToMonth(p.last_visit),
+        outstandingBalance: `₹${balance.toFixed(2)}`,
+        treatments: (treatmentsRes.data ?? []).map(
+          (t: {
+            treatment_type: string;
+            status: string;
+            performed_at: string | null;
+            patient_visible_notes: string | null;
+          }) => ({
+            treatmentType: t.treatment_type,
+            status: t.status,
+            performedAt: t.performed_at,
+            patientVisibleNotes: t.patient_visible_notes,
+          })
+        ),
+        followUps: (followUpsRes.data ?? []).map(
+          (f: { notes: string | null; due_date: string; status: string }) => ({
+            notes: f.notes,
+            dueDate: f.due_date,
+            status: f.status,
+          })
+        ),
+      })
+    );
+
     const model = getGeminiModel();
     const result = await withAITimeout(async () => {
-      const response = await model.generateContent(
-        buildPatientSummaryPrompt({
-          name: p.name,
-          age,
-          gender: p.gender,
-          totalVisits: p.total_visits,
-          lastVisit: p.last_visit,
-          outstandingBalance: `₹${balance.toFixed(2)}`,
-          treatments: (treatmentsRes.data ?? []).map(
-            (t: {
-              treatment_type: string;
-              status: string;
-              performed_at: string | null;
-              patient_visible_notes: string | null;
-            }) => ({
-              treatmentType: t.treatment_type,
-              status: t.status,
-              performedAt: t.performed_at,
-              patientVisibleNotes: t.patient_visible_notes,
-            })
-          ),
-          followUps: (followUpsRes.data ?? []).map(
-            (f: { notes: string | null; due_date: string; status: string }) => ({
-              notes: f.notes,
-              dueDate: f.due_date,
-              status: f.status,
-            })
-          ),
-        })
-      );
+      const response = await model.generateContent(prompt);
       return response.response.text();
     });
 
@@ -758,33 +783,38 @@ export async function generateInsights(): Promise<ActionResult<string[]>> {
       thisWeekPayments.data as { amount: number }[] | null
     );
 
+    // Aggregates only: counts, sums and comparisons over the clinic's own day.
+    // No patient row reaches this prompt, which is why it needs no waiver — the
+    // guard would reject it if one ever did.
+    const insightsPrompt = guardOutboundPrompt(
+      buildInsightsPrompt({
+        today: todayStr,
+        clinicName:
+          (settingsRes.data as { clinic_name?: string } | null)?.clinic_name ??
+          "the clinic",
+        overdueFollowUpsCount: (overdueRes.data ?? []).length,
+        metrics: {
+          totalAppointmentsToday: appts.length,
+          seenPatientsToday: appts.filter((a) => a.status === "completed").length,
+          noShowsToday: appts.filter((a) => a.status === "no_show").length,
+          walkInsToday: appts.filter((a) => a.source === "walk_in").length,
+          revenueToday,
+          revenueLastWeek,
+          noShowsThisWeek: weekAppts.filter((a) => a.status === "no_show").length,
+          noShowsLastWeek: prevWeekAppts.filter((a) => a.status === "no_show").length,
+          walkInsThisWeek: weekAppts.filter((a) => a.source === "walk_in").length,
+          walkInsLastWeek: prevWeekAppts.filter((a) => a.source === "walk_in").length,
+          busiestHourThisWeek: null,
+        },
+        // Add revenue comparison
+        // @ts-expect-error — extra context field
+        revenueThisWeek,
+      })
+    );
+
     const model = getGeminiModel();
     const result = await withAITimeout(async () => {
-      const response = await model.generateContent(
-        buildInsightsPrompt({
-          today: todayStr,
-          clinicName:
-            (settingsRes.data as { clinic_name?: string } | null)
-              ?.clinic_name ?? "the clinic",
-          overdueFollowUpsCount: (overdueRes.data ?? []).length,
-          metrics: {
-            totalAppointmentsToday: appts.length,
-            seenPatientsToday: appts.filter((a) => a.status === "completed").length,
-            noShowsToday: appts.filter((a) => a.status === "no_show").length,
-            walkInsToday: appts.filter((a) => a.source === "walk_in").length,
-            revenueToday,
-            revenueLastWeek,
-            noShowsThisWeek: weekAppts.filter((a) => a.status === "no_show").length,
-            noShowsLastWeek: prevWeekAppts.filter((a) => a.status === "no_show").length,
-            walkInsThisWeek: weekAppts.filter((a) => a.source === "walk_in").length,
-            walkInsLastWeek: prevWeekAppts.filter((a) => a.source === "walk_in").length,
-            busiestHourThisWeek: null,
-          },
-          // Add revenue comparison
-          // @ts-expect-error — extra context field
-          revenueThisWeek,
-        })
-      );
+      const response = await model.generateContent(insightsPrompt);
       return response.response.text();
     });
 
@@ -941,9 +971,23 @@ export async function sendPatientAssistantMessage(
 
         // systemInstruction as Content object: role "system" + parts array.
         // This is the format required by gemini-3.1-flash-lite.
+        //
+        // The clinic's OWN phone number and email are in this prompt on
+        // purpose: answering "what is the clinic's number" is one of the things
+        // the assistant exists for, and that information is published by the
+        // clinic anyway. Those two identifier rules are therefore waived here
+        // and nowhere else. Secrets are never waivable, and a PATIENT's contact
+        // details would still be rejected — nothing puts them in this prompt.
         const systemInstruction = {
           role: "system",
-          parts: [{ text: buildPatientAssistantSystemPrompt(clinicInfo, currentContext) }],
+          parts: [
+            {
+              text: guardOutboundPrompt(
+                buildPatientAssistantSystemPrompt(clinicInfo, currentContext),
+                ["phone-number", "email-address"]
+              ),
+            },
+          ],
         };
 
         // History: only include user/model turns (never system).

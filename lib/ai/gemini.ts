@@ -1,6 +1,36 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { assertPromptIsSafe, type WaivableRule } from "./redaction";
 
 /**
+ * The AI provider, isolated behind one module.
+ *
+ * WHICH PROVIDER, AND WHAT THAT MEANS — STATED PLAINLY
+ *   This is the Google **Gemini Developer API** (`generativelanguage.
+ *   googleapis.com`), reached with an API key. It is NOT Vertex AI.
+ *
+ *   The practical difference is governance, not capability. Vertex AI is where
+ *   Google Cloud's data-processing terms, regional endpoints and enterprise
+ *   controls live; the Developer API offers none of those. So today OraMedha
+ *   has:
+ *     - no Data Processing Agreement with Google;
+ *     - no established position on retention;
+ *     - no verified position on whether submitted data may be used to improve
+ *       Google's models — which depends on the billing tier this key sits on
+ *       and has not been confirmed;
+ *     - no control over the region the request is served from.
+ *
+ *   None of that is fixed by code, and none of it is claimed to be. What code
+ *   CAN do is make the question smaller: send less. Every prompt now goes
+ *   through assertPromptIsSafe() below, and the patient-summary prompt no
+ *   longer carries a name. See docs/AI-DATA-HANDLING.md for the migration path
+ *   to Vertex AI and what it would and would not settle.
+ *
+ * WHY THE PROVIDER IS BEHIND THIS MODULE
+ *   Every AI feature calls getGeminiModel() and nothing else constructs a
+ *   client, so switching provider is a change to this file rather than a search
+ *   across the codebase — and the outbound-prompt check cannot be bypassed by
+ *   a new feature that forgets it exists.
+ *
  * Gemini client initialisation.
  *
  * - Uses gemini-3.1-flash-lite (GA, May 2026).
@@ -57,6 +87,30 @@ export function getGeminiModel() {
   return _genAI.getGenerativeModel({
     model: "gemini-3.1-flash-lite",
   });
+}
+
+/**
+ * guardOutboundPrompt
+ *
+ * The single checkpoint every prompt passes before it can leave the building.
+ *
+ * It rejects secrets outright — a Supabase service key or a JWT interpolated
+ * into a prompt would be handed to a third party in plaintext and written to
+ * their logs — and rejects contact identifiers unless the call site has
+ * explicitly waived that rule and said why.
+ *
+ * Throwing rather than redacting is deliberate. A silently rewritten prompt
+ * hides the bug that produced it; a thrown one surfaces it, and every AI
+ * feature already degrades to a non-blocking message when a call fails
+ * (CLAUDE.md §13.11), so the cost of being wrong in this direction is one
+ * missing summary rather than a leak.
+ */
+export function guardOutboundPrompt(
+  prompt: string,
+  waived: readonly WaivableRule[] = []
+): string {
+  assertPromptIsSafe(prompt, waived);
+  return prompt;
 }
 
 /**

@@ -3,6 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { createServerClient } from "@/lib/supabase/server";
 import { resolveSession as resolveCachedSession } from "@/lib/auth/session";
+import { recordPhiAccess, recordPhiAccessBatch } from "@/lib/audit/phi-access";
+import { DOCUMENT_URL_TTL_SECONDS } from "@/lib/storage/signed-urls";
 import {
   CreateTreatmentSchema,
   UpdateTreatmentSchema,
@@ -500,6 +502,16 @@ export async function getTreatment(
     if (error || !data) {
       return { data: null, error: "Treatment not found." };
     }
+
+    // A treatment record carries internal_notes and medications, so opening one
+    // is a clinical read and is accounted for.
+    await recordPhiAccess(profile, {
+      event: "TREATMENT_VIEWED",
+      resourceType: "treatment",
+      resourceId: id,
+      patientId: (data as Treatment).patient_id,
+      context: { surface: "treatment-detail" },
+    });
 
     return { data: data as Treatment, error: null };
   } catch (err) {
@@ -1135,10 +1147,40 @@ export async function getTreatmentDocuments(
       docs.map(async (doc) => {
         const { data: signed } = await db.storage
           .from(DOCUMENT_BUCKET)
-          .createSignedUrl(doc.file_path, 60 * 60); // 1 hour
+          .createSignedUrl(doc.file_path, DOCUMENT_URL_TTL_SECONDS);
         return { ...doc, url: signed?.signedUrl ?? null };
       })
     );
+
+    // Issuing a signed URL is the moment a stored radiograph becomes
+    // retrievable by whoever holds the link, so THAT is the auditable event —
+    // not the later GET, which happens at the storage service and never reaches
+    // this application.
+    //
+    // A patient reading their own documents is deliberately not recorded. The
+    // question this log answers is who ELSE looked at a record; logging a
+    // person's access to their own file adds volume and answers nothing.
+    if (profile.role !== "patient" && withUrls.length > 0) {
+      await recordPhiAccessBatch(
+        profile,
+        withUrls
+          .filter((doc) => doc.url !== null)
+          .map((doc) => ({
+            // treatment_documents carries no document_type column, so every
+            // stored radiograph, photograph and PDF records as DOCUMENT_VIEWED.
+            // XRAY_VIEWED exists in the enum for when documents are typed.
+            event: "DOCUMENT_VIEWED" as const,
+            resourceType: "treatment_document",
+            resourceId: doc.id,
+            patientId: doc.patient_id,
+            context: {
+              surface: "treatment-documents",
+              bucket: DOCUMENT_BUCKET,
+              ttlSeconds: DOCUMENT_URL_TTL_SECONDS,
+            },
+          }))
+      );
+    }
 
     return { data: withUrls, error: null };
   } catch (err) {
@@ -1340,7 +1382,7 @@ export async function getAppointmentDocuments(
       docs.map(async (doc) => {
         const { data: signed } = await db.storage
           .from(DOCUMENT_BUCKET)
-          .createSignedUrl(doc.file_path, 60 * 60);
+          .createSignedUrl(doc.file_path, DOCUMENT_URL_TTL_SECONDS);
         return { ...doc, url: signed?.signedUrl ?? null };
       })
     );

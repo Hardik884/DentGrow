@@ -19,6 +19,8 @@ import {
   consentObjectPath,
   validateConsentUpload,
 } from "@/lib/consents/constants";
+import { CONSENT_URL_TTL_SECONDS } from "@/lib/storage/signed-urls";
+import { recordPhiAccess } from "@/lib/audit/phi-access";
 import { ensureConsentTemplates } from "@/actions/consent-templates";
 import {
   CreateConsentSchema,
@@ -755,7 +757,7 @@ export async function getConsentFileUrl(id: string): Promise<ActionResult<{ url:
 
     const { data: row } = await db
       .from("consents")
-      .select("file_path")
+      .select("file_path, patient_id")
       .eq("id", id)
       .eq("clinic_id", profile.clinic_id)
       .is("deleted_at", null)
@@ -765,12 +767,28 @@ export async function getConsentFileUrl(id: string): Promise<ActionResult<{ url:
 
     const { data: signed, error } = await db.storage
       .from(CONSENT_BUCKET)
-      .createSignedUrl(row.file_path, 60 * 60);
+      .createSignedUrl(row.file_path, CONSENT_URL_TTL_SECONDS);
 
     if (error || !signed?.signedUrl) {
       console.error("[getConsentFileUrl]", error);
       return { data: null, error: "Failed to open the file." };
     }
+
+    // A signed consent carries the patient's handwritten signature. Making it
+    // retrievable is recorded; the patient's own portal read of it is not (see
+    // the note in getTreatmentDocuments).
+    await recordPhiAccess(profile, {
+      event: "CONSENT_VIEWED",
+      resourceType: "consent",
+      resourceId: id,
+      patientId: (row as { patient_id?: string }).patient_id ?? null,
+      context: {
+        surface: "consent-file",
+        bucket: CONSENT_BUCKET,
+        ttlSeconds: CONSENT_URL_TTL_SECONDS,
+      },
+    });
+
     return { data: { url: signed.signedUrl }, error: null };
   } catch (err) {
     console.error("[getConsentFileUrl] unexpected:", err);
@@ -881,7 +899,7 @@ export async function getPortalConsentFileUrl(id: string): Promise<ActionResult<
 
     const { data: signed, error } = await db.storage
       .from(CONSENT_BUCKET)
-      .createSignedUrl(base.file_path as string, 60 * 60);
+      .createSignedUrl(base.file_path as string, CONSENT_URL_TTL_SECONDS);
 
     if (error || !signed?.signedUrl) {
       console.error("[getPortalConsentFileUrl]", error);

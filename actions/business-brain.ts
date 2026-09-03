@@ -2,7 +2,12 @@
 
 import { resolveSession } from "@/lib/auth/session";
 import { isBusinessBrainEnabled } from "@/lib/feature-flags";
-import { AIError, getGeminiModel, withAITimeout } from "@/lib/ai/gemini";
+import {
+  AIError,
+  getGeminiModel,
+  guardOutboundPrompt,
+  withAITimeout,
+} from "@/lib/ai/gemini";
 import { buildDiagnosisExplanationPrompt } from "@/lib/ai/prompts";
 import {
   explanationInputFor,
@@ -75,21 +80,27 @@ export async function explainDiagnosis(
 
     const input = explanationInputFor(diagnosis, signalDescriptions);
 
-    const prompt = buildDiagnosisExplanationPrompt({
-      title: diagnosis.title,
-      summary: diagnosis.summary,
-      facts: [...input.facts],
-      supported: diagnosis.hypotheses
-        .filter((h) => h.status === "supported")
-        .map((h) => h.statement),
-      ruledOut: diagnosis.hypotheses
-        .filter((h) => h.status === "contradicted")
-        .map((h) => h.statement),
-      undetermined: diagnosis.hypotheses
-        .filter((h) => h.status === "undetermined")
-        .map((h) => h.statement),
-      persistence: diagnosis.persistence.replace(/_/g, " "),
-    });
+    // The Business Brain prompt has always been identifier-free — it restates
+    // aggregate findings the deterministic engines already computed. The guard
+    // is applied anyway, so that stays true of every future diagnosis a matcher
+    // learns to emit rather than being true only of today's.
+    const prompt = guardOutboundPrompt(
+      buildDiagnosisExplanationPrompt({
+        title: diagnosis.title,
+        summary: diagnosis.summary,
+        facts: [...input.facts],
+        supported: diagnosis.hypotheses
+          .filter((h) => h.status === "supported")
+          .map((h) => h.statement),
+        ruledOut: diagnosis.hypotheses
+          .filter((h) => h.status === "contradicted")
+          .map((h) => h.statement),
+        undetermined: diagnosis.hypotheses
+          .filter((h) => h.status === "undetermined")
+          .map((h) => h.statement),
+        persistence: diagnosis.persistence.replace(/_/g, " "),
+      })
+    );
 
     const raw = await withAITimeout(async () => {
       const model = getGeminiModel();

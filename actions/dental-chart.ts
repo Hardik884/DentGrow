@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { resolveSession as resolveCachedSession } from "@/lib/auth/session";
 import { upsertToothRow, syncToothForTreatment } from "@/lib/dental-chart/sync";
+import { recordPhiAccess } from "@/lib/audit/phi-access";
 import { FDI_TOOTH_NUMBERS, getToothIdentity } from "@/lib/dental-chart/teeth";
 import {
   UpsertToothSchema,
@@ -163,6 +164,17 @@ export async function getPatientDentalChart(
         history: tooth ? (historyByToothId.get(tooth.id) ?? []) : [],
         treatments: treatmentsByToothNumber.get(toothNumber) ?? [],
       };
+    });
+
+    // The chart is the patient's whole dental status in one view — the single
+    // richest clinical read in the product — so it is accounted for even though
+    // the caller is always the clinic's own dentist.
+    await recordPhiAccess(profile, {
+      event: "DENTAL_CHART_VIEWED",
+      resourceType: "patient",
+      resourceId: patientId,
+      patientId,
+      context: { surface: "dental-chart", count: teethRows.length },
     });
 
     return {
