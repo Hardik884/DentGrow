@@ -30,6 +30,27 @@ export default defineConfig({
       "actions/**/*.spec.ts",
     ],
     environment: "node",
+    /*
+     * Run spec FILES one at a time.
+     *
+     * A large share of this suite is integration specs that seed and tear down
+     * fixtures in ONE shared local Postgres. Run in parallel they interfere:
+     * two suites seed overlapping rows, one suite's cleanup lands mid-run of
+     * another, and a `delete from clinics` cascades under a neighbour's feet.
+     *
+     * The damage was not loud. These specs guard their setup and SKIP when it
+     * does not come up, so a race showed up as "10 skipped" rather than as a
+     * failure — the analytics metric-definitions suite passes 10/10 on its own
+     * and silently skipped all ten alongside the others. Business Brain's
+     * suites failed outright on a duplicate key instead. Both are the same
+     * cause, and both are the failure mode this suite exists to prevent:
+     * a green run that quietly did not check the thing.
+     *
+     * Serial execution costs roughly 40s on the whole run and buys a result
+     * that means what it says. Per-file isolation is not achievable here
+     * because the database, not the worker, is the shared resource.
+     */
+    fileParallelism: false,
     // Integration specs talk to Postgres over HTTP; the default 5s is tight for
     // the seeding step on a cold container.
     testTimeout: 30_000,
