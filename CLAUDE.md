@@ -631,6 +631,10 @@ The following tables support soft deletion via a `deleted_at timestamptz` column
 - `treatments`
 - `payments`
 - `follow_ups`
+- `treatment_documents` (since `20260903000300` — removal is an UPDATE setting
+  `deleted_at`, and the RLS DELETE policy was dropped so the hard route is
+  closed rather than merely unused; the storage object is cleared later by the
+  retention purge)
 
 **Rules:**
 - Records are **never physically deleted** from the database.
@@ -638,7 +642,111 @@ The following tables support soft deletion via a `deleted_at timestamptz` column
 - RLS policies must also enforce `deleted_at IS NULL` for standard read access.
 - Deleted records remain accessible to superadmin queries for audit purposes.
 - AI features (Patient Summary, Copilot, Insights, Patient AI Assistant) must only receive non-deleted records. Deleted data must never appear in AI context.
-- Soft deletion of a patient cascades logically: the patient's appointments, treatments, payments, and follow-ups should also be soft-deleted in the same Server Action transaction.
+- Soft deletion of a patient cascades logically. The cascade covers
+  appointments, treatments, payments, follow-ups, **the dental chart
+  (`patient_teeth`), treatment documents and consents**; it removes reminder
+  records and active queue entries outright and unlinks the portal account.
+  `actions/__tests__/patient-cascade-completeness.spec.ts` reads the migrations,
+  finds every table with a foreign key to `patients`, and fails unless the
+  cascade handles it or that spec records in writing why not — because the way a
+  cascade stops being complete is a table added months later by someone who
+  never read it.
+
+**What is NOT soft-deleted, and never purged on a timer:** the audit trails.
+`appointment_history`, `consent_audit`, `tooth_history`, `treatment_history`,
+`phi_access_log` and `data_consent_records` exist to outlive what they describe.
+See `docs/RETENTION.md`.
+
+
+---
+
+### 5.12 Data-Processing Consent
+
+**Separate from clinical consent, deliberately.** The consent system in §5.9 and
+`consents`/`consent_audit` is CLINICAL consent — "I agree to this root canal".
+Data-processing consent is a different act with different properties:
+
+| | Clinical consent | Data-processing consent |
+|---|---|---|
+| Scope | One procedure | Standing |
+| Withdrawable | No — it already happened | **Yes** |
+| Divisible | No | **Yes, per category** |
+| Recorded as | A signature | A choice, plus what was shown |
+
+Bolting categories onto `consent_templates` would have put a revocable consent
+inside a table whose whole design rests on signed rows never changing. So it
+gets its own model (`20260903000200`):
+
+- `data_consent_notices` — the versioned, immutable plain-language sentence a
+  person was shown. A row with `clinic_id IS NULL` is a platform default every
+  clinic inherits; a clinic row overrides it.
+- `data_consent_records` — append-only decisions, each carrying a **frozen copy**
+  of the notice as it read at that moment. A notice can be revised; what someone
+  agreed to cannot be revised retroactively.
+- `patient_data_consent_state` — a `security_invoker` view giving the latest
+  decision per (patient, category).
+
+**Four independent categories:** `data_processing`, `communications`,
+`marketing`, `ai_assisted`. Refusing marketing must never withhold care or
+operational messages, and there is no coupling anywhere for a future change to
+add one to by accident.
+
+**Withdrawal never overwrites.** It is a new row; the grant stays. The only
+question this ledger is asked is *"was this lawful at the time"*.
+
+**`data_processing` has no toggle.** A clinic cannot treat someone without
+keeping a record of the treatment, and offering a switch the product could not
+honour would tell a patient something untrue about what they control.
+
+**`actor` distinguishes** a patient's own choice from a staff member recording
+one at the front desk. **Staff access to a record is never treated as the
+patient's consent, anywhere.**
+
+**Writes go through the service role** in `actions/data-consent.ts`; there is no
+client INSERT policy, the same shape `consent_audit` uses. An append-only
+trigger binds the service role too.
+
+**Enforced where it matters:** `buildReachable` removes a patient who has
+withdrawn `communications` before a reminder message is composed for them.
+
+---
+
+### 5.13 PHI Read-Access Audit
+
+`phi_access_log` (`20260903000000`) records **who read which record, when, in
+what role**. OraMedha recorded writes well and recorded no reads at all, so
+"who opened this patient's record" had no answer.
+
+**It stores identifiers only** — never names, phone numbers, clinical content,
+amounts, search terms, prompts or credentials. `lib/audit/phi-access.ts` filters
+`context` through an allow-list, so `{ patientName }` cannot be written even by
+accident. An audit log of PHI reads that itself contains PHI widens the blast
+radius of the next incident instead of narrowing it.
+
+**Immutable by two independent mechanisms**, because one of them is the one that
+fails: RLS gives the clinic's dentist read access and gives *nobody* a write
+policy; and a trigger blocks UPDATE outright and DELETE outside a declared
+retention purge — which is what binds the service role, since `service_role`
+carries `BYPASSRLS`.
+
+**Call it from reads that resolve a specific person's record**, or that make a
+stored document retrievable. Not from every render: a list that repaints on a
+filter change is not twenty accesses, and a log full of those buries the row
+that matters. A patient reading their **own** record is not recorded — the log
+answers who *else* looked.
+
+Use `recordPhiAccess(profile, { … })`. Never insert into the table directly.
+
+---
+
+### 5.14 Treatment History
+
+`treatment_history` (`20260903000300`) is the append-only trail for treatment
+records — shaped after `appointment_history` rather than inventing a second
+pattern. `old_value`/`new_value` carry **only the fields that changed**
+(`diffFields` computes it); passing the whole row would make the trail a second,
+less-protected copy of the clinical record, duplicating `internal_notes` on
+every save into a table with different readers.
 
 ---
 
@@ -753,6 +861,19 @@ Analytics are read-only and available only to the `dentist` role. All analytics 
 ## 8. AI Features
 
 All AI features use **Gemini 3.1 Flash Lite** via the Google AI SDK. AI calls are always made server-side (Server Actions or Route Handlers). Never expose API keys to the client.
+
+> **Data minimisation is not optional.** A prompt may contain what the model
+> needs to do the task and nothing that identifies whose task it is. No patient
+> name, phone number, email or date of birth reaches the provider; age is banded
+> and last-visit is coarsened to a month. Every outbound prompt passes
+> `guardOutboundPrompt()` inside `lib/ai/gemini.ts`, which rejects secrets
+> outright and rejects contact identifiers unless a call site waives that rule
+> explicitly (exactly one does — the portal assistant, for the CLINIC's own
+> published number). Adding a new AI feature means adding it to the declared
+> list in `lib/ai/__tests__/ai-surface.spec.ts`, which reads the source and
+> fails otherwise. See `docs/AI-DATA-HANDLING.md` — including what is still
+> unsettled: no DPA with Google, no established retention position, no verified
+> training-use position, no regional control.
 
 > **AI Resilience Principle:** OraMedha must remain fully functional even if Gemini is unavailable. AI features are enhancements only and must never be required for core clinic operations. The following must work without AI: Patients, Appointments, Queue, Treatments, Payments, and Analytics. All AI features must fail gracefully with a user-facing message (e.g., "AI features are temporarily unavailable") and never block or error the surrounding page.
 
@@ -1277,13 +1398,41 @@ dentgrow/
 │   │   └── slots.ts                # getAvailableSlots() slot generation logic
 │   ├── auth/
 │   │   ├── session.ts              # resolveSession(), requireAdmin()
+│   │   ├── mfa.ts                  # assurance levels + where MFA is required
 │   │   ├── email-mask.ts           # maskEmail() for the verification screen
 │   │   └── verification.ts         # resend cooldown + send-failure classification
+│   ├── audit/
+│   │   └── phi-access.ts           # THE way a sensitive read is recorded
+│   ├── security/
+│   │   ├── headers.ts              # CSP + the static security headers
+│   │   ├── events.ts               # structured security events (no PHI)
+│   │   ├── rate-limit.ts           # per-account sign-in lockout
+│   │   ├── file-validation.ts      # magic-byte checks + the scanning seam
+│   │   └── timing-safe.ts          # constant-time secret comparison
+│   ├── legal/
+│   │   └── links.ts                # where the published policy lives
+│   ├── data-consent.ts             # data-processing consent vocabulary
+│   ├── data-export.ts              # export shape + what may never be in one
+│   ├── storage/
+│   │   └── signed-urls.ts          # signed-URL lifetimes, and why
+│   ├── signatures/
+│   │   └── resolve.ts              # private-bucket signature URLs
 │   ├── brand/
 │   │   └── mark.ts                 # TOOTH_PATH — the logo AND the auth arch
 │   └── utils.ts                    # Shared utility functions
+├── docs/
+│   ├── SECURITY.md                 # controls, with honest status markers
+│   ├── DATA-PROTECTION.md          # roles, consent, patient rights
+│   ├── AI-DATA-HANDLING.md         # what reaches Google, and what does not
+│   ├── RETENTION.md                # what is purged, and what never is
+│   ├── BACKUP-DR.md                # backups, restore drill, RPO/RTO
+│   ├── INCIDENT-RESPONSE.md        # preserve → contain → scope → notify
+│   └── subprocessors.json          # machine-readable third-party inventory
 ├── actions/
 │   ├── patients.ts                 # Patient server actions
+│   ├── data-consent.ts             # data-processing consent read/record
+│   ├── data-export.ts              # patient record export (returned, not stored)
+│   ├── mfa.ts                      # TOTP enrolment + challenge
 │   ├── appointments.ts             # Appointment server actions (writes audit history)
 │   ├── queue.ts                    # Queue server actions
 │   ├── treatments.ts               # Treatment server actions
@@ -1377,6 +1526,21 @@ These are non-negotiable standards. Every PR and every AI-generated code block m
 - Application-level role checks (middleware, component guards) are a UX convenience.
 - RLS policies are the security guarantee. Every table must have RLS enabled with appropriate policies.
 - Never disable RLS on any table containing clinic or patient data.
+- **A VIEW must carry `security_invoker = true`.** Without it a view executes
+  with its OWNER's privileges, and the owner owns the base tables — so RLS does
+  not apply at all. Five views shipped without it and exposed every patient
+  record in the database to an unauthenticated caller. `npm run db:lint` is
+  `plpgsql_check`, a function-body linter, and cannot see this class of defect;
+  the rule that catches it is Supabase's `0010_security_definer_view` in the
+  hosted Security Advisor.
+- **An audit table gets no client write policy at all.** Under RLS the absence
+  of a policy is a denial. Writes go through the service role, and an
+  append-only trigger constrains that too — `service_role` carries `BYPASSRLS`,
+  so no policy can bind it.
+- **A `WITH CHECK` clause that only restates the `USING` clause pins nothing.**
+  Both `profiles` and `patients` shipped an UPDATE policy asserting only a
+  column the attacker never changes. Pin the identity-bearing columns against
+  their pre-update values, read through a `stable security definer` helper.
 
 ### 13.11 AI Must Never Block Core Operations
 
@@ -1403,8 +1567,15 @@ These are non-negotiable standards. Every PR and every AI-generated code block m
 
 ### 13.14 Soft Delete Enforcement
 
-- Every Server Action that queries soft-deletable tables (`patients`, `appointments`, `treatments`, `payments`, `follow_ups`) must include a `deleted_at IS NULL` filter.
-- Prefer database views (e.g., `active_patients`, `active_appointments`) that apply this filter automatically, to reduce the risk of accidental omission.
+- Every Server Action that queries soft-deletable tables (`patients`, `appointments`, `treatments`, `payments`, `follow_ups`, `treatment_documents`) must include a `deleted_at IS NULL` filter.
+- The `active_*` views apply this filter automatically. **They are safe to use
+  again**: all five were created without `security_invoker = true`, which made
+  them execute as their owner and bypass RLS entirely — every patient record in
+  the database was readable, modifiable and deletable by an unauthenticated
+  caller holding only the public anon key. Fixed in `20260902155414`.
+  `actions/__tests__/view-security-invoker.spec.ts` sweeps **every** view in
+  `public` and asserts the behaviour rather than the catalog option.
+  **ADD A ROW TO THAT SPEC WHENEVER YOU ADD A VIEW.**
 - Soft deletes must be performed via a dedicated Server Action that sets `deleted_at = now()` — never via a raw `DELETE` statement.
 - RLS policies for all roles must include `deleted_at IS NULL` for standard read policies.
 
@@ -1416,7 +1587,7 @@ The following features are explicitly **out of scope** for the MVP. Do not imple
 
 | Feature | Reason Excluded |
 |---|---|
-| WhatsApp Integration | Requires additional vendor approval and compliance review |
+| WhatsApp Integration | Requires additional vendor approval and compliance review. Allow-listed to development clinics; the send path now honours withdrawn `communications` consent, but the allow-list itself remains in force. |
 | Voice AI | Significant infrastructure complexity; not validated with users |
 | Inventory Management | Different user workflow; separate product scope |
 | Billing / Invoice Generation | PDF generation and accounting integration deferred |
@@ -1449,6 +1620,23 @@ N8N_BASE_URL=https://your-n8n-instance.com        # Server-side only
 # App
 NEXT_PUBLIC_APP_URL=http://localhost:3000
 
+# Published legal documents — the marketing site holds the canonical Privacy
+# Policy; this app links out to it (lib/legal/links.ts). Defaults to
+# https://oramedha.com when unset. NEXT_PUBLIC_TERMS_URL is deliberately unset:
+# no Terms page is published, and the sign-in footer omits the clause rather
+# than linking to a 404.
+# NEXT_PUBLIC_MARKETING_URL=https://oramedha.com
+# NEXT_PUBLIC_TERMS_URL=https://oramedha.com/terms
+
+# Content-Security-Policy: report-only unless set to "enforce". Flip only after
+# verifying a real deployment reports no violations. See docs/SECURITY.md.
+# CSP_MODE=enforce
+
+# Require the platform admin to have two-step verification. OFF by default, and
+# the default is load-bearing: turning it on before the admin has enrolled locks
+# that account out of the console it would use to fix it.
+# REQUIRE_ADMIN_MFA=true
+
 # Auth email delivery — NOT read by the app. Used only by
 # `npm run auth:email:push`, which configures the HOSTED Supabase project.
 # Local development sends to Mailpit and needs none of these.
@@ -1475,6 +1663,10 @@ SUPABASE_PROJECT_REF=your-project-ref
 | `N8N_WEBHOOK_SECRET` | Webhook route handler only | **No** |
 | `N8N_BASE_URL` | n8n trigger calls only | **No** |
 | `NEXT_PUBLIC_APP_URL` | Absolute URL generation | Yes |
+| `NEXT_PUBLIC_MARKETING_URL` | Legal-document links on sign-in pages | Yes |
+| `NEXT_PUBLIC_TERMS_URL` | Terms link, once Terms are published | Yes |
+| `CSP_MODE` | CSP enforcement (`lib/security/headers.ts`) | **No** |
+| `REQUIRE_ADMIN_MFA` | Mandatory admin two-step verification | **No** |
 | `RESEND_SMTP_PASSWORD` | `npm run auth:email:push -- --provider=resend` | **No** |
 | `SUPABASE_ACCESS_TOKEN` | `npm run auth:email:push` only | **No** |
 | `AUTH_SMTP_SENDER_EMAIL` | `npm run auth:email:push` only | **No** |
@@ -1585,3 +1777,8 @@ export type ActionResult<T> = {
 ---
 
 *This document is the authoritative reference for OraMedha. When in doubt about architecture, features, or scope — consult this file first. Update it whenever a significant architectural decision is made.*
+
+*For security, privacy and data-handling specifics — what is implemented, what
+is partial, what needs a dashboard toggle, and what needs a lawyer — see the
+`docs/` directory. Those documents mark every claim, and they say what is NOT
+done as plainly as what is.*

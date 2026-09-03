@@ -139,6 +139,26 @@ async function buildReminderData(
     ((logs ?? []) as { patient_id: string }[]).map((l) => l.patient_id),
   );
 
+  // Patients who have WITHDRAWN consent to be contacted. Read from the
+  // data-processing consent ledger (20260903000200), which is the mechanism
+  // that did not exist when the WhatsApp allow-list was introduced — the flag's
+  // own comment noted "there is no patient-consent field in the schema yet".
+  //
+  // Only an explicit withdrawal removes anyone. `communications` defaults to
+  // granted (see lib/data-consent.ts) because an appointment reminder is the
+  // thing a patient booked an appointment in order to receive, so a patient who
+  // has never been asked is not silently dropped from their own recall.
+  const { data: withdrawals } = await db
+    .from("patient_data_consent_state")
+    .select("patient_id, decision")
+    .eq("clinic_id", profile.clinic_id)
+    .eq("category", "communications")
+    .eq("decision", "withdrawn");
+
+  const optedOut = new Set(
+    ((withdrawals ?? []) as { patient_id: string }[]).map((w) => w.patient_id),
+  );
+
   const settings = (await getClinicSettings()).data;
   const clinicVars = {
     clinic_name: settings?.clinic_name ?? "our clinic",
@@ -147,8 +167,11 @@ async function buildReminderData(
 
   // Everyone reachable (valid phone, message filled and free of {{markers}} —
   // never generate a broken action), flagged with whether they were already sent.
-  const reachable = buildReachable(candidates, remindedRecently, (vars) =>
-    fillTemplate(template.body, { ...clinicVars, ...vars }),
+  const reachable = buildReachable(
+    candidates,
+    remindedRecently,
+    (vars) => fillTemplate(template.body, { ...clinicVars, ...vars }),
+    optedOut,
   );
 
   return { total, reachable };

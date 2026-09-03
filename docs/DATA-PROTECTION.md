@@ -125,12 +125,19 @@ be applied without redesigning anything.
   consent. This is a real gap and it is not addressed here — it needs a data
   model, a UI, and a legal position on verification, and half of it would be
   worse than none.
-- **No consent-withdrawal enforcement in the messaging path.**
-  `lib/messaging/eligibility.ts` still checks only whether a phone number is
-  valid. WhatsApp remains allow-listed to development clinics, so nothing
-  reaches a real patient — but **the allow-list must not be widened until the
-  send path consults `patient_data_consent_state`.** The mechanism now exists;
-  the wiring does not.
+- **Consent withdrawal IS enforced in the messaging path** — a patient who has
+  withdrawn `communications` is removed from every reminder list before a
+  message is composed for them (`buildReachable`). Removed rather than flagged:
+  the wa.me handoff means the send is a human action this application cannot
+  intercept, so a visible "do not contact" row would put a message one mis-click
+  away from someone who asked not to receive it.
+
+  Only an **explicit withdrawal** removes anyone. `communications` defaults to
+  granted, because an appointment reminder is the thing a patient booked an
+  appointment in order to receive — a patient who has never been asked is not
+  silently dropped from their own recall.
+
+  WhatsApp remains allow-listed to development clinics regardless.
 - **No cookie consent banner.** Only strictly-necessary auth cookies are set,
   and the analytics that changed that analysis has been removed.
 - **No data-residency guarantee.** Regions are unverified; see

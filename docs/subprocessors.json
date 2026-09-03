@@ -24,15 +24,20 @@
   "version": 1,
   "updated": "2026-09-03",
   "scope": "OraMedha practice-management application (this repository)",
-
   "subprocessors": [
     {
       "id": "supabase",
       "provider": "Supabase",
       "purpose": "Primary datastore, authentication, file storage, realtime",
       "evidence": {
-        "packages": ["@supabase/supabase-js", "@supabase/ssr"],
-        "env": ["NEXT_PUBLIC_SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY"]
+        "packages": [
+          "@supabase/supabase-js",
+          "@supabase/ssr"
+        ],
+        "env": [
+          "NEXT_PUBLIC_SUPABASE_URL",
+          "SUPABASE_SERVICE_ROLE_KEY"
+        ]
       },
       "receives_patient_data": true,
       "data_categories": [
@@ -55,7 +60,9 @@
       "provider": "Vercel",
       "purpose": "Application hosting and serverless execution",
       "evidence": {
-        "packages": ["next"],
+        "packages": [
+          "next"
+        ],
         "notes": "Deployed at dent-grow.vercel.app; next.config.ts documents Vercel's serverless body-size cap."
       },
       "receives_patient_data": true,
@@ -76,8 +83,12 @@
       "provider": "Google (Gemini Developer API)",
       "purpose": "AI-assisted patient summaries, clinic insights, portal assistant, plain-English Business Brain explanations",
       "evidence": {
-        "packages": ["@google/generative-ai"],
-        "env": ["GOOGLE_AI_API_KEY"],
+        "packages": [
+          "@google/generative-ai"
+        ],
+        "env": [
+          "GOOGLE_AI_API_KEY"
+        ],
         "endpoint": "generativelanguage.googleapis.com"
       },
       "receives_patient_data": true,
@@ -106,12 +117,17 @@
         "notes": "No API integration and no automated sending. OraMedha never transmits to Meta; it opens a link and a staff member sends the message from their own WhatsApp account."
       },
       "receives_patient_data": true,
-      "data_categories": ["name", "phone", "appointment-date", "amount-outstanding"],
+      "data_categories": [
+        "name",
+        "phone",
+        "appointment-date",
+        "amount-outstanding"
+      ],
       "region": "meta-controlled",
       "retention": "meta-controlled",
       "dpa": "none-on-record",
       "status": "allow-listed",
-      "status_note": "Gated to development clinic IDs by WHATSAPP_ENABLED_CLINIC_IDS and asserted by lib/__tests__/business-brain-gate.spec.ts. MUST NOT be widened before communications consent is in force — data_consent_records now provides the mechanism.",
+      "status_note": "Gated to development clinic IDs by WHATSAPP_ENABLED_CLINIC_IDS and asserted by lib/__tests__/business-brain-gate.spec.ts. The send path now consults patient_data_consent_state: a patient who has withdrawn 'communications' consent is removed from every reminder list before a message is composed for them. The allow-list itself is a separate, unrelated gate and is still in force.",
       "criticality": "medium"
     },
     {
@@ -120,10 +136,14 @@
       "purpose": "SMTP transport for Supabase Auth emails (verification, password reset)",
       "evidence": {
         "source": "scripts/push-auth-email-config.mjs, supabase/EMAIL.md",
-        "env": ["RESEND_SMTP_PASSWORD"]
+        "env": [
+          "RESEND_SMTP_PASSWORD"
+        ]
       },
       "receives_patient_data": true,
-      "data_categories": ["email-address"],
+      "data_categories": [
+        "email-address"
+      ],
       "region": "provider-default",
       "retention": "provider-default",
       "dpa": "none-on-record",
@@ -132,7 +152,6 @@
       "criticality": "medium"
     }
   ],
-
   "not_used": {
     "$comment": "Verified absent from this repository. Listed so an assumption can be checked instead of repeated.",
     "vercel-analytics": "REMOVED. @vercel/analytics was mounted in the root layout, so it ran on the patient portal and every clinical route, sending paths containing patient and treatment UUIDs. The dependency has been uninstalled.",
@@ -149,7 +168,6 @@
     "redis": "absent — the rate limiter is in-process, which lib/security/rate-limit.ts states plainly",
     "aws-direct": "absent"
   },
-
   "open_items": [
     "No Data Processing Agreement is on record with ANY provider above. → REQUIRES LEGAL ACTION.",
     "Supabase and Vercel regions are unverified. → REQUIRES MANUAL VERIFICATION in each dashboard.",

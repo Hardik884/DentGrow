@@ -56,6 +56,7 @@ export function dedupeByPatientId<T>(
 
 /**
  * Turn distinct-patient candidates into the recipients we can actually reach:
+ *   - drop anyone who has withdrawn consent to be contacted,
  *   - fill each message,
  *   - drop anyone we cannot message or whose message still has {{markers}},
  *   - mark whether they were already reminded for this kind inside the cooldown.
@@ -63,14 +64,33 @@ export function dedupeByPatientId<T>(
  * Unlike a plain "who's left" filter, this keeps the already-sent patients in the
  * list (flagged), so the focused workflow can show honest progress — "7 of 16
  * contacted" — and let a user page back over the ones already done.
+ *
+ * WHY OPT-OUT IS A REMOVAL AND NOT A FLAG
+ *   `alreadySent` patients stay in the list because the workflow needs to show
+ *   progress over them. A patient who has withdrawn consent is different: there
+ *   is no progress to show and nothing a staff member should do next. Leaving
+ *   them visible with a "do not contact" badge would put a message one
+ *   mis-click away from being sent to someone who asked not to receive it, and
+ *   the wa.me handoff means the send is a human action this application cannot
+ *   intercept. So they are removed before a message is ever composed for them.
  */
 export function buildReachable(
   candidates: readonly Candidate[],
   remindedRecently: ReadonlySet<string>,
   fill: (vars: Record<string, string>) => string,
+  /**
+   * Patients who have withdrawn communications consent. Optional and empty by
+   * default so every existing caller keeps its meaning, but actions/messaging.ts
+   * always supplies it.
+   */
+  optedOut: ReadonlySet<string> = new Set(),
 ): WhatsAppRecipient[] {
   const out: WhatsAppRecipient[] = [];
   for (const c of candidates) {
+    // Checked FIRST, before the message is even filled: a message that is never
+    // composed cannot be sent by accident.
+    if (optedOut.has(c.patientId)) continue;
+
     const message = fill(c.vars);
     if (!isSendableReminder(c.phone, message)) continue;
     out.push({

@@ -84,6 +84,47 @@ describe("buildReachable — reachable patients, flagged with sent state", () =>
     expect(remaining(out)).toBe(2); // only a and c still need contacting
   });
 
+  // ── Consent ──────────────────────────────────────────────────────────────
+  // The WhatsApp allow-list was introduced with the honest note that "there is
+  // no patient-consent field in the schema yet". There is one now
+  // (20260903000200), and these are what make it mean something.
+
+  it("removes a patient who has withdrawn consent to be contacted", () => {
+    const candidates = [candidate("a"), candidate("b"), candidate("c")];
+    const out = buildReachable(candidates, new Set(), fillName, new Set(["b"]));
+
+    expect(out.map((r) => r.patientId)).toEqual(["a", "c"]);
+  });
+
+  it("removes them entirely rather than flagging them", () => {
+    // An already-sent patient stays in the list so the workflow can show
+    // progress. An opted-out patient must not: leaving them visible would put a
+    // message one mis-click away from someone who asked not to receive it, and
+    // the wa.me handoff means the send is a human action this app cannot stop.
+    const out = buildReachable([candidate("a")], new Set(), fillName, new Set(["a"]));
+    expect(out).toHaveLength(0);
+  });
+
+  it("keeps everyone when nobody has withdrawn", () => {
+    // Non-vacuous: proves the filter is not simply emptying the list.
+    const candidates = [candidate("a"), candidate("b")];
+    expect(buildReachable(candidates, new Set(), fillName, new Set())).toHaveLength(2);
+    expect(buildReachable(candidates, new Set(), fillName)).toHaveLength(2);
+  });
+
+  it("does not compose a message for an opted-out patient at all", () => {
+    // The check runs before `fill`, so a message that could be sent by accident
+    // is never built in the first place.
+    let filled = 0;
+    const counting = (vars: Record<string, string>) => {
+      filled += 1;
+      return fillName(vars);
+    };
+
+    buildReachable([candidate("a")], new Set(), counting, new Set(["a"]));
+    expect(filled).toBe(0);
+  });
+
   it("never generates a message with an unfilled {{marker}}", () => {
     const brokenFill = (vars: Record<string, string>) =>
       `Hi ${vars.patient_name}, your balance is {{amount_outstanding}}.`;
