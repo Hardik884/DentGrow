@@ -4,6 +4,7 @@ import { getPortalProfile } from "@/actions/portal-link";
 import { getMyDataConsents } from "@/actions/data-consent";
 import { PortalProfileView } from "@/components/patient/PortalProfileView";
 import { PrivacyChoices } from "@/components/patient/PrivacyChoices";
+import { DataExportCard } from "@/components/patient/DataExportCard";
 import { AppearanceSettings } from "@/components/shared/ThemeToggle";
 
 export const metadata: Metadata = {
@@ -56,6 +57,7 @@ export default async function PortalProfilePage() {
       <h1 className="text-xl font-semibold text-text-primary">My Profile</h1>
       <PortalProfileView profile={result.data} />
       {consents.data && <PrivacyChoices initial={consents.data} />}
+      <DataExportCard />
       <AppearanceSettings />
     </div>
   );
