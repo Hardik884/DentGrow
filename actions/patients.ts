@@ -268,6 +268,79 @@ export async function softDeletePatient(
       return { data: null, error: `Failed to cascade delete (${msg}).` };
     }
 
+    // ── The rest of the patient's footprint ──────────────────────────────
+    //
+    // These four were missing, and their absence was not cosmetic: a "deleted"
+    // patient kept a live dental chart, a live set of radiographs, and live
+    // signed consents carrying their handwritten signature — all still visible
+    // to staff, because every list filters on deleted_at and these rows had
+    // none set.
+    //
+    // Each is soft-deleted, not removed. Clinical records and consent evidence
+    // outlive an operational deletion: the clinic still has professional
+    // record-keeping duties, and a consent is the proof that something was
+    // lawful at the time. The retention purge is what eventually clears them,
+    // under a policy, rather than a receptionist's click.
+
+    // The dental chart. Every tooth's recorded status and condition.
+    const { error: teethErr } = await admin
+      .from("patient_teeth")
+      .update({ deleted_at: now })
+      .eq("patient_id", id)
+      .eq("clinic_id", cid)
+      .is("deleted_at", null);
+    if (teethErr) {
+      const msg = `patient_teeth: ${teethErr.message ?? teethErr.code ?? JSON.stringify(teethErr)}`;
+      console.error("[softDeletePatient]", msg, teethErr);
+      return { data: null, error: `Failed to cascade delete (${msg}).` };
+    }
+
+    // Radiographs, clinical photographs and scanned reports. The storage
+    // objects themselves stay put; the retention purge removes those, so a
+    // deletion cannot silently destroy diagnostic imaging.
+    const { error: docErr } = await admin
+      .from("treatment_documents")
+      .update({ deleted_at: now, deleted_by: profile.id })
+      .eq("patient_id", id)
+      .eq("clinic_id", cid)
+      .is("deleted_at", null);
+    if (docErr) {
+      const msg = `treatment_documents: ${docErr.message ?? docErr.code ?? JSON.stringify(docErr)}`;
+      console.error("[softDeletePatient]", msg, docErr);
+      return { data: null, error: `Failed to cascade delete (${msg}).` };
+    }
+
+    // Signed consents, including the stored signature image. Soft-deleted so
+    // they stop appearing in the clinic's working views; the row and its frozen
+    // content_snapshot remain, because destroying a consent destroys the
+    // evidence that the treatment it authorised was authorised.
+    const { error: consentErr } = await admin
+      .from("consents")
+      .update({ deleted_at: now })
+      .eq("patient_id", id)
+      .eq("clinic_id", cid)
+      .is("deleted_at", null);
+    if (consentErr) {
+      const msg = `consents: ${consentErr.message ?? consentErr.code ?? JSON.stringify(consentErr)}`;
+      console.error("[softDeletePatient]", msg, consentErr);
+      return { data: null, error: `Failed to cascade delete (${msg}).` };
+    }
+
+    // Reminder-send records. These have no soft-delete column and exist only to
+    // suppress duplicate messages, so they are removed outright — there is no
+    // longer anyone to send a duplicate to, and `kind` leaks clinical context
+    // ("payment_reminder", "recall_invitation") for a patient who is gone.
+    const { error: reminderErr } = await admin
+      .from("reminder_logs")
+      .delete()
+      .eq("patient_id", id)
+      .eq("clinic_id", cid);
+    if (reminderErr) {
+      const msg = `reminder_logs: ${reminderErr.message ?? reminderErr.code ?? JSON.stringify(reminderErr)}`;
+      console.error("[softDeletePatient]", msg, reminderErr);
+      return { data: null, error: `Failed to cascade delete (${msg}).` };
+    }
+
     // Remove any active queue entries for this patient. queue_entries has no
     // soft-delete column — hard-delete waiting/in_progress entries to keep the
     // live queue clean. completed entries are left for audit.

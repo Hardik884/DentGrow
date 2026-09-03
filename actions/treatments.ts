@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createServerClient } from "@/lib/supabase/server";
 import { resolveSession as resolveCachedSession } from "@/lib/auth/session";
 import { recordPhiAccess, recordPhiAccessBatch } from "@/lib/audit/phi-access";
+import { diffFields, writeTreatmentHistory } from "@/lib/treatments/history";
 import { DOCUMENT_URL_TTL_SECONDS } from "@/lib/storage/signed-urls";
 import {
   CreateTreatmentSchema,
@@ -252,6 +253,24 @@ export async function createTreatment(
 
     const treatment = data as Treatment;
 
+    // The opening entry in this treatment's history. Records the clinically
+    // meaningful fields as created — not the whole row, so the trail stays a
+    // record of decisions rather than a second copy of the record.
+    await writeTreatmentHistory({
+      clinicId: profile.clinic_id,
+      treatmentId: treatment.id,
+      patientId: treatment.patient_id,
+      action: "created",
+      newValue: {
+        treatment_type: treatment.treatment_type,
+        status: treatment.status,
+        cost: treatment.cost,
+        tooth_number: treatment.tooth_number,
+        performed_at: treatment.performed_at,
+      },
+      performedBy: profile.id,
+    });
+
     await syncToothForTreatment(db, {
       clinicId: profile.clinic_id,
       performedBy: profile.id,
@@ -298,6 +317,18 @@ export async function updateTreatment(
     if (profile.role !== "dentist") {
       return { data: null, error: "Forbidden: only dentists can update treatments." };
     }
+
+    // Read the row BEFORE the update so the history can record what changed
+    // rather than only what it changed to. Fetched here, before any of the
+    // derived values below are recomputed, so the comparison is against the
+    // record as it actually stood.
+    const { data: beforeRow } = await db
+      .from("treatments")
+      .select("*")
+      .eq("id", id)
+      .eq("clinic_id", profile.clinic_id)
+      .is("deleted_at", null)
+      .maybeSingle();
 
     const updates: Record<string, unknown> = {
       updated_at: new Date().toISOString(),
@@ -400,6 +431,27 @@ export async function updateTreatment(
 
     const treatment = data as Treatment;
 
+    // Only the fields that genuinely differ. A save that re-sent the same
+    // values writes nothing, so the trail does not fill with entries claiming
+    // edits that never happened.
+    const changed = diffFields(
+      beforeRow as Record<string, unknown> | null,
+      treatment as unknown as Record<string, unknown>
+    );
+    if (changed) {
+      await writeTreatmentHistory({
+        clinicId: profile.clinic_id,
+        treatmentId: treatment.id,
+        patientId: treatment.patient_id,
+        // A status move is called out separately from an ordinary edit: it is
+        // the change a later reader is most often looking for.
+        action: "status" in changed.new ? "status_changed" : "updated",
+        oldValue: changed.old,
+        newValue: changed.new,
+        performedBy: profile.id,
+      });
+    }
+
     // Re-sync using the treatment's post-update (authoritative) tooth link and
     // status — covers both "the tooth link just changed" and "only the status
     // changed on an already tooth-linked treatment".
@@ -441,10 +493,12 @@ export async function softDeleteTreatment(
       return { data: null, error: "Forbidden: only dentists can delete treatments." };
     }
 
-    // Fetch patient_id for cache invalidation before deleting
+    // Fetch the identifying fields before deleting — for cache invalidation,
+    // and so the history row can say what was removed rather than only that
+    // something was.
     const { data: existing } = await db
       .from("treatments")
-      .select("patient_id")
+      .select("patient_id, treatment_type, status, cost")
       .eq("id", id)
       .eq("clinic_id", profile.clinic_id)
       .is("deleted_at", null)
@@ -460,6 +514,21 @@ export async function softDeleteTreatment(
     if (error) {
       console.error("[softDeleteTreatment]", error);
       return { data: null, error: "Failed to delete treatment." };
+    }
+
+    if (existing?.patient_id) {
+      await writeTreatmentHistory({
+        clinicId: profile.clinic_id,
+        treatmentId: id,
+        patientId: existing.patient_id as string,
+        action: "deleted",
+        oldValue: {
+          treatment_type: existing.treatment_type,
+          status: existing.status,
+          cost: existing.cost,
+        },
+        performedBy: profile.id,
+      });
     }
 
     revalidatePath("/dentist/treatments");
@@ -954,6 +1023,24 @@ export async function getPatientTreatments(
   }
 }
 
+
+/**
+ * Which audit event a stored document deserves.
+ *
+ * IOPA, OPG and CBCT are radiographs — diagnostic imaging, and the most
+ * sensitive thing in the bucket. Anything else (a scanned report, a clinical
+ * photograph, a consent PDF) records as a document. `document_type` is optional
+ * and older rows have none, so an unlabelled file is treated as a document
+ * rather than guessed at.
+ */
+const RADIOGRAPH_TYPES = new Set(["IOPA", "OPG", "CBCT"]);
+
+function documentAccessEvent(documentType: string | null | undefined) {
+  return documentType && RADIOGRAPH_TYPES.has(documentType)
+    ? ("XRAY_VIEWED" as const)
+    : ("DOCUMENT_VIEWED" as const);
+}
+
 // =============================================================================
 // createTreatmentDocument — dentist only — records metadata after upload
 // =============================================================================
@@ -1126,6 +1213,10 @@ export async function getTreatmentDocuments(
       .from("treatment_documents")
       .select("*")
       .eq("treatment_id", treatmentId)
+      // Removed documents are excluded here as well as in the RLS policy.
+      // Belt and braces, per CLAUDE.md §13.14 — the policy is the guarantee,
+      // this is what makes the intent visible at the call site.
+      .is("deleted_at", null)
       .order("created_at", { ascending: false });
 
     // Staff scope by clinic; patient path relies on RLS (auth_patient_id()).
@@ -1166,10 +1257,7 @@ export async function getTreatmentDocuments(
         withUrls
           .filter((doc) => doc.url !== null)
           .map((doc) => ({
-            // treatment_documents carries no document_type column, so every
-            // stored radiograph, photograph and PDF records as DOCUMENT_VIEWED.
-            // XRAY_VIEWED exists in the enum for when documents are typed.
-            event: "DOCUMENT_VIEWED" as const,
+            event: documentAccessEvent(doc.document_type),
             resourceType: "treatment_document",
             resourceId: doc.id,
             patientId: doc.patient_id,
@@ -1193,6 +1281,19 @@ export async function getTreatmentDocuments(
 // deleteTreatmentDocument — dentist only — removes metadata + storage object
 // =============================================================================
 
+/**
+ * Removing a document is a SOFT delete.
+ *
+ * It used to remove the storage object and then the metadata row, which meant a
+ * radiograph could disappear from the clinical record leaving nothing behind —
+ * not even the fact that one had existed. A diagnostic image is part of the
+ * record a later clinician relies on and a later dispute turns on, so its
+ * removal is now marked, attributed and dated, and the object itself is cleared
+ * by the retention purge rather than at the moment of the click.
+ *
+ * The RLS DELETE policy was dropped in 20260903000300, so the hard-delete route
+ * is closed rather than merely unused.
+ */
 export async function deleteTreatmentDocument(
   id: string
 ): Promise<ActionResult<null>> {
@@ -1210,18 +1311,20 @@ export async function deleteTreatmentDocument(
       .select("id, file_path, treatment_id, patient_id")
       .eq("id", id)
       .eq("clinic_id", profile.clinic_id)
+      .is("deleted_at", null)
       .single();
 
     if (!doc) return { data: null, error: "Document not found." };
 
-    // Remove the storage object (best-effort) then the metadata row.
-    await db.storage.from(DOCUMENT_BUCKET).remove([doc.file_path]);
-
     const { error } = await db
       .from("treatment_documents")
-      .delete()
+      .update({
+        deleted_at: new Date().toISOString(),
+        deleted_by: profile.id,
+      })
       .eq("id", id)
-      .eq("clinic_id", profile.clinic_id);
+      .eq("clinic_id", profile.clinic_id)
+      .is("deleted_at", null);
 
     if (error) {
       console.error("[deleteTreatmentDocument]", error);
@@ -1363,6 +1466,7 @@ export async function getAppointmentDocuments(
       .from("treatment_documents")
       .select("*")
       .eq("appointment_id", appointmentId)
+      .is("deleted_at", null)
       .order("created_at", { ascending: false });
 
     if (profile.role !== "patient") {
@@ -1386,6 +1490,30 @@ export async function getAppointmentDocuments(
         return { ...doc, url: signed?.signedUrl ?? null };
       })
     );
+
+    // These are radiographs. Issuing the signed URL is the moment one becomes
+    // retrievable by whoever holds the link, so that is what is recorded — the
+    // later GET happens at the storage service and never reaches this app.
+    // A patient viewing their own imaging is not recorded; see the note in
+    // getTreatmentDocuments.
+    if (profile.role !== "patient" && withUrls.length > 0) {
+      await recordPhiAccessBatch(
+        profile,
+        withUrls
+          .filter((doc) => doc.url !== null)
+          .map((doc) => ({
+            event: documentAccessEvent(doc.document_type),
+            resourceType: "treatment_document",
+            resourceId: doc.id,
+            patientId: doc.patient_id,
+            context: {
+              surface: "appointment-documents",
+              bucket: DOCUMENT_BUCKET,
+              ttlSeconds: DOCUMENT_URL_TTL_SECONDS,
+            },
+          }))
+      );
+    }
 
     return { data: withUrls, error: null };
   } catch (err) {
@@ -1412,17 +1540,23 @@ export async function deleteAppointmentDocument(
       .eq("id", id)
       .eq("clinic_id", profile.clinic_id)
       .not("appointment_id", "is", null)
+      .is("deleted_at", null)
       .single();
 
     if (!doc) return { data: null, error: "Document not found." };
 
-    await db.storage.from(DOCUMENT_BUCKET).remove([doc.file_path]);
-
+    // Soft, for the same reason as deleteTreatmentDocument: a radiograph
+    // leaving the record should be attributable, and the storage object is the
+    // retention purge's job rather than this click's.
     const { error } = await db
       .from("treatment_documents")
-      .delete()
+      .update({
+        deleted_at: new Date().toISOString(),
+        deleted_by: profile.id,
+      })
       .eq("id", id)
-      .eq("clinic_id", profile.clinic_id);
+      .eq("clinic_id", profile.clinic_id)
+      .is("deleted_at", null);
 
     if (error) {
       console.error("[deleteAppointmentDocument]", error);
