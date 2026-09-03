@@ -2,6 +2,7 @@ import "server-only";
 import { cache } from "react";
 import { redirect } from "next/navigation";
 import { createServerClient } from "@/lib/supabase/server";
+import { recordSecurityEvent } from "@/lib/security/events";
 
 /**
  * lib/auth/session.ts
@@ -108,6 +109,16 @@ export async function requireAdmin(): Promise<ResolvedProfile> {
   if (!user) redirect("/admin/login");
 
   if (!profile?.is_admin) {
+    // An authenticated non-admin who reached an /admin URL. The URL is not
+    // linked from anywhere in the product, so this is worth seeing in a log
+    // even though the redirect below is doing its job.
+    recordSecurityEvent("ADMIN_ACCESS_DENIED", {
+      userId: user.id,
+      clinicId: profile?.clinic_id ?? null,
+      role: profile?.role ?? null,
+      surface: "admin",
+    });
+
     switch (profile?.role) {
       case "dentist":
         redirect("/dentist");

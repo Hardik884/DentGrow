@@ -360,9 +360,26 @@ auth_token = "env(SUPABASE_AUTH_SMS_TWILIO_AUTH_TOKEN)"
 max_enrolled_factors = 10
 
 # Control MFA via App Authenticator (TOTP)
+#
+# ON. A single password protected accounts that can read an entire clinic's
+# patient records, prescriptions and financial history — the whole of the
+# tenant, not one person's data. TOTP is the form that needs no vendor, no
+# phone number and no per-message cost, so there is nothing to procure before a
+# dentist can turn it on.
+#
+# Enabling ENROLMENT does not force anyone to use it. Supabase only requires a
+# second factor from accounts that have actually enrolled one, so switching this
+# on cannot lock anybody out — it makes the option exist. Enforcement is a
+# separate, deliberate step: see REQUIRE_ADMIN_MFA in .env.example and
+# docs/SECURITY.md.
+#
+# NOTE: config.toml governs the LOCAL stack. The hosted project has its own
+# setting in the dashboard (Authentication → Multi-Factor) and this file does
+# not push to it.
+#   → REQUIRES MANUAL CONFIGURATION on the hosted project.
 [auth.mfa.totp]
-enroll_enabled = false
-verify_enabled = false
+enroll_enabled = true
+verify_enabled = true
 
 # Configure MFA via Phone Messaging
 [auth.mfa.phone]

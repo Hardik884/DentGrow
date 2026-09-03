@@ -17,6 +17,12 @@ import {
   clearSignupEmail,
 } from "@/lib/clinic-session";
 import { describeEmailSendFailure } from "@/lib/auth/verification";
+import { recordSecurityEvent, subjectHash } from "@/lib/security/events";
+import {
+  checkRateLimit,
+  clearFailures,
+  recordFailure,
+} from "@/lib/security/rate-limit";
 import type { ActionResult } from "@/types";
 
 /**
@@ -111,7 +117,9 @@ function friendlyAuthError(message: string | undefined): string {
  * email and password themselves.
  */
 async function authenticate(
-  formData: FormData
+  formData: FormData,
+  /** Which door this attempt came through — recorded on security events. */
+  surface: "staff" | "patient" | "admin"
 ): Promise<{ error: string } | { profile: AuthedProfile | null }> {
   const email = ((formData.get("email") as string) ?? "").trim();
   const password = (formData.get("password") as string) ?? "";
@@ -120,14 +128,53 @@ async function authenticate(
     return { error: "Email and password are required." };
   }
 
+  // Per-ACCOUNT throttling, keyed on a one-way hash of the address so the
+  // counter is stable without the security log becoming a list of who has an
+  // account here. Supabase Auth already limits per IP; this is the limit that
+  // an attacker spreading attempts across many IPs against one dentist still
+  // runs into. See lib/security/rate-limit.ts for what it is and is not.
+  const subject = subjectHash(email);
+
+  const before = checkRateLimit(subject);
+  if (before.locked) {
+    // The password is not even checked. Answering identically whether or not
+    // the account exists keeps this from becoming an account-enumeration
+    // oracle, which is why the message names no account.
+    return {
+      error: `Too many sign-in attempts. Please try again in ${Math.ceil(
+        before.retryAfterSeconds / 60
+      )} minute(s).`,
+    };
+  }
+
   const supabase = await createServerClient();
 
   const { data: authData, error: authError } =
     await supabase.auth.signInWithPassword({ email, password });
 
   if (authError || !authData.user) {
+    const after = recordFailure(subject);
+
+    recordSecurityEvent("AUTH_FAILED", {
+      subjectHash: subject,
+      surface,
+      count: after.failures,
+    });
+
+    if (after.locked) {
+      recordSecurityEvent("AUTH_LOCKED_OUT", {
+        subjectHash: subject,
+        surface,
+        count: after.failures,
+      });
+    }
+
     return { error: friendlyAuthError(authError?.message) };
   }
+
+  // A success clears the counter, so a week-old mistyped password does not
+  // combine with today's to lock someone out of their clinic.
+  clearFailures(subject);
 
   const { data } = await supabase
     .from("profiles")
@@ -138,8 +185,26 @@ async function authenticate(
   return { profile: (data as AuthedProfile | null) ?? null };
 }
 
-/** Sign the just-authenticated session back out after an audience mismatch. */
-async function rejectAndSignOut(error: string): Promise<ActionResult<null>> {
+/**
+ * Sign the just-authenticated session back out after an audience mismatch.
+ *
+ * The password was CORRECT here — this is a valid account arriving at the wrong
+ * door. Usually that is a person who bookmarked the wrong page, which is why
+ * the message is helpful rather than terse. It is also what an attacker holding
+ * working credentials looks like while they probe which door those credentials
+ * open, so it is recorded either way and the log is where the difference
+ * between the two becomes visible.
+ */
+async function rejectAndSignOut(
+  error: string,
+  detail: { surface: string; audience: string; userId?: string | null }
+): Promise<ActionResult<null>> {
+  recordSecurityEvent("AUTH_WRONG_AUDIENCE", {
+    surface: detail.surface,
+    reason: detail.audience,
+    userId: detail.userId ?? null,
+  });
+
   const supabase = await createServerClient();
   await supabase.auth.signOut();
   await clearSelectedClinic();
@@ -167,7 +232,7 @@ export async function signInStaff(
   _prevState: ActionResult<null>,
   formData: FormData
 ): Promise<ActionResult<null>> {
-  const result = await authenticate(formData);
+  const result = await authenticate(formData, "staff");
   if ("error" in result) return { data: null, error: result.error };
 
   const { profile } = result;
@@ -177,11 +242,13 @@ export async function signInStaff(
       break;
     case "admin":
       return rejectAndSignOut(
-        "This account doesn't have clinic access. Use its own sign-in page."
+        "This account doesn't have clinic access. Use its own sign-in page.",
+        { surface: "staff", audience: "admin" }
       );
     default:
       return rejectAndSignOut(
-        "This is the staff sign-in. Patients can sign in at the patient portal."
+        "This is the staff sign-in. Patients can sign in at the patient portal.",
+        { surface: "staff", audience: audienceOf(profile) }
       );
   }
 
@@ -209,7 +276,7 @@ export async function signInPatient(
   _prevState: ActionResult<null>,
   formData: FormData
 ): Promise<ActionResult<null>> {
-  const result = await authenticate(formData);
+  const result = await authenticate(formData, "patient");
   if ("error" in result) return { data: null, error: result.error };
 
   const { profile } = result;
@@ -217,7 +284,8 @@ export async function signInPatient(
 
   if (audience === "staff" || audience === "admin") {
     return rejectAndSignOut(
-      "This is the patient portal. Clinic staff sign in on the staff page."
+      "This is the patient portal. Clinic staff sign in on the staff page.",
+      { surface: "patient", audience }
     );
   }
 
@@ -245,13 +313,18 @@ export async function signInAdmin(
   _prevState: ActionResult<null>,
   formData: FormData
 ): Promise<ActionResult<null>> {
-  const result = await authenticate(formData);
+  const result = await authenticate(formData, "admin");
   if ("error" in result) return { data: null, error: result.error };
 
   const { profile } = result;
 
   if (!profile?.is_admin) {
-    return rejectAndSignOut("This account is not authorized for admin access.");
+    // A correct password at the admin door on a non-admin account. Rarely
+    // innocent: the admin URL is not linked from anywhere in the product.
+    return rejectAndSignOut("This account is not authorized for admin access.", {
+      surface: "admin",
+      audience: audienceOf(profile),
+    });
   }
 
   await setSelectedClinic(profile.clinic_id);

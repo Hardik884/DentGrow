@@ -1,5 +1,6 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import { assertPromptIsSafe, type WaivableRule } from "./redaction";
+import { assertPromptIsSafe, PromptSafetyError, type WaivableRule } from "./redaction";
+import { recordSecurityEvent } from "@/lib/security/events";
 
 /**
  * The AI provider, isolated behind one module.
@@ -109,7 +110,23 @@ export function guardOutboundPrompt(
   prompt: string,
   waived: readonly WaivableRule[] = []
 ): string {
-  assertPromptIsSafe(prompt, waived);
+  try {
+    assertPromptIsSafe(prompt, waived);
+  } catch (error) {
+    if (error instanceof PromptSafetyError) {
+      // A withheld prompt means a call site built one containing an identifier
+      // or a credential. That is a defect that needs finding, not a transient
+      // fault, so it is raised as a security event rather than only failing the
+      // request. The VIOLATION NAME is recorded; the prompt is not, because the
+      // prompt is the thing that must not be written down.
+      recordSecurityEvent("AI_PROMPT_WITHHELD", {
+        reason: error.violation,
+        surface: "ai-provider",
+      });
+    }
+    throw error;
+  }
+
   return prompt;
 }
 

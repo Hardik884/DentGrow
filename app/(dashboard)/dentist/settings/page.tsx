@@ -3,9 +3,11 @@ import { PageHeader } from "@/components/layouts/PageHeader";
 import { AppearanceSettings } from "@/components/shared/ThemeToggle";
 import { ClinicSettingsForm } from "@/components/dentist/ClinicSettingsForm";
 import { SignatureSettings } from "@/components/dentist/SignatureSettings";
+import { MfaSettings } from "@/components/shared/MfaSettings";
 import { ConsultantSettings } from "@/components/dentist/ConsultantSettings";
 import { getClinicSettings } from "@/actions/clinic-settings";
 import { getMySignature } from "@/actions/signature";
+import { getMfaState } from "@/actions/mfa";
 import {
   getConsultants,
   getConsultancySchedules,
@@ -41,17 +43,22 @@ export default async function ClinicSettingsPage() {
     { data: consultants },
     { data: schedules },
     { data: unavailableDates },
+    { data: mfa },
   ] = await Promise.all([
     getClinicSettings(),
     getMySignature(),
     getConsultants(),
     getConsultancySchedules(),
     getUnavailableDates(),
+    getMfaState(),
   ]);
 
   return (
     <div className="p-6 space-y-6">
       <PageHeader title="Clinic Settings" />
+      {/* Security first among the personal settings: it is the one on this page
+          that protects everything else on it. */}
+      <MfaSettings initialFactors={mfa?.factors ?? []} />
       <AppearanceSettings />
       <ClinicSettingsForm initialSettings={settings} />
       <ConsultantSettings

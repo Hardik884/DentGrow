@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { createMiddlewareClient } from "@/lib/supabase/middleware-client";
+import { adminMfaRequired, readMfaStatus } from "@/lib/auth/mfa";
 
 /**
  * updateSession
@@ -19,6 +20,10 @@ import { createMiddlewareClient } from "@/lib/supabase/middleware-client";
  * 4. For /portal/*: redirect to /portal/setup if no portal link exists.
  * 5. Send unauthenticated visitors to the sign-in page for the area they asked
  *    for, so a patient deep link never dumps them on the staff form.
+ * 6. Hold a session at assurance level aal1 on /mfa when the account has an
+ *    authenticator enrolled. This one is NOT merely a UX redirect: it is what
+ *    stops a half-completed sign-in reaching clinical data by navigating away
+ *    from the challenge screen.
  *
  * Security note: this is a UX redirect layer. Supabase RLS is the
  * authoritative security boundary, and every /admin page additionally calls
@@ -129,6 +134,37 @@ export async function updateSession(
     return NextResponse.redirect(loginUrl);
   }
 
+  // ── Two-step verification ─────────────────────────────────────────────────
+  //
+  // A password check leaves the session at aal1. If the account has an
+  // authenticator enrolled, Supabase reports that it SHOULD be at aal2, and
+  // until it is this request is treated as not-yet-signed-in for every
+  // protected route. That is what makes the challenge unskippable: navigating
+  // away from /mfa lands back here.
+  //
+  // Skipped for the challenge page itself (or nothing could ever satisfy it)
+  // and for Server Actions, which is handled below by the same reasoning as the
+  // role lookups — an action re-resolves its own authorisation and a redirect
+  // computed here would be discarded.
+  if (pathname !== MFA_PATH && !isServerAction) {
+    const mfa = await readMfaStatus(supabase);
+
+    if (mfa.challengeRequired) {
+      return NextResponse.redirect(new URL(MFA_PATH, request.url));
+    }
+
+    // Admin MFA, when the deployment requires it: an admin with NO factor is
+    // sent to enrol rather than to a code box it could never satisfy. Scoped to
+    // /admin so turning the flag on cannot lock an admin out of the ordinary
+    // clinic screens they also use as a dentist.
+    if (adminMfaRequired() && !mfa.enrolled && pathname.startsWith("/admin")) {
+      const profile = await resolveProfile(supabase, user.id);
+      if (profile?.is_admin) {
+        return NextResponse.redirect(new URL(MFA_ENROL_PATH, request.url));
+      }
+    }
+  }
+
   // Authenticated Server Action: the session is refreshed and the caller is
   // known — everything below only computes a redirect this request will never
   // use. See the note above `isServerAction`.
@@ -204,9 +240,19 @@ export async function updateSession(
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
+/** The two-step verification challenge. */
+const MFA_PATH = "/mfa";
+
+/** Where an admin is sent to add a factor when the deployment requires one. */
+const MFA_ENROL_PATH = "/dentist/settings";
+
 /**
  * The three sign-in doors, plus /signup which redirects to /patient/signup.
  * Listed as a Set so the check stays a single exact-match lookup.
+ *
+ * /mfa is deliberately NOT here. These are pages an already-authenticated
+ * visitor should be redirected AWAY from; /mfa is the opposite — it is where a
+ * half-authenticated session belongs until it finishes.
  */
 const SIGN_IN_PATHS = new Set([
   "/login",
