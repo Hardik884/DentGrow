@@ -27,6 +27,10 @@ export default function AdminLoginPage() {
   return (
     <AuthShell
       tone="admin"
+      // Internal staff door with no public audience: the Terms/Privacy
+      // acknowledgement belongs on the surfaces a clinic or a patient actually
+      // signs up through, not here.
+      showLegalNote={false}
       eyebrow="Restricted"
       headline="OraMedha Admin"
       subhead="Authorized access only. All sign-in attempts are checked against the platform administrator record."

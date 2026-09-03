@@ -3,6 +3,7 @@ import { cn } from "@/lib/utils";
 import { DentGrowLogo } from "@/components/shared/DentGrowLogo";
 import { AuthArtwork } from "./AuthArtwork";
 import { AuthThemeToggle } from "./AuthThemeToggle";
+import { AuthLegalNote } from "./AuthLegalNote";
 
 /**
  * AuthShell — the frame every OraMedha sign-in page renders inside.
@@ -111,6 +112,14 @@ interface AuthShellProps {
   children: React.ReactNode;
   /** Links or notes rendered under the form. */
   footer?: React.ReactNode;
+  /**
+   * Whether to render the one-line Terms/Privacy acknowledgement under the
+   * form. On by default: every page in this shell is a place where a person
+   * creates or uses an account, which is the moment the acknowledgement is
+   * for. Turned off only for the platform-admin door, which is an internal
+   * staff surface with no public audience.
+   */
+  showLegalNote?: boolean;
 }
 
 export function AuthShell({
@@ -123,6 +132,7 @@ export function AuthShell({
   formSubtitle,
   children,
   footer,
+  showLegalNote = true,
 }: AuthShellProps) {
   const t = TONES[tone];
 
@@ -239,6 +249,8 @@ export function AuthShell({
                 {footer}
               </div>
             )}
+
+            {showLegalNote && <AuthLegalNote />}
           </div>
         </div>
       </main>
