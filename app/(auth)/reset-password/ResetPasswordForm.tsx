@@ -7,7 +7,10 @@ import { updatePassword } from "@/actions/auth";
 import type { ActionResult } from "@/types";
 import { AuthAlert, AuthSubmit, PasswordField } from "@/components/auth/AuthFields";
 
-const initialState: ActionResult<{ updated: true }> = { data: null, error: null };
+const initialState: ActionResult<{ updated: true; signInPath: string }> = {
+  data: null,
+  error: null,
+};
 
 interface ResetPasswordFormProps {
   /** True when /auth/callback could not establish a recovery session. */
@@ -22,9 +25,11 @@ interface ResetPasswordFormProps {
  * and submits to the updatePassword Server Action (which re-validates against
  * the existing policy and updates the Supabase account).
  *
- * On success it toasts and redirects to /patient/login?reset=1, where the
- * patient signs in with the new password. The button is disabled while pending to prevent
- * duplicate submissions.
+ * On success it toasts and redirects to the sign-in door for THIS account's
+ * audience — the Server Action resolves that path from the profile and returns
+ * it, because the three doors reject each other's accounts and a dentist sent
+ * to /patient/login would be bounced straight back out. The button is disabled
+ * while pending to prevent duplicate submissions.
  */
 export function ResetPasswordForm({ linkError }: ResetPasswordFormProps) {
   const router = useRouter();
@@ -53,14 +58,15 @@ export function ResetPasswordForm({ linkError }: ResetPasswordFormProps) {
   }
 
   // Fire toasts / redirect once per state transition.
-  const handled = useRef<ActionResult<{ updated: true }> | null>(null);
+  const handled = useRef<ActionResult<{ updated: true; signInPath: string }> | null>(null);
   useEffect(() => {
     if (handled.current === state) return;
     handled.current = state;
 
     if (state.data?.updated) {
       toast.success("Password updated successfully.");
-      router.push("/patient/login?reset=1");
+      // Server-resolved: never a path the browser chose for itself.
+      router.push(`${state.data.signInPath}?reset=1`);
     } else if (state.error) {
       toast.error(state.error);
     }

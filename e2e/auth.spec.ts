@@ -30,6 +30,15 @@ const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "http://127.0.0.1:5
  * instead; nothing in this suite ever touches that account.
  */
 const MAILPIT_URL = process.env.E2E_MAILPIT_URL ?? "http://127.0.0.1:55324";
+/**
+ * Service-role key for the LOCAL stack only — the Supabase CLI's fixed demo
+ * value, identical on every local project and not a secret (see
+ * playwright.config.ts, which passes the same one to the dev server). Used by
+ * the recovery specs to put a seeded password back after they change it.
+ */
+const SERVICE_ROLE_KEY =
+  process.env.E2E_SUPABASE_SERVICE_ROLE_KEY ??
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImV4cCI6MTk4MzgxMjk5Nn0.EGIM96RAZx35lJzdJsyH-qQwv8Hdp7fsn3W0YpN81IU";
 const THEME_KEY = "dentgrow-theme";
 
 async function localSupabaseReachable(): Promise<boolean> {
@@ -529,6 +538,198 @@ test.describe("authentication", () => {
     });
   });
 
+  // ══ Password recovery ═══════════════════════════════════════════════════
+
+  /**
+   * Self-service reset used to be patient-only. It now covers dentist and
+   * receptionist, so what needs proving is not that the form submits — it
+   * always did — but that a STAFF address actually receives a recovery email
+   * and that the link lands somewhere that can change the password.
+   *
+   * The platform admin is deliberately still excluded, and that exclusion is
+   * asserted below rather than assumed: it is enforced in the action, not by
+   * omitting a link, so typing the admin address into the form by hand must
+   * still send nothing.
+   *
+   * Delivery is asserted against Mailpit rather than mocked, for the reason the
+   * resend spec above gives: the interesting failure is a transport that
+   * accepts the request and silently refuses the recipient, which is exactly
+   * what Supabase's built-in service does to a non-team address in production.
+   * A mock cannot fail that way, so a mock would prove nothing.
+   */
+  test.describe("password recovery — staff and patient", () => {
+    /**
+     * Put a seeded account's password back.
+     *
+     * These tests genuinely change the password — that is the thing being
+     * proven — and every other spec in this suite signs in with the seeded one.
+     * Without this, the first recovery test would silently break every later
+     * sign-in until the next `npm run db:reset`, which is the order-dependence
+     * that makes a suite unreliable rather than useful.
+     */
+    async function restorePassword(email: string, password: string): Promise<void> {
+      const headers = {
+        apikey: SERVICE_ROLE_KEY,
+        Authorization: `Bearer ${SERVICE_ROLE_KEY}`,
+        "Content-Type": "application/json",
+      };
+      const list = await fetch(
+        `${SUPABASE_URL}/auth/v1/admin/users?page=1&per_page=200`,
+        { headers }
+      );
+      if (!list.ok) return;
+      const { users } = (await list.json()) as { users?: { id: string; email?: string }[] };
+      const user = (users ?? []).find(
+        (u) => (u.email ?? "").toLowerCase() === email.toLowerCase()
+      );
+      if (!user) return;
+
+      await fetch(`${SUPABASE_URL}/auth/v1/admin/users/${user.id}`, {
+        method: "PUT",
+        headers,
+        body: JSON.stringify({ password }),
+      });
+    }
+
+    /** Message IDs currently sitting in Mailpit for an address. */
+    async function messageIdsFor(email: string): Promise<string[]> {
+      const search = await fetch(
+        `${MAILPIT_URL}/api/v1/search?query=${encodeURIComponent(`to:${email}`)}`
+      );
+      if (!search.ok) return [];
+      const { messages } = (await search.json()) as { messages?: { ID: string }[] };
+      return (messages ?? []).map((m) => m.ID);
+    }
+
+    /**
+     * The recovery link from a message this test actually caused.
+     *
+     * `excluding` matters more than it looks. Mailpit persists across runs and
+     * `npm run db:reset` does not empty it, so simply taking the newest message
+     * for an address can pick up a token from an earlier run. Those tokens fail
+     * verification — the PKCE verifier cookie belongs to a browser context that
+     * no longer exists — and the resulting `?error=link` looks exactly like a
+     * broken product rather than a dirty inbox. Ask only for an ID that was not
+     * there before the request.
+     */
+    async function newRecoveryLink(
+      email: string,
+      excluding: string[]
+    ): Promise<string | null> {
+      const fresh = (await messageIdsFor(email)).filter((id) => !excluding.includes(id));
+      if (fresh.length === 0) return null;
+
+      const message = await fetch(`${MAILPIT_URL}/api/v1/message/${fresh[0]}`);
+      if (!message.ok) return null;
+      const { Text, HTML } = (await message.json()) as { Text?: string; HTML?: string };
+
+      // The template links at /auth/callback?token_hash=…&type=recovery.
+      const match = `${Text ?? ""}${HTML ?? ""}`.match(
+        /https?:\/\/[^\s"'<>]*\/auth\/callback\?[^\s"'<>]*type=recovery[^\s"'<>]*/
+      );
+      return match ? match[0].replace(/&amp;/g, "&") : null;
+    }
+
+    for (const [who, account, expectedDoor] of [
+      ["a dentist", ACCOUNTS.dentist, /\/login/],
+      ["a receptionist", ACCOUNTS.receptionist, /\/login/],
+    ] as const) {
+      test(`${who} receives a reset email and can set a new password`, async ({ page }) => {
+        test.setTimeout(120_000);
+
+        // Snapshot the inbox first so only a message THIS request produced can
+        // satisfy the poll below.
+        const before = await messageIdsFor(account.email);
+
+        await page.goto("/forgot-password");
+        await page.getByLabel("Email address").fill(account.email);
+        await page.getByRole("button", { name: /Send|Reset|Continue/ }).click();
+
+        // The response is generic by design, so delivery is the real assertion:
+        // a staff address that silently receives nothing is precisely the
+        // production failure this test exists to catch.
+        await expect
+          .poll(() => newRecoveryLink(account.email, before), { timeout: 45_000 })
+          .not.toBeNull();
+
+        const link = await newRecoveryLink(account.email, before);
+        expect(link).toBeTruthy();
+
+        // Re-base onto the test server. The template builds links from
+        // {{ .SiteURL }}, which supabase/config.toml pins to port 3000, while
+        // this suite runs its own dev server on 3100 (playwright.config.ts) so
+        // it never collides with a developer's. The token and the destination
+        // path are what matter here; which port local Auth was told to
+        // advertise is not part of what this test is proving.
+        const emailed = new URL(link as string);
+        const onTestServer = new URL(
+          `${emailed.pathname}${emailed.search}`,
+          page.url().startsWith("http") ? new URL(page.url()).origin : "http://localhost:3100"
+        );
+
+        await page.goto(onTestServer.toString());
+        await expect(page).toHaveURL(/\/reset-password/);
+
+        // The link established a recovery session, so the form is usable.
+        const next = "newpassword456";
+        await page.getByLabel("New password").fill(next);
+        await page.getByLabel("Confirm password").fill(next);
+        await page.getByRole("button", { name: /Reset password/ }).click();
+
+        // Staff must land on the STAFF door, not the patient one — the doors
+        // reject each other's accounts, so the wrong redirect strands them.
+        await expect(page).toHaveURL(expectedDoor, { timeout: 30_000 });
+
+        // And the new password genuinely works.
+        await page.getByLabel("Email address").fill(account.email);
+        await page.getByLabel("Password", { exact: true }).fill(next);
+        await page.getByRole("button", { name: /Sign in/ }).click();
+        await page.waitForURL(/\/(dentist|receptionist)/, { timeout: 30_000 });
+
+        // Hand the account back exactly as it was found.
+        await restorePassword(account.email, account.password);
+      });
+    }
+
+    test("the platform admin is refused — no email, and no way to tell", async ({
+      page,
+    }) => {
+      const before = await messageIdsFor(ACCOUNTS.admin.email);
+
+      await page.goto("/forgot-password");
+      await page.getByLabel("Email address").fill(ACCOUNTS.admin.email);
+      await page.getByRole("button", { name: /Send|Reset|Continue/ }).click();
+      await page.waitForLoadState("networkidle");
+
+      // Nothing is sent. Given a generous window so this fails on a real send
+      // rather than on being fast.
+      await page.waitForTimeout(6000);
+      expect(await messageIdsFor(ACCOUNTS.admin.email)).toEqual(before);
+
+      // And the admin door still offers no route into this flow.
+      await page.goto("/admin/login");
+      await expect(page.getByRole("link", { name: /Forgot password/i })).toHaveCount(0);
+    });
+
+    test("the response is identical for a real address and an unknown one", async ({
+      page,
+    }) => {
+      const confirmationFor = async (email: string) => {
+        await page.goto("/forgot-password");
+        await page.getByLabel("Email address").fill(email);
+        await page.getByRole("button", { name: /Send|Reset|Continue/ }).click();
+        // Whatever the page settles on, both addresses must reach the same one.
+        await page.waitForLoadState("networkidle");
+        return (await page.locator("main").innerText()).replace(/\s+/g, " ").trim();
+      };
+
+      const real = await confirmationFor(ACCOUNTS.dentist.email);
+      const unknown = await confirmationFor("no-such-account-9f2a@dentgrow.test");
+
+      expect(unknown).toBe(real);
+    });
+  });
+
   // ══ Routing ═════════════════════════════════════════════════════════════
 
   test.describe("routing", () => {
@@ -577,6 +778,14 @@ test.describe("authentication", () => {
       test(`${theme}: every door renders without horizontal overflow at every width`, async ({
         page,
       }) => {
+        // 4 doors × 6 widths = 24 full page loads at networkidle, plus two
+        // full-page screenshots each. This measured 56.2s against the 60s
+        // default before "Forgot password?" was added to the staff and admin
+        // forms — close enough that one more element in the layout tipped it
+        // over. The work is genuinely slow, not stuck, so it gets more room
+        // rather than fewer assertions.
+        test.slow();
+
         await forceTheme(page, theme);
 
         const overflow: string[] = [];
@@ -753,9 +962,19 @@ test.describe("authentication", () => {
     test("the form is fully operable from the keyboard", async ({ page }) => {
       await page.goto("/login");
 
-      // Email is focused on load; tabbing walks password → toggle → submit.
+      // Email is focused on load; tabbing walks
+      //   forgot-password → password → toggle → submit.
+      //
+      // "Forgot password?" sits in the password field's label row, so it comes
+      // BEFORE the input in DOM order — the same shape the patient form has
+      // always had. It is asserted rather than skipped over: a recovery link a
+      // keyboard user cannot reach is a recovery link that does not exist for
+      // them, and this test is the only thing that would notice.
       await expect(page.getByLabel("Email address")).toBeFocused();
       await page.keyboard.type(ACCOUNTS.dentist.email);
+
+      await page.keyboard.press("Tab");
+      await expect(page.getByRole("link", { name: "Forgot password?" })).toBeFocused();
 
       await page.keyboard.press("Tab");
       await expect(page.getByLabel("Password", { exact: true })).toBeFocused();

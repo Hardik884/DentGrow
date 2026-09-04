@@ -23,8 +23,11 @@ const initialState: ActionResult<null> = { data: null, error: null };
  * them out of their own history. Clinic selection appears exactly once in the
  * product, on the signup form, for people who don't have a record yet.
  *
- * "Forgot password?" lives here rather than on the staff form because
- * self-service reset is patient-only by design.
+ * "Forgot password?" lives here, and now on the staff and admin forms too:
+ * self-service reset used to be patient-only and covers every audience as of
+ * actions/auth.ts:resolveResetAudience. All three link to the same
+ * /forgot-password page, which cannot tell the audiences apart and does not
+ * try to.
  */
 export function PatientLoginForm({ resetSuccess }: { resetSuccess?: boolean }) {
   const [state, formAction, isPending] = useActionState(signInPatient, initialState);

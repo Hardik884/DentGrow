@@ -8,6 +8,7 @@ import {
   AuthField,
   AuthSubmit,
   PasswordField,
+  AuthLink,
 } from "@/components/auth/AuthFields";
 
 const initialState: ActionResult<null> = { data: null, error: null };
@@ -20,10 +21,13 @@ const initialState: ActionResult<null> = { data: null, error: null };
  * to, so asking would be asking the user to repeat something the database can
  * answer with certainty — and something a browser must never be trusted for.
  *
- * There is no "forgot password" link here on purpose. Self-service reset is
- * patient-only (actions/auth.ts:isPasswordResetEligible): staff credentials are
- * issued and rotated by the clinic. Linking to a page that would silently do
- * nothing for a dentist would be worse than saying who to ask.
+ * "Forgot password?" is here now. It deliberately was not: self-service reset
+ * used to be patient-only, on the reasoning that staff credentials are issued
+ * and rotated by the clinic, and a link that silently did nothing for a dentist
+ * would be worse than none. Reset covers staff and admin as of
+ * actions/auth.ts:resolveResetAudience, so the link does something, and a
+ * locked-out dentist no longer needs someone with database access to get back
+ * in.
  */
 export function StaffLoginForm() {
   const [state, formAction, isPending] = useActionState(signInStaff, initialState);
@@ -52,6 +56,11 @@ export function StaffLoginForm() {
         required
         disabled={isPending}
         placeholder="Enter your password"
+        action={
+          <AuthLink href="/forgot-password" className="text-[13px] font-normal">
+            Forgot password?
+          </AuthLink>
+        }
       />
 
       <AuthSubmit

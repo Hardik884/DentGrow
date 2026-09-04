@@ -579,31 +579,62 @@ export async function signOut(): Promise<void> {
   redirect(destination);
 }
 
-// ── Password Reset (patients only) ───────────────────────────────────────────
+// ── Password Reset (every audience) ──────────────────────────────────────────
 
 /**
- * isPasswordResetEligible
+ * Where an audience signs back in after setting a new password.
  *
- * Patient-only gate for self-service password reset.
- *
- * Self-service reset is available to PATIENTS ONLY — dentist, receptionist and
- * admin accounts are managed by the clinic owner / platform administrator and
- * must never receive a self-service reset email.
- *
- * Because the email→role mapping lives in auth.users (email) + profiles (role),
- * we resolve the auth user by email via the service-role admin client, then read
- * their profile role:
- *   - role === 'patient'  → eligible
- *   - role === null       → eligible (a patient mid-onboarding has an auth
- *                           account but no profile yet; staff always have a
- *                           profile, created by the invite flow)
- *   - dentist / receptionist / any admin → NOT eligible (silently skipped)
- *
- * Returns false for unknown emails too. The caller always reports the same
- * generic success message regardless, so this never reveals whether an account
- * exists or what role it has.
+ * The three doors are separate (see the file header), so a reset that always
+ * landed on the patient door would strand a dentist on a form that refuses
+ * their account — the audience checks in signInStaff/signInPatient/signInAdmin
+ * would bounce them straight back out.
  */
-async function isPasswordResetEligible(email: string): Promise<boolean> {
+function signInPathForAudience(audience: Audience): string {
+  switch (audience) {
+    case "admin":
+      // Unreachable via reset — resolveResetAudience refuses an admin before an
+      // email is ever sent. Kept correct rather than deleted so this stays a
+      // total function over Audience.
+      return "/admin/login";
+    case "staff":
+      return "/login";
+    default:
+      // patient, and unlinked (an auth account with no profile yet is a patient
+      // part-way through signup).
+      return "/patient/login";
+  }
+}
+
+/**
+ * resolveResetAudience
+ *
+ * Looks up which door an email address belongs behind, or null when no account
+ * has that address.
+ *
+ * Self-service reset used to be PATIENT-ONLY, on the reasoning that staff
+ * credentials are issued by the clinic. That left a locked-out dentist with no
+ * route back in except asking someone with database access, so reset now covers
+ * DENTIST, RECEPTIONIST and PATIENT, and this returns which one rather than a
+ * yes/no.
+ *
+ * THE PLATFORM ADMIN IS DELIBERATELY EXCLUDED and returns null, exactly as
+ * before. It is the account that gates /admin, it is the one account whose
+ * compromise is not scoped to a single clinic, and emailed recovery would make
+ * its mailbox equivalent to the console. Recovery for it is an out-of-band
+ * operation performed against Supabase directly. An admin who is also a dentist
+ * (owner@dentgrow.local is both) is still excluded — audienceOf ranks admin
+ * above role, so the admin capability wins here as it does at every door.
+ *
+ * The email→role mapping lives across auth.users (email) and profiles (role),
+ * so the auth user is resolved by email via the service-role admin client and
+ * their profile read from it.
+ *
+ * Returns null for an unknown address AND for the admin, which is what keeps
+ * the exclusion invisible: the caller reports the same generic success either
+ * way, so nothing here reveals that an address exists, that it is an admin, or
+ * that it was skipped.
+ */
+async function resolveResetAudience(email: string): Promise<Audience | null> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const admin: any = createAdminClient();
   const target = email.trim().toLowerCase();
@@ -622,39 +653,55 @@ async function isPasswordResetEligible(email: string): Promise<boolean> {
     if (user) {
       const { data: profile } = await admin
         .from("profiles")
-        .select("role, is_admin")
+        .select("role, clinic_id, is_admin")
         .eq("id", user.id)
         .maybeSingle();
 
-      const row = (profile as { role?: string; is_admin?: boolean } | null) ?? null;
-      if (row?.is_admin) return false;
-      const role = row?.role ?? null;
-      return role === "patient" || role === null;
+      const row =
+        (profile as { role?: string; clinic_id?: string; is_admin?: boolean } | null) ?? null;
+
+      // No profile yet: an auth account part-way through patient signup. Treat
+      // it as a patient rather than refusing — being stuck mid-onboarding is
+      // exactly when someone needs a reset.
+      if (!row) return "patient";
+
+      const audience = audienceOf({
+        role: (row.role ?? "patient") as AuthedProfile["role"],
+        clinic_id: row.clinic_id ?? "",
+        is_admin: row.is_admin === true,
+      });
+
+      // Admin: not eligible. Same answer as an unknown address, on purpose.
+      return audience === "admin" ? null : audience;
     }
 
     // Reached the last page — stop scanning.
     if (data.users.length < perPage) break;
   }
 
-  return false;
+  return null;
 }
 
 /**
  * requestPasswordReset
  *
- * Step 1 of the patient password-reset flow (triggered from /forgot-password).
+ * Step 1 of the password-reset flow (triggered from /forgot-password).
  *
- * Sends a Supabase password-recovery email — but only when the address belongs
- * to a patient account (see isPasswordResetEligible). The recovery link points
- * at /auth/callback, which exchanges the recovery code for a session and then
- * forwards to /reset-password.
+ * Sends a Supabase password-recovery email to any address that has an account —
+ * dentist, receptionist, owner/admin or patient. The recovery link points at
+ * /auth/callback, which verifies the token and then forwards to
+ * /reset-password.
  *
  * Security:
- *   - Patient-only: staff and admin accounts never receive a reset email.
  *   - Enumeration-safe: the response is ALWAYS a generic success, so the caller
- *     cannot tell whether the email exists or what role it has.
+ *     cannot tell whether the email exists or what role it has. This matters
+ *     more now than when reset was patient-only: the same form is the route to
+ *     a dentist's account, so a differentiated response would say which
+ *     addresses are worth attacking.
  *   - Clinic-independent: reset relies on the authenticated Supabase account,
  *     not on any clinic selection, so it is immune to cross-clinic tampering.
+ *   - The email goes to the account's own registered address and nowhere else;
+ *     nothing here lets a caller choose a destination.
  *
  * Returns an error only for input validation or unexpected system failures.
  */
@@ -670,7 +717,7 @@ export async function requestPasswordReset(
   }
 
   try {
-    if (await isPasswordResetEligible(email)) {
+    if ((await resolveResetAudience(email)) !== null) {
       const supabase = await createServerClient();
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
         // Origin is resolved from the live request at runtime, so production
@@ -681,10 +728,15 @@ export async function requestPasswordReset(
       // A genuine send failure is a system problem, not an existence signal.
       //
       // The classification is logged, never returned: this action reaches here
-      // ONLY for an address that turned out to be reset-eligible, so echoing
-      // "that address is not authorized" back to the browser would confirm the
-      // account exists and is a patient — exactly what the generic response
-      // above exists to hide. The operator gets the detail in the log instead.
+      // ONLY for an address that resolved to a real account, so echoing "that
+      // address is not authorized" back to the browser would confirm the
+      // account exists — exactly what the generic response above exists to
+      // hide. The operator gets the detail in the log instead.
+      //
+      // That transport error is worth reading. Supabase's built-in mail service
+      // refuses any recipient who is not a project team member, so on a project
+      // configured that way this is the line that fires for a real clinic's
+      // dentist, and the reset simply never arrives. See supabase/EMAIL.md.
       if (error) {
         const failure = describeEmailSendFailure(error.message);
         console.error(`[requestPasswordReset] ${failure.kind}:`, error.message);
@@ -709,20 +761,23 @@ export async function requestPasswordReset(
 /**
  * updatePassword
  *
- * Step 2 of the patient password-reset flow (submitted from /reset-password).
+ * Step 2 of the password-reset flow (submitted from /reset-password).
  *
  * Runs inside the short-lived recovery session established by /auth/callback.
  * Validates the new password against the existing policy (min 8 chars + match),
- * updates it via Supabase Auth, then signs the recovery session out so the
- * patient must sign in again with their new credentials.
+ * updates it via Supabase Auth, then signs the recovery session out so the user
+ * must sign in again with their new credentials.
  *
- * Returns an error string on failure; on success returns { updated: true } and
- * the client redirects to /patient/login?reset=1.
+ * Returns an error string on failure; on success returns { updated: true } plus
+ * the sign-in path for THIS account's audience, which the client redirects to.
+ * The path is resolved here rather than in the browser because the audience
+ * comes from the profile row, and a client-chosen destination would be a value
+ * the browser could pick.
  */
 export async function updatePassword(
-  _prevState: ActionResult<{ updated: true }>,
+  _prevState: ActionResult<{ updated: true; signInPath: string }>,
   formData: FormData
-): Promise<ActionResult<{ updated: true }>> {
+): Promise<ActionResult<{ updated: true; signInPath: string }>> {
   const password = formData.get("password") as string;
   const confirmPassword = formData.get("confirmPassword") as string;
 
@@ -754,16 +809,29 @@ export async function updatePassword(
     };
   }
 
+  // Resolve the audience BEFORE the password change signs the session out —
+  // afterwards there is no session left to read a profile through. Same shape
+  // as the lookup in authenticate().
+  const { data: profileRow } = await supabase
+    .from("profiles")
+    .select("role, clinic_id, is_admin")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  const signInPath = signInPathForAudience(
+    audienceOf((profileRow as AuthedProfile | null) ?? null)
+  );
+
   const { error } = await supabase.auth.updateUser({ password });
 
   if (error) {
     return { data: null, error: friendlyAuthError(error.message) };
   }
 
-  // Sign the recovery session out so the patient re-authenticates with the new
+  // Sign the recovery session out so the user re-authenticates with the new
   // password. Clear the selected-clinic UX cookie too for a clean re-login.
   await supabase.auth.signOut();
   await clearSelectedClinic();
 
-  return { data: { updated: true }, error: null };
+  return { data: { updated: true, signInPath }, error: null };
 }

@@ -125,7 +125,7 @@ OraMedha templates regardless of which transport is active.
 |---|---|---|---|
 | Confirm signup | a new patient submits `/patient/signup` | `confirmation.html` | `/auth/callback` → `/portal/setup` |
 | Resend confirmation | "Resend email" on `/patient/verify-email` | `confirmation.html` | same |
-| Password recovery | a patient submits `/forgot-password` | `recovery.html` | `/auth/callback` → `/reset-password` |
+| Password recovery | a dentist, receptionist or patient submits `/forgot-password`. **The platform admin is excluded** — see `resolveResetAudience` | `recovery.html` | `/auth/callback` → `/reset-password` |
 | Email change | an address on an account is changed | `email_change.html` | `/auth/callback` → `/` |
 | Invite | a user is invited from the Supabase dashboard | `invite.html` | `/auth/callback` → `/reset-password` |
 
@@ -395,9 +395,20 @@ account was created with:
   so no raw Supabase or SMTP wording — including status codes and internal error
   codes — reaches a patient's screen. The operator gets it in the server log.
 - Password recovery deliberately does NOT surface the classification. That
-  action only reaches a send for an address already known to be reset-eligible,
-  so echoing "not authorized" back would confirm the account exists and is a
-  patient. It returns the same generic line either way and logs the detail.
+  action only reaches a send for an address that resolved to a real account, so
+  echoing "not authorized" back would confirm the account exists. It returns the
+  same generic line either way and logs the detail. This matters more now that
+  recovery covers staff: the same form is the route to a dentist's account, so a
+  differentiated response would say which addresses are worth attacking. It is
+  also what hides the admin exclusion — an admin address gets the same generic
+  success and no email, so the form cannot be used to find out which address
+  holds the admin flag.
+- **Recovery now reaches staff, and the transport therefore decides whether it
+  works.** Under `default`, Supabase's built-in service refuses any recipient
+  who is not a project team member — so a real clinic's dentist submits the
+  form, sees the same generic success, and no email ever arrives. The failure is
+  visible only in the server log. Staff password reset is not usable in
+  production until the `resend` transport is configured with a verified domain.
 - Changing the email transport changes nothing about authorisation. Roles,
   `clinic_id` resolution, portal linking and every RLS policy are untouched, and
   switching between transports touches configuration only.
