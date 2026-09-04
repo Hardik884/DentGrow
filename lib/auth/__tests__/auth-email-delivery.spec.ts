@@ -49,11 +49,25 @@ const CONFIG = read("supabase", "config.toml");
  * /auth/callback hands to `verifyOtp`, so a wrong one produces a link that
  * looks perfect and always fails.
  */
-const TEMPLATES = [
-  { file: "confirmation.html", type: "signup", next: "/portal/setup" },
+/**
+ * Templates whose payload is a LINK the recipient clicks.
+ *
+ * confirmation.html is deliberately absent. It is what Supabase sends for
+ * signInWithOtp() on a new account, which is how portal activation starts, and
+ * that flow asks for a 6-digit code typed back into the page the patient
+ * already has open — so it carries {{ .Token }} and no link at all. It is
+ * asserted separately below.
+ */
+const LINK_TEMPLATES = [
   { file: "recovery.html", type: "recovery", next: "/reset-password" },
   { file: "email_change.html", type: "email_change", next: "/" },
   { file: "invite.html", type: "invite", next: "/reset-password" },
+] as const;
+
+/** Every template, for the properties that hold regardless of payload. */
+const TEMPLATES = [
+  { file: "confirmation.html" },
+  ...LINK_TEMPLATES,
 ] as const;
 
 const body = (file: string) =>
@@ -170,16 +184,21 @@ describe("auth email templates", () => {
     expect(CONFIG).toContain(`content_path = "./supabase/templates/${file}"`);
   });
 
-  it.each(TEMPLATES)(
-    "$file links through /auth/callback with a token hash, not the PKCE URL",
+  // The PKCE guard applies to EVERY template, whatever its payload.
+  it.each(TEMPLATES)("$file never uses the PKCE ConfirmationURL", ({ file }) => {
+    // {{ .ConfirmationURL }} finishes in the PKCE flow, which needs the
+    // code_verifier cookie from the browser that started the request. Opening
+    // the email on a phone after starting on a laptop then fails.
+    expect(body(file)).not.toContain("{{ .ConfirmationURL }}");
+  });
+
+  it.each(LINK_TEMPLATES)(
+    "$file links through /auth/callback with a token hash",
     ({ file, type, next }) => {
       const html = body(file);
 
-      // {{ .ConfirmationURL }} finishes in the PKCE flow, which needs the
-      // code_verifier cookie from the browser that started signup. Opening the
-      // email on a phone after signing up on a laptop then fails. TokenHash is
-      // verified by verifyOtp and needs no cookie.
-      expect(html).not.toContain("{{ .ConfirmationURL }}");
+      // TokenHash is verified by verifyOtp and needs no cookie, so the link
+      // works on a different device than the one that asked for it.
       expect(html).toContain("{{ .TokenHash }}");
 
       const expected = `{{ .SiteURL }}/auth/callback?token_hash={{ .TokenHash }}&amp;type=${type}&amp;next=${next}`;
@@ -191,6 +210,22 @@ describe("auth email templates", () => {
       expect([...urls]).toEqual([]);
     }
   );
+
+  it("confirmation.html carries a 6-digit code and NO link", () => {
+    const html = body("confirmation.html");
+
+    // The activation payload.
+    expect(html).toContain("{{ .Token }}");
+
+    // No link, and specifically not the old one. It used to point at
+    // /auth/callback?type=signup&next=/portal/setup — the phone-matching flow
+    // that asked the patient to choose a clinic. Leaving it would have given
+    // this email two routes ending in different places, one of them the flow
+    // clinic-issued activation exists to replace.
+    expect(html).not.toContain("/auth/callback");
+    expect(html).not.toContain("/portal/setup");
+    expect(new Set(html.match(/https?:\/\/[^"'\s<]+/g) ?? []).size).toBe(0);
+  });
 
   it.each(TEMPLATES)("$file never routes its link through a tracker", ({ file }) => {
     const html = body(file);

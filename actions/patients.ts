@@ -56,6 +56,41 @@ async function resolveSession(): Promise<{
   return { db, profile };
 }
 
+/**
+ * The stored form of a patient's address, or NULL.
+ *
+ * Trimmed and lower-cased because uq_patients_clinic_email_active is
+ * case-insensitive and every comparison in the activation flow lower-cases
+ * too — if this did not agree with them, "A@x.com" and "a@x.com" would be two
+ * records in one clinic and activation could not say which one it meant.
+ *
+ * Empty string collapses to NULL: "no address given" and "no portal access" are
+ * one state, and storing "" would make the partial indexes treat it as a real
+ * value that two records could then collide on.
+ */
+function normalizePatientEmail(email: string | undefined | null): string | null {
+  const trimmed = (email ?? "").trim().toLowerCase();
+  return trimmed === "" ? null : trimmed;
+}
+
+/**
+ * A patient-write failure, in words a receptionist can act on.
+ *
+ * Only the duplicate-address case is named. It is the one failure a person can
+ * actually fix at the desk, and the one that will happen routinely now that
+ * clinics type addresses in — the same patient entered twice, or an address
+ * already used for a family member. Everything else stays generic, because a
+ * constraint name on screen helps nobody and describes internals.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function describePatientWriteError(error: any): string {
+  const text = `${error?.code ?? ""} ${error?.message ?? ""} ${error?.details ?? ""}`;
+  if (text.includes("uq_patients_clinic_email_active") || error?.code === "23505") {
+    return "Another patient at this clinic already uses that email address.";
+  }
+  return "Failed to save patient.";
+}
+
 // =============================================================================
 // createPatient
 // =============================================================================
@@ -86,6 +121,10 @@ export async function createPatient(
         created_by: profile.id,
         name: parsed.data.name,
         phone: parsed.data.phone || null,
+        // Lower-cased so it matches uq_patients_clinic_email_active, which is
+        // case-insensitive. Empty string becomes NULL: "no email" and "no portal
+        // access" are the same state and must not be two different values.
+        email: normalizePatientEmail(parsed.data.email),
         date_of_birth: parsed.data.date_of_birth || null,
         gender: parsed.data.gender ?? null,
         address: parsed.data.address || null,
@@ -98,7 +137,7 @@ export async function createPatient(
 
     if (error) {
       console.error("[createPatient]", error);
-      return { data: null, error: "Failed to create patient." };
+      return { data: null, error: describePatientWriteError(error) };
     }
 
     revalidatePath(`/${profile.role}/patients`);
@@ -142,6 +181,16 @@ export async function updatePatient(
 
     if (parsed.data.name !== undefined) updates.name = parsed.data.name;
     if (parsed.data.phone !== undefined) updates.phone = parsed.data.phone || null;
+    // A clinic can add an address to an existing record at any time — that is
+    // how a walk-in created without one later becomes eligible for the portal.
+    // Clearing it back to empty revokes eligibility for any FUTURE activation;
+    // it does not unlink an account that already activated, which is deliberate
+    // (see actions/portal-activation.ts) — a patient who is already using the
+    // portal should not silently lose their history because an address was
+    // tidied up.
+    if (parsed.data.email !== undefined) {
+      updates.email = normalizePatientEmail(parsed.data.email);
+    }
     if (parsed.data.date_of_birth !== undefined) updates.date_of_birth = parsed.data.date_of_birth || null;
     if (parsed.data.gender !== undefined) updates.gender = parsed.data.gender ?? null;
     if (parsed.data.address !== undefined) updates.address = parsed.data.address || null;
@@ -170,9 +219,10 @@ export async function updatePatient(
         role: profile.role,
       });
       
-      // Return a more informative error message
-      const errorMsg = error.message || error.details || error.hint || "Failed to update patient.";
-      return { data: null, error: `Update failed: ${errorMsg}` };
+      // Classified, never raw. The full error is in the log above; a
+      // duplicate-address collision in particular must read as a sentence a
+      // receptionist can act on, not as a constraint name (CLAUDE.md §13.1).
+      return { data: null, error: describePatientWriteError(error) };
     }
     if (!data) return { data: null, error: "Patient not found." };
 

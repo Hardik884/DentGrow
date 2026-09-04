@@ -422,6 +422,33 @@ export function AppointmentForm({
                       />
                     </Field>
 
+                    {/*
+                      Optional here, exactly as on the full patient form. This
+                      is the booking desk, so the priority is getting the
+                      appointment made — an address can be added later from the
+                      patient's edit screen and activation becomes available
+                      from that moment.
+                    */}
+                    <Field
+                      label="Email"
+                      htmlFor="np-email"
+                      hint="Optional — enables portal access"
+                    >
+                      <Input
+                        id="np-email"
+                        type="email"
+                        {...newPatientForm.register("email")}
+                        disabled={isBooking}
+                        placeholder="patient@example.com"
+                        hasError={!!newPatientForm.formState.errors.email}
+                      />
+                      {newPatientForm.formState.errors.email && (
+                        <p className="text-xs text-danger mt-1">
+                          {newPatientForm.formState.errors.email.message}
+                        </p>
+                      )}
+                    </Field>
+
                     <Field label="Gender" htmlFor="np-gender">
                       <Select
                         id="np-gender"

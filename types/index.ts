@@ -345,6 +345,24 @@ export const CreatePatientSchema = z.object({
     .min(2, "Name must be at least 2 characters")
     .max(100, "Name must be 100 characters or fewer"),
   phone: z.string().regex(phoneRegex, "Invalid phone number format").optional().or(z.literal("")),
+  /**
+   * Clinic-issued contact address, and the ONLY key to portal access.
+   *
+   * Optional on purpose: most patients never use the portal, and a walk-in must
+   * still be creatable from a name alone. Leaving it empty means "no portal
+   * access" rather than "not filled in yet" — a clinic can add it later from the
+   * patient's edit screen and activation becomes available from that moment.
+   *
+   * Lower-cased and trimmed before it reaches the database (actions/patients.ts)
+   * so it matches uq_patients_clinic_email_active, which is case-insensitive.
+   */
+  email: z
+    .string()
+    .trim()
+    .email("Enter a valid email address")
+    .max(254, "Email is too long")
+    .optional()
+    .or(z.literal("")),
   date_of_birth: z.string().optional(),
   // Gender is optional. The form maps the empty "Select…" option to undefined
   // (via register setValueAs) so this enum never receives "".

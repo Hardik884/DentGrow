@@ -50,6 +50,9 @@ export function PatientForm({ patient, successRedirect, cancelHref, onSuccess, h
       ? {
           name: patient.name,
           phone: patient.phone ?? "",
+          // Prefilled so editing an unrelated field cannot silently clear the
+          // address and revoke portal eligibility.
+          email: patient.email ?? "",
           date_of_birth: patient.date_of_birth ?? "",
           gender: patient.gender ?? undefined,
           address: patient.address ?? "",
@@ -93,6 +96,7 @@ export function PatientForm({ patient, successRedirect, cancelHref, onSuccess, h
         const el = document.getElementById(
           firstKey === "name" ? "name" :
           firstKey === "phone" ? "phone" :
+          firstKey === "email" ? "email" :
           firstKey === "date_of_birth" ? "dob" :
           firstKey === "gender" ? "gender" :
           firstKey === "address" ? "address" :
@@ -149,6 +153,30 @@ export function PatientForm({ patient, successRedirect, cancelHref, onSuccess, h
               disabled={isSubmitting}
               placeholder="e.g. +91 98765 43210"
               hasError={!!errors.phone}
+            />
+          </Field>
+
+          {/*
+            Optional, and the hint says what it actually does rather than
+            "Email". Filling it in is the ONLY thing that lets this patient
+            activate a portal account, and it can be added later from this same
+            form — so a receptionist needs to know that leaving it blank is a
+            choice with a consequence, not a field they forgot.
+          */}
+          <Field
+            label="Email Address"
+            htmlFor="email"
+            error={errors.email?.message}
+            hint="Optional. Adding an email lets this patient activate portal access for your clinic."
+          >
+            <Input
+              id="email"
+              {...register("email")}
+              type="email"
+              autoComplete="email"
+              disabled={isSubmitting}
+              placeholder="patient@example.com"
+              hasError={!!errors.email}
             />
           </Field>
 

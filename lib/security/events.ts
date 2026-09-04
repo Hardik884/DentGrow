@@ -58,7 +58,24 @@ export type SecurityEvent =
   | "MFA_UNENROLLED"
   | "MFA_CHALLENGE_FAILED"
   /** A scheduled job that deletes data ran. */
-  | "RETENTION_PURGE_RAN";
+  | "RETENTION_PURGE_RAN"
+  /**
+   * Portal activation was refused for an address.
+   *
+   * This is the counterpart to the deliberately generic response
+   * requestActivation gives the browser: the caller is never told whether an
+   * address is eligible, so the reason has to be recorded somewhere an operator
+   * can see it. `reason` carries the fixed vocabulary from that file —
+   * none / ambiguous / already_linked, prefixed `complete:` when the refusal
+   * happened at the final step rather than the first.
+   *
+   * A run of these against many addresses is what enumeration looks like.
+   */
+  | "PORTAL_ACTIVATION_REFUSED"
+  /** A 6-digit activation code was wrong or expired. */
+  | "PORTAL_ACTIVATION_CODE_REJECTED"
+  /** A patient successfully activated portal access for their record. */
+  | "PORTAL_ACTIVATED";
 
 export type SecuritySeverity = "info" | "warning" | "critical";
 
@@ -115,6 +132,13 @@ const SEVERITY: Record<SecurityEvent, SecuritySeverity> = {
   MFA_UNENROLLED: "warning",
   MFA_CHALLENGE_FAILED: "warning",
   RETENTION_PURGE_RAN: "info",
+  // "info" for the same reason AUTH_FAILED is: one of these is somebody
+  // mistyping their address, and the signal worth alerting on is the RATE, not
+  // the event. Logging them as warnings would train whoever reads the drain to
+  // ignore the level.
+  PORTAL_ACTIVATION_REFUSED: "info",
+  PORTAL_ACTIVATION_CODE_REJECTED: "info",
+  PORTAL_ACTIVATED: "info",
 };
 
 /** The prefix a log drain matches on. Do not change it casually — alert rules key on it. */

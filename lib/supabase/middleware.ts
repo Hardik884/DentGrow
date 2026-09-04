@@ -116,10 +116,25 @@ export async function updateSession(
     if (user) {
       const profile = await resolveProfile(supabase, user.id);
       if (profile === null) {
-        // Authenticated but no profile yet (new signup, mid-onboarding).
-        // Redirecting to a sign-in page here would create an infinite loop
-        // because the next visit would hit this same branch again.
-        // Send them to /portal/setup to complete account linking instead.
+        /*
+         * Authenticated with no profile row. That is what a session looks like
+         * PART-WAY THROUGH portal activation: step 2 verifies the emailed code,
+         * which creates a session, and step 3 then sets the password and writes
+         * the profile + portal link (actions/portal-activation.ts).
+         *
+         * So /patient/signup has to stay reachable here. Redirecting away from
+         * it bounced the patient to /portal/setup the instant their code was
+         * accepted — after the session existed but before they could choose a
+         * password — and the account could never be finished. The flow looked
+         * like it worked right up to the last step.
+         *
+         * Any OTHER sign-in door with a profile-less session is genuinely
+         * stranded and still goes to /portal/setup, which explains the state
+         * rather than looping.
+         */
+        if (pathname === "/patient/signup" || pathname === "/signup") {
+          return response();
+        }
         return NextResponse.redirect(new URL("/portal/setup", request.url));
       }
       return redirectHome(profile, request);

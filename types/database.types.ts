@@ -857,6 +857,134 @@ export type Database = {
           },
         ]
       }
+      data_consent_notices: {
+        Row: {
+          category: Database["public"]["Enums"]["data_consent_category"]
+          clinic_id: string | null
+          created_at: string
+          effective_from: string
+          id: string
+          locale: string
+          policy_url: string | null
+          summary: string
+          version: number
+        }
+        Insert: {
+          category: Database["public"]["Enums"]["data_consent_category"]
+          clinic_id?: string | null
+          created_at?: string
+          effective_from?: string
+          id?: string
+          locale?: string
+          policy_url?: string | null
+          summary: string
+          version: number
+        }
+        Update: {
+          category?: Database["public"]["Enums"]["data_consent_category"]
+          clinic_id?: string | null
+          created_at?: string
+          effective_from?: string
+          id?: string
+          locale?: string
+          policy_url?: string | null
+          summary?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "data_consent_notices_clinic_id_fkey"
+            columns: ["clinic_id"]
+            isOneToOne: false
+            referencedRelation: "clinics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      data_consent_records: {
+        Row: {
+          actor: Database["public"]["Enums"]["data_consent_actor"]
+          category: Database["public"]["Enums"]["data_consent_category"]
+          clinic_id: string
+          decision: Database["public"]["Enums"]["data_consent_decision"]
+          id: string
+          notice_id: string | null
+          notice_snapshot: Json
+          notice_version: number
+          occurred_at: string
+          patient_id: string
+          recorded_by: string | null
+          recorded_by_role: Database["public"]["Enums"]["user_role"]
+          source: string
+        }
+        Insert: {
+          actor: Database["public"]["Enums"]["data_consent_actor"]
+          category: Database["public"]["Enums"]["data_consent_category"]
+          clinic_id: string
+          decision: Database["public"]["Enums"]["data_consent_decision"]
+          id?: string
+          notice_id?: string | null
+          notice_snapshot: Json
+          notice_version: number
+          occurred_at?: string
+          patient_id: string
+          recorded_by?: string | null
+          recorded_by_role: Database["public"]["Enums"]["user_role"]
+          source: string
+        }
+        Update: {
+          actor?: Database["public"]["Enums"]["data_consent_actor"]
+          category?: Database["public"]["Enums"]["data_consent_category"]
+          clinic_id?: string
+          decision?: Database["public"]["Enums"]["data_consent_decision"]
+          id?: string
+          notice_id?: string | null
+          notice_snapshot?: Json
+          notice_version?: number
+          occurred_at?: string
+          patient_id?: string
+          recorded_by?: string | null
+          recorded_by_role?: Database["public"]["Enums"]["user_role"]
+          source?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "data_consent_records_clinic_id_fkey"
+            columns: ["clinic_id"]
+            isOneToOne: false
+            referencedRelation: "clinics"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "data_consent_records_notice_id_fkey"
+            columns: ["notice_id"]
+            isOneToOne: false
+            referencedRelation: "data_consent_notices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "data_consent_records_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "active_patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "data_consent_records_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "data_consent_records_recorded_by_fkey"
+            columns: ["recorded_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       follow_ups: {
         Row: {
           appointment_id: string | null
@@ -1132,6 +1260,7 @@ export type Database = {
           created_by: string | null
           date_of_birth: string | null
           deleted_at: string | null
+          email: string | null
           emergency_contact_name: string | null
           emergency_contact_phone: string | null
           gender: Database["public"]["Enums"]["gender_type"] | null
@@ -1153,6 +1282,7 @@ export type Database = {
           created_by?: string | null
           date_of_birth?: string | null
           deleted_at?: string | null
+          email?: string | null
           emergency_contact_name?: string | null
           emergency_contact_phone?: string | null
           gender?: Database["public"]["Enums"]["gender_type"] | null
@@ -1174,6 +1304,7 @@ export type Database = {
           created_by?: string | null
           date_of_birth?: string | null
           deleted_at?: string | null
+          email?: string | null
           emergency_contact_name?: string | null
           emergency_contact_phone?: string | null
           gender?: Database["public"]["Enums"]["gender_type"] | null
@@ -1320,6 +1451,63 @@ export type Database = {
             columns: ["treatment_id"]
             isOneToOne: false
             referencedRelation: "treatments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      phi_access_log: {
+        Row: {
+          actor_id: string | null
+          actor_role: Database["public"]["Enums"]["user_role"]
+          allowed: boolean
+          clinic_id: string
+          context: Json
+          event: Database["public"]["Enums"]["phi_access_event"]
+          id: string
+          occurred_at: string
+          patient_id: string | null
+          resource_id: string | null
+          resource_type: string
+        }
+        Insert: {
+          actor_id?: string | null
+          actor_role: Database["public"]["Enums"]["user_role"]
+          allowed?: boolean
+          clinic_id: string
+          context?: Json
+          event: Database["public"]["Enums"]["phi_access_event"]
+          id?: string
+          occurred_at?: string
+          patient_id?: string | null
+          resource_id?: string | null
+          resource_type: string
+        }
+        Update: {
+          actor_id?: string | null
+          actor_role?: Database["public"]["Enums"]["user_role"]
+          allowed?: boolean
+          clinic_id?: string
+          context?: Json
+          event?: Database["public"]["Enums"]["phi_access_event"]
+          id?: string
+          occurred_at?: string
+          patient_id?: string | null
+          resource_id?: string | null
+          resource_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "phi_access_log_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "phi_access_log_clinic_id_fkey"
+            columns: ["clinic_id"]
+            isOneToOne: false
+            referencedRelation: "clinics"
             referencedColumns: ["id"]
           },
         ]
@@ -1573,6 +1761,36 @@ export type Database = {
           },
         ]
       }
+      retention_policies: {
+        Row: {
+          created_at: string
+          description: string
+          enabled: boolean
+          key: string
+          legally_confirmed: boolean
+          retain_days: number | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description: string
+          enabled?: boolean
+          key: string
+          legally_confirmed?: boolean
+          retain_days?: number | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          enabled?: boolean
+          key?: string
+          legally_confirmed?: boolean
+          retain_days?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       tooth_history: {
         Row: {
           action: Database["public"]["Enums"]["tooth_history_action"]
@@ -1662,6 +1880,8 @@ export type Database = {
           clinic_id: string
           created_at: string
           created_by: string | null
+          deleted_at: string | null
+          deleted_by: string | null
           document_type: string | null
           file_name: string
           file_path: string
@@ -1676,6 +1896,8 @@ export type Database = {
           clinic_id: string
           created_at?: string
           created_by?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
           document_type?: string | null
           file_name: string
           file_path: string
@@ -1690,6 +1912,8 @@ export type Database = {
           clinic_id?: string
           created_at?: string
           created_by?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
           document_type?: string | null
           file_name?: string
           file_path?: string
@@ -1724,6 +1948,13 @@ export type Database = {
           {
             foreignKeyName: "treatment_documents_created_by_fkey"
             columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "treatment_documents_deleted_by_fkey"
+            columns: ["deleted_by"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
@@ -1765,6 +1996,99 @@ export type Database = {
           },
           {
             foreignKeyName: "treatment_documents_treatment_id_fkey"
+            columns: ["treatment_id"]
+            isOneToOne: false
+            referencedRelation: "treatments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      treatment_history: {
+        Row: {
+          action: Database["public"]["Enums"]["treatment_history_action"]
+          clinic_id: string
+          id: string
+          new_value: Json | null
+          old_value: Json | null
+          patient_id: string
+          performed_by: string | null
+          timestamp: string
+          treatment_id: string
+        }
+        Insert: {
+          action: Database["public"]["Enums"]["treatment_history_action"]
+          clinic_id: string
+          id?: string
+          new_value?: Json | null
+          old_value?: Json | null
+          patient_id: string
+          performed_by?: string | null
+          timestamp?: string
+          treatment_id: string
+        }
+        Update: {
+          action?: Database["public"]["Enums"]["treatment_history_action"]
+          clinic_id?: string
+          id?: string
+          new_value?: Json | null
+          old_value?: Json | null
+          patient_id?: string
+          performed_by?: string | null
+          timestamp?: string
+          treatment_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "treatment_history_clinic_id_fkey"
+            columns: ["clinic_id"]
+            isOneToOne: false
+            referencedRelation: "clinics"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "treatment_history_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "active_patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "treatment_history_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "treatment_history_performed_by_fkey"
+            columns: ["performed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "treatment_history_treatment_id_fkey"
+            columns: ["treatment_id"]
+            isOneToOne: false
+            referencedRelation: "active_treatments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "treatment_history_treatment_id_fkey"
+            columns: ["treatment_id"]
+            isOneToOne: false
+            referencedRelation: "patient_treatments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "treatment_history_treatment_id_fkey"
+            columns: ["treatment_id"]
+            isOneToOne: false
+            referencedRelation: "receptionist_treatments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "treatment_history_treatment_id_fkey"
             columns: ["treatment_id"]
             isOneToOne: false
             referencedRelation: "treatments"
@@ -2605,6 +2929,40 @@ export type Database = {
           },
         ]
       }
+      patient_data_consent_state: {
+        Row: {
+          actor: Database["public"]["Enums"]["data_consent_actor"] | null
+          category: Database["public"]["Enums"]["data_consent_category"] | null
+          clinic_id: string | null
+          decision: Database["public"]["Enums"]["data_consent_decision"] | null
+          notice_version: number | null
+          occurred_at: string | null
+          patient_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "data_consent_records_clinic_id_fkey"
+            columns: ["clinic_id"]
+            isOneToOne: false
+            referencedRelation: "clinics"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "data_consent_records_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "active_patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "data_consent_records_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       patient_dental_chart: {
         Row: {
           condition: string | null
@@ -2809,6 +3167,7 @@ export type Database = {
       auth_is_admin: { Args: never; Returns: boolean }
       auth_patient_clinic_id: { Args: never; Returns: string }
       auth_patient_id: { Args: never; Returns: string }
+      auth_patient_pinned_fields: { Args: never; Returns: Json }
       auth_role: {
         Args: never
         Returns: Database["public"]["Enums"]["user_role"]
@@ -2821,8 +3180,10 @@ export type Database = {
         Args: { p_notes?: string; p_patient_id: string; p_scheduled_at: string }
         Returns: string
       }
+      purge_phi_access_log_rows: { Args: { p_ids: string[] }; Returns: number }
       run_metric_history_job: { Args: never; Returns: undefined }
       run_no_show_detection_job: { Args: never; Returns: undefined }
+      run_retention_purge: { Args: { p_dry_run?: boolean }; Returns: Json }
     }
     Enums: {
       appointment_history_action:
@@ -2852,11 +3213,32 @@ export type Database = {
         | "uploaded"
       consent_source: "digital" | "uploaded"
       consent_status: "draft" | "ready_to_sign" | "signed" | "cancelled"
+      data_consent_actor: "patient" | "staff"
+      data_consent_category:
+        | "data_processing"
+        | "communications"
+        | "marketing"
+        | "ai_assisted"
+      data_consent_decision: "granted" | "withdrawn"
       dentition_type: "adult" | "primary"
       follow_up_confirmation_status: "tentative" | "confirmed"
       follow_up_status: "pending" | "completed" | "cancelled"
       gender_type: "male" | "female" | "other"
       payment_method: "cash" | "upi" | "card" | "bank_transfer"
+      phi_access_event:
+        | "PATIENT_VIEWED"
+        | "PATIENT_SEARCHED"
+        | "PATIENT_LIST_VIEWED"
+        | "CLINICAL_RECORD_VIEWED"
+        | "DENTAL_CHART_VIEWED"
+        | "TREATMENT_VIEWED"
+        | "PRESCRIPTION_VIEWED"
+        | "PAYMENT_VIEWED"
+        | "DOCUMENT_VIEWED"
+        | "XRAY_VIEWED"
+        | "CONSENT_VIEWED"
+        | "PATIENT_DATA_EXPORTED"
+        | "AI_CONTEXT_PREPARED"
       queue_status: "waiting" | "in_progress" | "completed"
       tooth_history_action:
         | "status_changed"
@@ -2870,6 +3252,12 @@ export type Database = {
         | "in_progress"
         | "completed"
         | "missing"
+      treatment_history_action:
+        | "created"
+        | "updated"
+        | "status_changed"
+        | "deleted"
+        | "restored"
       treatment_status: "planned" | "in_progress" | "completed" | "cancelled"
       user_role: "dentist" | "receptionist" | "patient"
     }
@@ -3033,11 +3421,34 @@ export const Constants = {
       ],
       consent_source: ["digital", "uploaded"],
       consent_status: ["draft", "ready_to_sign", "signed", "cancelled"],
+      data_consent_actor: ["patient", "staff"],
+      data_consent_category: [
+        "data_processing",
+        "communications",
+        "marketing",
+        "ai_assisted",
+      ],
+      data_consent_decision: ["granted", "withdrawn"],
       dentition_type: ["adult", "primary"],
       follow_up_confirmation_status: ["tentative", "confirmed"],
       follow_up_status: ["pending", "completed", "cancelled"],
       gender_type: ["male", "female", "other"],
       payment_method: ["cash", "upi", "card", "bank_transfer"],
+      phi_access_event: [
+        "PATIENT_VIEWED",
+        "PATIENT_SEARCHED",
+        "PATIENT_LIST_VIEWED",
+        "CLINICAL_RECORD_VIEWED",
+        "DENTAL_CHART_VIEWED",
+        "TREATMENT_VIEWED",
+        "PRESCRIPTION_VIEWED",
+        "PAYMENT_VIEWED",
+        "DOCUMENT_VIEWED",
+        "XRAY_VIEWED",
+        "CONSENT_VIEWED",
+        "PATIENT_DATA_EXPORTED",
+        "AI_CONTEXT_PREPARED",
+      ],
       queue_status: ["waiting", "in_progress", "completed"],
       tooth_history_action: [
         "status_changed",
@@ -3052,6 +3463,13 @@ export const Constants = {
         "in_progress",
         "completed",
         "missing",
+      ],
+      treatment_history_action: [
+        "created",
+        "updated",
+        "status_changed",
+        "deleted",
+        "restored",
       ],
       treatment_status: ["planned", "in_progress", "completed", "cancelled"],
       user_role: ["dentist", "receptionist", "patient"],
