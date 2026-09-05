@@ -212,25 +212,30 @@ export async function verifyActivation(
     const supabase = await createServerClient();
 
     /*
-     * The OTP "type" depends on whether the account already existed, and the
-     * caller cannot know which.
+     * The OTP "type" depends on how Supabase decided to classify the send, and
+     * the caller cannot know which it chose.
      *
-     * signInWithOtp({ shouldCreateUser: true }) creates the auth account on the
-     * FIRST request for an address, and Supabase then treats the message as a
-     * signup confirmation — so the code verifies as type "signup". On a repeat
-     * request the account is already there, the message is a plain email OTP,
-     * and the same code verifies as type "email" instead. Someone who requests
-     * a code, abandons it, and comes back lands in the second case.
+     * signInWithOtp() is documented as one call, but the email it triggers —
+     * and therefore the type the code verifies as — varies with whether the
+     * account already existed and how the project is configured:
      *
-     * Verifying against one type only worked for whichever half the author
-     * happened to test: a first-ever activation was rejected with "that code is
-     * incorrect or has expired" for a code that had just been issued.
+     *   "signup"    a new account, treated as a signup confirmation
+     *   "magiclink" the magic-link path, which is what PRODUCTION actually used
+     *               for the same call that took the signup path locally
+     *   "email"     a plain email OTP on an existing account
      *
-     * So both are attempted, signup first because it is the common path. This
-     * is not a weakening — each attempt is a full cryptographic verification of
-     * the same one-time code, and a wrong code fails both.
+     * That divergence is not theoretical. Verifying against "email" alone
+     * rejected a code that had just been issued; adding "signup" fixed it
+     * locally and left production still broken, because production was sending
+     * magic links. Guessing the classification is the wrong shape of solution —
+     * all three are attempted instead.
+     *
+     * This is not a weakening. Each attempt is a full verification of the same
+     * single-use code against the same address; a wrong or expired code fails
+     * all three, and a correct one is correct whichever label Supabase filed it
+     * under.
      */
-    const attempts = ["signup", "email"] as const;
+    const attempts = ["signup", "magiclink", "email"] as const;
     let error: { message: string } | null = null;
 
     for (const type of attempts) {

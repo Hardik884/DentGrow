@@ -297,6 +297,16 @@ otp_expiry = 3600
 subject = "Verify your email for OraMedha"
 content_path = "./supabase/templates/confirmation.html"
 
+# Magic Link. Mapped because signInWithOtp() — which is how portal activation
+# sends its 6-digit code — does NOT reliably pick "Confirm signup": production
+# sent the STOCK magic-link email ("Your sign-in link", with a link and no code)
+# for the same call that used the confirmation template locally. Unmapped, that
+# stock template is what a patient receives, and it cannot complete a flow that
+# asks for a code.
+[auth.email.template.magic_link]
+subject = "Your OraMedha sign-in code"
+content_path = "./supabase/templates/magic_link.html"
+
 [auth.email.template.recovery]
 subject = "Reset your OraMedha password"
 content_path = "./supabase/templates/recovery.html"

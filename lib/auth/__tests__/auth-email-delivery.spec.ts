@@ -67,7 +67,21 @@ const LINK_TEMPLATES = [
 /** Every template, for the properties that hold regardless of payload. */
 const TEMPLATES = [
   { file: "confirmation.html" },
+  { file: "magic_link.html" },
   ...LINK_TEMPLATES,
+] as const;
+
+/**
+ * Templates whose payload is a 6-digit CODE.
+ *
+ * Both, because signInWithOtp() does not reliably pick one: production sent the
+ * magic-link email for the same call that took the confirmation path locally.
+ * Whichever Supabase reaches for has to carry the code, or portal activation
+ * asks for something the patient was never sent.
+ */
+const CODE_TEMPLATES = [
+  { file: "confirmation.html" },
+  { file: "magic_link.html" },
 ] as const;
 
 const body = (file: string) =>
@@ -211,8 +225,8 @@ describe("auth email templates", () => {
     }
   );
 
-  it("confirmation.html carries a 6-digit code and NO link", () => {
-    const html = body("confirmation.html");
+  it.each(CODE_TEMPLATES)("$file carries a 6-digit code and NO link", ({ file }) => {
+    const html = body(file);
 
     // The activation payload.
     expect(html).toContain("{{ .Token }}");
