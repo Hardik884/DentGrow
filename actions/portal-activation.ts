@@ -124,7 +124,7 @@ async function resolveActivationCandidate(email: string): Promise<Candidate> {
 /**
  * requestActivation
  *
- * Sends a 6-digit activation code, but only to an address a clinic has put on a
+ * Sends an activation code, but only to an address a clinic has put on a
  * patient record that is not already linked.
  *
  * ALWAYS returns the same success. The distinction between "sent" and "not
@@ -190,7 +190,7 @@ export async function requestActivation(
 /**
  * verifyActivation
  *
- * Exchanges the 6-digit code for a session. Supabase owns expiry and attempt
+ * Exchanges the emailed code for a session. Supabase owns expiry, attempt
  * limits (otp_expiry in supabase/config.toml), so a wrong or stale code fails
  * here rather than in application logic that could drift from it.
  *
@@ -205,7 +205,7 @@ export async function verifyActivation(
   const token = ((formData.get("token") as string) ?? "").trim();
 
   if (!email || !token) {
-    return { data: null, error: "Enter the 6-digit code from your email." };
+    return { data: null, error: "Enter the code from your email." };
   }
 
   try {

@@ -11,9 +11,14 @@ import { test, expect, type Page } from "@playwright/test";
  * longer do.
  *
  * The code is read out of Mailpit rather than mocked. A mock would prove the
- * form posts; it would not prove Supabase actually issues a 6-digit token for
- * this flow, which is the part that depends on the template carrying
- * {{ .Token }} and is exactly what would silently regress.
+ * form posts; it would not prove Supabase actually issues a token for this
+ * flow, which is the part that depends on the template carrying {{ .Token }}
+ * and is exactly what would silently regress.
+ *
+ * The extractor accepts 4-10 digits rather than exactly 6: the length is a
+ * project setting (mailer_otp_length), and production issues 8 where local
+ * issues 6. Pinning it here would make this suite pass only against whichever
+ * environment the author had in mind.
  */
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "http://127.0.0.1:55321";
@@ -62,7 +67,7 @@ async function messageIds(email: string): Promise<string[]> {
 }
 
 /**
- * The 6-digit code from a message this test caused.
+ * The activation code from a message this test caused.
  *
  * `excluding` because Mailpit persists across runs and `db:reset` does not
  * clear it — taking the newest message for an address can otherwise pick up a
@@ -82,7 +87,7 @@ async function newCode(email: string, excluding: string[]): Promise<string | nul
   // style values among them — and a bare /\b\d{6}\b/ picks whichever happens to
   // appear first, which is not stable across template edits. That produced a
   // "wrong code" failure that looked like a broken verify step.
-  const match = body.match(/Your code[\s\S]{0,400}?(\d{6})/i);
+  const match = body.match(/Your code[\s\S]{0,400}?(\d{4,10})/i);
   return match ? match[1] : null;
 }
 
@@ -96,7 +101,7 @@ async function activate(page: Page, email: string, password: string) {
   await expect.poll(() => newCode(email, before), { timeout: 45_000 }).not.toBeNull();
   const code = await newCode(email, before);
 
-  await page.getByLabel("6-digit code").fill(code as string);
+  await page.getByLabel("Verification code").fill(code as string);
   await page.getByRole("button", { name: "Verify code" }).click();
 
   await page.getByLabel("Password", { exact: true }).fill(password);
@@ -174,7 +179,7 @@ test.describe("patient portal activation", () => {
 
     await page.waitForURL("**/portal**", { timeout: 30_000 });
     // Nothing asked for a code.
-    await expect(page.getByLabel("6-digit code")).toHaveCount(0);
+    await expect(page.getByLabel("Verification code")).toHaveCount(0);
   });
 
   // ── The refusals ─────────────────────────────────────────────────────────
@@ -191,7 +196,7 @@ test.describe("patient portal activation", () => {
 
     // Identical screen to the eligible case — that is what stops this form
     // being a way to discover who a clinic's patients are.
-    await expect(page.getByLabel("6-digit code")).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByLabel("Verification code")).toBeVisible({ timeout: 15_000 });
 
     // ...and nothing was actually sent.
     await page.waitForTimeout(6000);
@@ -209,13 +214,13 @@ test.describe("patient portal activation", () => {
     await page.getByLabel("Email address").fill(`wrongcode.${STAMP}@dentgrow.test`);
     await page.getByRole("button", { name: "Send code" }).click();
 
-    await expect(page.getByLabel("6-digit code")).toBeVisible({ timeout: 15_000 });
-    await page.getByLabel("6-digit code").fill("000000");
+    await expect(page.getByLabel("Verification code")).toBeVisible({ timeout: 15_000 });
+    await page.getByLabel("Verification code").fill("000000");
     await page.getByRole("button", { name: "Verify code" }).click();
 
     await expect(page.locator('form [role="alert"]')).toContainText(/incorrect or has expired/i);
     // Still on the code step — no session was granted.
-    await expect(page.getByLabel("6-digit code")).toBeVisible();
+    await expect(page.getByLabel("Verification code")).toBeVisible();
   });
 
   test("an address on records in two clinics is refused rather than guessed", async ({
@@ -233,7 +238,7 @@ test.describe("patient portal activation", () => {
     await page.getByLabel("Email address").fill(SHARED_EMAIL);
     await page.getByRole("button", { name: "Send code" }).click();
 
-    await expect(page.getByLabel("6-digit code")).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByLabel("Verification code")).toBeVisible({ timeout: 15_000 });
 
     // Same generic screen, and no code issued for either record.
     await page.waitForTimeout(6000);

@@ -129,8 +129,8 @@ export function PatientSignupForm() {
     return (
       <form action={verifyAction} className="space-y-5" noValidate>
         <AuthNotice>
-          If that address is registered with a clinic, we&apos;ve sent a 6-digit code to it.
-          Enter it below.
+          If that address is registered with a clinic, we&apos;ve sent a verification code
+          to it. Enter it below.
         </AuthNotice>
 
         {verState.error && <AuthAlert>{verState.error}</AuthAlert>}
@@ -139,8 +139,16 @@ export function PatientSignupForm() {
             to this exact address and the server verifies against it. */}
         <input type="hidden" name="email" value={email} />
 
+        {/*
+          No length is stated anywhere on this step, and that is deliberate.
+          The code's length is a Supabase PROJECT setting (mailer_otp_length),
+          not a property of this flow — production issues 8 digits while
+          supabase/config.toml sets 6 locally. This form said "6-digit code"
+          and a real patient received 8, which is the interface telling someone
+          they have the wrong thing while they are holding the right one.
+        */}
         <AuthField
-          label="6-digit code"
+          label="Verification code"
           id="token"
           name="token"
           type="text"
@@ -149,7 +157,7 @@ export function PatientSignupForm() {
           autoFocus
           required
           disabled={verPending}
-          placeholder="123456"
+          placeholder="Enter the code from your email"
           hint="The code expires shortly after it's sent."
         />
 
