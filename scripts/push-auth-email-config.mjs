@@ -7,6 +7,7 @@
  *
  *     • which mail transport Auth uses (see PROVIDERS below)
  *     • email confirmation ON (mailer_autoconfirm = false)
+ *     • the emailed code length (mailer_otp_length = 6)
  *     • the four DentGrow templates in supabase/templates/
  *     • Site URL and the redirect allow-list, which is what every link in
  *       every one of those templates is built from
@@ -208,6 +209,16 @@ const config = {
   // does not change with the transport underneath.
   mailer_autoconfirm: false,
   mailer_secure_email_change_enabled: true,
+
+  // ── Code length ─────────────────────────────────────────────────────────
+  // Six, matching supabase/config.toml. Set here because the two environments
+  // had DRIFTED: local issued 6 and production issued 8, which surfaced as a
+  // patient being asked for a "6-digit code" and receiving an 8-digit one.
+  //
+  // The UI no longer states a length, so nothing breaks if this changes again —
+  // but a setting that differs between environments for no reason is a trap,
+  // and pinning it in the script is what stops it drifting back.
+  mailer_otp_length: 6,
 
   // ── Where links point ───────────────────────────────────────────────────
   site_url: base,
